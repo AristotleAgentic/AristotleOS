@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository layout note
 
-The committed git tree contains only `LICENSE` and `aristotle-governance-os-enterprise-package.zip`. The actual project source lives **inside that zip** and is expected to be extracted to `./extracted/` (already done in the working copy). All commands and paths below are relative to the extracted root unless otherwise noted.
+Project source is tracked under `./extracted/`. All commands and paths below are relative to that directory unless otherwise noted. The repo root holds `LICENSE`, `CLAUDE.md`, the original `aristotle-governance-os-enterprise-package.zip` (legacy bundle, kept for reference), and `docs/` (project-level documentation including audits).
 
-When making changes, work inside `./extracted/` — that is the live project. The zip in the repo root is the upstream enterprise bundle and should be treated as a source-of-truth artifact, not edited directly.
+Runtime state files (`extracted/services/*/data/*.json`) and personal config (`.claude/settings.local.json`) are gitignored. They live on disk locally for `npm run dev` to function but are not tracked.
 
 ## Common commands
 
@@ -32,18 +32,19 @@ Per-service: each workspace under `services/*`, `adapters/*`, `apps/*`, `shared/
 
 ## Running `npm run dev` locally (outside Docker)
 
-`npm run dev` works, but two gotchas bite cleanly cloned environments. Both are because the dev path doesn't go through docker-compose:
+One real gotcha when running outside docker-compose:
 
-1. **No service imports `dotenv`.** The compose file uses `env_file: .env`, but `tsx watch` does not. Source the env into the shell yourself:
-   ```bash
-   cp .env.example .env   # if not already present
-   set -a && . ./.env && set +a && npm run dev
-   ```
-   Without this, services boot with all env unset.
+**Flip `SERVICE_DISCOVERY_MODE=local` in your `.env`.** The example ships with `container`, which makes services resolve each other by docker hostname (`evidence-ledger`, `governance-kernel`, …) and fail with `ENOTFOUND` when run directly. With `local`, the `HOST_*` fallback resolves to `127.0.0.1`. Keep `container` only when running via `docker compose`.
 
-2. **Flip `SERVICE_DISCOVERY_MODE=local` in your `.env`.** The example ships with `container`, which makes services resolve each other by docker hostname (`evidence-ledger`, `governance-kernel`, …) and fail with `ENOTFOUND` outside compose. With `local`, the `HOST_*` fallback resolves to `127.0.0.1`. Keep `container` only when running via `docker compose`.
+```bash
+cp .env.example .env   # if not already present
+# edit .env, set SERVICE_DISCOVERY_MODE=local
+npm run dev
+```
 
-When the gateway logs `http-gateway upstream bases { ... '127.0.0.1:7001' ... }`, discovery is correctly local. If you see bare service names there, `.env` did not load or `SERVICE_DISCOVERY_MODE` is still `container`.
+**Why no `dotenv` import is needed:** each service's `src/lib.ts:6-9` calls Node's built-in `process.loadEnvFile?.(rootEnvPath)` at boot, which loads `extracted/.env` automatically on Node 20.6+. No shell-sourcing required. (Docker compose also picks up `.env` via `env_file:`, so both paths converge.)
+
+When the gateway logs `http-gateway upstream bases { ... '127.0.0.1:7001' ... }`, discovery is correctly local. If you see bare service names there, `.env` did not load (Node version too old?) or `SERVICE_DISCOVERY_MODE` is still `container`.
 
 **Restart hygiene:** killing the parent `npm run dev` process on Windows often leaves orphaned `tsx`/`node` workers holding 7001–7009, 8080, and 4173 — the next launch then dies with `EADDRINUSE`. Free them before relaunching:
 ```powershell
