@@ -1,0 +1,16 @@
+# Personal Claude Code permission file. The non-".local" sibling is fine to track if it ever exists.
+.claude/settings.local.json
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor scratch
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Local-only env overrides at repo root (extracted/.gitignore covers extracted/.env)
+.env
+.env.local
