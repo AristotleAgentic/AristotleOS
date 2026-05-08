@@ -1,0 +1,27 @@
+{
+  "name": "@aristotle/console-ui",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@aristotle/shared-types": "workspace:*",
+    "@aristotle/shared-schemas": "workspace:*",
+    "express": "^4.21.1",
+    "cors": "^2.8.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.4.1",
+    "vite": "^5.4.11"
+  }
+}

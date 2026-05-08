@@ -1,0 +1,37 @@
+{
+  "name": "aristotle-autonomous-governance-os",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "services/*",
+    "adapters/*",
+    "shared/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "dev": "concurrently \"npm run dev -w @aristotle/shared-types\" \"npm run dev -w @aristotle/shared-schemas\" \"npm run dev -w @aristotle/meta-authority-registry\" \"npm run dev -w @aristotle/policy-compiler\" \"npm run dev -w @aristotle/evidence-ledger\" \"npm run dev -w @aristotle/authority-router\" \"npm run dev -w @aristotle/witness-service\" \"npm run dev -w @aristotle/execution-gate\" \"npm run dev -w @aristotle/governance-kernel\" \"npm run dev -w @aristotle/simulation-engine\" \"npm run dev -w @aristotle/agent-os\" \"npm run dev -w @aristotle/http-gateway\" \"npm run dev -w @aristotle/console-ui\"",
+    "stack:up": "docker compose up --build -d",
+    "stack:down": "docker compose down",
+    "stack:logs": "docker compose logs -f",
+    "stack:smoke": "node scripts/validate-stack.mjs",
+    "enterprise:keys": "node scripts/generate-ledger-keypair.mjs",
+    "enterprise:backup": "node scripts/backup-governance-state.mjs",
+    "enterprise:restore": "node scripts/restore-governance-state.mjs --yes",
+    "enterprise:drill": "node scripts/validate-recovery.mjs",
+    "enterprise:preflight": "node scripts/validate-enterprise-config.mjs --production",
+    "enterprise:verify": "npm run enterprise:preflight && npm run stack:verify",
+    "stack:verify": "npm run stack:smoke && npm run validate:core",
+    "lint": "echo 'lint not yet configured'",
+    "test": "echo 'tests not yet configured'",
+    "validate:core": "node scripts/validate-core.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "@types/node": "^22.10.1",
+    "@types/express": "^5.0.0",
+    "@types/cors": "^2.8.17"
+  }
+}

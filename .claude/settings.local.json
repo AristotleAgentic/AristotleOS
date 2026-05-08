@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(pnpm --version)",
+      "PowerShell(pnpm *)",
+      "PowerShell(corepack *)",
+      "Bash(corepack pnpm *)"
+    ]
+  }
+}

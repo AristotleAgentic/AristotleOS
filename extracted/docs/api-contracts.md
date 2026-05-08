@@ -1,0 +1,33 @@
+# API contracts are mirrored in OpenAPI-lite form across each service README and the shared gateway routes.
+
+## Agent OS operator routes
+- `GET /operator/os/state`
+  - Returns missions, agents, workspaces, tool leases, mission memory, and aggregate runtime posture.
+- `GET /operator/os/missions`
+  - Returns the active mission queue managed by `agent-os`.
+- `POST /operator/os/agents`
+  - Registers an AI agent capability profile and writes the registration event to the evidence ledger.
+- `POST /operator/os/workspaces`
+  - Prepares a workspace session for a mission and records the allocation in the evidence ledger.
+- `POST /operator/os/missions`
+  - Creates a governed mission, allocates a workspace, leases required tools, compiles the mission governance profile, and records the bundle in the evidence ledger.
+- `POST /operator/os/missions/:missionId/advance`
+  - Advances mission state, updates workspace posture, suggests next actions, and commits the transition to the evidence ledger.
+- `GET /operator/os/tasks/next?agentId=...`
+  - Returns the next queued execution task, including workspace context, command hints, and file hints for a worker runtime.
+- `POST /operator/os/tasks/:taskId/claim`
+  - Claims a queued task for a worker agent, transitions it to running, records the handoff, and commits the claim to the ledger.
+- `POST /operator/os/tasks/:taskId/heartbeat`
+  - Updates the runtime heartbeat and status note for a claimed task so long-running executions remain visible.
+- `POST /operator/os/tasks/:taskId/complete`
+  - Submits worker output for a task, runs completion governance, emits receipts/finality artifacts, and returns the governed result.
+- `POST /operator/os/tasks/:taskId/retry`
+  - Re-queues a task for another governed attempt until the configured retry budget is exhausted.
+- `GET /operator/os/tasks/:taskId/actions`
+  - Lists the governed tool actions proposed or executed under a task.
+- `POST /operator/os/tasks/:taskId/actions`
+  - Proposes a concrete tool action like `shell`, `edit`, `read`, or `write`, validates it against active tool leases, and records the result.
+- `POST /operator/os/tasks/:taskId/actions/:actionId/execute`
+  - Marks an approved tool action as executed and commits the execution evidence to the ledger.
+- `POST /operator/os/leases/:leaseId/renew`
+  - Renews a mission lease for long-running work and records the extension in the ledger.

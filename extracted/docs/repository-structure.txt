@@ -1,0 +1,20 @@
+/apps
+  /console-ui
+/services
+  /governance-kernel
+  /policy-compiler
+  /evidence-ledger
+  /meta-authority-registry
+  /simulation-engine
+  /authority-router
+  /witness-service
+  /execution-gate
+/adapters
+  /http-gateway
+/shared
+  /schemas
+  /types
+/manifests
+  /docker
+  /k8s
+/docs
