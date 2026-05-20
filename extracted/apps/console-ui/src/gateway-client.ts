@@ -675,6 +675,33 @@ export interface GovernanceChainLedger {
   reason?: string;
 }
 
+export interface ChainMetricsView {
+  generated_at: string;
+  maes: number;
+  wards: number;
+  governors: number;
+  authority_envelopes: number;
+  commit_gates: number;
+  federation_agreements: number;
+  warrants: { total: number; unused: number; consumed: number; expired: number; revoked: number; rejected: number };
+  gel: {
+    records: number;
+    integrity_ok: boolean;
+    by_decision: { Allow: number; Deny: number; Escalate: number; FailClosed: number };
+    by_kind: { admissibility: number; execution: number };
+  };
+  spend: Array<{ envelope_id: string; currency: string; amount: number }>;
+}
+
+/** Read aggregate chain metrics through the gateway. Returns null when off/unreachable. */
+export const fetchGovernanceChainMetrics = async (gatewayBaseUrl?: string): Promise<ChainMetricsView | null> => {
+  try {
+    return await getJson<ChainMetricsView>(gatewayBaseUrl, gatewayContract.governanceChainMetrics);
+  } catch {
+    return null;
+  }
+};
+
 /**
  * Read the kernel's hash-chained GEL ledger through the gateway. Resolves to
  * `{ enabled: false, reason }` rather than throwing when the chain is disabled or

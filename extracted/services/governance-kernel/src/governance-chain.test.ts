@@ -175,6 +175,12 @@ test("kernel /v2 chain: create -> commit allows and consumes -> reuse denied -> 
     const gel = (await get(base, "/v2/gel")).body;
     assert.ok(gel.count >= 2, "ledger recorded allow + denial");
     assert.equal(gel.integrity.ok, true, "GEL chain verifies");
+
+    const metrics = (await get(base, "/v2/metrics")).body;
+    assert.equal(metrics.wards, 1);
+    assert.ok(metrics.warrants.consumed >= 1);
+    assert.ok(metrics.gel.by_decision.Allow >= 1);
+    assert.equal(metrics.gel.integrity_ok, true);
   } finally {
     await close();
   }

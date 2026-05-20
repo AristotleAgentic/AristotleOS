@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import {
   fetchGovernanceChainLedger,
+  fetchGovernanceChainMetrics,
   fetchLedgerArtifacts,
+  type ChainMetricsView,
   type GelRecordView,
   type GovernanceChainLedger,
   type LedgerArtifactList,
@@ -73,20 +75,32 @@ const decisionColor = (d: GelRecordView["decision"]) =>
 
 const verifyColor = (s?: string) => (s === "verified" ? C.allow : s === "failed" ? C.deny : C.faint);
 
+function metricCell(label: string, value: string | number, color?: string) {
+  return (
+    <div key={label} style={styles.statCell}>
+      <span style={{ ...styles.statValue, color: color ?? C.text }}>{value}</span>
+      <span style={styles.statLabel}>{label}</span>
+    </div>
+  );
+}
+
 export default function WardChainComparison({ gatewayBaseUrl, autoRefreshMs = 8000 }: Props) {
   const [legacy, setLegacy] = useState<LedgerArtifactList | null>(null);
   const [chain, setChain] = useState<GovernanceChainLedger | null>(null);
+  const [metrics, setMetrics] = useState<ChainMetricsView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatedAt, setUpdatedAt] = useState<string>("");
 
   const load = useCallback(async () => {
-    const [legacyRes, chainRes] = await Promise.allSettled([
+    const [legacyRes, chainRes, metricsRes] = await Promise.allSettled([
       fetchLedgerArtifacts(gatewayBaseUrl),
       fetchGovernanceChainLedger(gatewayBaseUrl),
+      fetchGovernanceChainMetrics(gatewayBaseUrl),
     ]);
     if (legacyRes.status === "fulfilled") setLegacy(legacyRes.value);
     if (chainRes.status === "fulfilled") setChain(chainRes.value);
+    if (metricsRes.status === "fulfilled") setMetrics(metricsRes.value);
     setError(legacyRes.status === "rejected" ? `evidence ledger unreachable: ${String(legacyRes.reason)}` : null);
     setUpdatedAt(new Date().toLocaleTimeString());
     setLoading(false);
@@ -135,6 +149,20 @@ export default function WardChainComparison({ gatewayBaseUrl, autoRefreshMs = 80
           </div>
         ))}
       </section>
+
+      {metrics ? (
+        <section style={styles.metricsStrip}>
+          {metricCell("Wards", metrics.wards)}
+          {metricCell("Envelopes", metrics.authority_envelopes)}
+          {metricCell("Warrants", `${metrics.warrants.consumed}/${metrics.warrants.total}`)}
+          {metricCell("Allow", metrics.gel.by_decision.Allow, C.allow)}
+          {metricCell("Deny", metrics.gel.by_decision.Deny, C.deny)}
+          {metricCell("Escalate", metrics.gel.by_decision.Escalate, C.escalate)}
+          {metricCell("GEL records", metrics.gel.records)}
+          {metricCell("Integrity", metrics.gel.integrity_ok ? "✓" : "✗", metrics.gel.integrity_ok ? C.allow : C.deny)}
+          {metrics.spend.map((s) => metricCell(`Spend ${s.currency}`, s.amount, C.accent))}
+        </section>
+      ) : null}
 
       <div style={styles.columns}>
         {/* ORIGINAL */}
@@ -242,6 +270,10 @@ const styles: Record<string, CSSProperties> = {
   contrastRow: { display: "grid", gridTemplateColumns: "140px 1fr 1fr", gap: 12, padding: "12px 14px", borderTop: `1px solid ${C.border}`, fontSize: 13, lineHeight: 1.45 },
   contrastCell: {},
   dimCol: { fontWeight: 600, color: C.text },
+  metricsStrip: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 8, marginBottom: 24 },
+  statCell: { background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", textAlign: "center" },
+  statValue: { display: "block", fontSize: 18, fontWeight: 700 },
+  statLabel: { display: "block", fontSize: 10.5, color: C.faint, marginTop: 3 },
   columns: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" },
   card: { background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 18 },
   cardHead: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14 },

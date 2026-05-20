@@ -12,6 +12,7 @@ import assert from "node:assert/strict";
 
 import {
   assertAuthorityChainComplete,
+  chainMetrics,
   context,
   createAuthorityEnvelope,
   evaluateCommit,
@@ -362,6 +363,19 @@ test("a store snapshot round-trips, preserving warrant consumption and the GEL c
   const replay = evaluateCommit(restored, request, opts(w));
   assert.notEqual(replay.decision, "Allow");
   assert.ok(replay.violated_invariants.includes("warrant-non-replayable"));
+});
+
+test("chainMetrics aggregates the store after a commit", () => {
+  const w = fixtures.buildPayments();
+  evaluateCommit(w.store, w.propose().request, opts(w));
+  const m = chainMetrics(w.store, w.keyring);
+  assert.equal(m.maes, 1);
+  assert.equal(m.wards, 1);
+  assert.equal(m.authority_envelopes, 1);
+  assert.equal(m.warrants.consumed, 1);
+  assert.equal(m.gel.integrity_ok, true);
+  assert.ok(m.gel.by_decision.Allow >= 1);
+  assert.ok(m.spend.some((s) => s.currency === "USD" && s.amount === 412));
 });
 
 test("execution outcomes are recorded as a separate ledger entry", () => {

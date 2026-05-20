@@ -20,6 +20,7 @@ import {
   HmacKeyring,
   InMemoryGovernanceStore,
   appointGovernor,
+  chainMetrics,
   createAuthorityEnvelope,
   createMae,
   constituteWard,
@@ -192,6 +193,8 @@ export function registerGovernanceChainRoutes(app: Express, chain: GovernanceCha
     const records = chain.store.getGelChain();
     res.json({ count: records.length, integrity: verifyGelChain(records, chain.keyring), records });
   });
+
+  app.get("/v2/metrics", (_req, res) => res.json(chainMetrics(chain.store, chain.keyring)));
 
   app.get("/v2/wards/:id", (req, res) => {
     const ward = chain.store.getWard(req.params.id);

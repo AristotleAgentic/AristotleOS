@@ -20,6 +20,7 @@ export * from "./types.js";
 export * from "./store.js";
 export * from "./validators.js";
 export * from "./gel.js";
+export * from "./metrics.js";
 export * from "./commit-gate.js";
 export * from "./revocation.js";
 export * from "./federation.js";
