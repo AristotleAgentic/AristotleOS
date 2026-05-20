@@ -10,6 +10,7 @@ export const gatewayContract = {
   assuranceAttest: '/operator/assurance/attest',
   metaAuthority: '/operator/meta-authority',
   envelopes: '/operator/envelopes',
+  governanceChainGel: '/operator/governance-chain/gel',
   osState: '/operator/os/state',
   osMissions: '/operator/os/missions',
   autonomyTick: '/operator/os/autonomy/tick',

@@ -638,3 +638,57 @@ export const projectCounterfactual = async (
     body: JSON.stringify(input)
   });
 };
+
+// --- GOVERNANCE_CHAIN_V2: the Ward/Warrant chain (additive; for comparison) ----
+
+export interface GelRecordView {
+  gel_record_id: string;
+  sequence: number;
+  previous_gel_hash: string;
+  gel_record_hash: string;
+  mae_id?: string;
+  ward_id?: string;
+  authority_envelope_id?: string;
+  warrant_id?: string;
+  commit_gate_id?: string;
+  actor: string;
+  action: string;
+  decision: "Allow" | "Deny" | "Escalate" | "FailClosed";
+  decision_reason: string;
+  record_kind: "admissibility" | "execution";
+  warrant_consumption_proof?: {
+    warrant_id: string;
+    nonce: string;
+    consumed_at: string;
+    prior_state: string;
+    new_state: string;
+  };
+  timestamp: string;
+}
+
+export interface GovernanceChainLedger {
+  /** False when GOVERNANCE_CHAIN_V2 is off (gateway returns 501) or unreachable. */
+  enabled: boolean;
+  count?: number;
+  integrity?: { ok: boolean; violations?: Array<{ invariant: string; detail: string }> };
+  records?: GelRecordView[];
+  reason?: string;
+}
+
+/**
+ * Read the kernel's hash-chained GEL ledger through the gateway. Resolves to
+ * `{ enabled: false, reason }` rather than throwing when the chain is disabled or
+ * unreachable, so the comparison view can render a clear "off" state.
+ */
+export const fetchGovernanceChainLedger = async (gatewayBaseUrl?: string): Promise<GovernanceChainLedger> => {
+  try {
+    const data = await getJson<{
+      count: number;
+      integrity: { ok: boolean; violations?: Array<{ invariant: string; detail: string }> };
+      records: GelRecordView[];
+    }>(gatewayBaseUrl, gatewayContract.governanceChainGel);
+    return { enabled: true, count: data.count, integrity: data.integrity, records: data.records };
+  } catch (e) {
+    return { enabled: false, reason: e instanceof Error ? e.message : String(e) };
+  }
+};
