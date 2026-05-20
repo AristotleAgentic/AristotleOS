@@ -1,6 +1,9 @@
+import { resolve } from "node:path";
 import { createApp, id, now } from "./lib.js";
+import { createGovernanceChain, registerGovernanceChainRoutes } from "./governance-chain.js";
 const port = Number(process.env.PORT_GOVERNANCE_KERNEL ?? 7001);
 const app = createApp();
+const chainV2Enabled = (process.env.GOVERNANCE_CHAIN_V2 ?? "false").toLowerCase() === "true";
 const serviceDiscoveryMode = process.env.SERVICE_DISCOVERY_MODE ?? "container";
 const registryHost = process.env.HOST_META_AUTHORITY_REGISTRY ??
     (serviceDiscoveryMode === "local" ? "127.0.0.1" : "meta-authority-registry");
@@ -35,7 +38,7 @@ const appliesKillSwitch = (context) => {
         return false;
     });
 };
-app.get("/health", (_req, res) => res.json({ ok: true, service: "governance-kernel", killSwitchState, activeKillScopes: activeKillScopes() }));
+app.get("/health", (_req, res) => res.json({ ok: true, service: "governance-kernel", killSwitchState, activeKillScopes: activeKillScopes(), governanceChainV2: chainV2Enabled }));
 app.get("/envelopes", (_req, res) => res.json({ items: [...envelopes.values()] }));
 app.get("/warrants", (_req, res) => res.json({ items: [...warrants.values()] }));
 app.post("/kill-switch", (req, res) => {
@@ -119,4 +122,20 @@ app.post("/evaluate-admissibility", (req, res) => {
         reasons: admissible ? ["Envelope valid", `Policy compile ref: ${policyCompileId ?? "none"}`] : ["Kill switch active for this scope"]
     });
 });
+if (chainV2Enabled) {
+    const signingSecret = process.env.GOVERNANCE_CHAIN_SIGNING_SECRET;
+    if (!signingSecret) {
+        console.warn("[governance-kernel] GOVERNANCE_CHAIN_V2 enabled without GOVERNANCE_CHAIN_SIGNING_SECRET; using an insecure dev secret. Set one before any non-dev use.");
+    }
+    const statePath = process.env.GOVERNANCE_CHAIN_STATE_PATH
+        ? resolve(process.cwd(), process.env.GOVERNANCE_CHAIN_STATE_PATH)
+        : undefined;
+    const chain = createGovernanceChain({
+        signingSecret: signingSecret ?? "dev-insecure-governance-chain-secret",
+        keyId: process.env.GOVERNANCE_CHAIN_KEY_ID,
+        statePath,
+    });
+    registerGovernanceChainRoutes(app, chain);
+    console.log(`governance-kernel: GOVERNANCE_CHAIN_V2 enabled — Ward/Warrant chain at /v2/*${statePath ? ` (durable: ${statePath})` : " (in-memory; set GOVERNANCE_CHAIN_STATE_PATH for durability)"}`);
+}
 app.listen(port, () => console.log(`governance-kernel on ${port}`));

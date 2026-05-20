@@ -24,6 +24,19 @@ import type {
   Ward,
 } from "./types.js";
 
+/** Serializable snapshot of the whole store, for durable persistence. */
+export interface StoreSnapshot {
+  maes: MetaAuthorityEnvelope[];
+  wards: Ward[];
+  governors: Governor[];
+  envelopes: AuthorityEnvelope[];
+  warrants: Warrant[];
+  gates: CommitGate[];
+  agreements: FederationAgreement[];
+  gel: GELRecord[];
+  consumedNonces: string[];
+}
+
 export interface GovernanceStore {
   putMae(mae: MetaAuthorityEnvelope): void;
   getMae(id: string): MetaAuthorityEnvelope | undefined;
@@ -58,6 +71,11 @@ export interface GovernanceStore {
   gelLength(): number;
   appendGelRecord(record: GELRecord): void;
   getGelChain(): GELRecord[];
+
+  /** Durable persistence hooks. Consumed-nonce state must round-trip so that
+   *  single-use enforcement survives a restart. */
+  toSnapshot(): StoreSnapshot;
+  loadSnapshot(snapshot: StoreSnapshot): void;
 }
 
 export class InMemoryGovernanceStore implements GovernanceStore {
@@ -163,5 +181,31 @@ export class InMemoryGovernanceStore implements GovernanceStore {
   }
   getGelChain(): GELRecord[] {
     return [...this.gel];
+  }
+
+  toSnapshot(): StoreSnapshot {
+    return {
+      maes: [...this.maes.values()],
+      wards: [...this.wards.values()],
+      governors: [...this.governors.values()],
+      envelopes: [...this.envelopes.values()],
+      warrants: [...this.warrants.values()],
+      gates: [...this.gates.values()],
+      agreements: [...this.agreements.values()],
+      gel: [...this.gel],
+      consumedNonces: [...this.consumedNonces],
+    };
+  }
+
+  loadSnapshot(s: StoreSnapshot): void {
+    this.maes = new Map((s.maes ?? []).map((x) => [x.mae_id, x]));
+    this.wards = new Map((s.wards ?? []).map((x) => [x.ward_id, x]));
+    this.governors = new Map((s.governors ?? []).map((x) => [x.governor_id, x]));
+    this.envelopes = new Map((s.envelopes ?? []).map((x) => [x.authority_envelope_id, x]));
+    this.warrants = new Map((s.warrants ?? []).map((x) => [x.warrant_id, x]));
+    this.gates = new Map((s.gates ?? []).map((x) => [x.commit_gate_id, x]));
+    this.agreements = new Map((s.agreements ?? []).map((x) => [x.agreement_id, x]));
+    this.gel = [...(s.gel ?? [])];
+    this.consumedNonces = new Set(s.consumedNonces ?? []);
   }
 }

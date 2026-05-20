@@ -150,6 +150,9 @@ importers:
 
   services/governance-kernel:
     dependencies:
+      '@aristotle/governance-core':
+        specifier: workspace:*
+        version: link:../../shared/governance-core
       '@aristotle/shared-schemas':
         specifier: workspace:*
         version: link:../../shared/schemas
@@ -237,6 +240,8 @@ importers:
       zod:
         specifier: ^3.23.8
         version: 3.25.76
+
+  shared/governance-core: {}
 
   shared/schemas: {}
 

@@ -7,6 +7,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx watch src/index.ts",
+    "test": "tsx src/governance-chain-client.test.ts",
     "start": "node src/index.js"
   },
   "dependencies": {

@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { createApp, id, now } from "./lib.js";
+import { createChainClient, type ChainCommitResult, type ChainMode } from "./governance-chain-client.js";
 import type {
   AgentCapability,
   AgentOSSnapshot,
@@ -47,6 +48,15 @@ const authorityRouterBase = serviceOrigin("authority-router", "HOST_AUTHORITY_RO
 const simulationEngineBase = serviceOrigin("simulation-engine", "HOST_SIMULATION_ENGINE", Number(process.env.PORT_SIMULATION_ENGINE ?? 7005));
 const witnessServiceBase = serviceOrigin("witness-service", "HOST_WITNESS_SERVICE", Number(process.env.PORT_WITNESS_SERVICE ?? 7007));
 const executionGateBase = serviceOrigin("execution-gate", "HOST_EXECUTION_GATE", Number(process.env.PORT_EXECUTION_GATE ?? 7008));
+const chainV2Enabled = (process.env.GOVERNANCE_CHAIN_V2 ?? "false").toLowerCase() === "true";
+const chainV2Mode: ChainMode = chainV2Enabled ? ((process.env.GOVERNANCE_CHAIN_MODE ?? "shadow").toLowerCase() as ChainMode) : "off";
+const governanceChainClient =
+  chainV2Mode === "off"
+    ? undefined
+    : createChainClient({ kernelBase: governanceKernelBase, mode: chainV2Mode, keyId: process.env.GOVERNANCE_CHAIN_KEY_ID });
+if (governanceChainClient) {
+  console.log(`agent-os: GOVERNANCE_CHAIN_V2 ${chainV2Mode} — task acts routed through kernel /v2/commit`);
+}
 const heartbeatTimeoutMs = Number(process.env.AGENT_OS_HEARTBEAT_TIMEOUT_MS ?? 300000);
 const leaseRenewalWindowMs = Number(process.env.AGENT_OS_LEASE_RENEWAL_WINDOW_MS ?? 900000);
 const leaseExtensionMs = Number(process.env.AGENT_OS_LEASE_EXTENSION_MS ?? 1800000);
@@ -68,6 +78,7 @@ type GovernanceDecision = {
   finalityCertificateId?: string;
   witnessStatus?: "satisfied" | "unsatisfied" | "not-required";
   route?: AuthorityRoute;
+  chain?: ChainCommitResult;
 };
 
 const defaultAgents: AgentCapability[] = [
@@ -1398,6 +1409,29 @@ const assessTaskGovernance = async (
     }
   }
 
+  // GOVERNANCE_CHAIN_V2: route the act through the kernel's Ward/Warrant Commit
+  // Gate. In shadow mode the decision is recorded but never gates; in enforce
+  // mode a non-Allow decision (or an unreachable chain) blocks the act fail-closed.
+  let chain: ChainCommitResult | undefined;
+  if (governanceChainClient && (governanceChainClient.mode === "shadow" || reasons.length === 0)) {
+    chain = await governanceChainClient.commitTaskAct({
+      mission,
+      task,
+      phase,
+      killSwitchActive: killSwitchState === "active",
+      witnessRequired: mission.riskLevel === "high",
+      witnessAccepted: true,
+      missingLeaseTools
+    });
+    if (governanceChainClient.mode === "enforce") {
+      if (!chain.ran) {
+        reasons.push(`Ward/Warrant chain unavailable (fail-closed): ${chain.error ?? "unknown"}.`);
+      } else if (chain.decision !== "Allow") {
+        reasons.push(...(chain.reasons?.length ? chain.reasons : [`Ward/Warrant chain returned ${chain.decision}.`]));
+      }
+    }
+  }
+
   return {
     status: reasons.length === 0 ? "approved" : "blocked",
     reasons: reasons.length === 0 ? [`Task ${phase} approved under governed admissibility.`] : reasons,
@@ -1406,7 +1440,8 @@ const assessTaskGovernance = async (
     envelopeId,
     warrantId,
     commitDecisionId,
-    route
+    route,
+    chain
   };
 };
 
@@ -1655,6 +1690,10 @@ const dispatchNextEligibleTask = async (
     envelopeId: governance.envelopeId,
     warrantId: governance.warrantId,
     route: governance.route,
+    wardId: governance.chain?.ward_id,
+    chainWarrantId: governance.chain?.warrant_id,
+    chainDecision: governance.chain?.decision,
+    gelRecordId: governance.chain?.gel_record_id,
     ...agentIdentityContext(nextQueued.assignedAgentId),
     ...workspaceIdentityContext(nextQueued.execution?.workspaceId ?? mission.workspaceId)
   });

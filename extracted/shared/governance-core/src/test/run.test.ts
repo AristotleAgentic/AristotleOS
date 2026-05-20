@@ -17,6 +17,7 @@ import {
   evaluateCommit,
   evaluateFederatedCommit,
   fixtures,
+  InMemoryGovernanceStore,
   nowIso,
   precedes,
   recordExecutionOutcome,
@@ -288,6 +289,25 @@ test("denied and escalated commits still leave GEL evidence", () => {
   const d = evaluateCommit(w.store, submit.request, opts(w));
   assert.equal(d.decision, "Deny");
   assert.equal(w.store.gelLength(), before + 1);
+});
+
+test("a store snapshot round-trips, preserving warrant consumption and the GEL chain", () => {
+  const w = fixtures.buildPayments();
+  const { request } = w.propose();
+  const first = evaluateCommit(w.store, request, opts(w));
+  assert.equal(first.decision, "Allow");
+
+  // Snapshot -> restore into a fresh store (simulating a process restart).
+  const snapshot = JSON.parse(JSON.stringify(w.store.toSnapshot()));
+  const restored = new InMemoryGovernanceStore();
+  restored.loadSnapshot(snapshot);
+
+  // The GEL chain survived intact...
+  assert.equal(verifyGelChain(restored.getGelChain(), w.keyring).ok, true);
+  // ...and the consumed warrant cannot be replayed against the restored store.
+  const replay = evaluateCommit(restored, request, opts(w));
+  assert.notEqual(replay.decision, "Allow");
+  assert.ok(replay.violated_invariants.includes("warrant-non-replayable"));
 });
 
 test("execution outcomes are recorded as a separate ledger entry", () => {
