@@ -64,6 +64,9 @@ function main() {
   const mutationActors = pick(envFile, "OPERATOR_MUTATION_ACTORS", "");
   const viteActor = pick(envFile, "VITE_OPERATOR_ACTOR", "console-ui");
   const operatorActor = pick(envFile, "OPERATOR_ACTOR", "validate-core");
+  const chainV2Enabled = isTruthy(pick(envFile, "GOVERNANCE_CHAIN_V2", "false"));
+  const chainStatePath = pick(envFile, "GOVERNANCE_CHAIN_STATE_PATH", "");
+  const chainSigningSecret = pick(envFile, "GOVERNANCE_CHAIN_SIGNING_SECRET", "");
 
   addCheck(checks, "env-file", fs.existsSync(envPath), fs.existsSync(envPath) ? `.env loaded from ${envPath}` : `No .env found at ${envPath}`);
   addCheck(checks, "operator-api-key", Boolean(operatorApiKey), operatorApiKey ? "Operator API key configured." : "Missing OPERATOR_API_KEY.");
@@ -77,6 +80,16 @@ function main() {
   );
   addCheck(checks, "ledger-state-path", Boolean(ledgerStatePath), ledgerStatePath ? `Ledger durability path ${ledgerStatePath}.` : "Missing EVIDENCE_LEDGER_STATE_PATH.");
   addCheck(checks, "agent-os-state-path", Boolean(agentOsStatePath), agentOsStatePath ? `Agent OS durability path ${agentOsStatePath}.` : "Missing AGENT_OS_STATE_PATH.");
+  addCheck(
+    checks,
+    "governance-chain-v2",
+    !chainV2Enabled || (Boolean(chainStatePath) && Boolean(chainSigningSecret)),
+    chainV2Enabled
+      ? chainStatePath && chainSigningSecret
+        ? `GOVERNANCE_CHAIN_V2 enabled with durable state (${chainStatePath}) and a signing secret.`
+        : "GOVERNANCE_CHAIN_V2 enabled but GOVERNANCE_CHAIN_STATE_PATH and/or GOVERNANCE_CHAIN_SIGNING_SECRET is missing."
+      : "GOVERNANCE_CHAIN_V2 disabled (chain is opt-in)."
+  );
   addCheck(
     checks,
     "ledger-signing",

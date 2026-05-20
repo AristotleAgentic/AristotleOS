@@ -1447,13 +1447,16 @@ const assessTaskGovernance = async (
   // Gate. In shadow mode the decision is recorded but never gates; in enforce
   // mode a non-Allow decision (or an unreachable chain) blocks the act fail-closed.
   let chain: ChainCommitResult | undefined;
-  if (governanceChainClient && (governanceChainClient.mode === "shadow" || reasons.length === 0)) {
+  // Dispatch acts run through the chain here. Completion acts are committed in
+  // finalizeGovernedCompletion AFTER witness verification, so the witness duty is
+  // enforced against the real outcome. Dispatch never carries a witness obligation.
+  if (governanceChainClient && phase === "dispatch" && (governanceChainClient.mode === "shadow" || reasons.length === 0)) {
     chain = await governanceChainClient.commitTaskAct({
       mission,
       task,
       phase,
       killSwitchActive: killSwitchState === "active",
-      witnessRequired: mission.riskLevel === "high",
+      witnessRequired: false,
       witnessAccepted: true,
       missingLeaseTools
     });
@@ -1629,6 +1632,40 @@ const finalizeGovernedCompletion = async (
       };
     }
 
+    // GOVERNANCE_CHAIN_V2: completion runs through the chain HERE — after witness
+    // verification — so the witness obligation is enforced with the real outcome.
+    let chain: ChainCommitResult | undefined;
+    if (governanceChainClient) {
+      const killSwitchActive = (await readKillSwitchState()) === "active";
+      chain = await governanceChainClient.commitTaskAct({
+        mission,
+        task,
+        phase: "completion",
+        killSwitchActive,
+        witnessRequired,
+        witnessAccepted: witnessReceipt ? witnessReceipt.accepted : true,
+        missingLeaseTools: []
+      });
+      if (governanceChainClient.mode === "enforce" && (!chain.ran || chain.decision !== "Allow")) {
+        return {
+          ...governance,
+          status: "blocked",
+          reasons: [
+            ...governance.reasons,
+            ...(chain.ran
+              ? chain.reasons?.length
+                ? chain.reasons
+                : [`Ward/Warrant chain returned ${chain.decision}.`]
+              : [`Ward/Warrant chain unavailable (fail-closed): ${chain.error ?? "unknown"}.`])
+          ],
+          witnessReceiptId: witnessReceipt?.id,
+          decisionId: decision.id,
+          witnessStatus: decision.witnessStatus,
+          chain
+        };
+      }
+    }
+
     const finalityCertificate: FinalityCertificate = {
       id: id("fin"),
       artifactType: "finality-certificate",
@@ -1666,7 +1703,8 @@ const finalizeGovernedCompletion = async (
       finalityCertificateId: finalityCertificate.id,
       witnessStatus: decision.witnessStatus,
       status: "approved",
-      evaluatedAt: now()
+      evaluatedAt: now(),
+      chain
     };
   } catch {
     return {
