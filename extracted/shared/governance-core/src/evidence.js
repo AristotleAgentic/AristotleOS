@@ -9,9 +9,10 @@
  * internal hash-chain.
  */
 import { hashCanonical } from "./hash.js";
-import { GENESIS_HASH, verifyGelChain } from "./gel.js";
+import { GENESIS_HASH, verifyGelChain, verifyGelRecords } from "./gel.js";
 import { newId, nowIso } from "./ids.js";
 import { combine, fromViolations, valid, violation } from "./errors.js";
+import { scopeSnapshot } from "./tenancy.js";
 function digestInput(b) {
     return {
         generated_at: b.generated_at,
@@ -19,19 +20,27 @@ function digestInput(b) {
         genesis_hash: b.genesis_hash,
         head_hash: b.head_hash,
         chain_intact: b.chain_intact,
+        scoped: b.scoped,
         records: b.records,
     };
 }
-/** Export the GEL chain as a signed, self-verifying evidence bundle. */
-export function exportEvidence(store, keyring, signKeyId) {
-    const records = store.getGelChain();
+/**
+ * Export the GEL chain as a signed, self-verifying evidence bundle. With a scope
+ * `filter` it exports only one tenant's/MAE's records (verified per-record, since
+ * a filtered subset is not a contiguous hash-chain) — so a tenant's compliance
+ * export never leaks another tenant's evidence.
+ */
+export function exportEvidence(store, keyring, signKeyId, filter) {
+    const scoped = !!(filter && (filter.maeId || filter.tenantId));
+    const records = scoped ? scopeSnapshot(store.toSnapshot(), filter).gel : store.getGelChain();
     const head_hash = records.length ? records[records.length - 1].gel_record_hash : GENESIS_HASH;
     const content = {
         generated_at: nowIso(),
         record_count: records.length,
         genesis_hash: GENESIS_HASH,
         head_hash,
-        chain_intact: verifyGelChain(records, keyring).ok,
+        chain_intact: (scoped ? verifyGelRecords(records, keyring) : verifyGelChain(records, keyring)).ok,
+        scoped,
         records,
     };
     const bundle_hash = hashCanonical(digestInput(content));
@@ -63,6 +72,8 @@ export function verifyEvidenceBundle(bundle, keyring) {
     if (bundle.head_hash !== expectedHead) {
         results.push(fromViolations([violation("evidence-bundle-head", "head_hash does not match the last record")]));
     }
-    results.push(verifyGelChain(bundle.records, keyring));
+    // A scoped bundle is a filtered subset (not a contiguous chain): verify each
+    // record's own hash + signature. A whole-chain bundle also verifies back-links.
+    results.push(bundle.scoped ? verifyGelRecords(bundle.records, keyring) : verifyGelChain(bundle.records, keyring));
     return results.length ? combine(...results) : valid();
 }

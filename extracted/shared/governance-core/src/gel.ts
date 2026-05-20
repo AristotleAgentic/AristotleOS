@@ -67,6 +67,25 @@ export function verifyGelChain(records: GELRecord[], keyring?: Keyring): Validat
 }
 
 /**
+ * Verify each record's own content hash (and signature, if a keyring is given)
+ * WITHOUT back-link continuity — for a filtered/scoped subset that is not a
+ * contiguous chain (e.g. a per-tenant evidence export).
+ */
+export function verifyGelRecords(records: GELRecord[], keyring?: Keyring): ValidationResult {
+  const results: ValidationResult[] = [];
+  for (let i = 0; i < records.length; i++) {
+    const r = records[i];
+    if (computeGelRecordHash(r as unknown as Record<string, unknown>) !== r.gel_record_hash) {
+      results.push(fromViolations([violation("gel-tamper-evident", `record ${i} content hash mismatch (tampered?)`)]));
+    }
+    if (keyring && !verifyGelRecordSignatures(keyring, r as unknown as Record<string, unknown> & { signatures: GELRecord["signatures"] })) {
+      results.push(fromViolations([violation("gel-signature", `record ${i} signature invalid`)]));
+    }
+  }
+  return results.length === 0 ? valid() : combine(...results);
+}
+
+/**
  * A GEL Record must prove the authority chain, not just that an event occurred.
  * For an allowed admissibility record that means every chain reference is present
  * and a warrant consumption proof exists (authority precedes attribution).

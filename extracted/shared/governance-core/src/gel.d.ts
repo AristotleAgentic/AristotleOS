@@ -32,6 +32,12 @@ export declare function finalizeAndAppend(store: GovernanceStore, keyring: Keyri
  */
 export declare function verifyGelChain(records: GELRecord[], keyring?: Keyring): ValidationResult;
 /**
+ * Verify each record's own content hash (and signature, if a keyring is given)
+ * WITHOUT back-link continuity — for a filtered/scoped subset that is not a
+ * contiguous chain (e.g. a per-tenant evidence export).
+ */
+export declare function verifyGelRecords(records: GELRecord[], keyring?: Keyring): ValidationResult;
+/**
  * A GEL Record must prove the authority chain, not just that an event occurred.
  * For an allowed admissibility record that means every chain reference is present
  * and a warrant consumption proof exists (authority precedes attribution).

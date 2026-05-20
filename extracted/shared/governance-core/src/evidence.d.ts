@@ -10,6 +10,7 @@
  */
 import { type Keyring, type Signature } from "./hash.js";
 import { type ValidationResult } from "./errors.js";
+import { type ScopeFilter } from "./tenancy.js";
 import type { GELRecord } from "./types.js";
 import type { GovernanceStore } from "./store.js";
 export interface EvidenceBundle {
@@ -20,13 +21,20 @@ export interface EvidenceBundle {
     head_hash: string;
     /** Whether the chain verified at export time. */
     chain_intact: boolean;
+    /** True for a per-tenant/per-MAE subset (verified per-record, not by back-links). */
+    scoped: boolean;
     records: GELRecord[];
     /** Hash over the bundle content (excludes bundle_id, bundle_hash, signature). */
     bundle_hash: string;
     signature: Signature;
 }
-/** Export the GEL chain as a signed, self-verifying evidence bundle. */
-export declare function exportEvidence(store: GovernanceStore, keyring: Keyring, signKeyId: string): EvidenceBundle;
+/**
+ * Export the GEL chain as a signed, self-verifying evidence bundle. With a scope
+ * `filter` it exports only one tenant's/MAE's records (verified per-record, since
+ * a filtered subset is not a contiguous hash-chain) — so a tenant's compliance
+ * export never leaks another tenant's evidence.
+ */
+export declare function exportEvidence(store: GovernanceStore, keyring: Keyring, signKeyId: string, filter?: ScopeFilter): EvidenceBundle;
 /**
  * Verify an evidence bundle offline: bundle hash integrity, bundle signature,
  * internal GEL hash-chain, and the count/head consistency. A keyring holding the

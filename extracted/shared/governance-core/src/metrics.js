@@ -5,8 +5,12 @@
  */
 import { verifyGelChain } from "./gel.js";
 import { nowIso } from "./ids.js";
-export function chainMetrics(store, keyring) {
-    const s = store.toSnapshot();
+import { scopeSnapshot } from "./tenancy.js";
+export function chainMetrics(store, keyring, filter) {
+    const full = store.toSnapshot();
+    const s = scopeSnapshot(full, filter);
+    // Integrity is a global ledger property; always report it over the full chain.
+    const integrityOk = verifyGelChain(full.gel, keyring).ok;
     const warrantsInState = (state) => s.warrants.filter((w) => w.consumption_state === state).length;
     const gelInDecision = (decision) => s.gel.filter((r) => r.decision === decision).length;
     return {
@@ -27,7 +31,7 @@ export function chainMetrics(store, keyring) {
         },
         gel: {
             records: s.gel.length,
-            integrity_ok: verifyGelChain(s.gel, keyring).ok,
+            integrity_ok: integrityOk,
             by_decision: {
                 Allow: gelInDecision("Allow"),
                 Deny: gelInDecision("Deny"),

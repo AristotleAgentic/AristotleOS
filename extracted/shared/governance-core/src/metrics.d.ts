@@ -3,6 +3,7 @@
  * a commercial deployment needs (dashboards, alerts, capacity, spend). Computed
  * from a store snapshot so it works against any GovernanceStore implementation.
  */
+import { type ScopeFilter } from "./tenancy.js";
 import type { Keyring } from "./hash.js";
 import type { GovernanceStore } from "./store.js";
 import type { ConsumptionState, GelDecision } from "./types.js";
@@ -30,4 +31,4 @@ export interface ChainMetrics {
         amount: number;
     }>;
 }
-export declare function chainMetrics(store: GovernanceStore, keyring?: Keyring): ChainMetrics;
+export declare function chainMetrics(store: GovernanceStore, keyring?: Keyring, filter?: ScopeFilter): ChainMetrics;

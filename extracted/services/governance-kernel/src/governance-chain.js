@@ -13,7 +13,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { Ed25519Keyring, HmacKeyring, InMemoryGovernanceStore, appointGovernor, chainMetrics, exportEvidence, createAuthorityEnvelope, createMae, constituteWard, evaluateCommit, issueWarrant, registerCommitGate, verifyGelChain, } from "@aristotle/governance-core";
+import { Ed25519Keyring, HmacKeyring, InMemoryGovernanceStore, appointGovernor, chainMetrics, exportEvidence, createAuthorityEnvelope, createMae, constituteWard, evaluateCommit, issueWarrant, registerCommitGate, scopeSnapshot, tenantSummaries, verifyGelChain, verifyGelRecords, } from "@aristotle/governance-core";
 /** Build the kernel's governance chain: store + keyring + a single fail-closed Commit Gate. */
 export function createGovernanceChain(config) {
     const signKeyId = config.keyId ?? "governance-kernel-key";
@@ -106,13 +106,22 @@ export function registerGovernanceChainRoutes(app, chain) {
     // successful commit consumes the warrant and appends a GEL record.
     app.post("/v2/commit", mutate((req, res) => res.json(evaluateCommit(chain.store, req.body, chain.options()))));
     app.get("/v2/commit-gate", (_req, res) => res.json(chain.gate));
-    app.get("/v2/gel", (_req, res) => {
-        const records = chain.store.getGelChain();
-        res.json({ count: records.length, integrity: verifyGelChain(records, chain.keyring), records });
+    const scopeFromQuery = (req) => ({
+        maeId: typeof req.query.mae === "string" ? req.query.mae : undefined,
+        tenantId: typeof req.query.tenant === "string" ? req.query.tenant : undefined,
     });
-    app.get("/v2/metrics", (_req, res) => res.json(chainMetrics(chain.store, chain.keyring)));
+    app.get("/v2/gel", (req, res) => {
+        const filter = scopeFromQuery(req);
+        const scoped = Boolean(filter.maeId || filter.tenantId);
+        const records = scopeSnapshot(chain.store.toSnapshot(), filter).gel;
+        const integrity = scoped ? verifyGelRecords(records, chain.keyring) : verifyGelChain(records, chain.keyring);
+        res.json({ count: records.length, scoped, integrity, records });
+    });
+    app.get("/v2/metrics", (req, res) => res.json(chainMetrics(chain.store, chain.keyring, scopeFromQuery(req))));
+    app.get("/v2/tenants", (_req, res) => res.json({ tenants: tenantSummaries(chain.store.toSnapshot()) }));
     // Portable, offline-verifiable compliance evidence (signed + hash-chained).
-    app.get("/v2/gel/export", (_req, res) => res.json(exportEvidence(chain.store, chain.keyring, chain.signKeyId)));
+    // With ?mae= or ?tenant= the bundle is scoped so a tenant export never leaks others.
+    app.get("/v2/gel/export", (req, res) => res.json(exportEvidence(chain.store, chain.keyring, chain.signKeyId, scopeFromQuery(req))));
     app.get("/v2/wards/:id", (req, res) => {
         const ward = chain.store.getWard(req.params.id);
         if (!ward)

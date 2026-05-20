@@ -21,6 +21,7 @@ export * from "./validators.js";
 export * from "./gel.js";
 export * from "./evidence.js";
 export * from "./metrics.js";
+export * from "./tenancy.js";
 export * from "./commit-gate.js";
 export * from "./revocation.js";
 export * from "./federation.js";

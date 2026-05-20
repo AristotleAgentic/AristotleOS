@@ -103,6 +103,9 @@ export interface MetaAuthorityEnvelope {
   mae_id: string;
   version: string;
   issuer: string;
+  /** Owning tenant/organization. Isolates this constitution (and everything under
+   *  it) from other tenants in a shared deployment. Multiple MAEs may share a tenant. */
+  tenant_id?: string;
   /** Domains this constitution has standing over. */
   constitutional_scope: string[];
   ward_creation_rules: WardCreationRules;

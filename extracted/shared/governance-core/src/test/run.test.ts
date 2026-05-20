@@ -26,6 +26,7 @@ import {
   nowIso,
   precedes,
   recordExecutionOutcome,
+  scopeSnapshot,
   revokeEnvelope,
   revokeWard,
   validateEnvelopeUnderWard,
@@ -378,6 +379,44 @@ test("chainMetrics aggregates the store after a commit", () => {
   assert.equal(m.gel.integrity_ok, true);
   assert.ok(m.gel.by_decision.Allow >= 1);
   assert.ok(m.spend.some((s) => s.currency === "USD" && s.amount === 412));
+});
+
+test("scopeSnapshot isolates a tenant's primitives", () => {
+  const snapshot = {
+    maes: [{ mae_id: "mae-a", tenant_id: "acme" }, { mae_id: "mae-b", tenant_id: "globex" }],
+    wards: [{ ward_id: "w-a", mae_id: "mae-a" }, { ward_id: "w-b", mae_id: "mae-b" }],
+    governors: [{ governor_id: "g-a", ward_id: "w-a" }],
+    envelopes: [{ authority_envelope_id: "e-a", mae_id: "mae-a" }, { authority_envelope_id: "e-b", mae_id: "mae-b" }],
+    warrants: [{ warrant_id: "wr-a", mae_id: "mae-a" }, { warrant_id: "wr-b", mae_id: "mae-b" }],
+    gates: [],
+    agreements: [],
+    gel: [{ mae_id: "mae-a" }, { mae_id: "mae-b" }],
+    consumedNonces: [],
+    spend: [{ envelopeId: "e-a", currency: "USD", amount: 100 }, { envelopeId: "e-b", currency: "USD", amount: 200 }],
+  } as never;
+  const acme = scopeSnapshot(snapshot, { tenantId: "acme" });
+  assert.equal(acme.maes.length, 1);
+  assert.equal(acme.wards.length, 1);
+  assert.equal(acme.envelopes.length, 1);
+  assert.equal(acme.gel.length, 1);
+  assert.equal(acme.governors.length, 1);
+  assert.equal(acme.spend.length, 1);
+  assert.equal(acme.spend[0].envelopeId, "e-a");
+  const byMae = scopeSnapshot(snapshot, { maeId: "mae-b" });
+  assert.equal(byMae.envelopes[0].authority_envelope_id, "e-b");
+  assert.equal(byMae.gel.length, 1);
+});
+
+test("chainMetrics scopes counts to a single MAE while integrity stays global", () => {
+  const w = fixtures.buildPayments();
+  evaluateCommit(w.store, w.propose().request, opts(w));
+  const mine = chainMetrics(w.store, w.keyring, { maeId: w.mae.mae_id });
+  assert.equal(mine.wards, 1);
+  assert.ok(mine.gel.records >= 1);
+  const other = chainMetrics(w.store, w.keyring, { maeId: "mae-does-not-exist" });
+  assert.equal(other.wards, 0);
+  assert.equal(other.gel.records, 0);
+  assert.equal(other.gel.integrity_ok, true); // integrity is a global ledger property
 });
 
 test("an evidence bundle exports and verifies offline; tampering is detected", () => {

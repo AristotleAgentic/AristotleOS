@@ -55,7 +55,7 @@ async function get(base: string, path: string) {
 
 const past = new Date(Date.now() - 3_600_000).toISOString();
 
-const maeBody = () => ({
+const maeBody = (over: Record<string, unknown> = {}) => ({
   version: "1.0.0",
   issuer: "treasury.constitution",
   constitutional_scope: ["treasury"],
@@ -71,6 +71,7 @@ const maeBody = () => ({
   federation_rules: { federation_allowed: false, trusted_mae_ids: [], exportable_evidence: false },
   signing_keys: [{ key_id: "test-key", algorithm: "hmac-sha256" }],
   effective_from: past,
+  ...over,
 });
 
 const wardBody = (maeId: string) => ({
@@ -264,6 +265,49 @@ test("kernel /v2 chain signs and verifies with ed25519 when key paths are provid
     assert.equal(verifyGelChain(c.store.getGelChain(), c.keyring).ok, true, "ed25519-signed GEL verifies");
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("kernel /v2 isolates tenants: scoped reads + cross-tenant commit denied", async () => {
+  const { base, close } = await boot();
+  try {
+    const gate = (await get(base, "/v2/commit-gate")).body;
+    const setupTenant = async (tenant: string) => {
+      const mae = (await post(base, "/v2/meta-authority-envelope", maeBody({ tenant_id: tenant }))).body;
+      const ward = (await post(base, "/v2/ward", wardBody(mae.mae_id))).body;
+      const env = (await post(base, "/v2/authority-envelope", envBody(mae.mae_id, ward.ward_id))).body;
+      return { mae, ward, env };
+    };
+    const commitOnce = async (t: { mae: any; ward: any; env: any }) => {
+      const action = { proposed_action_id: `act-${t.mae.mae_id}`, action_type: "payment.refund", actor: "agent.payments", resource: "customer:X", parameters: { amount: 50, currency: "USD" } };
+      const context = {};
+      const telemetry = { fraud_score: 0.1 };
+      const warrant = (await post(base, "/v2/warrant", { mae_id: t.mae.mae_id, ward_id: t.ward.ward_id, authority_envelope_id: t.env.authority_envelope_id, issued_by: "controller", action, context, telemetry, validity_seconds: 300 })).body;
+      return (await post(base, "/v2/commit", { request_id: `req-${t.mae.mae_id}`, mae_id: t.mae.mae_id, ward_id: t.ward.ward_id, authority_envelope_id: t.env.authority_envelope_id, warrant_id: warrant.warrant_id, commit_gate_id: gate.commit_gate_id, action, context, telemetry, presented_at: new Date().toISOString() })).body;
+    };
+
+    const acme = await setupTenant("acme");
+    const globex = await setupTenant("globex");
+    assert.equal((await commitOnce(acme)).decision, "Allow");
+    assert.equal((await commitOnce(globex)).decision, "Allow");
+
+    const acmeGel = (await get(base, "/v2/gel?tenant=acme")).body;
+    assert.ok(acmeGel.count >= 1);
+    assert.ok(acmeGel.records.every((r: any) => r.mae_id === acme.mae.mae_id), "acme ledger view leaked another tenant");
+    assert.equal((await get(base, "/v2/metrics?tenant=acme")).body.wards, 1);
+
+    const tenants = (await get(base, "/v2/tenants")).body.tenants;
+    assert.ok(tenants.some((t: any) => t.tenant_id === "acme") && tenants.some((t: any) => t.tenant_id === "globex"));
+
+    // Cross-tenant: acme's warrant presented with globex's chain refs must NOT allow.
+    const action = { proposed_action_id: "act-cross", action_type: "payment.refund", actor: "agent.payments", resource: "customer:X", parameters: { amount: 50, currency: "USD" } };
+    const context = {};
+    const telemetry = { fraud_score: 0.1 };
+    const acmeWarrant = (await post(base, "/v2/warrant", { mae_id: acme.mae.mae_id, ward_id: acme.ward.ward_id, authority_envelope_id: acme.env.authority_envelope_id, issued_by: "controller", action, context, telemetry, validity_seconds: 300 })).body;
+    const cross = (await post(base, "/v2/commit", { request_id: "req-cross", mae_id: globex.mae.mae_id, ward_id: globex.ward.ward_id, authority_envelope_id: globex.env.authority_envelope_id, warrant_id: acmeWarrant.warrant_id, commit_gate_id: gate.commit_gate_id, action, context, telemetry, presented_at: new Date().toISOString() })).body;
+    assert.notEqual(cross.decision, "Allow");
+  } finally {
+    await close();
   }
 });
 
