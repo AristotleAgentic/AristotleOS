@@ -24,6 +24,7 @@ import {
   createMae,
   evaluateCommit,
   fixtures,
+  GovernanceChainClient,
   issueWarrant,
   verifyGelChain,
 } from "@aristotle/governance-core";
@@ -371,6 +372,48 @@ test("kernel /v2 signing-key rotation: records signed before and after both veri
   assert.equal(commitAct("act-2").decision, "Allow"); // signed with k2
   // The keyring retains k1 + k2, so records from before and after rotation verify.
   assert.equal(verifyGelChain(c.store.getGelChain(), c.keyring).ok, true);
+});
+
+test("GovernanceChainClient SDK drives the chain end to end + reads OpenAPI", async () => {
+  const { base, close } = await boot();
+  try {
+    const client = new GovernanceChainClient({ baseUrl: base, basePath: "/v2" });
+
+    const spec = await client.openapi();
+    assert.equal((spec as any).openapi, "3.0.3");
+
+    const mae = await client.createMetaAuthorityEnvelope(maeBody());
+    const ward = await client.constituteWard(wardBody(mae.mae_id));
+    const env = await client.createAuthorityEnvelope(envBody(mae.mae_id, ward.ward_id));
+    const gate = await client.commitGate();
+
+    const action = { proposed_action_id: "act-sdk", action_type: "payment.refund", actor: "agent.payments", resource: "customer:X", parameters: { amount: 100, currency: "USD" } };
+    const context = {};
+    const telemetry = { fraud_score: 0.1 };
+    const warrant = await client.issueWarrant({ mae_id: mae.mae_id, ward_id: ward.ward_id, authority_envelope_id: env.authority_envelope_id, issued_by: "controller", action, context, telemetry, validity_seconds: 300 });
+
+    const decision = await client.commit({
+      request_id: "req-sdk",
+      mae_id: mae.mae_id,
+      ward_id: ward.ward_id,
+      authority_envelope_id: env.authority_envelope_id,
+      warrant_id: warrant.warrant_id,
+      commit_gate_id: gate.commit_gate_id,
+      action,
+      context,
+      telemetry,
+      presented_at: new Date().toISOString(),
+    } as any);
+    assert.equal(decision.decision, "Allow");
+
+    const metrics = await client.metrics();
+    assert.ok(metrics.gel.by_decision.Allow >= 1);
+
+    const bundle = await client.exportEvidence();
+    assert.ok(bundle.bundle_hash && bundle.signature && bundle.chain_intact);
+  } finally {
+    await close();
+  }
 });
 
 test("kernel /v2 commit fails closed on a missing warrant", async () => {

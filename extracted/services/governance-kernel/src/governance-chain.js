@@ -13,7 +13,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { Ed25519Keyring, HmacKeyring, InMemoryGovernanceStore, appointGovernor, chainMetrics, exportEvidence, createAuthorityEnvelope, createMae, constituteWard, createFederationAgreement, evaluateCommit, evaluateFederatedCommit, issueWarrant, registerCommitGate, scopeSnapshot, tenantSummaries, verifyGelChain, verifyGelRecords, } from "@aristotle/governance-core";
+import { Ed25519Keyring, HmacKeyring, InMemoryGovernanceStore, appointGovernor, chainMetrics, exportEvidence, createAuthorityEnvelope, createMae, constituteWard, createFederationAgreement, openApiSpec, evaluateCommit, evaluateFederatedCommit, issueWarrant, registerCommitGate, scopeSnapshot, tenantSummaries, verifyGelChain, verifyGelRecords, } from "@aristotle/governance-core";
 /** Build the kernel's governance chain: store + keyring + a single fail-closed Commit Gate. */
 export function createGovernanceChain(config) {
     const primaryKeyId = config.keyId ?? "governance-kernel-key";
@@ -159,6 +159,7 @@ export function registerGovernanceChainRoutes(app, chain) {
     });
     app.get("/v2/metrics", (req, res) => res.json(chainMetrics(chain.store, chain.keyring, scopeFromQuery(req))));
     app.get("/v2/tenants", (_req, res) => res.json({ tenants: tenantSummaries(chain.store.toSnapshot()) }));
+    app.get("/v2/openapi.json", (_req, res) => res.json(openApiSpec()));
     // Portable, offline-verifiable compliance evidence (signed + hash-chained).
     // With ?mae= or ?tenant= the bundle is scoped so a tenant export never leaks others.
     app.get("/v2/gel/export", (req, res) => res.json(exportEvidence(chain.store, chain.keyring, chain.signKeyId, scopeFromQuery(req))));

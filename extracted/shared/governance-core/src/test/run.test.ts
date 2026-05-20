@@ -24,6 +24,7 @@ import {
   issueWarrant,
   newId,
   nowIso,
+  openApiSpec,
   precedes,
   recordExecutionOutcome,
   scopeSnapshot,
@@ -379,6 +380,16 @@ test("chainMetrics aggregates the store after a commit", () => {
   assert.equal(m.gel.integrity_ok, true);
   assert.ok(m.gel.by_decision.Allow >= 1);
   assert.ok(m.spend.some((s) => s.currency === "USD" && s.amount === 412));
+});
+
+test("openApiSpec is a well-formed OpenAPI 3 document for the chain", () => {
+  const spec = openApiSpec() as any;
+  assert.equal(spec.openapi, "3.0.3");
+  assert.ok(spec.info?.title);
+  assert.ok(spec.paths["/v2/commit"]?.post, "missing /v2/commit");
+  assert.ok(spec.paths["/v2/gel"]?.get, "missing /v2/gel");
+  assert.ok(spec.paths["/v2/federated-commit"]?.post, "missing /v2/federated-commit");
+  assert.ok(spec.paths["/v2/rotate-signing-key"]?.post, "missing /v2/rotate-signing-key");
 });
 
 test("scopeSnapshot isolates a tenant's primitives", () => {

@@ -26,6 +26,7 @@ import {
   createMae,
   constituteWard,
   createFederationAgreement,
+  openApiSpec,
   evaluateCommit,
   evaluateFederatedCommit,
   issueWarrant,
@@ -273,6 +274,8 @@ export function registerGovernanceChainRoutes(app: Express, chain: GovernanceCha
   app.get("/v2/metrics", (req, res) => res.json(chainMetrics(chain.store, chain.keyring, scopeFromQuery(req))));
 
   app.get("/v2/tenants", (_req, res) => res.json({ tenants: tenantSummaries(chain.store.toSnapshot()) }));
+
+  app.get("/v2/openapi.json", (_req, res) => res.json(openApiSpec()));
 
   // Portable, offline-verifiable compliance evidence (signed + hash-chained).
   // With ?mae= or ?tenant= the bundle is scoped so a tenant export never leaks others.

@@ -162,8 +162,18 @@ operational surface as the rest of the OS:
   `stack:verify` / `enterprise:verify`.
 - **Gated** — `enterprise:preflight` requires durable state + signing when the
   chain is enabled in production.
-- **Observable** — `/operator/governance-chain/*` through the gateway, and the
-  console's "Ward Chain · compare" tab.
+- **Observable** — `chainMetrics` + `/v2/metrics`, and the console's "Ward Chain ·
+  compare" tab.
+- **Multi-tenant** — `MAE.tenant_id` isolates tenants; ledger/metrics/export scope
+  by `?tenant=` / `?mae=`, plus `/v2/tenants` rollup. Cross-tenant commits are
+  rejected structurally.
+- **Federated** — cross-Ward / cross-org trust bridges (`/v2/federation-agreement`,
+  `/v2/federated-commit`) — authority-chain compatibility, never federation-by-identity.
+- **Rotatable keys** — `/v2/rotate-signing-key`; prior keys remain valid for verifying
+  pre-rotation records.
+- **Integratable** — OpenAPI 3 at `/v2/openapi.json` and a typed SDK
+  (`GovernanceChainClient`) over the gateway or kernel surface.
+- **Spend-controlled** — per-envelope cumulative budget + warrant issuance quota.
 
 ## File map
 
