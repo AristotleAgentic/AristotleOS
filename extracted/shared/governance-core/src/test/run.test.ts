@@ -209,6 +209,26 @@ test("an Institutional Ward requires an accountable governance origin", () => {
   assert.ok(r.violations.some((v) => v.invariant === "institutional-ward-requires-governance-origin"));
 });
 
+test("a Ward's human origin act signature is verified, not merely present", () => {
+  const w = fixtures.buildPayments();
+  const ctx = context({ keyring: w.keyring });
+  assert.equal(validateWardUnderMae(w.ward, w.mae, ctx).ok, true);
+  // Tamper the constituting actor without re-signing — a machine can't forge the act.
+  const forged = { ...w.ward, human_origin_act: { ...w.ward.human_origin_act, actor: "impersonator.bot" } };
+  const r = validateWardUnderMae(forged, w.mae, ctx);
+  assert.equal(r.ok, false);
+  assert.ok(r.violations.some((v) => v.invariant === "ward-origin-act-signature-invalid"));
+});
+
+test("a Ward without a presence proof is rejected when the MAE requires one", () => {
+  const w = fixtures.buildPayments();
+  const ctx = context({ keyring: w.keyring });
+  const mae = { ...w.mae, ward_creation_rules: { ...w.mae.ward_creation_rules, require_presence_proof: true } };
+  const noPresence = { ...w.ward, human_origin_act: { ...w.ward.human_origin_act, presence_proof: undefined } };
+  const r = validateWardUnderMae(noPresence, mae, ctx);
+  assert.ok(r.violations.some((v) => v.invariant === "ward-requires-presence-proof"));
+});
+
 // 16 ------------------------------------------------------------------------
 test("a Governor cannot author beyond its delegated scope", () => {
   const w = fixtures.buildPayments();

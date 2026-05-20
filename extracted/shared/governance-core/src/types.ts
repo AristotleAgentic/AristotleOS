@@ -62,6 +62,8 @@ export interface WardCreationRules {
   allowed_ward_types: WardType[];
   /** The article's first invariant: machines cannot constitute Wards. */
   require_human_origin_act: boolean;
+  /** Require a confirmed-presence proof (e.g. WebAuthn assertion, ceremony witness). */
+  require_presence_proof?: boolean;
   allowed_origin_methods: OriginMethod[];
   /** Domains a Ward's boundary may claim. "*" = unrestricted. */
   allowed_domains: string[];

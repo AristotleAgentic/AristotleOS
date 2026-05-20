@@ -10,7 +10,7 @@
  * Invariant names are stable identifiers; tests assert on them and the GEL
  * Record cites them, so do not rename casually.
  */
-import { hashCanonical, verifyObjectSignatures } from "./hash.js";
+import { canonicalize, hashCanonical, verifyObjectSignatures } from "./hash.js";
 import { evaluateConstraints, intersect, isSubsetOf } from "./constraints.js";
 import { combine, fromViolations, violation } from "./errors.js";
 export function context(partial = {}) {
@@ -89,6 +89,15 @@ export function validateWardUnderMae(ward, mae, ctx) {
             v.push(violation("ward-requires-human-origin-act", "MAE requires a human/institutional origin act"));
         if (!mae.ward_creation_rules.allowed_origin_methods.includes(origin.method))
             v.push(violation("ward-origin-method-not-permitted", `origin method ${origin.method} not allowed by MAE`));
+        if (mae.ward_creation_rules.require_presence_proof && !origin.presence_proof)
+            v.push(violation("ward-requires-presence-proof", "MAE requires a confirmed-presence proof for the origin act"));
+        // The constituting act must actually be signed by its origin key — not merely
+        // present. This is what makes "machines cannot constitute Wards" enforceable.
+        if (ctx.keyring) {
+            const { signature, ...originBase } = origin;
+            if (!ctx.keyring.verify(canonicalize(originBase), signature))
+                v.push(violation("ward-origin-act-signature-invalid", "human origin act signature failed verification"));
+        }
     }
     // The Ward must name what it protects and who answers, and bound itself.
     if (!ward.protected_interest)
