@@ -6,7 +6,8 @@
     "baseUrl": ".",
     "paths": {
       "@aristotle/shared-types": ["shared/types/src/index.ts"],
-      "@aristotle/shared-schemas": ["shared/schemas/src/index.ts"]
+      "@aristotle/shared-schemas": ["shared/schemas/src/index.ts"],
+      "@aristotle/governance-core": ["shared/governance-core/src/index.ts"]
     },
     "strict": true,
     "declaration": true,
