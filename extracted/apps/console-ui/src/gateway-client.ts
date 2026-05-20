@@ -693,6 +693,11 @@ export interface ChainMetricsView {
   spend: Array<{ envelope_id: string; currency: string; amount: number }>;
 }
 
+/** Fetch a signed, offline-verifiable governance evidence bundle (for compliance export). */
+export const fetchGovernanceChainEvidence = async (gatewayBaseUrl?: string): Promise<Record<string, unknown>> => {
+  return getJson<Record<string, unknown>>(gatewayBaseUrl, gatewayContract.governanceChainExport);
+};
+
 /** Read aggregate chain metrics through the gateway. Returns null when off/unreachable. */
 export const fetchGovernanceChainMetrics = async (gatewayBaseUrl?: string): Promise<ChainMetricsView | null> => {
   try {

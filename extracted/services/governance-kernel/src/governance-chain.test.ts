@@ -181,6 +181,11 @@ test("kernel /v2 chain: create -> commit allows and consumes -> reuse denied -> 
     assert.ok(metrics.warrants.consumed >= 1);
     assert.ok(metrics.gel.by_decision.Allow >= 1);
     assert.equal(metrics.gel.integrity_ok, true);
+
+    const evidence = (await get(base, "/v2/gel/export")).body;
+    assert.ok(evidence.bundle_id && evidence.bundle_hash && evidence.signature);
+    assert.equal(evidence.chain_intact, true);
+    assert.equal(evidence.record_count, evidence.records.length);
   } finally {
     await close();
   }

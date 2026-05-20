@@ -17,6 +17,8 @@ import {
   createAuthorityEnvelope,
   evaluateCommit,
   evaluateFederatedCommit,
+  exportEvidence,
+  verifyEvidenceBundle,
   fixtures,
   InMemoryGovernanceStore,
   issueWarrant,
@@ -376,6 +378,16 @@ test("chainMetrics aggregates the store after a commit", () => {
   assert.equal(m.gel.integrity_ok, true);
   assert.ok(m.gel.by_decision.Allow >= 1);
   assert.ok(m.spend.some((s) => s.currency === "USD" && s.amount === 412));
+});
+
+test("an evidence bundle exports and verifies offline; tampering is detected", () => {
+  const w = fixtures.buildPayments();
+  evaluateCommit(w.store, w.propose().request, opts(w));
+  const bundle = exportEvidence(w.store, w.keyring, w.keyId);
+  assert.equal(verifyEvidenceBundle(bundle, w.keyring).ok, true);
+  // tamper a record after export -> offline verification must fail
+  const tampered = { ...bundle, records: bundle.records.map((r, i) => (i === 0 ? { ...r, action: "tampered" } : r)) };
+  assert.equal(verifyEvidenceBundle(tampered, w.keyring).ok, false);
 });
 
 test("execution outcomes are recorded as a separate ledger entry", () => {

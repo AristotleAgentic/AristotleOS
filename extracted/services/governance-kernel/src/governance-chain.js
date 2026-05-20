@@ -13,7 +13,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { Ed25519Keyring, HmacKeyring, InMemoryGovernanceStore, appointGovernor, chainMetrics, createAuthorityEnvelope, createMae, constituteWard, evaluateCommit, issueWarrant, registerCommitGate, verifyGelChain, } from "@aristotle/governance-core";
+import { Ed25519Keyring, HmacKeyring, InMemoryGovernanceStore, appointGovernor, chainMetrics, exportEvidence, createAuthorityEnvelope, createMae, constituteWard, evaluateCommit, issueWarrant, registerCommitGate, verifyGelChain, } from "@aristotle/governance-core";
 /** Build the kernel's governance chain: store + keyring + a single fail-closed Commit Gate. */
 export function createGovernanceChain(config) {
     const signKeyId = config.keyId ?? "governance-kernel-key";
@@ -111,6 +111,8 @@ export function registerGovernanceChainRoutes(app, chain) {
         res.json({ count: records.length, integrity: verifyGelChain(records, chain.keyring), records });
     });
     app.get("/v2/metrics", (_req, res) => res.json(chainMetrics(chain.store, chain.keyring)));
+    // Portable, offline-verifiable compliance evidence (signed + hash-chained).
+    app.get("/v2/gel/export", (_req, res) => res.json(exportEvidence(chain.store, chain.keyring, chain.signKeyId)));
     app.get("/v2/wards/:id", (req, res) => {
         const ward = chain.store.getWard(req.params.id);
         if (!ward)

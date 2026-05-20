@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import {
+  fetchGovernanceChainEvidence,
   fetchGovernanceChainLedger,
   fetchGovernanceChainMetrics,
   fetchLedgerArtifacts,
@@ -113,6 +114,21 @@ export default function WardChainComparison({ gatewayBaseUrl, autoRefreshMs = 80
     return () => clearInterval(handle);
   }, [load, autoRefreshMs]);
 
+  const exportEvidence = async () => {
+    try {
+      const bundle = await fetchGovernanceChainEvidence(gatewayBaseUrl);
+      const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `governance-evidence-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(`evidence export failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
   const authorityArtifacts = (legacy?.items ?? []).filter((a) => AUTHORITY_TYPES.includes(a.artifactType));
   const legacyCounts = AUTHORITY_TYPES.map((t) => ({ type: t, n: authorityArtifacts.filter((a) => a.artifactType === t).length }));
   const recentRecords = [...(chain?.records ?? [])].reverse().slice(0, 12);
@@ -129,6 +145,9 @@ export default function WardChainComparison({ gatewayBaseUrl, autoRefreshMs = 80
         </div>
         <div style={styles.headerRight}>
           <span style={styles.updated}>{loading ? "loading…" : `updated ${updatedAt}`}</span>
+          {chain?.enabled ? (
+            <button style={styles.refresh} onClick={() => void exportEvidence()}>⤓ export evidence</button>
+          ) : null}
           <button style={styles.refresh} onClick={() => void load()}>↻ refresh</button>
         </div>
       </header>

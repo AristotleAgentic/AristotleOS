@@ -12,6 +12,7 @@ export const gatewayContract = {
   envelopes: '/operator/envelopes',
   governanceChainGel: '/operator/governance-chain/gel',
   governanceChainMetrics: '/operator/governance-chain/metrics',
+  governanceChainExport: '/operator/governance-chain/gel/export',
   osState: '/operator/os/state',
   osMissions: '/operator/os/missions',
   autonomyTick: '/operator/os/autonomy/tick',

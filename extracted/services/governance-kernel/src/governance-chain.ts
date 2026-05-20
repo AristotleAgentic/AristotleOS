@@ -21,6 +21,7 @@ import {
   InMemoryGovernanceStore,
   appointGovernor,
   chainMetrics,
+  exportEvidence,
   createAuthorityEnvelope,
   createMae,
   constituteWard,
@@ -195,6 +196,9 @@ export function registerGovernanceChainRoutes(app: Express, chain: GovernanceCha
   });
 
   app.get("/v2/metrics", (_req, res) => res.json(chainMetrics(chain.store, chain.keyring)));
+
+  // Portable, offline-verifiable compliance evidence (signed + hash-chained).
+  app.get("/v2/gel/export", (_req, res) => res.json(exportEvidence(chain.store, chain.keyring, chain.signKeyId)));
 
   app.get("/v2/wards/:id", (req, res) => {
     const ward = chain.store.getWard(req.params.id);
