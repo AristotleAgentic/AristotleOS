@@ -34,7 +34,7 @@ export declare function fromViolations(violations: Violation[]): ValidationResul
 /** Combine multiple results, accumulating every violation. */
 export declare function combine(...results: ValidationResult[]): ValidationResult;
 /** Error codes for hard, fail-closed faults. */
-export type GovernanceErrorCode = "mae-not-found" | "ward-not-found" | "authority-envelope-not-found" | "warrant-not-found" | "commit-gate-not-found" | "warrant-already-consumed" | "warrant-not-consumable" | "nonce-replayed" | "federation-agreement-not-found" | "chain-incomplete" | "signing-key-unknown";
+export type GovernanceErrorCode = "mae-not-found" | "ward-not-found" | "authority-envelope-not-found" | "warrant-not-found" | "commit-gate-not-found" | "warrant-already-consumed" | "warrant-not-consumable" | "warrant-quota-exceeded" | "nonce-replayed" | "federation-agreement-not-found" | "chain-incomplete" | "signing-key-unknown";
 export declare class GovernanceError extends Error {
     readonly code: GovernanceErrorCode;
     readonly detail?: string;

@@ -22,6 +22,8 @@ export class InMemoryGovernanceStore {
     gel = [];
     /** Nonces already burned, to defeat replay across distinct warrant objects. */
     consumedNonces = new Set();
+    /** Cumulative consumed spend: envelopeId -> currency -> total amount. */
+    spend = new Map();
     putMae(mae) {
         this.maes.set(mae.mae_id, mae);
     }
@@ -95,6 +97,14 @@ export class InMemoryGovernanceStore {
         this.warrants.set(warrantId, w);
         return { warrant_id: warrantId, nonce: w.nonce, consumed_at: at, prior_state: prior, new_state: "Consumed" };
     }
+    spentFor(envelopeId, currency) {
+        return this.spend.get(envelopeId)?.get(currency) ?? 0;
+    }
+    recordSpend(envelopeId, currency, amount) {
+        const byCurrency = this.spend.get(envelopeId) ?? new Map();
+        byCurrency.set(currency, (byCurrency.get(currency) ?? 0) + amount);
+        this.spend.set(envelopeId, byCurrency);
+    }
     gelHeadHash() {
         return this.gel.length === 0 ? GENESIS_HASH : this.gel[this.gel.length - 1].gel_record_hash;
     }
@@ -118,6 +128,7 @@ export class InMemoryGovernanceStore {
             agreements: [...this.agreements.values()],
             gel: [...this.gel],
             consumedNonces: [...this.consumedNonces],
+            spend: [...this.spend.entries()].flatMap(([envelopeId, byCurrency]) => [...byCurrency.entries()].map(([currency, amount]) => ({ envelopeId, currency, amount }))),
         };
     }
     loadSnapshot(s) {
@@ -130,5 +141,11 @@ export class InMemoryGovernanceStore {
         this.agreements = new Map((s.agreements ?? []).map((x) => [x.agreement_id, x]));
         this.gel = [...(s.gel ?? [])];
         this.consumedNonces = new Set(s.consumedNonces ?? []);
+        this.spend = new Map();
+        for (const entry of s.spend ?? []) {
+            const byCurrency = this.spend.get(entry.envelopeId) ?? new Map();
+            byCurrency.set(entry.currency, entry.amount);
+            this.spend.set(entry.envelopeId, byCurrency);
+        }
     }
 }

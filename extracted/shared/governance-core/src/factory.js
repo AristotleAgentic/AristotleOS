@@ -7,6 +7,7 @@
  * Each `create*` returns the sealed artifact and also stores it.
  */
 import { canonicalize, computePolicyHash, hashCanonical, signObject } from "./hash.js";
+import { GovernanceError } from "./errors.js";
 import { newId, nowIso, isoPlusSeconds } from "./ids.js";
 function sealPolicy(keyring, keyId, obj) {
     obj.policy_hash = computePolicyHash(obj);
@@ -65,6 +66,12 @@ export function createAuthorityEnvelope(store, keyring, keyId, input) {
 }
 /** Issue a single-use Warrant bound (by hash) to one specific proposed act. */
 export function issueWarrant(store, keyring, keyId, input) {
+    // Enforce the envelope's warrant issuance quota, if any.
+    const envelope = store.getEnvelope(input.authority_envelope_id);
+    const maxWarrants = envelope?.warrant_issuance_rules?.max_warrants;
+    if (typeof maxWarrants === "number" && store.warrantsForEnvelope(input.authority_envelope_id).length >= maxWarrants) {
+        throw new GovernanceError("warrant-quota-exceeded", `envelope ${input.authority_envelope_id} has issued its maximum of ${maxWarrants} warrants`);
+    }
     const issued_at = nowIso();
     const valid_from = input.valid_from ?? issued_at;
     const warrant = sealSigned(keyring, keyId, {

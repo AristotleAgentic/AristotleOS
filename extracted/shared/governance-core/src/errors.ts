@@ -57,6 +57,7 @@ export type GovernanceErrorCode =
   | "commit-gate-not-found"
   | "warrant-already-consumed"
   | "warrant-not-consumable"
+  | "warrant-quota-exceeded"
   | "nonce-replayed"
   | "federation-agreement-not-found"
   | "chain-incomplete"

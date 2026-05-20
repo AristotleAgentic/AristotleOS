@@ -18,6 +18,8 @@ import {
   evaluateFederatedCommit,
   fixtures,
   InMemoryGovernanceStore,
+  issueWarrant,
+  newId,
   nowIso,
   precedes,
   recordExecutionOutcome,
@@ -271,6 +273,38 @@ test("payments: refund over the envelope monetary limit is denied", () => {
   const d = evaluateCommit(w.store, over.request, opts(w));
   assert.notEqual(d.decision, "Allow");
   assert.ok(d.violated_invariants.includes("warrant-cannot-broaden-envelope"));
+});
+
+test("payments: a cumulative spend budget is enforced across acts", () => {
+  const w = fixtures.buildPayments(); // envelope cumulative budget is 1000 USD; each refund is 412
+  const o = opts(w);
+  assert.equal(evaluateCommit(w.store, w.propose().request, o).decision, "Allow"); // spent 412
+  assert.equal(evaluateCommit(w.store, w.propose().request, o).decision, "Allow"); // spent 824
+  const third = evaluateCommit(w.store, w.propose().request, o); // would reach 1236 > 1000
+  assert.notEqual(third.decision, "Allow");
+  assert.ok(third.violated_invariants.includes("envelope-cumulative-budget-exceeded"));
+});
+
+test("warrant issuance quota (max_warrants) is enforced", () => {
+  const w = fixtures.buildPayments();
+  const env = createAuthorityEnvelope(w.store, w.keyring, w.keyId, {
+    ...w.envelope,
+    authority_envelope_id: "env-quota-1",
+    warrant_issuance_rules: { ...w.envelope.warrant_issuance_rules, max_warrants: 1 },
+  });
+  const issue = () =>
+    issueWarrant(w.store, w.keyring, w.keyId, {
+      mae_id: w.mae.mae_id,
+      ward_id: w.ward.ward_id,
+      authority_envelope_id: env.authority_envelope_id,
+      issued_by: "payments.controller",
+      action: { proposed_action_id: newId("act"), action_type: "payment.refund", actor: "agent.payments", resource: "customer:X", parameters: { amount: 10, currency: "USD" } },
+      context: {},
+      telemetry: {},
+      validity_seconds: 300,
+    });
+  issue();
+  assert.throws(() => issue(), /warrant-quota-exceeded/);
 });
 
 test("healthcare: agent may draft but never submit a medication order", () => {

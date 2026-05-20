@@ -35,6 +35,8 @@ export interface StoreSnapshot {
   agreements: FederationAgreement[];
   gel: GELRecord[];
   consumedNonces: string[];
+  /** Cumulative consumed spend per envelope+currency (for budget enforcement). */
+  spend: Array<{ envelopeId: string; currency: string; amount: number }>;
 }
 
 export interface GovernanceStore {
@@ -66,6 +68,10 @@ export interface GovernanceStore {
   /** Atomic single-use consumption. Throws GovernanceError if already spent or replayed. */
   consumeWarrant(warrantId: string, gateId: string, at: string): WarrantConsumptionProof;
 
+  /** Cumulative-spend accounting for envelope budgets. */
+  spentFor(envelopeId: string, currency: string): number;
+  recordSpend(envelopeId: string, currency: string, amount: number): void;
+
   /** GEL hash-chain accessors. */
   gelHeadHash(): string;
   gelLength(): number;
@@ -89,6 +95,8 @@ export class InMemoryGovernanceStore implements GovernanceStore {
   private gel: GELRecord[] = [];
   /** Nonces already burned, to defeat replay across distinct warrant objects. */
   private consumedNonces = new Set<string>();
+  /** Cumulative consumed spend: envelopeId -> currency -> total amount. */
+  private spend = new Map<string, Map<string, number>>();
 
   putMae(mae: MetaAuthorityEnvelope): void {
     this.maes.set(mae.mae_id, mae);
@@ -170,6 +178,16 @@ export class InMemoryGovernanceStore implements GovernanceStore {
     return { warrant_id: warrantId, nonce: w.nonce, consumed_at: at, prior_state: prior, new_state: "Consumed" };
   }
 
+  spentFor(envelopeId: string, currency: string): number {
+    return this.spend.get(envelopeId)?.get(currency) ?? 0;
+  }
+
+  recordSpend(envelopeId: string, currency: string, amount: number): void {
+    const byCurrency = this.spend.get(envelopeId) ?? new Map<string, number>();
+    byCurrency.set(currency, (byCurrency.get(currency) ?? 0) + amount);
+    this.spend.set(envelopeId, byCurrency);
+  }
+
   gelHeadHash(): string {
     return this.gel.length === 0 ? GENESIS_HASH : this.gel[this.gel.length - 1].gel_record_hash;
   }
@@ -194,6 +212,9 @@ export class InMemoryGovernanceStore implements GovernanceStore {
       agreements: [...this.agreements.values()],
       gel: [...this.gel],
       consumedNonces: [...this.consumedNonces],
+      spend: [...this.spend.entries()].flatMap(([envelopeId, byCurrency]) =>
+        [...byCurrency.entries()].map(([currency, amount]) => ({ envelopeId, currency, amount })),
+      ),
     };
   }
 
@@ -207,5 +228,11 @@ export class InMemoryGovernanceStore implements GovernanceStore {
     this.agreements = new Map((s.agreements ?? []).map((x) => [x.agreement_id, x]));
     this.gel = [...(s.gel ?? [])];
     this.consumedNonces = new Set(s.consumedNonces ?? []);
+    this.spend = new Map();
+    for (const entry of s.spend ?? []) {
+      const byCurrency = this.spend.get(entry.envelopeId) ?? new Map<string, number>();
+      byCurrency.set(entry.currency, entry.amount);
+      this.spend.set(entry.envelopeId, byCurrency);
+    }
   }
 }

@@ -162,6 +162,7 @@ export function buildPayments(): ScenarioWorld {
     resource_scope: ["customer:X"],
     temporal_scope: { from: past() },
     monetary_limits: { currency: "USD", max_amount: 500 },
+    cumulative_monetary_limit: { currency: "USD", max_amount: 1000 },
     operational_limits: [],
     telemetry_requirements: [{ key: "fraud_score", op: "lt", value: 0.8, message: "fraud score too high for autonomous refund" }],
     escalation_requirements: [{ when: { key: "amount", op: "gt", value: 450 }, action: "escalate", to: "payments.controller" }],

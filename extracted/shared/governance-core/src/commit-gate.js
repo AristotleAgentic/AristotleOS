@@ -59,11 +59,23 @@ export function evaluateCommit(store, request, opts) {
             violations.push(violation("action-classification", `action_type ${request.action.action_type} not permitted by envelope`));
         // -- context admissibility (Ward boundary, geo, operational limits) ------
         const facts = { ...request.telemetry, ...request.context, ...request.action.parameters };
+        const spendAmount = numberOrUndefined(request.action.parameters["amount"]);
+        const spendCurrency = stringOrUndefined(request.action.parameters["currency"]) ?? env.cumulative_monetary_limit?.currency ?? "";
         violations.push(...evaluateConstraints(ward.boundary_definition?.predicates, facts, "ward-boundary"));
         violations.push(...evaluateConstraints(env.geographic_scope, facts, "envelope-geographic-scope"));
         violations.push(...evaluateConstraints(env.operational_limits, facts, "envelope-operational-limit"));
         // -- telemetry requirements ---------------------------------------------
         violations.push(...evaluateConstraints(env.telemetry_requirements, request.telemetry, "envelope-telemetry"));
+        // -- cumulative spend budget (a running ceiling across all consumed acts) -
+        if (env.cumulative_monetary_limit && spendAmount !== undefined) {
+            const limit = env.cumulative_monetary_limit;
+            if (spendCurrency !== limit.currency) {
+                violations.push(violation("envelope-cumulative-budget", `currency ${spendCurrency} does not match budget currency ${limit.currency}`));
+            }
+            else if (store.spentFor(env.authority_envelope_id, limit.currency) + spendAmount > limit.max_amount) {
+                violations.push(violation("envelope-cumulative-budget-exceeded", `act (${spendAmount}) would exceed the ${limit.max_amount} ${limit.currency} cumulative budget (already spent ${store.spentFor(env.authority_envelope_id, limit.currency)})`));
+            }
+        }
         // -- escalation ----------------------------------------------------------
         let escalate = false;
         for (const rule of env.escalation_requirements ?? []) {
@@ -90,6 +102,10 @@ export function evaluateCommit(store, request, opts) {
             if (e instanceof GovernanceError)
                 return emit(store, opts, request, chain, "FailClosed", [e.code], ward, { mae, env, warrant }, now);
             throw e;
+        }
+        // Authority is spent: record the act's contribution to the envelope budget.
+        if (env.cumulative_monetary_limit && spendAmount !== undefined && spendCurrency === env.cumulative_monetary_limit.currency) {
+            store.recordSpend(env.authority_envelope_id, spendCurrency, spendAmount);
         }
         const record = writeRecord(store, opts, request, chain, "Allow", ["admissible"], { mae, ward, env, warrant }, now, proof);
         chain.gel_record_id = record.gel_record_id;
@@ -192,4 +208,10 @@ function snapshot(o) {
         authority_envelope: o.env?.revocation_state ?? "active",
         warrant: o.warrant?.consumption_state ?? "Unused",
     };
+}
+function numberOrUndefined(v) {
+    return typeof v === "number" && Number.isFinite(v) ? v : undefined;
+}
+function stringOrUndefined(v) {
+    return typeof v === "string" ? v : undefined;
 }

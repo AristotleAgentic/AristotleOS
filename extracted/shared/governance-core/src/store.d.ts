@@ -21,6 +21,12 @@ export interface StoreSnapshot {
     agreements: FederationAgreement[];
     gel: GELRecord[];
     consumedNonces: string[];
+    /** Cumulative consumed spend per envelope+currency (for budget enforcement). */
+    spend: Array<{
+        envelopeId: string;
+        currency: string;
+        amount: number;
+    }>;
 }
 export interface GovernanceStore {
     putMae(mae: MetaAuthorityEnvelope): void;
@@ -43,6 +49,9 @@ export interface GovernanceStore {
     getFederationAgreement(id: string): FederationAgreement | undefined;
     /** Atomic single-use consumption. Throws GovernanceError if already spent or replayed. */
     consumeWarrant(warrantId: string, gateId: string, at: string): WarrantConsumptionProof;
+    /** Cumulative-spend accounting for envelope budgets. */
+    spentFor(envelopeId: string, currency: string): number;
+    recordSpend(envelopeId: string, currency: string, amount: number): void;
     /** GEL hash-chain accessors. */
     gelHeadHash(): string;
     gelLength(): number;
@@ -64,6 +73,8 @@ export declare class InMemoryGovernanceStore implements GovernanceStore {
     private gel;
     /** Nonces already burned, to defeat replay across distinct warrant objects. */
     private consumedNonces;
+    /** Cumulative consumed spend: envelopeId -> currency -> total amount. */
+    private spend;
     putMae(mae: MetaAuthorityEnvelope): void;
     getMae(id: string): MetaAuthorityEnvelope | undefined;
     putWard(ward: Ward): void;
@@ -83,6 +94,8 @@ export declare class InMemoryGovernanceStore implements GovernanceStore {
     putFederationAgreement(a: FederationAgreement): void;
     getFederationAgreement(id: string): FederationAgreement | undefined;
     consumeWarrant(warrantId: string, gateId: string, at: string): WarrantConsumptionProof;
+    spentFor(envelopeId: string, currency: string): number;
+    recordSpend(envelopeId: string, currency: string, amount: number): void;
     gelHeadHash(): string;
     gelLength(): number;
     appendGelRecord(record: GELRecord): void;

@@ -271,7 +271,10 @@ export interface AuthorityEnvelope {
   resource_scope: string[];
   temporal_scope: TemporalScope;
   geographic_scope?: Constraint[];
+  /** Per-act ceiling on the action's `amount`. */
   monetary_limits?: MonetaryLimit;
+  /** Cumulative ceiling across ALL acts consumed under this envelope (a spend budget). */
+  cumulative_monetary_limit?: MonetaryLimit;
   operational_limits: Constraint[];
   telemetry_requirements: Constraint[];
   escalation_requirements: EscalationRule[];
