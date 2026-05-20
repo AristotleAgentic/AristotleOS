@@ -340,6 +340,39 @@ test("kernel /v2 exposes federated commit across a trust bridge", async () => {
   }
 });
 
+test("kernel /v2 signing-key rotation: records signed before and after both verify", async () => {
+  const c = createGovernanceChain({ signingSecret: "secret-v1", keyId: "k1" });
+  const mae = createMae(c.store, c.keyring, c.signKeyId, maeBody());
+  const ward = constituteWard(c.store, c.keyring, c.signKeyId, wardBody(mae.mae_id));
+  const env = createAuthorityEnvelope(c.store, c.keyring, c.signKeyId, envBody(mae.mae_id, ward.ward_id));
+  const commitAct = (id: string) => {
+    const action = { proposed_action_id: id, action_type: "payment.refund", actor: "agent.payments", resource: "customer:X", parameters: { amount: 50, currency: "USD" } };
+    const telemetry = { fraud_score: 0.1 };
+    const warrant = issueWarrant(c.store, c.keyring, c.signKeyId, {
+      mae_id: mae.mae_id,
+      ward_id: ward.ward_id,
+      authority_envelope_id: env.authority_envelope_id,
+      issued_by: "controller",
+      action,
+      context: {},
+      telemetry,
+      validity_seconds: 300,
+    });
+    const request = commitRequestFor({ warrant, commit_gate_id: c.gate.commit_gate_id, action, context: {}, telemetry });
+    return evaluateCommit(c.store, request, c.options());
+  };
+
+  assert.equal(commitAct("act-1").decision, "Allow");
+  assert.equal(c.signKeyId, "k1");
+
+  c.rotateSigningKey("k2", { secret: "secret-v2" });
+  assert.equal(c.signKeyId, "k2");
+
+  assert.equal(commitAct("act-2").decision, "Allow"); // signed with k2
+  // The keyring retains k1 + k2, so records from before and after rotation verify.
+  assert.equal(verifyGelChain(c.store.getGelChain(), c.keyring).ok, true);
+});
+
 test("kernel /v2 commit fails closed on a missing warrant", async () => {
   const { base, close } = await boot();
   try {

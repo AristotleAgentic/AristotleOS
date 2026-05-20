@@ -43,13 +43,25 @@ import {
   type StoreSnapshot,
 } from "@aristotle/governance-core";
 
+export interface RotationMaterial {
+  /** HMAC secret for the new key (hmac mode). */
+  secret?: string;
+  /** Ed25519 PEMs for the new key (ed25519 mode). */
+  privatePem?: string;
+  publicPem?: string;
+}
+
 export interface GovernanceChain {
   store: GovernanceStore;
   keyring: Keyring;
+  /** The currently-active signing key id (updates after rotateSigningKey). */
   signKeyId: string;
   /** Whether artifacts are signed with HMAC (single-domain) or ed25519 (BYO trust root). */
   signingMode: "hmac" | "ed25519";
   gate: CommitGate;
+  /** Add a new signing key and make it active. Prior keys remain in the keyring so
+   *  records signed before rotation still verify. */
+  rotateSigningKey(keyId: string, material: RotationMaterial): void;
   /** Commit options for evaluateCommit (clock injectable for tests). */
   options(now?: Date): CommitOptions;
   /** Fire-and-forget durable persist (for route handlers). No-op without a statePath. */
@@ -72,19 +84,31 @@ export interface GovernanceChainConfig {
 
 /** Build the kernel's governance chain: store + keyring + a single fail-closed Commit Gate. */
 export function createGovernanceChain(config: GovernanceChainConfig): GovernanceChain {
-  const signKeyId = config.keyId ?? "governance-kernel-key";
+  const primaryKeyId = config.keyId ?? "governance-kernel-key";
+  let activeKeyId = primaryKeyId;
   let keyring: Keyring;
   let signingMode: "hmac" | "ed25519";
+  let addSigningKey: (keyId: string, material: RotationMaterial) => void;
   if (config.signingPrivateKeyPath && config.signingPublicKeyPath) {
-    keyring = new Ed25519Keyring().addKeyPair(
-      signKeyId,
+    const ed = new Ed25519Keyring().addKeyPair(
+      primaryKeyId,
       readFileSync(config.signingPrivateKeyPath, "utf8"),
       readFileSync(config.signingPublicKeyPath, "utf8"),
     );
+    keyring = ed;
     signingMode = "ed25519";
+    addSigningKey = (keyId, m) => {
+      if (!m.privatePem || !m.publicPem) throw new Error("ed25519 key rotation requires privatePem and publicPem");
+      ed.addKeyPair(keyId, m.privatePem, m.publicPem);
+    };
   } else {
-    keyring = new HmacKeyring({ [signKeyId]: config.signingSecret ?? "dev-insecure-governance-chain-secret" });
+    const hmac = new HmacKeyring({ [primaryKeyId]: config.signingSecret ?? "dev-insecure-governance-chain-secret" });
+    keyring = hmac;
     signingMode = "hmac";
+    addSigningKey = (keyId, m) => {
+      if (!m.secret) throw new Error("hmac key rotation requires a secret");
+      hmac.addKey(keyId, m.secret);
+    };
   }
   const store = new InMemoryGovernanceStore();
   const statePath = config.statePath;
@@ -126,10 +150,16 @@ export function createGovernanceChain(config: GovernanceChainConfig): Governance
   return {
     store,
     keyring,
-    signKeyId,
+    get signKeyId() {
+      return activeKeyId;
+    },
     signingMode,
     gate,
-    options: (now) => ({ keyring, signKeyId, now }),
+    rotateSigningKey: (keyId, material) => {
+      addSigningKey(keyId, material);
+      activeKeyId = keyId;
+    },
+    options: (now) => ({ keyring, signKeyId: activeKeyId, now }),
     persist: () => void flush(),
     flush,
   };
@@ -214,6 +244,18 @@ export function registerGovernanceChainRoutes(app: Express, chain: GovernanceCha
   });
 
   app.get("/v2/commit-gate", (_req, res) => res.json(chain.gate));
+
+  // Rotate the active signing key. Prior keys remain in the keyring, so records
+  // signed before rotation still verify. (Sensitive admin op; gateway-authed.)
+  app.post(
+    "/v2/rotate-signing-key",
+    wrap((req, res) => {
+      const { keyId, secret, privatePem, publicPem } = req.body ?? {};
+      if (!keyId) throw new Error("rotate-signing-key requires keyId");
+      chain.rotateSigningKey(keyId, { secret, privatePem, publicPem });
+      res.json({ active: chain.signKeyId, signing_mode: chain.signingMode });
+    }),
+  );
 
   const scopeFromQuery = (req: Request): ScopeFilter => ({
     maeId: typeof req.query.mae === "string" ? req.query.mae : undefined,

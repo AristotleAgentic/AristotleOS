@@ -12,13 +12,24 @@
  */
 import type { Express } from "express";
 import { type CommitGate, type CommitOptions, type GovernanceStore, type Keyring } from "@aristotle/governance-core";
+export interface RotationMaterial {
+    /** HMAC secret for the new key (hmac mode). */
+    secret?: string;
+    /** Ed25519 PEMs for the new key (ed25519 mode). */
+    privatePem?: string;
+    publicPem?: string;
+}
 export interface GovernanceChain {
     store: GovernanceStore;
     keyring: Keyring;
+    /** The currently-active signing key id (updates after rotateSigningKey). */
     signKeyId: string;
     /** Whether artifacts are signed with HMAC (single-domain) or ed25519 (BYO trust root). */
     signingMode: "hmac" | "ed25519";
     gate: CommitGate;
+    /** Add a new signing key and make it active. Prior keys remain in the keyring so
+     *  records signed before rotation still verify. */
+    rotateSigningKey(keyId: string, material: RotationMaterial): void;
     /** Commit options for evaluateCommit (clock injectable for tests). */
     options(now?: Date): CommitOptions;
     /** Fire-and-forget durable persist (for route handlers). No-op without a statePath. */

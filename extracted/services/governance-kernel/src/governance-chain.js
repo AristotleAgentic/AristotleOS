@@ -16,16 +16,30 @@ import { dirname } from "node:path";
 import { Ed25519Keyring, HmacKeyring, InMemoryGovernanceStore, appointGovernor, chainMetrics, exportEvidence, createAuthorityEnvelope, createMae, constituteWard, createFederationAgreement, evaluateCommit, evaluateFederatedCommit, issueWarrant, registerCommitGate, scopeSnapshot, tenantSummaries, verifyGelChain, verifyGelRecords, } from "@aristotle/governance-core";
 /** Build the kernel's governance chain: store + keyring + a single fail-closed Commit Gate. */
 export function createGovernanceChain(config) {
-    const signKeyId = config.keyId ?? "governance-kernel-key";
+    const primaryKeyId = config.keyId ?? "governance-kernel-key";
+    let activeKeyId = primaryKeyId;
     let keyring;
     let signingMode;
+    let addSigningKey;
     if (config.signingPrivateKeyPath && config.signingPublicKeyPath) {
-        keyring = new Ed25519Keyring().addKeyPair(signKeyId, readFileSync(config.signingPrivateKeyPath, "utf8"), readFileSync(config.signingPublicKeyPath, "utf8"));
+        const ed = new Ed25519Keyring().addKeyPair(primaryKeyId, readFileSync(config.signingPrivateKeyPath, "utf8"), readFileSync(config.signingPublicKeyPath, "utf8"));
+        keyring = ed;
         signingMode = "ed25519";
+        addSigningKey = (keyId, m) => {
+            if (!m.privatePem || !m.publicPem)
+                throw new Error("ed25519 key rotation requires privatePem and publicPem");
+            ed.addKeyPair(keyId, m.privatePem, m.publicPem);
+        };
     }
     else {
-        keyring = new HmacKeyring({ [signKeyId]: config.signingSecret ?? "dev-insecure-governance-chain-secret" });
+        const hmac = new HmacKeyring({ [primaryKeyId]: config.signingSecret ?? "dev-insecure-governance-chain-secret" });
+        keyring = hmac;
         signingMode = "hmac";
+        addSigningKey = (keyId, m) => {
+            if (!m.secret)
+                throw new Error("hmac key rotation requires a secret");
+            hmac.addKey(keyId, m.secret);
+        };
     }
     const store = new InMemoryGovernanceStore();
     const statePath = config.statePath;
@@ -66,10 +80,16 @@ export function createGovernanceChain(config) {
     return {
         store,
         keyring,
-        signKeyId,
+        get signKeyId() {
+            return activeKeyId;
+        },
         signingMode,
         gate,
-        options: (now) => ({ keyring, signKeyId, now }),
+        rotateSigningKey: (keyId, material) => {
+            addSigningKey(keyId, material);
+            activeKeyId = keyId;
+        },
+        options: (now) => ({ keyring, signKeyId: activeKeyId, now }),
         persist: () => void flush(),
         flush,
     };
@@ -117,6 +137,15 @@ export function registerGovernanceChainRoutes(app, chain) {
         res.json(agreement);
     });
     app.get("/v2/commit-gate", (_req, res) => res.json(chain.gate));
+    // Rotate the active signing key. Prior keys remain in the keyring, so records
+    // signed before rotation still verify. (Sensitive admin op; gateway-authed.)
+    app.post("/v2/rotate-signing-key", wrap((req, res) => {
+        const { keyId, secret, privatePem, publicPem } = req.body ?? {};
+        if (!keyId)
+            throw new Error("rotate-signing-key requires keyId");
+        chain.rotateSigningKey(keyId, { secret, privatePem, publicPem });
+        res.json({ active: chain.signKeyId, signing_mode: chain.signingMode });
+    }));
     const scopeFromQuery = (req) => ({
         maeId: typeof req.query.mae === "string" ? req.query.mae : undefined,
         tenantId: typeof req.query.tenant === "string" ? req.query.tenant : undefined,
