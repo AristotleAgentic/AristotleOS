@@ -21,7 +21,7 @@
  * record. The mapping uses sensible defaults (one Ward per mission, requester as
  * origin/accountable party); refine as the data model matures (see MIGRATION.md).
  */
-import type { ExecutionTask, OperatingMission } from "@aristotle/shared-types";
+import type { ExecutionTask, OperatingMission, ToolAction } from "@aristotle/shared-types";
 export type ChainMode = "off" | "shadow" | "enforce";
 export type ChainDecision = "Allow" | "Deny" | "Escalate" | "FailClosed";
 export interface ChainCommitResult {
@@ -50,8 +50,15 @@ export interface CommitTaskInput {
     witnessAccepted: boolean;
     missingLeaseTools: string[];
 }
+export interface CommitToolInput {
+    mission: OperatingMission;
+    task: ExecutionTask;
+    action: ToolAction;
+    killSwitchActive: boolean;
+}
 export interface ChainClient {
     readonly mode: ChainMode;
     commitTaskAct(input: CommitTaskInput): Promise<ChainCommitResult>;
+    commitToolAct(input: CommitToolInput): Promise<ChainCommitResult>;
 }
 export declare function createChainClient(config: ChainClientConfig): ChainClient;

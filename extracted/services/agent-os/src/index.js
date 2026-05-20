@@ -1009,6 +1009,40 @@ const assessToolActionExecutionGovernance = async (mission, task, action) => {
             reasons.push("Execution gate unavailable during tool action commit point.");
         }
     }
+    // GOVERNANCE_CHAIN_V2: route the tool action through the kernel's Commit Gate.
+    // ToolAction.governance is a shared-types shape we deliberately do not modify,
+    // so the chain verdict is surfaced via enforce-mode reasons + a ledger record
+    // (cross-referencing the kernel GEL) rather than attached to the object.
+    if (governanceChainClient && (governanceChainClient.mode === "shadow" || reasons.length === 0)) {
+        const chain = await governanceChainClient.commitToolAct({
+            mission,
+            task,
+            action,
+            killSwitchActive: killSwitchState === "active"
+        });
+        if (governanceChainClient.mode === "enforce") {
+            if (!chain.ran) {
+                reasons.push(`Ward/Warrant chain unavailable (fail-closed): ${chain.error ?? "unknown"}.`);
+            }
+            else if (chain.decision !== "Allow") {
+                reasons.push(...(chain.reasons?.length ? chain.reasons : [`Ward/Warrant chain returned ${chain.decision}.`]));
+            }
+        }
+        await commitLedgerEvent(mission.id, "agent-os.tool-action.chain", {
+            missionId: mission.id,
+            taskId: task.id,
+            actionId: action.id,
+            toolId: action.toolId,
+            kind: action.kind,
+            chainMode: chain.mode,
+            chainRan: chain.ran,
+            chainDecision: chain.decision,
+            chainWarrantId: chain.warrant_id,
+            gelRecordId: chain.gel_record_id,
+            wardId: chain.ward_id,
+            reasons: chain.reasons
+        });
+    }
     return {
         status: reasons.length === 0 ? "approved" : "blocked",
         reasons: reasons.length === 0 ? [`Tool action approved at commit point for ${action.toolId}.`] : reasons,

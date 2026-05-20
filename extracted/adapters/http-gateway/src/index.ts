@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { createHmac, timingSafeEqual, randomUUID } from "node:crypto";
 import { createApp } from "./lib.js";
 import { runGatewayPreflight } from "./preflight.js";
+import { createGovernanceChainProxy } from "./governance-chain-proxy.js";
 
 const port = Number(process.env.PORT_GATEWAY ?? 8080);
 const app = createApp();
@@ -79,6 +80,7 @@ const authorityRouterBase = serviceBase("authority-router", "HOST_AUTHORITY_ROUT
 const witnessServiceBase = serviceBase("witness-service", "HOST_WITNESS_SERVICE", Number(process.env.PORT_WITNESS_SERVICE ?? 7007));
 const executionGateBase = serviceBase("execution-gate", "HOST_EXECUTION_GATE", Number(process.env.PORT_EXECUTION_GATE ?? 7008));
 const agentOsBase = serviceBase("agent-os", "HOST_AGENT_OS", Number(process.env.PORT_AGENT_OS ?? 7009));
+const chainV2Enabled = (process.env.GOVERNANCE_CHAIN_V2 ?? "false").toLowerCase() === "true";
 console.log("http-gateway upstream bases", {
   governanceKernelBase,
   policyCompilerBase,
@@ -672,6 +674,10 @@ app.get(
 );
 app.get("/operator/meta-authority", handleAsync(async (_req, res) => res.json(await call(metaAuthorityRegistryBase, "/artifacts"))));
 app.get("/operator/envelopes", handleAsync(async (_req, res) => res.json(await call(governanceKernelBase, "/envelopes"))));
+// GOVERNANCE_CHAIN_V2: status-preserving proxy to the kernel's Ward/Warrant chain
+// so it can be observed/exercised next to the original surface above. Inherits the
+// /operator auth + method RBAC applied by the middleware registered earlier.
+app.use("/operator/governance-chain", createGovernanceChainProxy(governanceKernelBase, chainV2Enabled));
 app.get("/operator/deployment/posture", handleAsync(async (_req, res) => res.json(getDeploymentPosture())));
 app.get(
   "/operator/assurance/report",

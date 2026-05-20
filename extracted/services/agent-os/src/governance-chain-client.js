@@ -59,26 +59,7 @@ export function createChainClient(config) {
         missionIds.set(mission.id, ids);
         return ids;
     };
-    const runCommit = async (input, ids) => {
-        const { mission, task, phase } = input;
-        const action = {
-            proposed_action_id: `act-${task.id}-${phase}-${Date.now()}`,
-            action_type: `task.${phase}`,
-            actor: task.assignedAgentId,
-            resource: mission.targetSystem,
-            parameters: { taskId: task.id, title: task.title, phase },
-        };
-        const context = {
-            missionId: mission.id,
-            governanceProfile: mission.governanceProfile,
-            riskLevel: mission.riskLevel,
-            witness_required: input.witnessRequired,
-            witness_accepted: input.witnessAccepted,
-        };
-        const telemetry = {
-            kill_switch_active: input.killSwitchActive,
-            missing_lease_tools: input.missingLeaseTools.length,
-        };
+    const executeCommit = async (ids, action, context, telemetry) => {
         const warrant = await postJson("/v2/warrant", {
             mae_id: ids.maeId,
             ward_id: ids.wardId,
@@ -105,19 +86,19 @@ export function createChainClient(config) {
         });
         return { decision, warrantId: warrant.warrant_id };
     };
-    const commitTaskAct = async (input) => {
+    // Shared path for any consequential act: ensure the mission chain, commit, and
+    // self-heal once if the kernel's store was reset (stale cached ids -> not-found).
+    const submit = async (mission, action, context, telemetry) => {
         if (mode === "off")
             return { ran: false, mode };
         try {
-            let ids = await ensureMissionChain(input.mission);
-            let res = await runCommit(input, ids);
-            // Self-heal if the kernel's chain store was reset (e.g. kernel restart):
-            // a not-found FailClosed means our cached ids are stale — re-ensure once.
+            let ids = await ensureMissionChain(mission);
+            let res = await executeCommit(ids, action, context, telemetry);
             if (res.decision?.decision === "FailClosed" && hasNotFound(res.decision)) {
-                missionIds.delete(input.mission.id);
+                missionIds.delete(mission.id);
                 constitutionEnsured = false;
-                ids = await ensureMissionChain(input.mission);
-                res = await runCommit(input, ids);
+                ids = await ensureMissionChain(mission);
+                res = await executeCommit(ids, action, context, telemetry);
             }
             if (res.warrantFailed)
                 return { ran: false, mode, ward_id: ids.wardId, error: "warrant_issue_failed" };
@@ -137,7 +118,37 @@ export function createChainClient(config) {
             return { ran: false, mode, error: e instanceof Error ? e.message : String(e) };
         }
     };
-    return { mode, commitTaskAct };
+    const commitTaskAct = (input) => submit(input.mission, {
+        proposed_action_id: `act-${input.task.id}-${input.phase}-${Date.now()}`,
+        action_type: `task.${input.phase}`,
+        actor: input.task.assignedAgentId,
+        resource: input.mission.targetSystem,
+        parameters: { taskId: input.task.id, title: input.task.title, phase: input.phase },
+    }, {
+        missionId: input.mission.id,
+        governanceProfile: input.mission.governanceProfile,
+        riskLevel: input.mission.riskLevel,
+        witness_required: input.witnessRequired,
+        witness_accepted: input.witnessAccepted,
+    }, {
+        kill_switch_active: input.killSwitchActive,
+        missing_lease_tools: input.missingLeaseTools.length,
+        witness_obligation_met: !input.witnessRequired || input.witnessAccepted,
+    });
+    const commitToolAct = (input) => submit(input.mission, {
+        proposed_action_id: `act-${input.action.id}-${Date.now()}`,
+        action_type: `tool-action.${input.action.kind}`,
+        actor: input.action.agentId,
+        resource: input.action.toolId,
+        parameters: { actionId: input.action.id, toolId: input.action.toolId, kind: input.action.kind, summary: input.action.summary },
+    }, {
+        missionId: input.mission.id,
+        taskId: input.task.id,
+        actionId: input.action.id,
+        governanceProfile: input.mission.governanceProfile,
+        riskLevel: input.mission.riskLevel,
+    }, { kill_switch_active: input.killSwitchActive, witness_obligation_met: true });
+    return { mode, commitTaskAct, commitToolAct };
 }
 function hasNotFound(decision) {
     return (decision.reasons ?? []).some((r) => r.endsWith("-not-found"));
@@ -190,7 +201,7 @@ function wardBody(mission, wardId) {
             max_delegation_depth: 3,
             may_federate: false,
         },
-        authority_envelope_constraints: { permitted_action_classes: ["task.dispatch", "task.completion"], prohibited_action_classes: [] },
+        authority_envelope_constraints: { permitted_action_classes: ["task.dispatch", "task.completion", "tool-action.read", "tool-action.shell", "tool-action.edit", "tool-action.write"], prohibited_action_classes: [] },
         warrant_constraints: { max_validity_seconds: 900, require_nonce: true, require_telemetry_snapshot: true, single_use: true },
         revocation_rules: { authorized_revokers: ["agent-os.operator", mission.requestedBy], cascade: true },
         evidence_requirements: { require_gel_record: true, hash_chained: true, record_denials: true, record_escalations: true },
@@ -205,13 +216,18 @@ function envelopeBody(mission, wardId, envelopeId) {
         subject: "agent-os",
         actor_type: "Service",
         authored_by: "agent-os",
-        allowed_action_classes: ["task.dispatch", "task.completion"],
+        allowed_action_classes: ["task.dispatch", "task.completion", "tool-action.read", "tool-action.shell", "tool-action.edit", "tool-action.write"],
         prohibited_action_classes: [],
         resource_scope: ["*"],
         temporal_scope: { from: pastIso() },
-        // The execution-gate kill-switch, folded in as an operational limit: an active
-        // kill switch makes every act inadmissible at the Commit Gate.
-        operational_limits: [{ key: "kill_switch_active", op: "eq", value: false, message: "kill switch active for this scope" }],
+        // Execution-gate obligations folded in as operational limits, enforced at the
+        // Commit Gate. kill_switch_active must be false; witness_obligation_met is a
+        // derived flag (!witness_required || witness_accepted) so the witness duty is
+        // enforced only when an act actually requires a witness.
+        operational_limits: [
+            { key: "kill_switch_active", op: "eq", value: false, message: "kill switch active for this scope" },
+            { key: "witness_obligation_met", op: "eq", value: true, message: "witness obligation unsatisfied" },
+        ],
         telemetry_requirements: [],
         escalation_requirements: [],
         warrant_issuance_rules: {

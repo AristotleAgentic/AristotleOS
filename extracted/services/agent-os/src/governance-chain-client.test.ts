@@ -59,6 +59,21 @@ const task = {
   updatedAt: iso(),
 } as any;
 
+const toolAction = {
+  id: "ta-1",
+  missionId: "m-1",
+  taskId: "t-1",
+  agentId: "agent-executor",
+  kind: "shell",
+  toolId: "shell",
+  status: "proposed",
+  summary: "run build",
+  payload: { command: "npm run build" },
+  constraints: [],
+  createdAt: iso(),
+  updatedAt: iso(),
+} as any;
+
 const baseInput = (over: Partial<CommitTaskInput> = {}): CommitTaskInput => ({
   mission,
   task,
@@ -121,6 +136,47 @@ test("completion acts are accepted by the same mission chain", async () => {
     assert.equal(completion.decision, "Allow");
     // Distinct single-use warrants per act.
     assert.notEqual(dispatch.warrant_id, completion.warrant_id);
+  } finally {
+    await close();
+  }
+});
+
+test("agent-os: a tool action flows through the chain and is allowed", async () => {
+  const { base, close } = await bootKernel();
+  try {
+    const client = createChainClient({ kernelBase: base, mode: "enforce", keyId: "governance-kernel-key" });
+    const r = await client.commitToolAct({ mission, task, action: toolAction, killSwitchActive: false });
+    assert.equal(r.ran, true);
+    assert.equal(r.decision, "Allow");
+    assert.ok(r.warrant_id);
+  } finally {
+    await close();
+  }
+});
+
+test("agent-os: a tool action is denied at the gate when the kill switch is active", async () => {
+  const { base, close } = await bootKernel();
+  try {
+    const client = createChainClient({ kernelBase: base, mode: "enforce" });
+    const r = await client.commitToolAct({ mission, task, action: toolAction, killSwitchActive: true });
+    assert.equal(r.ran, true);
+    assert.notEqual(r.decision, "Allow");
+    assert.ok((r.violated_invariants ?? []).includes("envelope-operational-limit"));
+  } finally {
+    await close();
+  }
+});
+
+test("agent-os: witness obligation is enforced — required+accepted allows, required+unaccepted denies", async () => {
+  const { base, close } = await bootKernel();
+  try {
+    const client = createChainClient({ kernelBase: base, mode: "enforce" });
+    const satisfied = await client.commitTaskAct(baseInput({ witnessRequired: true, witnessAccepted: true }));
+    assert.equal(satisfied.decision, "Allow");
+
+    const unsatisfied = await client.commitTaskAct(baseInput({ witnessRequired: true, witnessAccepted: false }));
+    assert.notEqual(unsatisfied.decision, "Allow");
+    assert.ok((unsatisfied.violated_invariants ?? []).includes("envelope-operational-limit"));
   } finally {
     await close();
   }
