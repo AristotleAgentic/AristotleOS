@@ -13,7 +13,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
 import type { AddressInfo } from "node:net";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { generateKeyPairSync } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -215,6 +216,41 @@ test("kernel /v2 chain state survives a restart (durable store)", async () => {
     const replay = evaluateCommit(c2.store, request, c2.options());
     assert.notEqual(replay.decision, "Allow");
     assert.ok(replay.violated_invariants.includes("warrant-non-replayable"));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("kernel /v2 chain signs and verifies with ed25519 when key paths are provided", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "gov-chain-ed-"));
+  try {
+    const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+    const privPath = join(dir, "priv.pem");
+    const pubPath = join(dir, "pub.pem");
+    writeFileSync(privPath, privateKey.export({ type: "pkcs8", format: "pem" }) as string);
+    writeFileSync(pubPath, publicKey.export({ type: "spki", format: "pem" }) as string);
+
+    const c = createGovernanceChain({ keyId: "governance-kernel-key", signingPrivateKeyPath: privPath, signingPublicKeyPath: pubPath });
+    assert.equal(c.signingMode, "ed25519");
+
+    const mae = createMae(c.store, c.keyring, c.signKeyId, maeBody());
+    const ward = constituteWard(c.store, c.keyring, c.signKeyId, wardBody(mae.mae_id));
+    const env = createAuthorityEnvelope(c.store, c.keyring, c.signKeyId, envBody(mae.mae_id, ward.ward_id));
+    const action = { proposed_action_id: "act-ed", action_type: "payment.refund", actor: "agent.payments", resource: "customer:X", parameters: { amount: 50, currency: "USD" } };
+    const warrant = issueWarrant(c.store, c.keyring, c.signKeyId, {
+      mae_id: mae.mae_id,
+      ward_id: ward.ward_id,
+      authority_envelope_id: env.authority_envelope_id,
+      issued_by: "controller",
+      action,
+      context: {},
+      telemetry: { fraud_score: 0.1 },
+      validity_seconds: 300,
+    });
+    const request = commitRequestFor({ warrant, commit_gate_id: c.gate.commit_gate_id, action, context: {}, telemetry: { fraud_score: 0.1 } });
+    const decision = evaluateCommit(c.store, request, c.options());
+    assert.equal(decision.decision, "Allow", `reasons=${JSON.stringify(decision.violated_invariants)}`);
+    assert.equal(verifyGelChain(c.store.getGelChain(), c.keyring).ok, true, "ed25519-signed GEL verifies");
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

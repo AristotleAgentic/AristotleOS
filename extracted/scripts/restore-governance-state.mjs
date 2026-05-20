@@ -83,7 +83,11 @@ async function main() {
       pick(envFile, "EVIDENCE_LEDGER_STATE_PATH", "./data/evidence-ledger.json"),
       "services/evidence-ledger"
     ),
-    "agent-os-state": resolveStatePath(pick(envFile, "AGENT_OS_STATE_PATH", "./data/agent-os.json"), "services/agent-os")
+    "agent-os-state": resolveStatePath(pick(envFile, "AGENT_OS_STATE_PATH", "./data/agent-os.json"), "services/agent-os"),
+    "governance-chain-state": resolveStatePath(
+      pick(envFile, "GOVERNANCE_CHAIN_STATE_PATH", "./data/governance-chain.json"),
+      "services/governance-kernel"
+    )
   };
 
   for (const file of manifest.files ?? []) {

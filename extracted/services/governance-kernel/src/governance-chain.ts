@@ -16,6 +16,7 @@ import { mkdir, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { Express, Request, Response } from "express";
 import {
+  Ed25519Keyring,
   HmacKeyring,
   InMemoryGovernanceStore,
   appointGovernor,
@@ -38,6 +39,8 @@ export interface GovernanceChain {
   store: GovernanceStore;
   keyring: Keyring;
   signKeyId: string;
+  /** Whether artifacts are signed with HMAC (single-domain) or ed25519 (BYO trust root). */
+  signingMode: "hmac" | "ed25519";
   gate: CommitGate;
   /** Commit options for evaluateCommit (clock injectable for tests). */
   options(now?: Date): CommitOptions;
@@ -48,8 +51,12 @@ export interface GovernanceChain {
 }
 
 export interface GovernanceChainConfig {
-  signingSecret: string;
+  /** HMAC signing secret (used when no ed25519 key paths are supplied). */
+  signingSecret?: string;
   keyId?: string;
+  /** Ed25519 PEM key paths (BYO trust root). When both are set, ed25519 is used. */
+  signingPrivateKeyPath?: string;
+  signingPublicKeyPath?: string;
   gateName?: string;
   /** When set, the chain loads from and persists to this file path. */
   statePath?: string;
@@ -58,7 +65,19 @@ export interface GovernanceChainConfig {
 /** Build the kernel's governance chain: store + keyring + a single fail-closed Commit Gate. */
 export function createGovernanceChain(config: GovernanceChainConfig): GovernanceChain {
   const signKeyId = config.keyId ?? "governance-kernel-key";
-  const keyring = new HmacKeyring({ [signKeyId]: config.signingSecret });
+  let keyring: Keyring;
+  let signingMode: "hmac" | "ed25519";
+  if (config.signingPrivateKeyPath && config.signingPublicKeyPath) {
+    keyring = new Ed25519Keyring().addKeyPair(
+      signKeyId,
+      readFileSync(config.signingPrivateKeyPath, "utf8"),
+      readFileSync(config.signingPublicKeyPath, "utf8"),
+    );
+    signingMode = "ed25519";
+  } else {
+    keyring = new HmacKeyring({ [signKeyId]: config.signingSecret ?? "dev-insecure-governance-chain-secret" });
+    signingMode = "hmac";
+  }
   const store = new InMemoryGovernanceStore();
   const statePath = config.statePath;
 
@@ -100,6 +119,7 @@ export function createGovernanceChain(config: GovernanceChainConfig): Governance
     store,
     keyring,
     signKeyId,
+    signingMode,
     gate,
     options: (now) => ({ keyring, signKeyId, now }),
     persist: () => void flush(),

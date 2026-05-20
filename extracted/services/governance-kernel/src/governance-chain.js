@@ -13,11 +13,20 @@
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { HmacKeyring, InMemoryGovernanceStore, appointGovernor, createAuthorityEnvelope, createMae, constituteWard, evaluateCommit, issueWarrant, registerCommitGate, verifyGelChain, } from "@aristotle/governance-core";
+import { Ed25519Keyring, HmacKeyring, InMemoryGovernanceStore, appointGovernor, createAuthorityEnvelope, createMae, constituteWard, evaluateCommit, issueWarrant, registerCommitGate, verifyGelChain, } from "@aristotle/governance-core";
 /** Build the kernel's governance chain: store + keyring + a single fail-closed Commit Gate. */
 export function createGovernanceChain(config) {
     const signKeyId = config.keyId ?? "governance-kernel-key";
-    const keyring = new HmacKeyring({ [signKeyId]: config.signingSecret });
+    let keyring;
+    let signingMode;
+    if (config.signingPrivateKeyPath && config.signingPublicKeyPath) {
+        keyring = new Ed25519Keyring().addKeyPair(signKeyId, readFileSync(config.signingPrivateKeyPath, "utf8"), readFileSync(config.signingPublicKeyPath, "utf8"));
+        signingMode = "ed25519";
+    }
+    else {
+        keyring = new HmacKeyring({ [signKeyId]: config.signingSecret ?? "dev-insecure-governance-chain-secret" });
+        signingMode = "hmac";
+    }
     const store = new InMemoryGovernanceStore();
     const statePath = config.statePath;
     if (statePath && existsSync(statePath)) {
@@ -58,6 +67,7 @@ export function createGovernanceChain(config) {
         store,
         keyring,
         signKeyId,
+        signingMode,
         gate,
         options: (now) => ({ keyring, signKeyId, now }),
         persist: () => void flush(),

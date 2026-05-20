@@ -148,22 +148,29 @@ app.post("/evaluate-admissibility", (req, res) => {
 
 if (chainV2Enabled) {
   const signingSecret = process.env.GOVERNANCE_CHAIN_SIGNING_SECRET;
-  if (!signingSecret) {
+  const resolveEnvPath = (key: string) => {
+    const value = process.env[key];
+    return value ? resolve(process.cwd(), value) : undefined;
+  };
+  const signingPrivateKeyPath = resolveEnvPath("GOVERNANCE_CHAIN_SIGNING_PRIVATE_KEY_PATH");
+  const signingPublicKeyPath = resolveEnvPath("GOVERNANCE_CHAIN_SIGNING_PUBLIC_KEY_PATH");
+  const usingEd25519 = Boolean(signingPrivateKeyPath && signingPublicKeyPath);
+  if (!usingEd25519 && !signingSecret) {
     console.warn(
-      "[governance-kernel] GOVERNANCE_CHAIN_V2 enabled without GOVERNANCE_CHAIN_SIGNING_SECRET; using an insecure dev secret. Set one before any non-dev use."
+      "[governance-kernel] GOVERNANCE_CHAIN_V2 enabled without ed25519 keys or GOVERNANCE_CHAIN_SIGNING_SECRET; using an insecure dev secret. Configure signing before any non-dev use."
     );
   }
-  const statePath = process.env.GOVERNANCE_CHAIN_STATE_PATH
-    ? resolve(process.cwd(), process.env.GOVERNANCE_CHAIN_STATE_PATH)
-    : undefined;
+  const statePath = resolveEnvPath("GOVERNANCE_CHAIN_STATE_PATH");
   const chain = createGovernanceChain({
     signingSecret: signingSecret ?? "dev-insecure-governance-chain-secret",
     keyId: process.env.GOVERNANCE_CHAIN_KEY_ID,
+    signingPrivateKeyPath,
+    signingPublicKeyPath,
     statePath,
   });
   registerGovernanceChainRoutes(app, chain);
   console.log(
-    `governance-kernel: GOVERNANCE_CHAIN_V2 enabled — Ward/Warrant chain at /v2/*${statePath ? ` (durable: ${statePath})` : " (in-memory; set GOVERNANCE_CHAIN_STATE_PATH for durability)"}`
+    `governance-kernel: GOVERNANCE_CHAIN_V2 enabled (signing: ${chain.signingMode})${statePath ? ` (durable: ${statePath})` : " (in-memory; set GOVERNANCE_CHAIN_STATE_PATH for durability)"} — Ward/Warrant chain at /v2/*`
   );
 }
 

@@ -116,6 +116,15 @@ async function main() {
   assert(typeof assurance.json?.systemPosture === "string", "assurance report missing system posture");
   console.log(`[stack] assurance report ok (${assurance.json.systemPosture})`);
 
+  const chainGel = await requestJson(toGatewayUrl("/operator/governance-chain/gel"));
+  if (chainGel.status === 501) {
+    console.log("[stack] governance chain (v2) disabled — skipping chain reachability check");
+  } else {
+    assert(chainGel.ok, `/operator/governance-chain/gel failed with ${chainGel.status}`);
+    assert(chainGel.json?.integrity?.ok === true, "governance chain integrity check failed");
+    console.log(`[stack] governance chain reachable (${chainGel.json.count ?? 0} GEL records, integrity ok)`);
+  }
+
   console.log(`[stack] checking console ${consoleBaseUrl}`);
   const consoleIndex = await requestText(toConsoleUrl("/"));
   assert(consoleIndex.ok, `console index failed with ${consoleIndex.status}`);

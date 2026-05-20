@@ -16,6 +16,8 @@ export interface GovernanceChain {
     store: GovernanceStore;
     keyring: Keyring;
     signKeyId: string;
+    /** Whether artifacts are signed with HMAC (single-domain) or ed25519 (BYO trust root). */
+    signingMode: "hmac" | "ed25519";
     gate: CommitGate;
     /** Commit options for evaluateCommit (clock injectable for tests). */
     options(now?: Date): CommitOptions;
@@ -25,8 +27,12 @@ export interface GovernanceChain {
     flush(): Promise<void>;
 }
 export interface GovernanceChainConfig {
-    signingSecret: string;
+    /** HMAC signing secret (used when no ed25519 key paths are supplied). */
+    signingSecret?: string;
     keyId?: string;
+    /** Ed25519 PEM key paths (BYO trust root). When both are set, ed25519 is used. */
+    signingPrivateKeyPath?: string;
+    signingPublicKeyPath?: string;
     gateName?: string;
     /** When set, the chain loads from and persists to this file path. */
     statePath?: string;

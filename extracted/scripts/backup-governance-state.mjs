@@ -62,6 +62,10 @@ async function main() {
     {
       name: "agent-os-state",
       path: resolveStatePath(pick(envFile, "AGENT_OS_STATE_PATH", "./data/agent-os.json"), "services/agent-os")
+    },
+    {
+      name: "governance-chain-state",
+      path: resolveStatePath(pick(envFile, "GOVERNANCE_CHAIN_STATE_PATH", "./data/governance-chain.json"), "services/governance-kernel")
     }
   ];
 

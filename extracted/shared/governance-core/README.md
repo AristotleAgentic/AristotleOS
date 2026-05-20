@@ -146,6 +146,25 @@ corepack pnpm --filter @aristotle/governance-core test    # node:test via tsx
 The suite uses Node's built-in test runner, so the package has **no runtime or
 test dependencies** beyond `node:crypto` / `node:test`.
 
+## Operations (in the live mesh)
+
+When wired into AristotleOS behind `GOVERNANCE_CHAIN_V2`, the chain has the same
+operational surface as the rest of the OS:
+
+- **Durable** — the kernel persists the store (MAE/Ward/Envelope/Warrant +
+  consumed-nonce set + GEL ledger) to `GOVERNANCE_CHAIN_STATE_PATH`, backed by the
+  `kernel-data` docker volume and captured by `enterprise:backup` / `restore` / `drill`.
+- **Signed** — HMAC by default; ed25519 (BYO trust root) via
+  `GOVERNANCE_CHAIN_SIGNING_PRIVATE_KEY_PATH` / `_PUBLIC_KEY_PATH`
+  (`npm run enterprise:chain-keys`).
+- **Verified** — `npm run test:chain` (~40 unit/integration tests) and
+  `npm run validate:chain` (end-to-end against the gateway), folded into
+  `stack:verify` / `enterprise:verify`.
+- **Gated** — `enterprise:preflight` requires durable state + signing when the
+  chain is enabled in production.
+- **Observable** — `/operator/governance-chain/*` through the gateway, and the
+  console's "Ward Chain · compare" tab.
+
 ## File map
 
 | File | Responsibility |
