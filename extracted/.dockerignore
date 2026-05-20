@@ -1,0 +1,15 @@
+# Never copy host installs/build outputs/runtime state into images — they are
+# reinstalled/rebuilt inside the image (host binaries are the wrong platform).
+node_modules
+**/node_modules
+dist
+**/dist
+data
+**/data
+backups
+secrets
+.git
+.env
+*.log
+*.tmp
+.tmp-*

@@ -1,10 +1,12 @@
-FROM node:20-alpine
+# Console UI (Vite). Uses the glibc node image (not alpine) for a reliable esbuild
+# binary, and pnpm with esbuild build approval (see root package.json pnpm config).
+FROM node:20
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 WORKDIR /app
-COPY package.json ./
-COPY tsconfig.base.json ./
-COPY shared ./shared
-COPY apps ./apps
-RUN npm install
+RUN corepack enable
+COPY . .
+RUN corepack pnpm install --frozen-lockfile=false
+RUN corepack pnpm --filter @aristotle/shared-types --filter @aristotle/shared-schemas run build
 WORKDIR /app/apps/console-ui
-RUN npm run build
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "4173"]
+RUN corepack pnpm run build
+CMD ["corepack", "pnpm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "4173"]
