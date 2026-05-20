@@ -13,7 +13,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { Ed25519Keyring, HmacKeyring, InMemoryGovernanceStore, appointGovernor, chainMetrics, exportEvidence, createAuthorityEnvelope, createMae, constituteWard, evaluateCommit, issueWarrant, registerCommitGate, scopeSnapshot, tenantSummaries, verifyGelChain, verifyGelRecords, } from "@aristotle/governance-core";
+import { Ed25519Keyring, HmacKeyring, InMemoryGovernanceStore, appointGovernor, chainMetrics, exportEvidence, createAuthorityEnvelope, createMae, constituteWard, createFederationAgreement, evaluateCommit, evaluateFederatedCommit, issueWarrant, registerCommitGate, scopeSnapshot, tenantSummaries, verifyGelChain, verifyGelRecords, } from "@aristotle/governance-core";
 /** Build the kernel's governance chain: store + keyring + a single fail-closed Commit Gate. */
 export function createGovernanceChain(config) {
     const signKeyId = config.keyId ?? "governance-kernel-key";
@@ -105,6 +105,17 @@ export function registerGovernanceChainRoutes(app, chain) {
     // decision body — only malformed requests are HTTP errors. Persist because a
     // successful commit consumes the warrant and appends a GEL record.
     app.post("/v2/commit", mutate((req, res) => res.json(evaluateCommit(chain.store, req.body, chain.options()))));
+    // Cross-Ward / cross-org federation. An agreement is the trust bridge; a
+    // federated commit proves authority-chain compatibility across it (never
+    // federation-by-identity).
+    app.post("/v2/federation-agreement", mutate((req, res) => res.status(201).json(createFederationAgreement(chain.store, chain.keyring, chain.signKeyId, req.body))));
+    app.post("/v2/federated-commit", mutate((req, res) => res.json(evaluateFederatedCommit(chain.store, req.body, chain.options()))));
+    app.get("/v2/federation-agreements/:id", (req, res) => {
+        const agreement = chain.store.getFederationAgreement(req.params.id);
+        if (!agreement)
+            return res.status(404).json({ error: "federation_agreement_not_found" });
+        res.json(agreement);
+    });
     app.get("/v2/commit-gate", (_req, res) => res.json(chain.gate));
     const scopeFromQuery = (req) => ({
         maeId: typeof req.query.mae === "string" ? req.query.mae : undefined,

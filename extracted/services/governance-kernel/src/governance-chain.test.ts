@@ -23,6 +23,7 @@ import {
   createAuthorityEnvelope,
   createMae,
   evaluateCommit,
+  fixtures,
   issueWarrant,
   verifyGelChain,
 } from "@aristotle/governance-core";
@@ -308,6 +309,34 @@ test("kernel /v2 isolates tenants: scoped reads + cross-tenant commit denied", a
     assert.notEqual(cross.decision, "Allow");
   } finally {
     await close();
+  }
+});
+
+test("kernel /v2 exposes federated commit across a trust bridge", async () => {
+  const fed = fixtures.buildFederation(true);
+  const chain = {
+    store: fed.store,
+    keyring: fed.keyring,
+    signKeyId: fed.keyId,
+    signingMode: "hmac" as const,
+    gate: fed.gate,
+    options: (now?: Date) => ({ keyring: fed.keyring, signKeyId: fed.keyId, now }),
+    persist: () => {},
+    flush: async () => {},
+  };
+  const app = express();
+  app.use(express.json());
+  registerGovernanceChainRoutes(app, chain);
+  const server = app.listen(0);
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  try {
+    const allow = (await post(base, "/v2/federated-commit", fed.propose().request)).body;
+    assert.equal(allow.decision, "Allow");
+    // No trust bridge in the request -> fail closed.
+    const noBridge = (await post(base, "/v2/federated-commit", fed.propose({ withAgreement: false }).request)).body;
+    assert.equal(noBridge.decision, "FailClosed");
+  } finally {
+    await new Promise<void>((r) => server.close(() => r()));
   }
 });
 

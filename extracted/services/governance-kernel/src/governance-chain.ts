@@ -25,7 +25,9 @@ import {
   createAuthorityEnvelope,
   createMae,
   constituteWard,
+  createFederationAgreement,
   evaluateCommit,
+  evaluateFederatedCommit,
   issueWarrant,
   registerCommitGate,
   scopeSnapshot,
@@ -191,6 +193,25 @@ export function registerGovernanceChainRoutes(app: Express, chain: GovernanceCha
     "/v2/commit",
     mutate((req, res) => res.json(evaluateCommit(chain.store, req.body as CommitRequest, chain.options()))),
   );
+
+  // Cross-Ward / cross-org federation. An agreement is the trust bridge; a
+  // federated commit proves authority-chain compatibility across it (never
+  // federation-by-identity).
+  app.post(
+    "/v2/federation-agreement",
+    mutate((req, res) => res.status(201).json(createFederationAgreement(chain.store, chain.keyring, chain.signKeyId, req.body))),
+  );
+
+  app.post(
+    "/v2/federated-commit",
+    mutate((req, res) => res.json(evaluateFederatedCommit(chain.store, req.body as CommitRequest, chain.options()))),
+  );
+
+  app.get("/v2/federation-agreements/:id", (req, res) => {
+    const agreement = chain.store.getFederationAgreement(req.params.id);
+    if (!agreement) return res.status(404).json({ error: "federation_agreement_not_found" });
+    res.json(agreement);
+  });
 
   app.get("/v2/commit-gate", (_req, res) => res.json(chain.gate));
 
