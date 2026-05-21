@@ -3,6 +3,16 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
+  createExecutionControlRuntimeServer,
+  evaluateExecutionControl,
+  loadAuthorityEnvelope,
+  loadCanonicalAction,
+  loadWardManifest,
+  requireAllowedWarrant,
+  submitGovernedAction,
+  verifyGelChain
+} from "@aristotle/execution-control-runtime";
+import {
   PAYMENTS_GOVERNANCE_SOURCE,
   TRIAL_SCENARIOS,
   evaluateTrialAction,
@@ -38,6 +48,17 @@ const printJson = (out: Writer, value: unknown, asJson: boolean) => {
   out(asJson ? `${stableStringify(value)}\n` : `${JSON.stringify(value, null, 2)}\n`);
 };
 
+const optionValue = (args: string[], name: string) => {
+  const index = args.indexOf(name);
+  return index >= 0 ? args[index + 1] : undefined;
+};
+
+const requiredOption = (args: string[], name: string) => {
+  const value = optionValue(args, name);
+  if (!value) throw new Error(`missing required option ${name}`);
+  return value;
+};
+
 export async function runCli(argv: string[], cwd = process.cwd(), out: Writer = process.stdout.write.bind(process.stdout), err: Writer = process.stderr.write.bind(process.stderr)) {
   const [command = "help", subcommand, ...rest] = argv;
   const json = argv.includes("--json");
@@ -58,6 +79,11 @@ Commands:
   approve <token>      Approve a deferred action and issue a warrant
   deny <token>         Deny a deferred action and commit GEL evidence
   replay               Replay the payments scenario
+  execution-control evaluate      Evaluate a Ward/Warrant governed action through AristotleOS
+  execution-control dev           Start the sample execution-control runtime on localhost
+  execution-control serve         Run the AristotleOS execution boundary
+  execution-control submit        Submit an action JSON file to the execution boundary
+  execution-control audit verify  Verify the execution-control GEL hash chain
   demo payments        Run the flagship payments scenario
   doctor               Check local developer prerequisites
 `);
@@ -140,6 +166,106 @@ Commands:
       const evaluation = evaluateTrialAction({ source: readPolicy(cwd), intent: scenario.intent, now: "2026-05-20T00:00:00.000Z" });
       printJson(out, { replayed: true, decision: evaluation.decision, materialHash: evaluation.replay.materialHash }, json);
       return 0;
+    }
+
+    if (command === "execution-control" && subcommand === "evaluate") {
+      const wardPath = requiredOption(rest, "--ward");
+      const envelopePath = requiredOption(rest, "--envelope");
+      const actionPath = requiredOption(rest, "--action");
+      const ledgerPath = requiredOption(rest, "--ledger");
+      const ward = loadWardManifest(path.resolve(cwd, wardPath));
+      const authorityEnvelope = loadAuthorityEnvelope(path.resolve(cwd, envelopePath));
+      const action = loadCanonicalAction(path.resolve(cwd, actionPath));
+      const result = evaluateExecutionControl({
+        ward,
+        authorityEnvelope,
+        action,
+        ledgerPath: path.resolve(cwd, ledgerPath),
+        now: optionValue(rest, "--now")
+      });
+      if (json) {
+        printJson(out, result, true);
+      } else {
+        out(`decision=${result.decision}
+reason_codes=${result.reason_codes.join(",")}
+canonical_action_hash=${result.canonical_action_hash}
+warrant_id=${result.warrant?.warrant_id ?? "none"}
+gel_record_hash=${result.gel_record.record_hash}
+ledger_verification=${result.ledger_verification.ok ? "ok" : `failed:${result.ledger_verification.failure}`}
+`);
+      }
+      return result.ledger_verification.ok ? 0 : 1;
+    }
+
+    if (command === "execution-control" && subcommand === "serve") {
+      const wardPath = requiredOption(rest, "--ward");
+      const envelopePath = requiredOption(rest, "--envelope");
+      const ledgerPath = requiredOption(rest, "--ledger");
+      const port = Number(optionValue(rest, "--port") ?? "8181");
+      if (!Number.isInteger(port) || port <= 0) throw new Error("--port must be a positive integer");
+      const ward = loadWardManifest(path.resolve(cwd, wardPath));
+      const authorityEnvelope = loadAuthorityEnvelope(path.resolve(cwd, envelopePath));
+      const { server } = createExecutionControlRuntimeServer({
+        ward,
+        authorityEnvelope,
+        ledgerPath: path.resolve(cwd, ledgerPath),
+        now: optionValue(rest, "--now")
+      });
+      await new Promise<void>((resolve) => server.listen(port, "127.0.0.1", resolve));
+      out(`AristotleOS execution-control runtime listening on http://127.0.0.1:${port}
+Ward: ${ward.ward_id}
+Authority Envelope: ${authorityEnvelope.envelope_id}
+Evaluate: POST http://127.0.0.1:${port}/v1/execution-control/evaluate
+Audit: GET http://127.0.0.1:${port}/v1/execution-control/audit/verify
+`);
+      await new Promise<void>(() => undefined);
+      return 0;
+    }
+
+    if (command === "execution-control" && subcommand === "dev") {
+      const devNow = optionValue(rest, "--now");
+      return runCli([
+        "execution-control",
+        "serve",
+        "--ward",
+        "examples/execution_control/ward.montana_drone_test_range.yaml",
+        "--envelope",
+        "examples/execution_control/authority_envelope.survey_planner.yaml",
+        "--ledger",
+        ".tmp/execution-control-runtime.gel.jsonl",
+        "--port",
+        optionValue(rest, "--port") ?? "8181",
+        ...(devNow ? ["--now", devNow] : [])
+      ], cwd, out, err);
+    }
+
+    if (command === "execution-control" && subcommand === "submit") {
+      const actionPath = requiredOption(rest, "--action");
+      const endpoint = optionValue(rest, "--endpoint") ?? "http://127.0.0.1:8181/v1/execution-control/evaluate";
+      const action = JSON.parse(readFileSync(path.resolve(cwd, actionPath), "utf8"));
+      const result = await submitGovernedAction({ endpoint, action, now: optionValue(rest, "--now") });
+      if (json) {
+        printJson(out, result, true);
+      } else {
+        const requireWarrant = rest.includes("--require-warrant");
+        if (requireWarrant) requireAllowedWarrant(result);
+        out(`decision=${result.decision}
+reason_codes=${Array.isArray(result.reason_codes) ? result.reason_codes.join(",") : "none"}
+canonical_action_hash=${result.canonical_action_hash ?? "none"}
+warrant_id=${result.warrant?.warrant_id ?? "none"}
+gel_record_hash=${result.gel_record?.record_hash ?? "none"}
+ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
+`);
+      }
+      return 0;
+    }
+
+    if (command === "execution-control" && subcommand === "audit" && rest[0] === "verify") {
+      const ledgerPath = requiredOption(rest, "--ledger");
+      const verification = verifyGelChain(path.resolve(cwd, ledgerPath));
+      if (json) printJson(out, verification, true);
+      else out(`ledger_verification=${verification.ok ? "ok" : `failed:${verification.failure}`}\nrecords=${verification.count}\n`);
+      return verification.ok ? 0 : 1;
     }
 
     if (command === "explain" && subcommand === "--last-deny") {

@@ -1,0 +1,19 @@
+envelope_id: ae-drone-survey-001
+ward_id: montana-drone-test-range
+subject: agent:survey-planner
+allowed_actions:
+  - drone.takeoff
+  - drone.scan_area
+  - drone.return_home
+denied_actions:
+  - drone.leave_boundary
+  - drone.disable_geofence
+constraints:
+  max_altitude_m: 120
+  permitted_boundary_id: ranch-test-grid-a
+  battery_minimum_pct: 20
+  required_runtime_registers:
+    - telemetry.gps_lock
+expires_at: 2026-12-31T23:59:59Z
+issuer: aristotle-root
+signature: signing-hook-placeholder

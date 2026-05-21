@@ -38,6 +38,7 @@ Docs:
 - [Framework adapters](docs/framework-adapters.md)
 - [Deployment](docs/deployment.md)
 - [Pilot install](docs/pilot-install.md)
+- [Ward/Warrant Execution-Control Path](docs/execution-control-runtime.md)
 
 Pilot Kubernetes smoke:
 
@@ -46,6 +47,37 @@ npm run pilot:smoke:kind -- --tag 0.1.0-smoke --keep-port-forward
 ```
 
 The smoke path builds the image set, installs the Helm chart into kind, then proves the governance boundary with a deferred payments action, one-time warrant issuance after approval, GEL commit, and fail-closed missing-authority behavior.
+
+## Ward/Warrant Execution-Control Path
+
+This branch implements an AristotleOS-native execution-control path. It is designed to interoperate conceptually with emerging open-source runtime authorization systems, including Faramesh-style architectures, but it does not copy Faramesh source code and is not affiliated with, certified by, or endorsed by Faramesh.
+
+It canonicalizes a proposed action, evaluates it through a Ward and Authority Envelope at the Commit Gate, returns `ALLOW`, `ESCALATE`, or `REFUSE`, issues a single-use Warrant only on `ALLOW`, and appends the decision to a hash-linked Governance Evidence Ledger.
+
+Run the demo:
+
+```bash
+npm run aristotle -- execution-control evaluate \
+  --ward examples/execution_control/ward.montana_drone_test_range.yaml \
+  --envelope examples/execution_control/authority_envelope.survey_planner.yaml \
+  --action examples/execution_control/actions/allow_takeoff.json \
+  --ledger ./.tmp/gel.jsonl \
+  --now 2026-05-21T14:00:00.000Z
+```
+
+Run it as a local execution-control daemon:
+
+```bash
+npm run execution-control:dev
+```
+
+Then submit an action from another terminal:
+
+```bash
+npm run execution-control:submit:allow
+```
+
+The runtime also publishes `GET /openapi.json` so agent adapters can discover the execution-boundary contract.
 
 ## Stack
 - Node.js 20
