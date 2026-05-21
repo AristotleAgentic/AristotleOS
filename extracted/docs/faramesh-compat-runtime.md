@@ -85,7 +85,7 @@ ledger_verification=ok
 Run the compatibility boundary as a local AristotleOS daemon:
 
 ```bash
-npm run compat:serve
+npm run compat:dev
 ```
 
 The daemon listens on `http://127.0.0.1:8181` and exposes:
@@ -94,12 +94,15 @@ The daemon listens on `http://127.0.0.1:8181` and exposes:
 - `POST /v1/compat/evaluate`
 - `GET /v1/compat/audit/tail`
 - `GET /v1/compat/audit/verify`
+- `GET /openapi.json`
 
 Submit an action from another terminal:
 
 ```bash
 npm run compat:submit:allow
 ```
+
+`compat:submit:allow` requires a verified Warrant before treating the action as executable.
 
 Or call it directly:
 
@@ -116,6 +119,18 @@ npm run compat:audit:verify
 ```
 
 This is the compatibility branch's "runs alongside your agent" path: agent runtimes can call the local AristotleOS boundary before invoking a consequential tool, then require the Warrant id when `decision=ALLOW`.
+
+Programmatic client helpers are exported from `@aristotle/faramesh-compat-runtime`:
+
+- `submitCompatAction`
+- `requireAllowedWarrant`
+- `compatOpenApiSpec`
+
+See:
+
+```text
+examples/faramesh_compat/agent_runtime_wrapper.ts
+```
 
 Refusal example:
 

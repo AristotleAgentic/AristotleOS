@@ -158,6 +158,13 @@ export interface CompatRuntimeServer {
   server: Server;
 }
 
+export interface CompatClientOptions {
+  endpoint?: string;
+  action: CanonicalActionInput;
+  runtimeRegister?: RuntimeRegister;
+  now?: string;
+}
+
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
 const GENESIS_HASH = "GENESIS";
@@ -559,6 +566,122 @@ export function writeJson(file: string, value: unknown): void {
   writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
+export async function submitCompatAction(options: CompatClientOptions): Promise<EvaluateCompatResult> {
+  const endpoint = options.endpoint ?? "http://127.0.0.1:8181/v1/compat/evaluate";
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      action: options.action,
+      runtime_register: options.runtimeRegister,
+      now: options.now
+    })
+  });
+  const result = await response.json() as EvaluateCompatResult | { error: string; message?: string };
+  if (!response.ok && response.status !== 202 && response.status !== 409) {
+    throw new Error("message" in result ? result.message : "compat runtime request failed");
+  }
+  return result as EvaluateCompatResult;
+}
+
+export function requireAllowedWarrant(result: EvaluateCompatResult): Warrant {
+  if (result.decision !== "ALLOW" || !result.warrant) {
+    throw new Error(`execution refused by AristotleOS: ${result.decision} ${result.reason_codes.join(",")}`);
+  }
+  const verification = verifyWarrant(result.warrant, result.canonical_action_hash, result.warrant.issued_at);
+  if (!verification.ok) throw new Error(`warrant verification failed: ${verification.reason}`);
+  return result.warrant;
+}
+
+export function compatOpenApiSpec() {
+  return {
+    openapi: "3.0.3",
+    info: {
+      title: "AristotleOS Faramesh-Compatible Runtime Path",
+      version: "0.1.0",
+      description: "AristotleOS-native execution-control boundary: Canonical Governed Action -> Commit Gate -> Warrant -> GEL."
+    },
+    paths: {
+      "/health": {
+        get: {
+          summary: "Runtime health and active governance context",
+          responses: { "200": { description: "Runtime is healthy" } }
+        }
+      },
+      "/v1/compat/evaluate": {
+        post: {
+          summary: "Evaluate a proposed governed action before execution",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  oneOf: [
+                    { $ref: "#/components/schemas/CanonicalGovernedAction" },
+                    { $ref: "#/components/schemas/EvaluateRequest" }
+                  ]
+                }
+              }
+            }
+          },
+          responses: {
+            "200": { description: "ALLOW with Warrant" },
+            "202": { description: "ESCALATE for missing state or policy ambiguity" },
+            "409": { description: "REFUSE before execution" }
+          }
+        }
+      },
+      "/v1/compat/audit/tail": {
+        get: {
+          summary: "Return recent Governance Evidence Ledger records",
+          responses: { "200": { description: "Recent GEL records" } }
+        }
+      },
+      "/v1/compat/audit/verify": {
+        get: {
+          summary: "Verify GEL hash-chain integrity",
+          responses: { "200": { description: "Ledger verification result" } }
+        }
+      },
+      "/openapi.json": {
+        get: {
+          summary: "OpenAPI contract for the compatibility runtime",
+          responses: { "200": { description: "OpenAPI 3 specification" } }
+        }
+      }
+    },
+    components: {
+      schemas: {
+        EvaluateRequest: {
+          type: "object",
+          required: ["action"],
+          properties: {
+            action: { $ref: "#/components/schemas/CanonicalGovernedAction" },
+            runtime_register: { type: "object", additionalProperties: true },
+            now: { type: "string", format: "date-time" }
+          }
+        },
+        CanonicalGovernedAction: {
+          type: "object",
+          required: ["action_id", "ward_id", "subject", "action_type", "target", "params", "requested_at"],
+          properties: {
+            action_id: { type: "string" },
+            ward_id: { type: "string" },
+            subject: { type: "string" },
+            action_type: { type: "string" },
+            target: { type: "string" },
+            params: { type: "object", additionalProperties: true },
+            requested_at: { type: "string", format: "date-time" },
+            nonce: { type: "string" },
+            request_id: { type: "string" },
+            telemetry: { type: "object", additionalProperties: true }
+          }
+        }
+      }
+    }
+  };
+}
+
 export function createCompatRuntimeServer(options: CompatRuntimeServerOptions): CompatRuntimeServer {
   const server = createServer(async (req, res) => {
     try {
@@ -571,6 +694,11 @@ export function createCompatRuntimeServer(options: CompatRuntimeServerOptions): 
           ward_id: options.ward.ward_id,
           authority_envelope_id: options.authorityEnvelope.envelope_id
         });
+        return;
+      }
+
+      if (req.method === "GET" && url.pathname === "/openapi.json") {
+        sendJson(res, 200, compatOpenApiSpec());
         return;
       }
 

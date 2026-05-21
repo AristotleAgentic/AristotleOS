@@ -9,12 +9,15 @@ import {
   type WardManifest,
   appendGelRecord,
   canonicalizeAction,
+  compatOpenApiSpec,
   createCompatRuntimeServer,
   consumeWarrant,
   evaluateCommitGate,
   evaluateCompat,
   issueWarrant,
   loadGelChain,
+  requireAllowedWarrant,
+  submitCompatAction,
   verifyGelChain,
   verifyWarrant
 } from "./index.js";
@@ -197,7 +200,40 @@ test("runtime server exposes health, evaluate, audit tail, and audit verify", as
 
     const verification = await fetch(`${base}/v1/compat/audit/verify`).then((response) => response.json());
     assert.deepEqual(verification, { ok: true, count: 1 });
+
+    const spec = await fetch(`${base}/openapi.json`).then((response) => response.json());
+    assert.equal(spec.openapi, "3.0.3");
+    assert.ok(spec.paths["/v1/compat/evaluate"]);
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
+});
+
+test("client helper submits action and requires a verified Warrant", async () => {
+  const file = ledgerPath();
+  const { server } = createCompatRuntimeServer({ ward, authorityEnvelope: envelope, ledgerPath: file, now });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const address = server.address();
+    const endpoint = `http://127.0.0.1:${address && typeof address === "object" ? address.port : 0}/v1/compat/evaluate`;
+    const result = await submitCompatAction({ endpoint, action, now });
+    const warrant = requireAllowedWarrant(result);
+    assert.match(warrant.warrant_id, /^wrn-/);
+
+    const refused = await submitCompatAction({
+      endpoint,
+      action: { ...action, action_type: "drone.disable_geofence" },
+      now
+    });
+    assert.throws(() => requireAllowedWarrant(refused), /execution refused/);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test("OpenAPI spec describes the execution boundary", () => {
+  const spec = compatOpenApiSpec();
+  assert.equal(spec.info.title, "AristotleOS Faramesh-Compatible Runtime Path");
+  assert.ok(spec.paths["/v1/compat/evaluate"]);
+  assert.ok(spec.components.schemas.CanonicalGovernedAction);
 });

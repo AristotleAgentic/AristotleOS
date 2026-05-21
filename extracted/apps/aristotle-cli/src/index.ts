@@ -8,6 +8,8 @@ import {
   loadAuthorityEnvelope,
   loadCanonicalAction,
   loadWardManifest,
+  requireAllowedWarrant,
+  submitCompatAction,
   verifyGelChain
 } from "@aristotle/faramesh-compat-runtime";
 import {
@@ -78,6 +80,7 @@ Commands:
   deny <token>         Deny a deferred action and commit GEL evidence
   replay               Replay the payments scenario
   compat evaluate      Evaluate a Faramesh-style governed action through AristotleOS
+  compat dev           Start the sample compatibility runtime on localhost
   compat serve         Run the AristotleOS compatibility runtime boundary
   compat submit        Submit an action JSON file to the compatibility runtime
   compat audit verify  Verify the compatibility GEL hash chain
@@ -219,19 +222,33 @@ Audit: GET http://127.0.0.1:${port}/v1/compat/audit/verify
       return 0;
     }
 
+    if (command === "compat" && subcommand === "dev") {
+      const devNow = optionValue(rest, "--now");
+      return runCli([
+        "compat",
+        "serve",
+        "--ward",
+        "examples/faramesh_compat/ward.montana_drone_test_range.yaml",
+        "--envelope",
+        "examples/faramesh_compat/authority_envelope.survey_planner.yaml",
+        "--ledger",
+        ".tmp/faramesh-compat-runtime.gel.jsonl",
+        "--port",
+        optionValue(rest, "--port") ?? "8181",
+        ...(devNow ? ["--now", devNow] : [])
+      ], cwd, out, err);
+    }
+
     if (command === "compat" && subcommand === "submit") {
       const actionPath = requiredOption(rest, "--action");
       const endpoint = optionValue(rest, "--endpoint") ?? "http://127.0.0.1:8181/v1/compat/evaluate";
       const action = JSON.parse(readFileSync(path.resolve(cwd, actionPath), "utf8"));
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action, now: optionValue(rest, "--now") })
-      });
-      const result = await response.json();
+      const result = await submitCompatAction({ endpoint, action, now: optionValue(rest, "--now") });
       if (json) {
         printJson(out, result, true);
       } else {
+        const requireWarrant = rest.includes("--require-warrant");
+        if (requireWarrant) requireAllowedWarrant(result);
         out(`decision=${result.decision}
 reason_codes=${Array.isArray(result.reason_codes) ? result.reason_codes.join(",") : "none"}
 canonical_action_hash=${result.canonical_action_hash ?? "none"}
@@ -240,7 +257,7 @@ gel_record_hash=${result.gel_record?.record_hash ?? "none"}
 ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
 `);
       }
-      return response.ok || response.status === 202 || response.status === 409 ? 0 : 1;
+      return 0;
     }
 
     if (command === "compat" && subcommand === "audit" && rest[0] === "verify") {

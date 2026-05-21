@@ -70,7 +70,7 @@ npm run aristotle -- compat evaluate \
 Run it as a local execution-control daemon:
 
 ```bash
-npm run compat:serve
+npm run compat:dev
 ```
 
 Then submit an action from another terminal:
@@ -78,6 +78,8 @@ Then submit an action from another terminal:
 ```bash
 npm run compat:submit:allow
 ```
+
+The runtime also publishes `GET /openapi.json` so agent adapters can discover the execution-boundary contract.
 
 ## Stack
 - Node.js 20
