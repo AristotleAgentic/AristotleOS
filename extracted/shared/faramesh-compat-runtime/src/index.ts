@@ -1,5 +1,6 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import path from "node:path";
 
 export type CompatDecision = "ALLOW" | "REFUSE" | "ESCALATE";
@@ -144,6 +145,17 @@ export interface EvaluateCompatResult {
   warrant?: Warrant;
   gel_record: GelRecord;
   ledger_verification: { ok: boolean; count: number; failure?: string };
+}
+
+export interface CompatRuntimeServerOptions {
+  ward: WardManifest;
+  authorityEnvelope: AuthorityEnvelope;
+  ledgerPath: string;
+  now?: string;
+}
+
+export interface CompatRuntimeServer {
+  server: Server;
 }
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
@@ -545,4 +557,65 @@ function stringParam(action: CanonicalActionInput, key: string): string | undefi
 export function writeJson(file: string, value: unknown): void {
   mkdirSync(path.dirname(path.resolve(file)), { recursive: true });
   writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+export function createCompatRuntimeServer(options: CompatRuntimeServerOptions): CompatRuntimeServer {
+  const server = createServer(async (req, res) => {
+    try {
+      const url = new URL(req.url ?? "/", "http://127.0.0.1");
+      if (req.method === "GET" && url.pathname === "/health") {
+        sendJson(res, 200, {
+          ok: true,
+          runtime: "aristotle-faramesh-compat",
+          doctrine: "Governance must bind at the execution boundary before irreversible state mutation or external action occurs.",
+          ward_id: options.ward.ward_id,
+          authority_envelope_id: options.authorityEnvelope.envelope_id
+        });
+        return;
+      }
+
+      if (req.method === "POST" && url.pathname === "/v1/compat/evaluate") {
+        const body = await readJsonBody(req);
+        const action = (body.action ?? body) as CanonicalActionInput;
+        const result = evaluateCompat({
+          ward: options.ward,
+          authorityEnvelope: options.authorityEnvelope,
+          action,
+          runtimeRegister: body.runtime_register as RuntimeRegister | undefined,
+          ledgerPath: options.ledgerPath,
+          now: typeof body.now === "string" ? body.now : options.now
+        });
+        sendJson(res, result.decision === "ALLOW" ? 200 : result.decision === "ESCALATE" ? 202 : 409, result);
+        return;
+      }
+
+      if (req.method === "GET" && url.pathname === "/v1/compat/audit/tail") {
+        const limit = Number(url.searchParams.get("limit") ?? "20");
+        sendJson(res, 200, { items: loadGelChain(options.ledgerPath).slice(-limit) });
+        return;
+      }
+
+      if (req.method === "GET" && url.pathname === "/v1/compat/audit/verify") {
+        sendJson(res, 200, verifyGelChain(options.ledgerPath));
+        return;
+      }
+
+      sendJson(res, 404, { error: "not_found" });
+    } catch (error) {
+      sendJson(res, 400, { error: "compat_runtime_error", message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+  return { server };
+}
+
+async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  const text = Buffer.concat(chunks).toString("utf8").trim();
+  return text ? JSON.parse(text) as Record<string, unknown> : {};
+}
+
+function sendJson(res: ServerResponse, status: number, body: unknown): void {
+  res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
+  res.end(`${JSON.stringify(body, null, 2)}\n`);
 }

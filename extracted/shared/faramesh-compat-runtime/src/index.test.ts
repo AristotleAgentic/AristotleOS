@@ -9,6 +9,7 @@ import {
   type WardManifest,
   appendGelRecord,
   canonicalizeAction,
+  createCompatRuntimeServer,
   consumeWarrant,
   evaluateCommitGate,
   evaluateCompat,
@@ -166,4 +167,37 @@ test("vertical slice evaluates action, writes GEL, and verifies ledger", () => {
   assert.equal(result.decision, "ALLOW");
   assert.ok(result.warrant?.warrant_id);
   assert.equal(result.ledger_verification.ok, true);
+});
+
+test("runtime server exposes health, evaluate, audit tail, and audit verify", async () => {
+  const file = ledgerPath();
+  const { server } = createCompatRuntimeServer({ ward, authorityEnvelope: envelope, ledgerPath: file, now });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const address = server.address();
+    assert.equal(typeof address, "object");
+    const base = `http://127.0.0.1:${address && typeof address === "object" ? address.port : 0}`;
+
+    const health = await fetch(`${base}/health`).then((response) => response.json());
+    assert.equal(health.ok, true);
+    assert.equal(health.ward_id, ward.ward_id);
+
+    const evaluationResponse = await fetch(`${base}/v1/compat/evaluate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action })
+    });
+    assert.equal(evaluationResponse.status, 200);
+    const evaluation = await evaluationResponse.json();
+    assert.equal(evaluation.decision, "ALLOW");
+    assert.match(evaluation.warrant.warrant_id, /^wrn-/);
+
+    const tail = await fetch(`${base}/v1/compat/audit/tail`).then((response) => response.json());
+    assert.equal(tail.items.length, 1);
+
+    const verification = await fetch(`${base}/v1/compat/audit/verify`).then((response) => response.json());
+    assert.deepEqual(verification, { ok: true, count: 1 });
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
 });

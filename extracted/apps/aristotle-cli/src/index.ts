@@ -3,10 +3,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
+  createCompatRuntimeServer,
   evaluateCompat,
   loadAuthorityEnvelope,
   loadCanonicalAction,
-  loadWardManifest
+  loadWardManifest,
+  verifyGelChain
 } from "@aristotle/faramesh-compat-runtime";
 import {
   PAYMENTS_GOVERNANCE_SOURCE,
@@ -49,6 +51,12 @@ const optionValue = (args: string[], name: string) => {
   return index >= 0 ? args[index + 1] : undefined;
 };
 
+const requiredOption = (args: string[], name: string) => {
+  const value = optionValue(args, name);
+  if (!value) throw new Error(`missing required option ${name}`);
+  return value;
+};
+
 export async function runCli(argv: string[], cwd = process.cwd(), out: Writer = process.stdout.write.bind(process.stdout), err: Writer = process.stderr.write.bind(process.stderr)) {
   const [command = "help", subcommand, ...rest] = argv;
   const json = argv.includes("--json");
@@ -70,6 +78,9 @@ Commands:
   deny <token>         Deny a deferred action and commit GEL evidence
   replay               Replay the payments scenario
   compat evaluate      Evaluate a Faramesh-style governed action through AristotleOS
+  compat serve         Run the AristotleOS compatibility runtime boundary
+  compat submit        Submit an action JSON file to the compatibility runtime
+  compat audit verify  Verify the compatibility GEL hash chain
   demo payments        Run the flagship payments scenario
   doctor               Check local developer prerequisites
 `);
@@ -155,13 +166,10 @@ Commands:
     }
 
     if (command === "compat" && subcommand === "evaluate") {
-      const wardPath = optionValue(rest, "--ward");
-      const envelopePath = optionValue(rest, "--envelope");
-      const actionPath = optionValue(rest, "--action");
-      const ledgerPath = optionValue(rest, "--ledger");
-      if (!wardPath || !envelopePath || !actionPath || !ledgerPath) {
-        throw new Error("usage: aristotle compat evaluate --ward <ward.yaml> --envelope <authority.yaml> --action <action.json> --ledger <gel.jsonl>");
-      }
+      const wardPath = requiredOption(rest, "--ward");
+      const envelopePath = requiredOption(rest, "--envelope");
+      const actionPath = requiredOption(rest, "--action");
+      const ledgerPath = requiredOption(rest, "--ledger");
       const ward = loadWardManifest(path.resolve(cwd, wardPath));
       const authorityEnvelope = loadAuthorityEnvelope(path.resolve(cwd, envelopePath));
       const action = loadCanonicalAction(path.resolve(cwd, actionPath));
@@ -184,6 +192,63 @@ ledger_verification=${result.ledger_verification.ok ? "ok" : `failed:${result.le
 `);
       }
       return result.ledger_verification.ok ? 0 : 1;
+    }
+
+    if (command === "compat" && subcommand === "serve") {
+      const wardPath = requiredOption(rest, "--ward");
+      const envelopePath = requiredOption(rest, "--envelope");
+      const ledgerPath = requiredOption(rest, "--ledger");
+      const port = Number(optionValue(rest, "--port") ?? "8181");
+      if (!Number.isInteger(port) || port <= 0) throw new Error("--port must be a positive integer");
+      const ward = loadWardManifest(path.resolve(cwd, wardPath));
+      const authorityEnvelope = loadAuthorityEnvelope(path.resolve(cwd, envelopePath));
+      const { server } = createCompatRuntimeServer({
+        ward,
+        authorityEnvelope,
+        ledgerPath: path.resolve(cwd, ledgerPath),
+        now: optionValue(rest, "--now")
+      });
+      await new Promise<void>((resolve) => server.listen(port, "127.0.0.1", resolve));
+      out(`AristotleOS compatibility runtime listening on http://127.0.0.1:${port}
+Ward: ${ward.ward_id}
+Authority Envelope: ${authorityEnvelope.envelope_id}
+Evaluate: POST http://127.0.0.1:${port}/v1/compat/evaluate
+Audit: GET http://127.0.0.1:${port}/v1/compat/audit/verify
+`);
+      await new Promise<void>(() => undefined);
+      return 0;
+    }
+
+    if (command === "compat" && subcommand === "submit") {
+      const actionPath = requiredOption(rest, "--action");
+      const endpoint = optionValue(rest, "--endpoint") ?? "http://127.0.0.1:8181/v1/compat/evaluate";
+      const action = JSON.parse(readFileSync(path.resolve(cwd, actionPath), "utf8"));
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action, now: optionValue(rest, "--now") })
+      });
+      const result = await response.json();
+      if (json) {
+        printJson(out, result, true);
+      } else {
+        out(`decision=${result.decision}
+reason_codes=${Array.isArray(result.reason_codes) ? result.reason_codes.join(",") : "none"}
+canonical_action_hash=${result.canonical_action_hash ?? "none"}
+warrant_id=${result.warrant?.warrant_id ?? "none"}
+gel_record_hash=${result.gel_record?.record_hash ?? "none"}
+ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
+`);
+      }
+      return response.ok || response.status === 202 || response.status === 409 ? 0 : 1;
+    }
+
+    if (command === "compat" && subcommand === "audit" && rest[0] === "verify") {
+      const ledgerPath = requiredOption(rest, "--ledger");
+      const verification = verifyGelChain(path.resolve(cwd, ledgerPath));
+      if (json) printJson(out, verification, true);
+      else out(`ledger_verification=${verification.ok ? "ok" : `failed:${verification.failure}`}\nrecords=${verification.count}\n`);
+      return verification.ok ? 0 : 1;
     }
 
     if (command === "explain" && subcommand === "--last-deny") {

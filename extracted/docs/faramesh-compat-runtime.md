@@ -80,6 +80,43 @@ gel_record_hash=<sha256>
 ledger_verification=ok
 ```
 
+## Runtime Daemon
+
+Run the compatibility boundary as a local AristotleOS daemon:
+
+```bash
+npm run compat:serve
+```
+
+The daemon listens on `http://127.0.0.1:8181` and exposes:
+
+- `GET /health`
+- `POST /v1/compat/evaluate`
+- `GET /v1/compat/audit/tail`
+- `GET /v1/compat/audit/verify`
+
+Submit an action from another terminal:
+
+```bash
+npm run compat:submit:allow
+```
+
+Or call it directly:
+
+```bash
+curl -s http://127.0.0.1:8181/v1/compat/evaluate \
+  -H "content-type: application/json" \
+  --data-binary @examples/faramesh_compat/actions/allow_takeoff.json
+```
+
+Verify the GEL chain:
+
+```bash
+npm run compat:audit:verify
+```
+
+This is the compatibility branch's "runs alongside your agent" path: agent runtimes can call the local AristotleOS boundary before invoking a consequential tool, then require the Warrant id when `decision=ALLOW`.
+
 Refusal example:
 
 ```bash

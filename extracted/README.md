@@ -67,6 +67,18 @@ npm run aristotle -- compat evaluate \
   --now 2026-05-21T14:00:00.000Z
 ```
 
+Run it as a local execution-control daemon:
+
+```bash
+npm run compat:serve
+```
+
+Then submit an action from another terminal:
+
+```bash
+npm run compat:submit:allow
+```
+
 ## Stack
 - Node.js 20
 - TypeScript
