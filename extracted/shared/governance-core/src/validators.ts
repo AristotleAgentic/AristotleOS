@@ -26,12 +26,18 @@ import type {
 
 export interface ValidationContext {
   now: Date;
+  /**
+   * Maximum tolerated wall-clock difference between when a commit request says
+   * it was presented and when the gate evaluates it. This keeps Warrants from
+   * becoming loose bearer tokens while still allowing ordinary network delay.
+   */
+  presentationSkewMs: number;
   /** When present, signatures are verified and missing/invalid ones are violations. */
   keyring?: Keyring;
 }
 
 export function context(partial: Partial<ValidationContext> = {}): ValidationContext {
-  return { now: partial.now ?? new Date(), keyring: partial.keyring };
+  return { now: partial.now ?? new Date(), presentationSkewMs: partial.presentationSkewMs ?? 120_000, keyring: partial.keyring };
 }
 
 function parse(ts: string): number {
@@ -251,6 +257,20 @@ export function validateWarrant(
   // Warrant validity may not outlast the Ward's ceiling.
   if (!Number.isNaN(from) && !Number.isNaN(until) && (until - from) / 1000 > ward.warrant_constraints.max_validity_seconds)
     v.push(violation("warrant-validity-exceeds-ward", "Warrant validity window exceeds Ward ceiling"));
+
+  const presented = parse(request.presented_at);
+  if (Number.isNaN(presented)) {
+    v.push(violation("commit-presentation-temporal", "Commit request presented_at is unparseable"));
+  } else {
+    if (presented > t + ctx.presentationSkewMs)
+      v.push(violation("commit-presentation-in-future", `Commit request presented_at exceeds evaluation time by more than ${ctx.presentationSkewMs}ms`));
+    if (presented < t - ctx.presentationSkewMs)
+      v.push(violation("commit-presentation-stale", `Commit request presented_at is older than the ${ctx.presentationSkewMs}ms admissibility window`));
+    if (!Number.isNaN(from) && presented < from)
+      v.push(violation("warrant-presented-before-valid", `Commit request was presented before warrant valid_from ${warrant.valid_from}`));
+    if (!Number.isNaN(until) && presented > until)
+      v.push(violation("warrant-presented-after-expiry", `Commit request was presented after warrant expiry ${warrant.expires_at}`));
+  }
 
   // A Warrant cannot exceed / broaden its Authority Envelope.
   if (!isSubsetOf([warrant.action_type], env.allowed_action_classes))

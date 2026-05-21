@@ -1,0 +1,16 @@
+identity:
+  spiffe:
+    enabled: true
+    trustDomain: "cluster.local"
+    socketPath: "/run/spire/sockets/spire-agent.sock"
+    socketMountPath: "/run/spire/sockets"
+    csiDriver: "csi.spiffe.io"
+  mesh:
+    inject: true
+    annotations:
+      sidecar.istio.io/inject: "true"
+telemetry:
+  otel:
+    enabled: true
+    exporterEndpoint: "http://otel-collector.monitoring.svc.cluster.local:4318"
+    resourceAttributes: "deployment.environment=pilot,service.namespace=aristotle-governance-os,security.identity=spiffe"

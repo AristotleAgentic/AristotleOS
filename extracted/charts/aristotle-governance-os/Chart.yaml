@@ -1,0 +1,14 @@
+apiVersion: v2
+name: aristotle-governance-os
+description: Runtime execution governance control plane for AristotleOS.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - governance
+  - autonomous-systems
+  - execution-control
+  - admissibility
+  - evidence-ledger
+annotations:
+  aristotle.io/doctrine: "Governance must bind at the execution boundary before irreversible state mutation or external action occurs."

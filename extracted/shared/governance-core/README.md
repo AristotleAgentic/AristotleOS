@@ -79,13 +79,14 @@ execution boundary and evaluates, **in order**:
 2. Ward validity (under the MAE)
 3. Authority Envelope validity (under the Ward)
 4. Warrant validity (binding, temporal, non-replay)
-5. action classification
-6. context admissibility (Ward boundary, geo, operational limits)
-7. telemetry requirements
-8. revocation state
-9. temporal scope
-10. nonce / replay protection
-11. GEL record creation
+5. commit presentation freshness (`presented_at`)
+6. action classification
+7. context admissibility (Ward boundary, geo, operational limits)
+8. telemetry requirements
+9. revocation state
+10. temporal scope
+11. nonce / replay protection
+12. GEL record creation
 
 It returns `Allow | Deny | Escalate | FailClosed`, and it **never allows
 execution on an incomplete chain**. On `Allow` it consumes the Warrant *before*
@@ -98,7 +99,16 @@ A `Warrant` is exhaustible, action-specific, and non-replayable. It carries a
 `nonce` and a `consumption_state` (`Unused → Consumed | Expired | Revoked |
 Rejected`), and it is pinned to one act by `parameters_hash`, `context_hash`, and
 `telemetry_snapshot_hash`. A consumed Warrant can never authorize another act;
-the store enforces consumption atomically and rejects nonce replay.
+the store enforces consumption atomically and rejects nonce replay. Expired and
+revoked Warrants are latched into terminal lifecycle states in the store, so
+operator state, metrics, and GEL snapshots agree with commit-boundary
+admissibility.
+
+At the Commit Gate, the request's `presented_at` timestamp is bounded too. A
+stale, unparseable, or materially future-dated presentation is denied before the
+Warrant is consumed. The default admissibility window is 120 seconds and can be
+set explicitly with `evaluateCommit(..., { presentationSkewMs })` for low-latency
+or disconnected-edge deployments.
 
 ## GEL Records (the receipt)
 

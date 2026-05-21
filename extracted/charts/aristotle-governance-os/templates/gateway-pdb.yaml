@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: http-gateway
+  namespace: {{ include "aristotle.namespace" . }}
+  labels:
+{{ include "aristotle.commonLabels" . | indent 4 }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: http-gateway

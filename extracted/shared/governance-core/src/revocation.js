@@ -22,7 +22,7 @@ export function revokeWarrant(store, warrantId, at, out = empty()) {
         return out;
     if (w.consumption_state === "Unused") {
         w.consumption_state = "Revoked";
-        w.consumed_at = at;
+        w.state_changed_at = at;
         store.putWarrant(w);
         out.revoked_warrants.push(w.warrant_id);
     }

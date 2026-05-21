@@ -92,10 +92,21 @@ export class InMemoryGovernanceStore {
         const prior = w.consumption_state;
         w.consumption_state = "Consumed";
         w.consumed_at = at;
+        w.state_changed_at = at;
         w.commit_gate_id = gateId;
         this.consumedNonces.add(w.nonce);
         this.warrants.set(warrantId, w);
         return { warrant_id: warrantId, nonce: w.nonce, consumed_at: at, prior_state: prior, new_state: "Consumed" };
+    }
+    expireWarrant(warrantId, at) {
+        const w = this.warrants.get(warrantId);
+        if (!w)
+            throw new GovernanceError("warrant-not-found", warrantId);
+        if (w.consumption_state !== "Unused")
+            return;
+        w.consumption_state = "Expired";
+        w.state_changed_at = at;
+        this.warrants.set(warrantId, w);
     }
     spentFor(envelopeId, currency) {
         return this.spend.get(envelopeId)?.get(currency) ?? 0;

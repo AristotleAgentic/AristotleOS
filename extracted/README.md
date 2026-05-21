@@ -2,6 +2,51 @@
 
 A service-backed governance operating system prototype behind the fixed Aristotle Autonomous Governance Console operator surface.
 
+AristotleOS is runtime governance for autonomous execution: authority resolution, policy compilation, Commit Gate admissibility, warrant issuance, and evidence finalization before consequential action.
+
+## Try AristotleOS
+
+Run the public playground locally:
+
+```bash
+corepack pnpm install
+npm run aristotle:demo
+```
+
+Open:
+
+```text
+http://127.0.0.1:4173/try
+```
+
+The first scenario is a payments remediation agent attempting an $8,000 refund. AristotleOS resolves the Ward, checks the Authority Envelope, evaluates the Commit Gate, defers for approval, issues a one-time warrant only after approval, and commits the GEL record.
+
+CLI path:
+
+```bash
+npm run aristotle -- init my-governed-agent
+cd my-governed-agent
+npm --prefix .. run aristotle -- check
+npm --prefix .. run aristotle -- plan
+npm --prefix .. run aristotle -- demo payments
+```
+
+Docs:
+- [Quickstart](docs/quickstart.md)
+- [CLI](docs/cli.md)
+- [Playground](docs/playground.md)
+- [Framework adapters](docs/framework-adapters.md)
+- [Deployment](docs/deployment.md)
+- [Pilot install](docs/pilot-install.md)
+
+Pilot Kubernetes smoke:
+
+```bash
+npm run pilot:smoke:kind -- --tag 0.1.0-smoke --keep-port-forward
+```
+
+The smoke path builds the image set, installs the Helm chart into kind, then proves the governance boundary with a deferred payments action, one-time warrant issuance after approval, GEL commit, and fail-closed missing-authority behavior.
+
 ## Stack
 - Node.js 20
 - TypeScript
@@ -39,6 +84,8 @@ Execution loop:
 - long-running execution now renews active leases on task claim/heartbeat, re-queues stale work when heartbeats lapse, and caps retries with a configurable attempt budget
 
 Gateway routes:
+- `GET /ready`
+- `GET /metrics`
 - `GET /operator/os/state`
 - `GET /operator/os/missions`
 - `POST /operator/os/agents`
@@ -63,6 +110,13 @@ npm install
 npm run dev
 ```
 
+Local control plane:
+- `npm run local:up` builds the workspace, starts the runtime services in dependency order, waits for health checks, serves the built console, and writes process logs under `logs/local-control-plane/`
+- `npm run local:status` shows service health, URLs, and recorded process IDs
+- `npm run local:down` stops the services started by the local supervisor
+- the local supervisor uses `SERVICE_DISCOVERY_MODE=local`, enables the Ward/Warrant chain in shadow mode by default, and persists local state under `data/`
+- use `npm run local:up -- --no-build` when the workspace is already built and you only need a fast restart
+
 Dashboard canvas:
 - the operator dashboard now runs as a Vite app from `apps/console-ui`
 - after `npm run dev`, open `http://localhost:4173`
@@ -84,6 +138,10 @@ Gateway production preflight:
   - explicit `EVIDENCE_LEDGER_STATE_PATH`
   - explicit `AGENT_OS_STATE_PATH`
 - `GET /health` now includes gateway preflight posture and checks
+- `GET /ready` is the strict readiness gate: it fails with `503` when preflight fails or any critical governance upstream is unavailable
+- `GET /metrics` exposes Prometheus-compatible readiness, fail-closed, upstream health, upstream latency, and active governance halt gauges
+- `GATEWAY_CRITICAL_SERVICES` can narrow or expand the comma-separated critical upstream set used by `/ready`
+- `GATEWAY_READINESS_TIMEOUT_MS` controls per-upstream readiness probe timeout
 - `ALLOW_INSECURE_PRODUCTION_BOOT=true` exists only as an emergency override and should not be used for normal enterprise deployment
 
 Core validation:
@@ -94,6 +152,13 @@ Core validation:
 - if operator auth is enabled, export the same `OPERATOR_API_KEY` before running `npm run validate:core`
 - set `OPERATOR_ACTOR` if you want validation-driven operator actions to be attributed consistently in ledger evidence
 - set `OPERATOR_ROLE` if role enforcement is enabled and you want validation to act as a permitted role
+
+Runtime benchmarking:
+- `npm run benchmark:runtime`
+- exercises the governance-core execution boundary in process without requiring a running service mesh
+- measures warrant issuance, admissibility commit-gate evaluation, fail-closed missing-warrant handling, revocation blocking, GEL append throughput, and replay/hash-chain verification
+- writes machine-readable JSON plus a Markdown operator report under `reports/`
+- tune sample size with `npm run benchmark:runtime -- --iterations 5000 --warmup 500 --out reports/runtime-benchmark.json`
 
 Operator RBAC:
 - set `OPERATOR_ROLE_ENFORCEMENT=true` to enforce operator roles at the gateway
@@ -120,10 +185,15 @@ docker compose up --build
 
 Enterprise stack:
 - use `.env.production.example` as the starting template for production promotion
+- Kubernetes production manifests live under `manifests/k8s/`: apply `namespace.yaml`, create a real `aristotle-runtime-secrets` Secret using `production-secrets.example.yaml` as the contract, then apply `control-plane.yaml`, `network-policy.yaml`, `gateway-deployment.yaml`, and `observability.yaml`
+- Pilot cluster installs use the Helm chart under `charts/aristotle-governance-os` through `npm run pilot:install -- --tag <immutable-image-tag>`; see `docs/pilot-install.md`
 - `npm run stack:up` builds and starts the full service mesh plus the dashboard
 - `npm run stack:down` stops the stack
 - `npm run stack:logs` tails the full stack logs
 - `npm run enterprise:preflight` enforces enterprise-safe production configuration before boot
+- `npm run enterprise:contracts` verifies that gateway fail-closed readiness, metrics, Compose healthchecks, Kubernetes control-plane manifests, namespace pod-security posture, network policy boundaries, Prometheus scrape/alert contracts, probes, resources, durable state, and security context stay wired
+- `npm run enterprise:ui-safety` verifies that the operator console keeps visible readiness gates, mutation blocks, scoped halt validation, confirmation prompts, and mission/agent form validation wired
+- `npm run enterprise:release-manifest` emits a hashed release manifest and Markdown summary under `reports/`; set `RELEASE_MANIFEST_SIGNING_SECRET` to sign it with HMAC
 - `npm run enterprise:verify` runs enterprise preflight plus full stack and constitutional verification
 - `npm run stack:smoke` verifies gateway health/preflight, deployment posture, deployable catalog, operator reachability, assurance report availability, and dashboard reachability
 - `npm run stack:verify` runs both deployment smoke validation and the deeper constitutional runtime validation

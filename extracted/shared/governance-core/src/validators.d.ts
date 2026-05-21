@@ -16,6 +16,12 @@ import { type ValidationResult } from "./errors.js";
 import type { AuthorityEnvelope, CommitRequest, Governor, MetaAuthorityEnvelope, MonetaryLimit, Warrant, Ward } from "./types.js";
 export interface ValidationContext {
     now: Date;
+    /**
+     * Maximum tolerated wall-clock difference between when a commit request says
+     * it was presented and when the gate evaluates it. This keeps Warrants from
+     * becoming loose bearer tokens while still allowing ordinary network delay.
+     */
+    presentationSkewMs: number;
     /** When present, signatures are verified and missing/invalid ones are violations. */
     keyring?: Keyring;
 }

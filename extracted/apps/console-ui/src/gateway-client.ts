@@ -29,6 +29,31 @@ export type HealthServiceResult =
 
 export interface GatewayHealth {
   ok: boolean;
+  preflight?: {
+    ok: boolean;
+    mode: "development" | "production";
+    checks: Array<{
+      name: string;
+      status: "pass" | "warn" | "fail";
+      detail: string;
+    }>;
+  };
+  readiness?: {
+    ok: boolean;
+    failClosed: boolean;
+    activeGovernanceHalt: boolean;
+    timeoutMs: number;
+    criticalServices: string[];
+    failedCritical: string[];
+    services: Array<{
+      name: string;
+      critical: boolean;
+      ok: boolean;
+      status?: number;
+      latencyMs: number;
+      error?: string;
+    }>;
+  };
   services: HealthServiceResult[];
 }
 

@@ -1,0 +1,37 @@
+AristotleOS pilot install complete.
+
+Doctrine:
+  Governance must bind at the execution boundary before irreversible state mutation or external action occurs.
+
+Gateway readiness:
+  kubectl -n {{ include "aristotle.namespace" . }} port-forward svc/http-gateway 8080:{{ (index .Values.services "http-gateway").port }}
+  curl http://127.0.0.1:8080/ready
+
+Operator console:
+  kubectl -n {{ include "aristotle.namespace" . }} port-forward svc/console-ui 4173:{{ .Values.console.port }}
+  open http://127.0.0.1:4173
+
+Public trial:
+  open http://127.0.0.1:4173{{ .Values.console.publicRoutes.landing }}
+  open http://127.0.0.1:4173{{ .Values.console.publicRoutes.playground }}
+
+Operator workflow:
+  1. Open http://127.0.0.1:4173{{ .Values.console.publicRoutes.operatorConsole }}
+  2. Create a governed mission in Mission Command.
+  3. Register/select an agent and advance the mission.
+  4. Execute only after Commit Boundary admissibility and warrant issuance.
+  5. Export authority chain + GEL evidence from the Pilot Workflow panel.
+
+Evidence export:
+  curl -H "x-operator-key: $OPERATOR_API_KEY" -H "x-operator-actor: enterprise-validation" -H "x-operator-role: operator" \
+    http://127.0.0.1:8080/operator/governance-chain/gel/export
+
+SPIFFE:
+  {{- if .Values.identity.spiffe.enabled }}
+  Workloads mount the SPIRE Workload API socket through CSI driver {{ .Values.identity.spiffe.csiDriver }} at {{ .Values.identity.spiffe.socketPath }} and use ServiceAccount {{ include "aristotle.serviceAccountName" . }}.
+  {{- else }}
+  Disabled. Enable with --set identity.spiffe.enabled=true after SPIRE is installed.
+  {{- end }}
+
+OpenTelemetry:
+  OTLP endpoint: {{ .Values.telemetry.otel.exporterEndpoint }}

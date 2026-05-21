@@ -14,7 +14,7 @@ import { canonicalize, hashCanonical, verifyObjectSignatures } from "./hash.js";
 import { evaluateConstraints, intersect, isSubsetOf } from "./constraints.js";
 import { combine, fromViolations, violation } from "./errors.js";
 export function context(partial = {}) {
-    return { now: partial.now ?? new Date(), keyring: partial.keyring };
+    return { now: partial.now ?? new Date(), presentationSkewMs: partial.presentationSkewMs ?? 120_000, keyring: partial.keyring };
 }
 function parse(ts) {
     const t = Date.parse(ts);
@@ -221,6 +221,20 @@ export function validateWarrant(warrant, env, ward, mae, request, ctx) {
     // Warrant validity may not outlast the Ward's ceiling.
     if (!Number.isNaN(from) && !Number.isNaN(until) && (until - from) / 1000 > ward.warrant_constraints.max_validity_seconds)
         v.push(violation("warrant-validity-exceeds-ward", "Warrant validity window exceeds Ward ceiling"));
+    const presented = parse(request.presented_at);
+    if (Number.isNaN(presented)) {
+        v.push(violation("commit-presentation-temporal", "Commit request presented_at is unparseable"));
+    }
+    else {
+        if (presented > t + ctx.presentationSkewMs)
+            v.push(violation("commit-presentation-in-future", `Commit request presented_at exceeds evaluation time by more than ${ctx.presentationSkewMs}ms`));
+        if (presented < t - ctx.presentationSkewMs)
+            v.push(violation("commit-presentation-stale", `Commit request presented_at is older than the ${ctx.presentationSkewMs}ms admissibility window`));
+        if (!Number.isNaN(from) && presented < from)
+            v.push(violation("warrant-presented-before-valid", `Commit request was presented before warrant valid_from ${warrant.valid_from}`));
+        if (!Number.isNaN(until) && presented > until)
+            v.push(violation("warrant-presented-after-expiry", `Commit request was presented after warrant expiry ${warrant.expires_at}`));
+    }
     // A Warrant cannot exceed / broaden its Authority Envelope.
     if (!isSubsetOf([warrant.action_type], env.allowed_action_classes))
         v.push(violation("warrant-cannot-exceed-authority-envelope", `action_type ${warrant.action_type} not in envelope allowed classes`));

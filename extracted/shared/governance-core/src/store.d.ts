@@ -49,6 +49,8 @@ export interface GovernanceStore {
     getFederationAgreement(id: string): FederationAgreement | undefined;
     /** Atomic single-use consumption. Throws GovernanceError if already spent or replayed. */
     consumeWarrant(warrantId: string, gateId: string, at: string): WarrantConsumptionProof;
+    /** Latch an unused warrant into Expired when the commit boundary observes expiry. */
+    expireWarrant(warrantId: string, at: string): void;
     /** Cumulative-spend accounting for envelope budgets. */
     spentFor(envelopeId: string, currency: string): number;
     recordSpend(envelopeId: string, currency: string, amount: number): void;
@@ -94,6 +96,7 @@ export declare class InMemoryGovernanceStore implements GovernanceStore {
     putFederationAgreement(a: FederationAgreement): void;
     getFederationAgreement(id: string): FederationAgreement | undefined;
     consumeWarrant(warrantId: string, gateId: string, at: string): WarrantConsumptionProof;
+    expireWarrant(warrantId: string, at: string): void;
     spentFor(envelopeId: string, currency: string): number;
     recordSpend(envelopeId: string, currency: string, amount: number): void;
     gelHeadHash(): string;

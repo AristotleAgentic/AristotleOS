@@ -20,6 +20,8 @@ import type { GovernanceStore } from "./store.js";
 import type { CommitDecision, CommitRequest, ExecutionResult, GELRecord } from "./types.js";
 export interface CommitOptions {
     now?: Date;
+    /** Maximum accepted age/future skew for CommitRequest.presented_at. */
+    presentationSkewMs?: number;
     keyring: Keyring;
     /** Key the gate signs GEL records with. */
     signKeyId: string;

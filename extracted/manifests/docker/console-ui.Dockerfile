@@ -9,4 +9,6 @@ RUN corepack pnpm install --frozen-lockfile=false
 RUN corepack pnpm --filter @aristotle/shared-types --filter @aristotle/shared-schemas run build
 WORKDIR /app/apps/console-ui
 RUN corepack pnpm run build
-CMD ["corepack", "pnpm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "4173"]
+ENV PORT_CONSOLE=4173
+ENV CONSOLE_GATEWAY_BASE_URL=http://http-gateway:8080
+CMD ["node", "server.mjs"]

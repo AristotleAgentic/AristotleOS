@@ -22,7 +22,7 @@ import { finalizeAndAppend } from "./gel.js";
 import { newId } from "./ids.js";
 import { chainIsIntact, context } from "./validators.js";
 export function evaluateCommit(store, request, opts) {
-    const ctx = context({ now: opts.now, keyring: opts.keyring });
+    const ctx = context({ now: opts.now, keyring: opts.keyring, presentationSkewMs: opts.presentationSkewMs });
     const now = ctx.now;
     const chain = { commit_gate_id: request.commit_gate_id };
     try {
@@ -52,6 +52,7 @@ export function evaluateCommit(store, request, opts) {
         chain.warrant_id = warrant.warrant_id;
         // -- chain validity (MAE -> Ward -> Envelope -> Warrant) -----------------
         const violations = [...chainIsIntact(mae, ward, env, warrant, request, ctx).violations];
+        latchExpiredWarrant(store, warrant, now);
         // -- action classification ----------------------------------------------
         if (request.action.action_type !== warrant.action_type)
             violations.push(violation("action-classification", "request action_type does not match the warrant"));
@@ -208,6 +209,12 @@ function snapshot(o) {
         authority_envelope: o.env?.revocation_state ?? "active",
         warrant: o.warrant?.consumption_state ?? "Unused",
     };
+}
+function latchExpiredWarrant(store, warrant, now) {
+    const expiresAt = Date.parse(warrant.expires_at);
+    if (warrant.consumption_state === "Unused" && !Number.isNaN(expiresAt) && now.getTime() > expiresAt) {
+        store.expireWarrant(warrant.warrant_id, now.toISOString());
+    }
 }
 function numberOrUndefined(v) {
     return typeof v === "number" && Number.isFinite(v) ? v : undefined;

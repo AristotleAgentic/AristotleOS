@@ -67,6 +67,8 @@ export interface GovernanceStore {
 
   /** Atomic single-use consumption. Throws GovernanceError if already spent or replayed. */
   consumeWarrant(warrantId: string, gateId: string, at: string): WarrantConsumptionProof;
+  /** Latch an unused warrant into Expired when the commit boundary observes expiry. */
+  expireWarrant(warrantId: string, at: string): void;
 
   /** Cumulative-spend accounting for envelope budgets. */
   spentFor(envelopeId: string, currency: string): number;
@@ -172,10 +174,20 @@ export class InMemoryGovernanceStore implements GovernanceStore {
     const prior = w.consumption_state;
     w.consumption_state = "Consumed";
     w.consumed_at = at;
+    w.state_changed_at = at;
     w.commit_gate_id = gateId;
     this.consumedNonces.add(w.nonce);
     this.warrants.set(warrantId, w);
     return { warrant_id: warrantId, nonce: w.nonce, consumed_at: at, prior_state: prior, new_state: "Consumed" };
+  }
+
+  expireWarrant(warrantId: string, at: string): void {
+    const w = this.warrants.get(warrantId);
+    if (!w) throw new GovernanceError("warrant-not-found", warrantId);
+    if (w.consumption_state !== "Unused") return;
+    w.consumption_state = "Expired";
+    w.state_changed_at = at;
+    this.warrants.set(warrantId, w);
   }
 
   spentFor(envelopeId: string, currency: string): number {

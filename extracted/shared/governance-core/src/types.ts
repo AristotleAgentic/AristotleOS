@@ -320,6 +320,8 @@ export interface Warrant {
   /** Single-use nonce; tracked globally to prevent replay across warrants. */
   nonce: string;
   consumption_state: ConsumptionState;
+  /** Last lifecycle state transition time for Consumed/Expired/Revoked/Rejected. */
+  state_changed_at?: ISO8601;
   consumed_at?: ISO8601;
   commit_gate_id?: string;
   signatures: Signature[];

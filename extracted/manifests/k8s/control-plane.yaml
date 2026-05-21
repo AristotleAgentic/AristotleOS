@@ -1,0 +1,530 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aristotle-runtime-config
+  namespace: aristotle-governance-os
+data:
+  NODE_ENV: "production"
+  SERVICE_DISCOVERY_MODE: "container"
+  ALLOW_INSECURE_PRODUCTION_BOOT: "false"
+  GOVERNANCE_CHAIN_V2: "true"
+  GOVERNANCE_CHAIN_MODE: "enforce"
+  GOVERNANCE_CHAIN_KEY_ID: "governance-kernel-production"
+  GOVERNANCE_CHAIN_STATE_PATH: "/var/lib/aristotle/governance-chain.json"
+  EVIDENCE_LEDGER_STATE_PATH: "/var/lib/aristotle/evidence-ledger.json"
+  AGENT_OS_STATE_PATH: "/var/lib/aristotle/agent-os.json"
+  EVIDENCE_LEDGER_SIGNER: "evidence-ledger.production"
+  PORT_GATEWAY: "8080"
+  PORT_GOVERNANCE_KERNEL: "7001"
+  PORT_POLICY_COMPILER: "7002"
+  PORT_EVIDENCE_LEDGER: "7003"
+  PORT_META_AUTHORITY_REGISTRY: "7004"
+  PORT_SIMULATION_ENGINE: "7005"
+  PORT_AUTHORITY_ROUTER: "7006"
+  PORT_WITNESS_SERVICE: "7007"
+  PORT_EXECUTION_GATE: "7008"
+  PORT_AGENT_OS: "7009"
+  OPERATOR_SESSION_ENFORCEMENT: "true"
+  OPERATOR_SESSION_TTL_MS: "900000"
+  OPERATOR_SESSION_SKEW_MS: "60000"
+  OPERATOR_ROLE_ENFORCEMENT: "true"
+  OPERATOR_DEFAULT_ROLE: "operator"
+  OPERATOR_READ_ROLES: "viewer,operator,admin"
+  OPERATOR_MUTATION_ROLES: "operator,admin"
+  OPERATOR_READ_ACTORS: "enterprise-console,enterprise-validation"
+  OPERATOR_MUTATION_ACTORS: "enterprise-console,enterprise-validation"
+  WITNESS_QUORUM: "2"
+  KILL_SWITCH_DEFAULT: "inactive"
+  REPLAY_TICK_MS: "1500"
+  AGENT_OS_HEARTBEAT_TIMEOUT_MS: "300000"
+  AGENT_OS_LEASE_RENEWAL_WINDOW_MS: "900000"
+  AGENT_OS_LEASE_EXTENSION_MS: "1800000"
+  AGENT_OS_TASK_MAX_ATTEMPTS: "3"
+  GATEWAY_READINESS_TIMEOUT_MS: "2000"
+  GATEWAY_CRITICAL_SERVICES: "governance-kernel,policy-compiler,evidence-ledger,meta-authority-registry,simulation-engine,witness-service,execution-gate,agent-os"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: evidence-ledger-data
+  namespace: aristotle-governance-os
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: governance-kernel-data
+  namespace: aristotle-governance-os
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: agent-os-data
+  namespace: aristotle-governance-os
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meta-authority-registry
+  namespace: aristotle-governance-os
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: meta-authority-registry
+  template:
+    metadata:
+      labels:
+        app: meta-authority-registry
+    spec:
+      containers:
+        - name: meta-authority-registry
+          image: aristotle/meta-authority-registry:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: aristotle-runtime-config
+            - secretRef:
+                name: aristotle-runtime-secrets
+          ports:
+            - name: http
+              containerPort: 7004
+          readinessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
+          livenessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 20, timeoutSeconds: 3, failureThreshold: 6 }
+          resources:
+            requests: { cpu: 50m, memory: 96Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: meta-authority-registry
+  namespace: aristotle-governance-os
+spec:
+  selector: { app: meta-authority-registry }
+  ports:
+    - { name: http, port: 7004, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: policy-compiler
+  namespace: aristotle-governance-os
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: policy-compiler
+  template:
+    metadata:
+      labels:
+        app: policy-compiler
+    spec:
+      containers:
+        - name: policy-compiler
+          image: aristotle/policy-compiler:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef: { name: aristotle-runtime-config }
+            - secretRef: { name: aristotle-runtime-secrets }
+          ports:
+            - { name: http, containerPort: 7002 }
+          readinessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
+          livenessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 20, timeoutSeconds: 3, failureThreshold: 6 }
+          resources:
+            requests: { cpu: 50m, memory: 96Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: policy-compiler
+  namespace: aristotle-governance-os
+spec:
+  selector: { app: policy-compiler }
+  ports:
+    - { name: http, port: 7002, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: evidence-ledger
+  namespace: aristotle-governance-os
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: evidence-ledger
+  template:
+    metadata:
+      labels:
+        app: evidence-ledger
+    spec:
+      containers:
+        - name: evidence-ledger
+          image: aristotle/evidence-ledger:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef: { name: aristotle-runtime-config }
+            - secretRef: { name: aristotle-runtime-secrets }
+          ports:
+            - { name: http, containerPort: 7003 }
+          volumeMounts:
+            - { name: evidence-ledger-data, mountPath: /var/lib/aristotle }
+          readinessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
+          livenessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 20, timeoutSeconds: 3, failureThreshold: 6 }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 1000m, memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+      volumes:
+        - name: evidence-ledger-data
+          persistentVolumeClaim: { claimName: evidence-ledger-data }
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: evidence-ledger
+  namespace: aristotle-governance-os
+spec:
+  selector: { app: evidence-ledger }
+  ports:
+    - { name: http, port: 7003, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authority-router
+  namespace: aristotle-governance-os
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: authority-router
+  template:
+    metadata:
+      labels:
+        app: authority-router
+    spec:
+      containers:
+        - name: authority-router
+          image: aristotle/authority-router:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef: { name: aristotle-runtime-config }
+            - secretRef: { name: aristotle-runtime-secrets }
+          ports:
+            - { name: http, containerPort: 7006 }
+          readinessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
+          livenessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 20, timeoutSeconds: 3, failureThreshold: 6 }
+          resources:
+            requests: { cpu: 50m, memory: 96Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: authority-router
+  namespace: aristotle-governance-os
+spec:
+  selector: { app: authority-router }
+  ports:
+    - { name: http, port: 7006, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: witness-service
+  namespace: aristotle-governance-os
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: witness-service
+  template:
+    metadata:
+      labels:
+        app: witness-service
+    spec:
+      containers:
+        - name: witness-service
+          image: aristotle/witness-service:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef: { name: aristotle-runtime-config }
+            - secretRef: { name: aristotle-runtime-secrets }
+          ports:
+            - { name: http, containerPort: 7007 }
+          readinessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
+          livenessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 20, timeoutSeconds: 3, failureThreshold: 6 }
+          resources:
+            requests: { cpu: 50m, memory: 96Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: witness-service
+  namespace: aristotle-governance-os
+spec:
+  selector: { app: witness-service }
+  ports:
+    - { name: http, port: 7007, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: execution-gate
+  namespace: aristotle-governance-os
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: execution-gate
+  template:
+    metadata:
+      labels:
+        app: execution-gate
+    spec:
+      containers:
+        - name: execution-gate
+          image: aristotle/execution-gate:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef: { name: aristotle-runtime-config }
+            - secretRef: { name: aristotle-runtime-secrets }
+          ports:
+            - { name: http, containerPort: 7008 }
+          readinessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
+          livenessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 20, timeoutSeconds: 3, failureThreshold: 6 }
+          resources:
+            requests: { cpu: 50m, memory: 96Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: execution-gate
+  namespace: aristotle-governance-os
+spec:
+  selector: { app: execution-gate }
+  ports:
+    - { name: http, port: 7008, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: governance-kernel
+  namespace: aristotle-governance-os
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: governance-kernel
+  template:
+    metadata:
+      labels:
+        app: governance-kernel
+    spec:
+      containers:
+        - name: governance-kernel
+          image: aristotle/governance-kernel:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef: { name: aristotle-runtime-config }
+            - secretRef: { name: aristotle-runtime-secrets }
+          ports:
+            - { name: http, containerPort: 7001 }
+          volumeMounts:
+            - { name: governance-kernel-data, mountPath: /var/lib/aristotle }
+          readinessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
+          livenessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 20, timeoutSeconds: 3, failureThreshold: 6 }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 1000m, memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+      volumes:
+        - name: governance-kernel-data
+          persistentVolumeClaim: { claimName: governance-kernel-data }
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: governance-kernel
+  namespace: aristotle-governance-os
+spec:
+  selector: { app: governance-kernel }
+  ports:
+    - { name: http, port: 7001, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simulation-engine
+  namespace: aristotle-governance-os
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: simulation-engine
+  template:
+    metadata:
+      labels:
+        app: simulation-engine
+    spec:
+      containers:
+        - name: simulation-engine
+          image: aristotle/simulation-engine:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef: { name: aristotle-runtime-config }
+            - secretRef: { name: aristotle-runtime-secrets }
+          ports:
+            - { name: http, containerPort: 7005 }
+          readinessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
+          livenessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 20, timeoutSeconds: 3, failureThreshold: 6 }
+          resources:
+            requests: { cpu: 50m, memory: 96Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: simulation-engine
+  namespace: aristotle-governance-os
+spec:
+  selector: { app: simulation-engine }
+  ports:
+    - { name: http, port: 7005, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-os
+  namespace: aristotle-governance-os
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent-os
+  template:
+    metadata:
+      labels:
+        app: agent-os
+    spec:
+      containers:
+        - name: agent-os
+          image: aristotle/agent-os:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef: { name: aristotle-runtime-config }
+            - secretRef: { name: aristotle-runtime-secrets }
+          ports:
+            - { name: http, containerPort: 7009 }
+          volumeMounts:
+            - { name: agent-os-data, mountPath: /var/lib/aristotle }
+          readinessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
+          livenessProbe: { httpGet: { path: /health, port: http }, periodSeconds: 20, timeoutSeconds: 3, failureThreshold: 6 }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 1000m, memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+      volumes:
+        - name: agent-os-data
+          persistentVolumeClaim: { claimName: agent-os-data }
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-os
+  namespace: aristotle-governance-os
+spec:
+  selector: { app: agent-os }
+  ports:
+    - { name: http, port: 7009, targetPort: http }

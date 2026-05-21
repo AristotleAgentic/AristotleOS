@@ -76,6 +76,20 @@ async function main() {
   assert(gatewayHealth.json?.preflight?.ok === true, "gateway preflight not ok");
   console.log("[stack] gateway health and preflight ok");
 
+  const gatewayReadiness = await requestJson(toGatewayUrl("/ready"));
+  assert(gatewayReadiness.ok, `gateway readiness failed with ${gatewayReadiness.status}`);
+  assert(gatewayReadiness.json?.ok === true, "gateway readiness payload not ok");
+  assert(gatewayReadiness.json?.failClosed === false, "gateway readiness is fail-closed");
+  assert(Array.isArray(gatewayReadiness.json?.services), "gateway readiness missing service probes");
+  assert(gatewayReadiness.json.services.every((service) => service.ok === true), "one or more gateway upstream probes are not ready");
+  console.log(`[stack] gateway readiness ok (${gatewayReadiness.json.services.length} upstreams)`);
+
+  const gatewayMetrics = await requestText(toGatewayUrl("/metrics"));
+  assert(gatewayMetrics.ok, `gateway metrics failed with ${gatewayMetrics.status}`);
+  assert(gatewayMetrics.text.includes("aristotle_gateway_ready 1"), "gateway metrics missing ready gauge");
+  assert(gatewayMetrics.text.includes("aristotle_upstream_ready"), "gateway metrics missing upstream readiness gauges");
+  console.log("[stack] gateway metrics reachable");
+
   const deploymentPosture = await requestJson(toGatewayUrl("/operator/deployment/posture"));
   assert(deploymentPosture.ok, `/operator/deployment/posture failed with ${deploymentPosture.status}`);
   assert(deploymentPosture.json?.preflight?.ok === true, "deployment posture preflight not ok");

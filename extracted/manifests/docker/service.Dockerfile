@@ -8,7 +8,7 @@ RUN corepack enable
 COPY . .
 RUN corepack pnpm install --frozen-lockfile=false
 # Shared libraries first (the service imports their built dist at runtime).
-RUN corepack pnpm --filter @aristotle/shared-types --filter @aristotle/shared-schemas --filter @aristotle/governance-core run build
+RUN corepack pnpm --filter @aristotle/shared-types --filter @aristotle/shared-schemas --filter @aristotle/governance-core --filter @aristotle/trial-engine run build
 ARG SERVICE_PATH
 WORKDIR /app/${SERVICE_PATH}
 RUN corepack pnpm run build

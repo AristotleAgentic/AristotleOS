@@ -1,0 +1,40 @@
+ward "enterprise-payments" {
+  sovereign = "Acme Finance"
+  scope = ["payments", "refunds", "customer-remediation"]
+  default_posture = "deny"
+}
+
+authority_envelope "refund-authority" {
+  ward = "enterprise-payments"
+  actor = "agent:payments-remediation"
+  permitted_actions = ["stripe.refund"]
+  max_amount = 10000
+  currency = "USD"
+  expires_in = "15m"
+  revocable = true
+  revoked = false
+}
+
+commit_gate "payments-gate" {
+  action = "stripe.refund"
+  require_authority = "refund-authority"
+  require_warrant = true
+  autonomous_limit = 500
+  defer_if amount >= 500
+  deny_if amount > 10000
+  deny_action "stripe.payout"
+  evidence = ["policy_hash", "authority_hash", "ward_context", "telemetry", "operator_decision"]
+}
+
+warrant_policy "refund-warrant" {
+  standing_power = false
+  issue_on = "admissible_commit"
+  expires_in = "60s"
+  single_use = true
+}
+
+gel {
+  hash_chain = true
+  sign_records = true
+  include_replay_material = true
+}

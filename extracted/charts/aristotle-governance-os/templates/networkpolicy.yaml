@@ -1,0 +1,92 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: {{ include "aristotle.namespace" . }}
+  labels:
+{{ include "aristotle.commonLabels" . | indent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateway-ingress
+  namespace: {{ include "aristotle.namespace" . }}
+  labels:
+{{ include "aristotle.commonLabels" . | indent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: http-gateway
+  policyTypes: ["Ingress"]
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: {{ (index .Values.services "http-gateway").port }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-governance-control-plane
+  namespace: {{ include "aristotle.namespace" . }}
+  labels:
+{{ include "aristotle.commonLabels" . | indent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector: {}
+      ports:
+{{- range $name, $svc := .Values.services }}
+        - protocol: TCP
+          port: {{ $svc.port }}
+{{- end }}
+{{- if .Values.console.enabled }}
+        - protocol: TCP
+          port: {{ .Values.console.port }}
+{{- end }}
+{{- if and .Values.ingress.enabled .Values.console.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-console-ingress
+  namespace: {{ include "aristotle.namespace" . }}
+  labels:
+{{ include "aristotle.commonLabels" . | indent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: console-ui
+  policyTypes: ["Ingress"]
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.console.port }}
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-monitoring-scrape
+  namespace: {{ include "aristotle.namespace" . }}
+  labels:
+{{ include "aristotle.commonLabels" . | indent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+{{- range $name, $svc := .Values.services }}
+        - protocol: TCP
+          port: {{ $svc.port }}
+{{- end }}
+{{- end }}

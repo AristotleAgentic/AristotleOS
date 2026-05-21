@@ -1,0 +1,76 @@
+{{- if .Values.observability.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: aristotle-http-gateway
+  namespace: {{ include "aristotle.namespace" . }}
+  labels:
+{{ include "aristotle.commonLabels" . | indent 4 }}
+    app: http-gateway
+    aristotle.io/component: observability
+spec:
+  selector:
+    matchLabels:
+      app: http-gateway
+  namespaceSelector:
+    matchNames:
+      - {{ include "aristotle.namespace" . }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 5s
+{{- end }}
+{{- if and .Values.observability.serviceMonitor.enabled .Values.observability.prometheusRules.enabled }}
+---
+{{- end }}
+{{- if .Values.observability.prometheusRules.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: aristotle-governance-boundary
+  namespace: {{ include "aristotle.namespace" . }}
+  labels:
+{{ include "aristotle.commonLabels" . | indent 4 }}
+    app: http-gateway
+    aristotle.io/component: observability
+spec:
+  groups:
+    - name: aristotle.governance-boundary
+      rules:
+        - alert: AristotleGatewayNotReady
+          expr: aristotle_gateway_ready == 0
+          for: 2m
+          labels: { severity: critical, boundary: commit-gate }
+          annotations:
+            summary: AristotleOS gateway is not ready
+            description: The gateway readiness contract is failing, so governed execution must be treated as unavailable.
+        - alert: AristotleGatewayFailClosed
+          expr: aristotle_gateway_fail_closed == 1
+          for: 1m
+          labels: { severity: critical, boundary: commit-gate }
+          annotations:
+            summary: AristotleOS gateway has entered fail-closed posture
+            description: The runtime governance boundary is refusing readiness because preflight or critical upstream checks failed.
+        - alert: AristotleCriticalGovernanceUpstreamDown
+          expr: aristotle_upstream_ready{critical="true"} == 0
+          for: 1m
+          labels: { severity: critical, boundary: commit-gate }
+          annotations:
+            summary: Critical governance upstream is down
+            description: A critical service behind the execution-boundary gate is unavailable.
+        - alert: AristotleGovernanceHaltActive
+          expr: aristotle_governance_halt_active == 1
+          for: 0m
+          labels: { severity: warning, boundary: sovereign-halt }
+          annotations:
+            summary: Sovereign governance halt is active
+            description: The kernel or execution gate is reporting an active governance halt.
+        - alert: AristotleGovernanceUpstreamLatencyHigh
+          expr: aristotle_upstream_latency_ms > 1500
+          for: 5m
+          labels: { severity: warning, boundary: commit-gate }
+          annotations:
+            summary: Governance upstream readiness latency is high
+            description: A governance service readiness probe is approaching the gateway readiness timeout.
+{{- end }}

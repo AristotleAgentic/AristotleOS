@@ -1,7 +1,8 @@
-import { createHmac, timingSafeEqual, randomUUID } from "node:crypto";
+import { createHmac, timingSafeEqual, randomBytes, randomUUID } from "node:crypto";
 import { createApp } from "./lib.js";
 import { runGatewayPreflight } from "./preflight.js";
 import { createGovernanceChainProxy } from "./governance-chain-proxy.js";
+import { PAYMENTS_GOVERNANCE_SOURCE, TRIAL_SCENARIOS, evaluateTrialAction, parseGovernanceSource, planGovernanceChange, validateGovernanceSource } from "@aristotle/trial-engine";
 const port = Number(process.env.PORT_GATEWAY ?? 8080);
 const app = createApp();
 const serviceDiscoveryMode = process.env.SERVICE_DISCOVERY_MODE ?? "container";
@@ -53,6 +54,25 @@ const witnessServiceBase = serviceBase("witness-service", "HOST_WITNESS_SERVICE"
 const executionGateBase = serviceBase("execution-gate", "HOST_EXECUTION_GATE", Number(process.env.PORT_EXECUTION_GATE ?? 7008));
 const agentOsBase = serviceBase("agent-os", "HOST_AGENT_OS", Number(process.env.PORT_AGENT_OS ?? 7009));
 const chainV2Enabled = (process.env.GOVERNANCE_CHAIN_V2 ?? "false").toLowerCase() === "true";
+const readinessTimeoutMs = Number(process.env.GATEWAY_READINESS_TIMEOUT_MS ?? 2000);
+const otelTracesExporter = (process.env.OTEL_TRACES_EXPORTER ?? "").toLowerCase();
+const otelExporterEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT?.replace(/\/+$/, "");
+const otelServiceName = process.env.OTEL_SERVICE_NAME?.trim() || "aristotle-http-gateway";
+const otelResourceAttributes = process.env.OTEL_RESOURCE_ATTRIBUTES?.trim() || "";
+const readinessCriticalServices = new Set((process.env.GATEWAY_CRITICAL_SERVICES ?? "governance-kernel,policy-compiler,evidence-ledger,meta-authority-registry,simulation-engine,witness-service,execution-gate,agent-os")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean));
+const observedServices = [
+    { name: "governance-kernel", base: governanceKernelBase, path: "/health" },
+    { name: "policy-compiler", base: policyCompilerBase, path: "/health" },
+    { name: "evidence-ledger", base: evidenceLedgerBase, path: "/health" },
+    { name: "meta-authority-registry", base: metaAuthorityRegistryBase, path: "/health" },
+    { name: "simulation-engine", base: simulationEngineBase, path: "/health" },
+    { name: "witness-service", base: witnessServiceBase, path: "/health" },
+    { name: "execution-gate", base: executionGateBase, path: "/health" },
+    { name: "agent-os", base: agentOsBase, path: "/health" }
+];
 console.log("http-gateway upstream bases", {
     governanceKernelBase,
     policyCompilerBase,
@@ -78,6 +98,154 @@ const call = async (base, path, init) => {
         throw new Error(`Upstream ${base}${path} failed with ${res.status}${body ? `: ${body}` : ""}`);
     }
     return res.json();
+};
+const roundMs = (value) => Math.round(value * 1000) / 1000;
+const probeService = async (service, timeoutMs = readinessTimeoutMs) => {
+    const startedAt = performance.now();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch(`http://${service.base}${service.path}`, { signal: controller.signal });
+        const text = await response.text().catch(() => "");
+        let json = null;
+        try {
+            json = text ? JSON.parse(text) : null;
+        }
+        catch {
+            json = null;
+        }
+        return {
+            name: service.name,
+            base: service.base,
+            critical: readinessCriticalServices.has(service.name),
+            ok: response.ok && json?.ok === true,
+            status: response.status,
+            latencyMs: roundMs(performance.now() - startedAt),
+            service: typeof json?.service === "string" ? json.service : undefined,
+            killSwitchState: typeof json?.killSwitchState === "string" ? json.killSwitchState : undefined,
+            activeKillScopes: Array.isArray(json?.activeKillScopes) ? json.activeKillScopes : undefined
+        };
+    }
+    catch (error) {
+        return {
+            name: service.name,
+            base: service.base,
+            critical: readinessCriticalServices.has(service.name),
+            ok: false,
+            latencyMs: roundMs(performance.now() - startedAt),
+            error: error instanceof Error ? error.message : String(error)
+        };
+    }
+    finally {
+        clearTimeout(timeout);
+    }
+};
+const evaluateReadiness = async () => {
+    const services = await Promise.all(observedServices.map((service) => probeService(service)));
+    const failedCritical = services.filter((service) => service.critical && !service.ok);
+    const activeGovernanceHalt = services.some((service) => (service.name === "governance-kernel" || service.name === "execution-gate") && service.killSwitchState === "active");
+    const ok = preflight.ok && failedCritical.length === 0;
+    return {
+        ok,
+        generatedAt: new Date().toISOString(),
+        mode: preflight.mode,
+        failClosed: !ok,
+        activeGovernanceHalt,
+        timeoutMs: readinessTimeoutMs,
+        criticalServices: [...readinessCriticalServices],
+        failedCritical: failedCritical.map((service) => service.name),
+        preflight,
+        services
+    };
+};
+const prometheusEscape = (value) => value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
+const renderGatewayMetrics = (readiness) => {
+    const lines = [
+        "# HELP aristotle_gateway_ready Gateway readiness posture; 1 means all critical upstreams and preflight checks pass.",
+        "# TYPE aristotle_gateway_ready gauge",
+        `aristotle_gateway_ready ${readiness.ok ? 1 : 0}`,
+        "# HELP aristotle_gateway_fail_closed Gateway fail-closed posture; 1 means the gateway must refuse readiness.",
+        "# TYPE aristotle_gateway_fail_closed gauge",
+        `aristotle_gateway_fail_closed ${readiness.failClosed ? 1 : 0}`,
+        "# HELP aristotle_gateway_preflight_ok Gateway enterprise preflight posture.",
+        "# TYPE aristotle_gateway_preflight_ok gauge",
+        `aristotle_gateway_preflight_ok{mode="${prometheusEscape(readiness.mode)}"} ${readiness.preflight.ok ? 1 : 0}`,
+        "# HELP aristotle_upstream_ready Upstream readiness by service.",
+        "# TYPE aristotle_upstream_ready gauge",
+    ];
+    for (const service of readiness.services) {
+        lines.push(`aristotle_upstream_ready{service="${prometheusEscape(service.name)}",critical="${service.critical ? "true" : "false"}"} ${service.ok ? 1 : 0}`);
+    }
+    lines.push("# HELP aristotle_upstream_latency_ms Upstream readiness probe latency in milliseconds.");
+    lines.push("# TYPE aristotle_upstream_latency_ms gauge");
+    for (const service of readiness.services) {
+        lines.push(`aristotle_upstream_latency_ms{service="${prometheusEscape(service.name)}"} ${service.latencyMs}`);
+    }
+    lines.push("# HELP aristotle_governance_halt_active Active governance halt observed at the kernel or execution gate.");
+    lines.push("# TYPE aristotle_governance_halt_active gauge");
+    lines.push(`aristotle_governance_halt_active ${readiness.activeGovernanceHalt ? 1 : 0}`);
+    return `${lines.join("\n")}\n`;
+};
+const randomHex = (bytes) => randomBytes(bytes).toString("hex");
+const hrTimeUnixNano = () => String(BigInt(Date.now()) * 1000000n);
+const parseOtelResourceAttributes = () => Object.fromEntries(otelResourceAttributes
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+    const [key, ...rest] = entry.split("=");
+    return [key, rest.join("=")];
+})
+    .filter(([key]) => Boolean(key)));
+const emitOtelSpan = (span) => {
+    if (otelTracesExporter !== "otlp" || !otelExporterEndpoint)
+        return;
+    const resourceAttributes = {
+        "service.name": otelServiceName,
+        "service.namespace": "aristotle-governance-os",
+        ...parseOtelResourceAttributes()
+    };
+    const body = {
+        resourceSpans: [
+            {
+                resource: {
+                    attributes: Object.entries(resourceAttributes).map(([key, value]) => ({
+                        key,
+                        value: { stringValue: String(value) }
+                    }))
+                },
+                scopeSpans: [
+                    {
+                        scope: { name: "aristotle.http-gateway", version: "0.1.0" },
+                        spans: [
+                            {
+                                traceId: span.traceId,
+                                spanId: span.spanId,
+                                name: span.name,
+                                kind: 2,
+                                startTimeUnixNano: span.startTimeUnixNano,
+                                endTimeUnixNano: span.endTimeUnixNano,
+                                attributes: Object.entries(span.attributes).map(([key, value]) => ({
+                                    key,
+                                    value: typeof value === "boolean"
+                                        ? { boolValue: value }
+                                        : typeof value === "number"
+                                            ? { doubleValue: value }
+                                            : { stringValue: value }
+                                })),
+                                status: { code: span.statusCode >= 500 ? 2 : 1 }
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    };
+    void fetch(`${otelExporterEndpoint}/v1/traces`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body)
+    }).catch(() => undefined);
 };
 const encodeSessionPayload = (claims) => Buffer.from(JSON.stringify(claims), "utf8").toString("base64url");
 const signSessionPayload = (payload) => {
@@ -417,6 +585,164 @@ const deployableProfiles = [
         assuranceFocus: "assurance attestations, finality, and replayable counterfactuals"
     }
 ];
+let trialPolicySource = PAYMENTS_GOVERNANCE_SOURCE;
+const trialGelRecords = [];
+const trialApprovals = new Map();
+const appendTrialRecord = (evaluation) => {
+    trialGelRecords.unshift(evaluation.gelRecord);
+    if (trialGelRecords.length > 100)
+        trialGelRecords.pop();
+};
+const evaluateTrialRequest = (body, approval) => {
+    const scenarioId = typeof body.scenarioId === "string" ? body.scenarioId : undefined;
+    const scenario = scenarioId ? TRIAL_SCENARIOS.find((item) => item.id === scenarioId) : undefined;
+    const intent = (body.intent && typeof body.intent === "object" ? body.intent : scenario?.intent ?? TRIAL_SCENARIOS[0]?.intent);
+    const source = typeof body.policy === "string" ? body.policy : trialPolicySource;
+    const evaluation = evaluateTrialAction({
+        source,
+        intent,
+        approval,
+        previousHash: trialGelRecords[0]?.currentHash
+    });
+    appendTrialRecord(evaluation);
+    if (evaluation.deferToken) {
+        trialApprovals.set(evaluation.deferToken, { intent, source, evaluation });
+    }
+    return { scenario: scenario ?? null, intent, evaluation };
+};
+app.use((req, res, next) => {
+    const traceId = randomHex(16);
+    const spanId = randomHex(8);
+    const start = performance.now();
+    const startTimeUnixNano = hrTimeUnixNano();
+    res.setHeader("traceparent", `00-${traceId}-${spanId}-01`);
+    res.on("finish", () => {
+        emitOtelSpan({
+            traceId,
+            spanId,
+            name: `${req.method} ${req.route?.path ?? req.path}`,
+            startTimeUnixNano,
+            endTimeUnixNano: hrTimeUnixNano(),
+            statusCode: res.statusCode,
+            attributes: {
+                "http.request.method": req.method,
+                "http.route": req.route?.path?.toString() ?? req.path,
+                "http.response.status_code": res.statusCode,
+                "url.path": req.path,
+                "aristotle.execution_boundary": req.path.includes("/operator/governance-chain") || req.path.includes("/operator/os") || req.path.includes("/operator/govern"),
+                "aristotle.gateway.fail_closed": res.statusCode === 503 && (req.path === "/ready" || req.path.startsWith("/operator")),
+                "duration.ms": Math.round((performance.now() - start) * 1000) / 1000
+            }
+        });
+    });
+    next();
+});
+app.get("/v1/status", (_req, res) => {
+    const validation = validateGovernanceSource(trialPolicySource);
+    res.json({
+        ok: validation.ok,
+        runtime: "aristotle-trial",
+        activePolicyHash: validation.policy?.policyHash,
+        governanceMode: "deterministic-trial",
+        doctrine: "Governance must bind at the execution boundary before irreversible state mutation or external action occurs.",
+        scenarios: TRIAL_SCENARIOS.map(({ id, title, summary }) => ({ id, title, summary }))
+    });
+});
+app.post("/v1/actions/evaluate", (req, res) => {
+    res.json(evaluateTrialRequest(req.body));
+});
+app.post("/v1/actions/execute", (req, res) => {
+    const result = evaluateTrialRequest(req.body, req.body.approval);
+    const executable = result.evaluation.decision === "PERMIT";
+    res.status(executable ? 200 : result.evaluation.decision === "DEFER" ? 202 : 409).json({
+        ...result,
+        execution: executable
+            ? { status: "executed", boundary: "commit-gate", warrantId: result.evaluation.warrant?.id }
+            : { status: "not_executed", reason: result.evaluation.decisionCode }
+    });
+});
+app.get("/v1/audit/tail", (_req, res) => res.json({ items: trialGelRecords.slice(0, 25) }));
+app.get("/v1/audit/:recordId", (req, res) => {
+    const record = trialGelRecords.find((item) => item.recordId === req.params.recordId);
+    if (!record) {
+        res.status(404).json({ error: "record_not_found" });
+        return;
+    }
+    res.json(record);
+});
+app.post("/v1/replay", (req, res) => {
+    const body = req.body;
+    const result = evaluateTrialAction({
+        source: typeof body.policy === "string" ? body.policy : trialPolicySource,
+        intent: (body.intent && typeof body.intent === "object" ? body.intent : TRIAL_SCENARIOS[0].intent),
+        previousHash: typeof body.previousHash === "string" ? body.previousHash : "GENESIS",
+        now: typeof body.now === "string" ? body.now : "2026-01-01T00:00:00.000Z"
+    });
+    res.json({ replayed: true, evaluation: result });
+});
+app.get("/v1/approvals", (_req, res) => {
+    res.json({
+        items: Array.from(trialApprovals.entries()).map(([id, value]) => ({
+            id,
+            intent: value.intent,
+            decisionCode: value.evaluation.decisionCode,
+            explanation: value.evaluation.explanation
+        }))
+    });
+});
+app.post("/v1/approvals/:id/approve", (req, res) => {
+    const deferred = trialApprovals.get(req.params.id);
+    if (!deferred) {
+        res.status(404).json({ error: "approval_not_found" });
+        return;
+    }
+    const evaluation = evaluateTrialAction({
+        source: deferred.source,
+        intent: deferred.intent,
+        approval: req.body.reducedAuthority ? "reduced_authority" : "approve",
+        previousHash: trialGelRecords[0]?.currentHash
+    });
+    appendTrialRecord(evaluation);
+    trialApprovals.delete(req.params.id);
+    res.json({ approved: true, evaluation });
+});
+app.post("/v1/approvals/:id/deny", (req, res) => {
+    const deferred = trialApprovals.get(req.params.id);
+    if (!deferred) {
+        res.status(404).json({ error: "approval_not_found" });
+        return;
+    }
+    const evaluation = evaluateTrialAction({
+        source: deferred.source,
+        intent: deferred.intent,
+        approval: "deny",
+        previousHash: trialGelRecords[0]?.currentHash
+    });
+    appendTrialRecord(evaluation);
+    trialApprovals.delete(req.params.id);
+    res.json({ denied: true, evaluation });
+});
+app.post("/v1/policy/check", (req, res) => {
+    const source = typeof req.body?.policy === "string" ? req.body.policy : trialPolicySource;
+    const { policy, ...validation } = validateGovernanceSource(source);
+    res.status(validation.ok ? 200 : 422).json({ ...validation, policyHash: policy?.policyHash });
+});
+app.post("/v1/policy/plan", (req, res) => {
+    const source = typeof req.body?.policy === "string" ? req.body.policy : trialPolicySource;
+    const plan = planGovernanceChange(source, trialPolicySource);
+    res.status(plan.ok ? 200 : 422).json(plan);
+});
+app.post("/v1/policy/apply", (req, res) => {
+    const source = typeof req.body?.policy === "string" ? req.body.policy : "";
+    const validation = validateGovernanceSource(source);
+    if (!validation.ok || !validation.policy) {
+        res.status(422).json(validation);
+        return;
+    }
+    trialPolicySource = source;
+    parseGovernanceSource(trialPolicySource);
+    res.json({ applied: true, policyHash: validation.policy.policyHash });
+});
 app.post("/operator/auth/session", (req, res) => {
     if (!operatorApiKey) {
         res.status(503).json({ error: "operator_auth_disabled", message: "Operator authentication is not configured." });
@@ -540,17 +866,16 @@ app.use("/operator", (req, res, next) => {
     res.status(401).json({ error: "operator_auth_required", message: "Valid operator credential required." });
 });
 app.get("/health", handleAsync(async (_req, res) => {
-    const services = await Promise.allSettled([
-        call(governanceKernelBase, "/health"),
-        call(policyCompilerBase, "/health"),
-        call(evidenceLedgerBase, "/health"),
-        call(metaAuthorityRegistryBase, "/health"),
-        call(simulationEngineBase, "/health"),
-        call(witnessServiceBase, "/health"),
-        call(executionGateBase, "/health"),
-        call(agentOsBase, "/health")
-    ]);
-    res.json({ ok: true, services, preflight });
+    const services = await Promise.allSettled(observedServices.map((service) => call(service.base, service.path)));
+    const readiness = await evaluateReadiness();
+    res.json({ ok: true, services, preflight, readiness });
+}));
+app.get("/ready", handleAsync(async (_req, res) => {
+    const readiness = await evaluateReadiness();
+    res.status(readiness.ok ? 200 : 503).json(readiness);
+}));
+app.get("/metrics", handleAsync(async (_req, res) => {
+    res.type("text/plain; version=0.0.4; charset=utf-8").send(renderGatewayMetrics(await evaluateReadiness()));
 }));
 app.get("/operator/mesh", handleAsync(async (_req, res) => res.json(await call(simulationEngineBase, "/telemetry"))));
 app.get("/operator/deployables", handleAsync(async (_req, res) => res.json({ generatedAt: new Date().toISOString(), items: deployableProfiles })));

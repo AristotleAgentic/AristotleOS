@@ -1,0 +1,97 @@
+{{- range $name, $svc := .Values.services }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  namespace: {{ include "aristotle.namespace" $ }}
+  labels:
+{{ include "aristotle.commonLabels" $ | indent 4 }}
+    app: {{ $name }}
+spec:
+  replicas: {{ $svc.replicas }}
+  selector:
+    matchLabels:
+      app: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}
+        aristotle.io/workload: {{ $.Values.identity.spiffe.workloadSelector | quote }}
+{{- if $.Values.identity.mesh.inject }}
+      annotations:
+{{ toYaml $.Values.identity.mesh.annotations | indent 8 }}
+{{- end }}
+    spec:
+      serviceAccountName: {{ include "aristotle.serviceAccountName" $ }}
+      containers:
+        - name: {{ $name }}
+          image: {{ include "aristotle.image" (list $ $name) }}
+          imagePullPolicy: {{ $.Values.global.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: aristotle-runtime-config
+            - secretRef:
+                name: {{ $.Values.secrets.existingSecret }}
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: {{ printf "%s-%s" $.Values.telemetry.otel.serviceNamePrefix $name | quote }}
+          ports:
+            - name: http
+              containerPort: {{ $svc.port }}
+          readinessProbe:
+            httpGet:
+              path: {{ default "/health" $svc.readinessPath }}
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: {{ default "/health" $svc.livenessPath }}
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 6
+          resources:
+{{ toYaml $svc.resources | indent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+{{- if or (and $svc.persistentVolume $svc.persistentVolume.enabled) $.Values.identity.spiffe.enabled }}
+          volumeMounts:
+{{- if and $svc.persistentVolume $svc.persistentVolume.enabled }}
+            - name: data
+              mountPath: {{ $svc.persistentVolume.mountPath }}
+{{- end }}
+{{- if $.Values.identity.spiffe.enabled }}
+            - name: spiffe-workload-api
+              mountPath: {{ $.Values.identity.spiffe.socketMountPath | quote }}
+              readOnly: true
+{{- end }}
+{{- end }}
+{{- if or (and $svc.persistentVolume $svc.persistentVolume.enabled) $.Values.identity.spiffe.enabled }}
+      volumes:
+{{- if and $svc.persistentVolume $svc.persistentVolume.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ $name }}-data
+{{- end }}
+{{- if $.Values.identity.spiffe.enabled }}
+        - name: spiffe-workload-api
+          csi:
+            driver: {{ $.Values.identity.spiffe.csiDriver | quote }}
+            readOnly: true
+{{- end }}
+{{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+{{- if and $svc.persistentVolume $svc.persistentVolume.enabled }}
+        fsGroup: 1000
+{{- end }}
+        seccompProfile:
+          type: RuntimeDefault
+{{- end }}

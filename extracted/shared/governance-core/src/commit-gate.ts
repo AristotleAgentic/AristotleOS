@@ -40,13 +40,15 @@ import type {
 
 export interface CommitOptions {
   now?: Date;
+  /** Maximum accepted age/future skew for CommitRequest.presented_at. */
+  presentationSkewMs?: number;
   keyring: Keyring;
   /** Key the gate signs GEL records with. */
   signKeyId: string;
 }
 
 export function evaluateCommit(store: GovernanceStore, request: CommitRequest, opts: CommitOptions): CommitDecision {
-  const ctx = context({ now: opts.now, keyring: opts.keyring });
+  const ctx = context({ now: opts.now, keyring: opts.keyring, presentationSkewMs: opts.presentationSkewMs });
   const now = ctx.now;
   const chain: ChainRefs = { commit_gate_id: request.commit_gate_id };
 
@@ -77,6 +79,7 @@ export function evaluateCommit(store: GovernanceStore, request: CommitRequest, o
 
     // -- chain validity (MAE -> Ward -> Envelope -> Warrant) -----------------
     const violations: Violation[] = [...chainIsIntact(mae, ward, env, warrant, request, ctx).violations];
+    latchExpiredWarrant(store, warrant, now);
 
     // -- action classification ----------------------------------------------
     if (request.action.action_type !== warrant.action_type)
@@ -296,6 +299,13 @@ function snapshot(o: ChainObjects): RevocationSnapshot {
     authority_envelope: o.env?.revocation_state ?? "active",
     warrant: o.warrant?.consumption_state ?? "Unused",
   };
+}
+
+function latchExpiredWarrant(store: GovernanceStore, warrant: Warrant, now: Date): void {
+  const expiresAt = Date.parse(warrant.expires_at);
+  if (warrant.consumption_state === "Unused" && !Number.isNaN(expiresAt) && now.getTime() > expiresAt) {
+    store.expireWarrant(warrant.warrant_id, now.toISOString());
+  }
 }
 
 function numberOrUndefined(v: unknown): number | undefined {

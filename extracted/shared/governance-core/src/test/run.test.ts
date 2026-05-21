@@ -43,6 +43,10 @@ function opts(w: { keyring: CommitOptions["keyring"]; keyId: string }, now?: Dat
   return { keyring: w.keyring, signKeyId: w.keyId, now };
 }
 
+function optsWithPresentationSkew(w: { keyring: CommitOptions["keyring"]; keyId: string }, presentationSkewMs: number, now?: Date): CommitOptions {
+  return { keyring: w.keyring, signKeyId: w.keyId, now, presentationSkewMs };
+}
+
 // 1 -------------------------------------------------------------------------
 test("a valid MAE constitutes a valid Ward", () => {
   const w = fixtures.buildPayments();
@@ -115,15 +119,60 @@ test("an expired Warrant fails", () => {
   const d = evaluateCommit(w.store, request, opts(w, future));
   assert.notEqual(d.decision, "Allow");
   assert.ok(d.violated_invariants.includes("warrant-expired"));
+  const expired = w.store.getWarrant(warrant.warrant_id)!;
+  assert.equal(expired.consumption_state, "Expired");
+  assert.equal(expired.state_changed_at, future.toISOString());
+  const rec = w.store.getGelChain().find((r) => r.gel_record_id === d.gel_record_id)!;
+  assert.equal(rec.revocation_snapshot.warrant, "Expired");
+});
+
+test("a stale commit presentation is denied before execution", () => {
+  const w = fixtures.buildPayments();
+  const { request } = w.propose({ validity_seconds: 600 });
+  const evaluatedAt = new Date(Date.parse(request.presented_at) + 180_000);
+  const d = evaluateCommit(w.store, request, opts(w, evaluatedAt));
+  assert.equal(d.decision, "Deny");
+  assert.equal(d.warrant_consumed, false);
+  assert.ok(d.violated_invariants.includes("commit-presentation-stale"));
+});
+
+test("commit presentation skew is an explicit gate option", () => {
+  const w = fixtures.buildPayments();
+  const { request } = w.propose({ validity_seconds: 600 });
+  const evaluatedAt = new Date(Date.parse(request.presented_at) + 180_000);
+  const d = evaluateCommit(w.store, request, optsWithPresentationSkew(w, 240_000, evaluatedAt));
+  assert.equal(d.decision, "Allow");
+});
+
+test("a future-dated commit presentation is denied before execution", () => {
+  const w = fixtures.buildPayments();
+  const proposal = w.propose({ validity_seconds: 600 });
+  const evaluatedAt = new Date(Date.parse(proposal.request.presented_at));
+  const request = { ...proposal.request, presented_at: new Date(evaluatedAt.getTime() + 180_000).toISOString() };
+  const d = evaluateCommit(w.store, request, opts(w, evaluatedAt));
+  assert.equal(d.decision, "Deny");
+  assert.equal(d.warrant_consumed, false);
+  assert.ok(d.violated_invariants.includes("commit-presentation-in-future"));
+});
+
+test("an unparseable commit presentation is denied before execution", () => {
+  const w = fixtures.buildPayments();
+  const proposal = w.propose();
+  const d = evaluateCommit(w.store, { ...proposal.request, presented_at: "not-a-timestamp" }, opts(w));
+  assert.equal(d.decision, "Deny");
+  assert.equal(d.warrant_consumed, false);
+  assert.ok(d.violated_invariants.includes("commit-presentation-temporal"));
 });
 
 // 8 -------------------------------------------------------------------------
 test("revoking a Ward invalidates its Envelope and Warrant", () => {
   const w = fixtures.buildPayments();
   const { request } = w.propose();
-  revokeWard(w.store, w.ward.ward_id, nowIso());
+  const revokedAt = nowIso();
+  revokeWard(w.store, w.ward.ward_id, revokedAt);
   assert.equal(w.store.getEnvelope(w.envelope.authority_envelope_id)!.revocation_state, "revoked");
   assert.equal(w.store.getWarrant(request.warrant_id)!.consumption_state, "Revoked");
+  assert.equal(w.store.getWarrant(request.warrant_id)!.state_changed_at, revokedAt);
   const d = evaluateCommit(w.store, request, opts(w));
   assert.notEqual(d.decision, "Allow");
   assert.ok(d.violated_invariants.includes("ward-revoked"));
