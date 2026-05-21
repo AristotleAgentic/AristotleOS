@@ -50,7 +50,7 @@ The smoke path builds the image set, installs the Helm chart into kind, then pro
 
 ## Ward/Warrant Execution-Control Path
 
-This branch implements an AristotleOS-native execution-control path. It is designed to interoperate conceptually with emerging open-source runtime authorization systems, including Faramesh-style architectures, but it does not copy Faramesh source code and is not affiliated with, certified by, or endorsed by Faramesh.
+This AristotleOS component is independently developed. It may discuss Faramesh as a public example of the broader runtime authorization and execution-control category, but it does not copy Faramesh source code, documentation, examples, schemas, tests, comments, file names, repository structure, policy syntax, branding, or expressive material. AristotleOS is not affiliated with, certified by, sponsored by, or endorsed by Faramesh.
 
 It canonicalizes a proposed action, evaluates it through a Ward and Authority Envelope at the Commit Gate, returns `ALLOW`, `ESCALATE`, or `REFUSE`, issues a single-use Warrant only on `ALLOW`, and appends the decision to a hash-linked Governance Evidence Ledger.
 
