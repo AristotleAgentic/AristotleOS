@@ -77,6 +77,13 @@ Then submit an action from another terminal:
 npm run execution-control:submit:allow
 ```
 
+Export and verify a portable Evidence Bundle:
+
+```bash
+npm run execution-control:evidence:demo
+npm run execution-control:evidence:verify
+```
+
 The runtime also publishes `GET /openapi.json` so agent adapters can discover the execution-boundary contract.
 
 ## Stack

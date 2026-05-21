@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cpSync, mkdtempSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { runCli } from "./index.js";
@@ -40,6 +40,8 @@ test("cli execution-control evaluate runs Ward/Warrant action through AristotleO
       "execution_control/actions/allow_takeoff.json",
       "--ledger",
       ".tmp/gel.jsonl",
+      "--evidence-out",
+      ".tmp/evidence-bundle.json",
       "--now",
       "2026-05-21T14:00:00.000Z"
     ], dir);
@@ -47,6 +49,18 @@ test("cli execution-control evaluate runs Ward/Warrant action through AristotleO
     assert.match(result.stdout, /decision=ALLOW/);
     assert.match(result.stdout, /warrant_id=wrn-/);
     assert.match(result.stdout, /ledger_verification=ok/);
+    assert.match(result.stdout, /evidence_bundle=.tmp\/evidence-bundle.json/);
+    assert.equal(existsSync(path.join(dir, ".tmp", "evidence-bundle.json")), true);
+
+    const verification = await capture([
+      "execution-control",
+      "evidence",
+      "verify",
+      "--bundle",
+      ".tmp/evidence-bundle.json"
+    ], dir);
+    assert.equal(verification.code, 0, verification.stderr);
+    assert.match(verification.stdout, /evidence_verification=ok/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

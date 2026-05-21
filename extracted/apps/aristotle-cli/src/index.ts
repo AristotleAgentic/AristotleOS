@@ -5,12 +5,16 @@ import { pathToFileURL } from "node:url";
 import {
   createExecutionControlRuntimeServer,
   evaluateExecutionControl,
+  exportEvidenceBundle,
+  loadEvidenceBundle,
   loadAuthorityEnvelope,
   loadCanonicalAction,
   loadWardManifest,
   requireAllowedWarrant,
   submitGovernedAction,
-  verifyGelChain
+  verifyEvidenceBundle,
+  verifyGelChain,
+  writeJson
 } from "@aristotle/execution-control-runtime";
 import {
   PAYMENTS_GOVERNANCE_SOURCE,
@@ -84,6 +88,8 @@ Commands:
   execution-control serve         Run the AristotleOS execution boundary
   execution-control submit        Submit an action JSON file to the execution boundary
   execution-control audit verify  Verify the execution-control GEL hash chain
+  execution-control evidence export  Export an offline Evidence Bundle
+  execution-control evidence verify  Verify an offline Evidence Bundle
   demo payments        Run the flagship payments scenario
   doctor               Check local developer prerequisites
 `);
@@ -183,6 +189,18 @@ Commands:
         ledgerPath: path.resolve(cwd, ledgerPath),
         now: optionValue(rest, "--now")
       });
+      const evidenceOut = optionValue(rest, "--evidence-out");
+      if (evidenceOut) {
+        const bundle = exportEvidenceBundle({
+          ledgerPath: path.resolve(cwd, ledgerPath),
+          ward,
+          authorityEnvelope,
+          recordId: result.gel_record.record_id,
+          warrant: result.warrant,
+          exportedAt: optionValue(rest, "--now")
+        });
+        writeJson(path.resolve(cwd, evidenceOut), bundle);
+      }
       if (json) {
         printJson(out, result, true);
       } else {
@@ -192,6 +210,7 @@ canonical_action_hash=${result.canonical_action_hash}
 warrant_id=${result.warrant?.warrant_id ?? "none"}
 gel_record_hash=${result.gel_record.record_hash}
 ledger_verification=${result.ledger_verification.ok ? "ok" : `failed:${result.ledger_verification.failure}`}
+evidence_bundle=${evidenceOut ?? "not requested"}
 `);
       }
       return result.ledger_verification.ok ? 0 : 1;
@@ -265,6 +284,34 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
       const verification = verifyGelChain(path.resolve(cwd, ledgerPath));
       if (json) printJson(out, verification, true);
       else out(`ledger_verification=${verification.ok ? "ok" : `failed:${verification.failure}`}\nrecords=${verification.count}\n`);
+      return verification.ok ? 0 : 1;
+    }
+
+    if (command === "execution-control" && subcommand === "evidence" && rest[0] === "export") {
+      const wardPath = requiredOption(rest, "--ward");
+      const envelopePath = requiredOption(rest, "--envelope");
+      const ledgerPath = requiredOption(rest, "--ledger");
+      const outPath = requiredOption(rest, "--out");
+      const warrantPath = optionValue(rest, "--warrant");
+      const bundle = exportEvidenceBundle({
+        ledgerPath: path.resolve(cwd, ledgerPath),
+        ward: loadWardManifest(path.resolve(cwd, wardPath)),
+        authorityEnvelope: loadAuthorityEnvelope(path.resolve(cwd, envelopePath)),
+        recordId: optionValue(rest, "--record-id"),
+        warrant: warrantPath ? JSON.parse(readFileSync(path.resolve(cwd, warrantPath), "utf8")) : undefined,
+        exportedAt: optionValue(rest, "--now")
+      });
+      writeJson(path.resolve(cwd, outPath), bundle);
+      if (json) printJson(out, bundle, true);
+      else out(`evidence_bundle=${outPath}\nbundle_hash=${bundle.hashes.bundle_hash}\nverification=${bundle.verification.ok ? "ok" : `failed:${bundle.verification.failures.join(";")}`}\n`);
+      return bundle.verification.ok ? 0 : 1;
+    }
+
+    if (command === "execution-control" && subcommand === "evidence" && rest[0] === "verify") {
+      const bundlePath = requiredOption(rest, "--bundle");
+      const verification = verifyEvidenceBundle(loadEvidenceBundle(path.resolve(cwd, bundlePath)));
+      if (json) printJson(out, verification, true);
+      else out(`evidence_verification=${verification.ok ? "ok" : `failed:${verification.failures.join(";")}`}\nbundle_hash=${verification.bundle_hash ?? "none"}\nledger_records=${verification.ledger.count}\n`);
       return verification.ok ? 0 : 1;
     }
 

@@ -41,6 +41,8 @@ Core exports:
 - `evaluateExecutionControl`
 - `createExecutionControlRuntimeServer`
 - `submitGovernedAction`
+- `exportEvidenceBundle`
+- `verifyEvidenceBundle`
 
 ## Demo
 
@@ -52,6 +54,7 @@ npm run aristotle -- execution-control evaluate \
   --envelope examples/execution_control/authority_envelope.survey_planner.yaml \
   --action examples/execution_control/actions/allow_takeoff.json \
   --ledger ./.tmp/gel.jsonl \
+  --evidence-out ./.tmp/evidence-bundle.json \
   --now 2026-05-21T14:00:00.000Z
 ```
 
@@ -64,7 +67,35 @@ canonical_action_hash=<sha256>
 warrant_id=wrn-...
 gel_record_hash=<sha256>
 ledger_verification=ok
+evidence_bundle=./.tmp/evidence-bundle.json
 ```
+
+## Evidence Bundle
+
+The runtime can export an offline Evidence Bundle for an admitted action. The bundle contains the Ward Manifest, Authority Envelope, selected GEL record, full GEL chain, Warrant material when available, stable hashes, and a verification result. This gives operators a portable proof that can be inspected without trusting the live runtime process.
+
+Create and verify a bundle:
+
+```bash
+npm run execution-control:evidence:demo
+npm run execution-control:evidence:verify
+```
+
+Direct CLI:
+
+```bash
+npm run aristotle -- execution-control evidence verify \
+  --bundle ./.tmp/evidence-bundle.json
+```
+
+Verification checks:
+
+- GEL chain linkage and record hashes
+- selected record inclusion in the bundled chain
+- Ward Manifest hash and Ward-to-record match
+- Authority Envelope hash and envelope-to-record match
+- Warrant signature, action hash binding, and Warrant id match
+- Evidence Bundle hash
 
 ## Runtime Daemon
 
@@ -159,3 +190,5 @@ The execution-control tests prove:
 - Warrant verification fails for mismatched action hash
 - GEL verifies after normal append
 - GEL verification fails after tampering
+- Evidence Bundle exports Ward, Authority Envelope, Warrant, and GEL
+- Evidence Bundle verification fails after selected record tampering

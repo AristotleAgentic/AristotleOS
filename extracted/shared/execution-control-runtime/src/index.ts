@@ -147,6 +147,41 @@ export interface EvaluateExecutionControlResult {
   ledger_verification: { ok: boolean; count: number; failure?: string };
 }
 
+export interface EvidenceBundle {
+  bundle_version: "aristotle.execution-evidence.v1";
+  exported_at: string;
+  ward: WardManifest;
+  authority_envelope?: AuthorityEnvelope;
+  selected_record: GelRecord;
+  ledger_chain: GelRecord[];
+  warrant?: Warrant;
+  hashes: {
+    ward_manifest_hash: string;
+    authority_envelope_hash?: string;
+    selected_record_hash: string;
+    ledger_tip_hash: string;
+    bundle_hash: string;
+  };
+  verification: EvidenceBundleVerification;
+}
+
+export interface EvidenceBundleVerification {
+  ok: boolean;
+  failures: string[];
+  ledger: { ok: boolean; count: number; failure?: string };
+  warrant?: WarrantVerification;
+  bundle_hash?: string;
+}
+
+export interface ExportEvidenceBundleInput {
+  ledgerPath: string;
+  ward: WardManifest;
+  authorityEnvelope?: AuthorityEnvelope;
+  recordId?: string;
+  warrant?: Warrant;
+  exportedAt?: string;
+}
+
 export interface ExecutionControlRuntimeServerOptions {
   ward: WardManifest;
   authorityEnvelope: AuthorityEnvelope;
@@ -411,7 +446,10 @@ export function loadGelChain(ledgerPath: string): GelRecord[] {
 }
 
 export function verifyGelChain(ledgerPath: string): { ok: boolean; count: number; failure?: string } {
-  const chain = loadGelChain(ledgerPath);
+  return verifyGelRecords(loadGelChain(ledgerPath));
+}
+
+export function verifyGelRecords(chain: GelRecord[]): { ok: boolean; count: number; failure?: string } {
   let previous = GENESIS_HASH;
   for (const [index, record] of chain.entries()) {
     if (record.previous_hash !== previous) return { ok: false, count: chain.length, failure: `record ${index} previous_hash mismatch` };
@@ -421,6 +459,112 @@ export function verifyGelChain(ledgerPath: string): { ok: boolean; count: number
     previous = record.record_hash;
   }
   return { ok: true, count: chain.length };
+}
+
+export function exportEvidenceBundle(input: ExportEvidenceBundleInput): EvidenceBundle {
+  const ledger_chain = loadGelChain(input.ledgerPath);
+  const selected_record = input.recordId
+    ? ledger_chain.find((record) => record.record_id === input.recordId)
+    : ledger_chain.at(-1);
+  if (!selected_record) throw new Error(input.recordId ? `GEL record not found: ${input.recordId}` : "GEL ledger has no records to export");
+
+  const partial = {
+    bundle_version: "aristotle.execution-evidence.v1" as const,
+    exported_at: input.exportedAt ?? new Date().toISOString(),
+    ward: stableNormalize(input.ward) as WardManifest,
+    authority_envelope: input.authorityEnvelope ? stableNormalize(input.authorityEnvelope) as AuthorityEnvelope : undefined,
+    selected_record,
+    ledger_chain,
+    warrant: input.warrant
+  };
+  const hashes = {
+    ward_manifest_hash: sha256(stableStringify(partial.ward)),
+    authority_envelope_hash: partial.authority_envelope ? sha256(stableStringify(partial.authority_envelope)) : undefined,
+    selected_record_hash: selected_record.record_hash,
+    ledger_tip_hash: ledger_chain.at(-1)?.record_hash ?? GENESIS_HASH,
+    bundle_hash: ""
+  };
+  const verification = verifyEvidenceBundle({ ...partial, hashes, verification: emptyEvidenceVerification() });
+  hashes.bundle_hash = verification.bundle_hash ?? sha256(stableStringify({ ...partial, hashes: { ...hashes, bundle_hash: undefined } }));
+  return {
+    ...partial,
+    hashes,
+    verification: verifyEvidenceBundle({ ...partial, hashes, verification: emptyEvidenceVerification() })
+  };
+}
+
+export function loadEvidenceBundle(file: string): EvidenceBundle {
+  return JSON.parse(readFileSync(file, "utf8")) as EvidenceBundle;
+}
+
+export function verifyEvidenceBundle(bundle: EvidenceBundle): EvidenceBundleVerification {
+  const failures: string[] = [];
+  if (bundle.bundle_version !== "aristotle.execution-evidence.v1") failures.push("unsupported evidence bundle version");
+
+  const ledger = verifyGelRecords(bundle.ledger_chain);
+  if (!ledger.ok) failures.push(`ledger verification failed: ${ledger.failure}`);
+
+  const selected = bundle.ledger_chain.find((record) => record.record_id === bundle.selected_record.record_id);
+  if (!selected) failures.push("selected GEL record is not present in ledger chain");
+  if (selected && stableStringify(selected) !== stableStringify(bundle.selected_record)) failures.push("selected GEL record does not match ledger chain material");
+  if (bundle.selected_record.record_hash !== bundle.hashes.selected_record_hash) failures.push("selected record hash does not match bundle hash declaration");
+
+  const expectedWardHash = sha256(stableStringify(bundle.ward));
+  if (bundle.hashes.ward_manifest_hash !== expectedWardHash) failures.push("Ward Manifest hash mismatch");
+  if (bundle.selected_record.ward_id !== bundle.ward.ward_id) failures.push("selected record Ward does not match bundled Ward Manifest");
+
+  if (bundle.authority_envelope) {
+    const expectedEnvelopeHash = sha256(stableStringify(bundle.authority_envelope));
+    if (bundle.hashes.authority_envelope_hash !== expectedEnvelopeHash) failures.push("Authority Envelope hash mismatch");
+    if (bundle.selected_record.authority_envelope_id && bundle.selected_record.authority_envelope_id !== bundle.authority_envelope.envelope_id) {
+      failures.push("selected record Authority Envelope does not match bundled Authority Envelope");
+    }
+  }
+
+  const ledgerTip = bundle.ledger_chain.at(-1)?.record_hash ?? GENESIS_HASH;
+  if (bundle.hashes.ledger_tip_hash !== ledgerTip) failures.push("ledger tip hash mismatch");
+
+  let warrant: WarrantVerification | undefined;
+  if (bundle.warrant) {
+    warrant = verifyWarrant(bundle.warrant, bundle.selected_record.canonical_action_hash, bundle.warrant.issued_at);
+    if (!warrant.ok) failures.push(`warrant verification failed: ${warrant.reason}`);
+    if (bundle.selected_record.warrant_id && bundle.selected_record.warrant_id !== bundle.warrant.warrant_id) failures.push("selected record Warrant id does not match bundled Warrant");
+  } else if (bundle.selected_record.warrant_id) {
+    failures.push("selected record references a Warrant but no Warrant material is bundled");
+  }
+
+  const expectedBundleHash = evidenceBundleHash(bundle);
+  if (bundle.hashes.bundle_hash && bundle.hashes.bundle_hash !== expectedBundleHash) failures.push("evidence bundle hash mismatch");
+
+  return {
+    ok: failures.length === 0,
+    failures,
+    ledger,
+    warrant,
+    bundle_hash: expectedBundleHash
+  };
+}
+
+function evidenceBundleHash(bundle: EvidenceBundle): string {
+  return sha256(stableStringify({
+    bundle_version: bundle.bundle_version,
+    exported_at: bundle.exported_at,
+    ward: bundle.ward,
+    authority_envelope: bundle.authority_envelope,
+    selected_record: bundle.selected_record,
+    ledger_chain: bundle.ledger_chain,
+    warrant: bundle.warrant,
+    hashes: {
+      ward_manifest_hash: bundle.hashes.ward_manifest_hash,
+      authority_envelope_hash: bundle.hashes.authority_envelope_hash,
+      selected_record_hash: bundle.hashes.selected_record_hash,
+      ledger_tip_hash: bundle.hashes.ledger_tip_hash
+    }
+  }));
+}
+
+function emptyEvidenceVerification(): EvidenceBundleVerification {
+  return { ok: false, failures: [], ledger: { ok: false, count: 0 } };
 }
 
 export function evaluateExecutionControl(input: EvaluateExecutionControlInput): EvaluateExecutionControlResult {

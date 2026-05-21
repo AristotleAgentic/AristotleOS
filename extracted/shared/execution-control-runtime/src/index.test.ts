@@ -14,10 +14,12 @@ import {
   consumeWarrant,
   evaluateCommitGate,
   evaluateExecutionControl,
+  exportEvidenceBundle,
   issueWarrant,
   loadGelChain,
   requireAllowedWarrant,
   submitGovernedAction,
+  verifyEvidenceBundle,
   verifyGelChain,
   verifyWarrant
 } from "./index.js";
@@ -170,6 +172,47 @@ test("vertical slice evaluates action, writes GEL, and verifies ledger", () => {
   assert.equal(result.decision, "ALLOW");
   assert.ok(result.warrant?.warrant_id);
   assert.equal(result.ledger_verification.ok, true);
+});
+
+test("Evidence Bundle exports Ward, Authority Envelope, Warrant, and GEL for offline verification", () => {
+  const file = ledgerPath();
+  const result = evaluateExecutionControl({ ward, authorityEnvelope: envelope, action, ledgerPath: file, now });
+  const bundle = exportEvidenceBundle({
+    ledgerPath: file,
+    ward,
+    authorityEnvelope: envelope,
+    recordId: result.gel_record.record_id,
+    warrant: result.warrant,
+    exportedAt: now
+  });
+
+  assert.equal(bundle.bundle_version, "aristotle.execution-evidence.v1");
+  assert.equal(bundle.verification.ok, true);
+  assert.equal(bundle.selected_record.record_id, result.gel_record.record_id);
+  assert.equal(bundle.warrant?.warrant_id, result.warrant?.warrant_id);
+  assert.match(bundle.hashes.bundle_hash, /^[a-f0-9]{64}$/);
+  assert.deepEqual(verifyEvidenceBundle(bundle), bundle.verification);
+});
+
+test("Evidence Bundle verification fails when selected record material is altered", () => {
+  const file = ledgerPath();
+  const result = evaluateExecutionControl({ ward, authorityEnvelope: envelope, action, ledgerPath: file, now });
+  const bundle = exportEvidenceBundle({
+    ledgerPath: file,
+    ward,
+    authorityEnvelope: envelope,
+    recordId: result.gel_record.record_id,
+    warrant: result.warrant,
+    exportedAt: now
+  });
+  const tampered = {
+    ...bundle,
+    selected_record: { ...bundle.selected_record, subject: "agent:unapproved" }
+  };
+
+  const verification = verifyEvidenceBundle(tampered);
+  assert.equal(verification.ok, false);
+  assert.ok(verification.failures.some((failure) => failure.includes("selected GEL record")));
 });
 
 test("runtime server exposes health, evaluate, audit tail, and audit verify", async () => {

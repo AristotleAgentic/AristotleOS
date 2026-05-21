@@ -26,6 +26,8 @@
     "execution-control:serve": "tsx apps/aristotle-cli/src/index.ts execution-control serve --ward examples/execution_control/ward.montana_drone_test_range.yaml --envelope examples/execution_control/authority_envelope.survey_planner.yaml --ledger ./.tmp/execution-control-runtime.gel.jsonl",
     "execution-control:submit:allow": "tsx apps/aristotle-cli/src/index.ts execution-control submit --action examples/execution_control/actions/allow_takeoff.json --require-warrant",
     "execution-control:audit:verify": "tsx apps/aristotle-cli/src/index.ts execution-control audit verify --ledger ./.tmp/execution-control-runtime.gel.jsonl",
+    "execution-control:evidence:demo": "tsx apps/aristotle-cli/src/index.ts execution-control evaluate --ward examples/execution_control/ward.montana_drone_test_range.yaml --envelope examples/execution_control/authority_envelope.survey_planner.yaml --action examples/execution_control/actions/allow_takeoff.json --ledger ./.tmp/execution-control-runtime.gel.jsonl --evidence-out ./.tmp/execution-control-evidence-bundle.json --now 2026-05-21T14:00:00.000Z",
+    "execution-control:evidence:verify": "tsx apps/aristotle-cli/src/index.ts execution-control evidence verify --bundle ./.tmp/execution-control-evidence-bundle.json",
     "stack:up": "docker compose up --build -d",
     "stack:down": "docker compose down",
     "stack:logs": "docker compose logs -f",
