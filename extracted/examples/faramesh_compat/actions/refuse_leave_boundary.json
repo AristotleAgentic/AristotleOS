@@ -1,0 +1,17 @@
+{
+  "action_id": "act-drone-boundary-001",
+  "ward_id": "montana-drone-test-range",
+  "subject": "agent:survey-planner",
+  "action_type": "drone.scan_area",
+  "target": "drone-swarm/unit-7",
+  "params": {
+    "altitude_m": 70,
+    "boundary_id": "neighboring-grid-b",
+    "battery_pct": 74
+  },
+  "requested_at": "2026-05-21T14:01:00Z",
+  "request_id": "req-drone-002",
+  "telemetry": {
+    "gps_lock": true
+  }
+}

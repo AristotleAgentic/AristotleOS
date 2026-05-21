@@ -50,6 +50,9 @@ importers:
 
   apps/aristotle-cli:
     dependencies:
+      '@aristotle/faramesh-compat-runtime':
+        specifier: workspace:*
+        version: link:../../shared/faramesh-compat-runtime
       '@aristotle/trial-engine':
         specifier: workspace:*
         version: link:../../shared/trial-engine
@@ -252,6 +255,8 @@ importers:
       zod:
         specifier: ^3.23.8
         version: 3.25.76
+
+  shared/faramesh-compat-runtime: {}
 
   shared/governance-core: {}
 

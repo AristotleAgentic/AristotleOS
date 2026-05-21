@@ -38,6 +38,7 @@ Docs:
 - [Framework adapters](docs/framework-adapters.md)
 - [Deployment](docs/deployment.md)
 - [Pilot install](docs/pilot-install.md)
+- [Faramesh-compatible runtime path](docs/faramesh-compat-runtime.md)
 
 Pilot Kubernetes smoke:
 
@@ -46,6 +47,25 @@ npm run pilot:smoke:kind -- --tag 0.1.0-smoke --keep-port-forward
 ```
 
 The smoke path builds the image set, installs the Helm chart into kind, then proves the governance boundary with a deferred payments action, one-time warrant issuance after approval, GEL commit, and fail-closed missing-authority behavior.
+
+## Faramesh-compatible runtime path
+
+AristotleOS includes an Aristotle-native compatibility path for Faramesh-style runtime execution control. It canonicalizes a proposed action, evaluates it through a Ward and Authority Envelope at the Commit Gate, returns `ALLOW`, `ESCALATE`, or `REFUSE`, issues a single-use Warrant only on `ALLOW`, and appends the decision to a hash-linked Governance Evidence Ledger.
+
+It exists to show that AristotleOS can speak the same execution-control language as modern Governance-as-Code runtimes while preserving AristotleOS primitives: Wards, Authority Envelopes, Warrants, Commit Gates, Physical Invariant Gaters, and GEL.
+
+This is not a Faramesh fork. No Faramesh source code is copied, vendored, or imported.
+
+Run the demo:
+
+```bash
+npm run aristotle -- compat evaluate \
+  --ward examples/faramesh_compat/ward.montana_drone_test_range.yaml \
+  --envelope examples/faramesh_compat/authority_envelope.survey_planner.yaml \
+  --action examples/faramesh_compat/actions/allow_takeoff.json \
+  --ledger ./.tmp/gel.jsonl \
+  --now 2026-05-21T14:00:00.000Z
+```
 
 ## Stack
 - Node.js 20

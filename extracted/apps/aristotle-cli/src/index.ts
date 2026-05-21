@@ -3,6 +3,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
+  evaluateCompat,
+  loadAuthorityEnvelope,
+  loadCanonicalAction,
+  loadWardManifest
+} from "@aristotle/faramesh-compat-runtime";
+import {
   PAYMENTS_GOVERNANCE_SOURCE,
   TRIAL_SCENARIOS,
   evaluateTrialAction,
@@ -38,6 +44,11 @@ const printJson = (out: Writer, value: unknown, asJson: boolean) => {
   out(asJson ? `${stableStringify(value)}\n` : `${JSON.stringify(value, null, 2)}\n`);
 };
 
+const optionValue = (args: string[], name: string) => {
+  const index = args.indexOf(name);
+  return index >= 0 ? args[index + 1] : undefined;
+};
+
 export async function runCli(argv: string[], cwd = process.cwd(), out: Writer = process.stdout.write.bind(process.stdout), err: Writer = process.stderr.write.bind(process.stderr)) {
   const [command = "help", subcommand, ...rest] = argv;
   const json = argv.includes("--json");
@@ -58,6 +69,7 @@ Commands:
   approve <token>      Approve a deferred action and issue a warrant
   deny <token>         Deny a deferred action and commit GEL evidence
   replay               Replay the payments scenario
+  compat evaluate      Evaluate a Faramesh-style governed action through AristotleOS
   demo payments        Run the flagship payments scenario
   doctor               Check local developer prerequisites
 `);
@@ -140,6 +152,38 @@ Commands:
       const evaluation = evaluateTrialAction({ source: readPolicy(cwd), intent: scenario.intent, now: "2026-05-20T00:00:00.000Z" });
       printJson(out, { replayed: true, decision: evaluation.decision, materialHash: evaluation.replay.materialHash }, json);
       return 0;
+    }
+
+    if (command === "compat" && subcommand === "evaluate") {
+      const wardPath = optionValue(rest, "--ward");
+      const envelopePath = optionValue(rest, "--envelope");
+      const actionPath = optionValue(rest, "--action");
+      const ledgerPath = optionValue(rest, "--ledger");
+      if (!wardPath || !envelopePath || !actionPath || !ledgerPath) {
+        throw new Error("usage: aristotle compat evaluate --ward <ward.yaml> --envelope <authority.yaml> --action <action.json> --ledger <gel.jsonl>");
+      }
+      const ward = loadWardManifest(path.resolve(cwd, wardPath));
+      const authorityEnvelope = loadAuthorityEnvelope(path.resolve(cwd, envelopePath));
+      const action = loadCanonicalAction(path.resolve(cwd, actionPath));
+      const result = evaluateCompat({
+        ward,
+        authorityEnvelope,
+        action,
+        ledgerPath: path.resolve(cwd, ledgerPath),
+        now: optionValue(rest, "--now")
+      });
+      if (json) {
+        printJson(out, result, true);
+      } else {
+        out(`decision=${result.decision}
+reason_codes=${result.reason_codes.join(",")}
+canonical_action_hash=${result.canonical_action_hash}
+warrant_id=${result.warrant?.warrant_id ?? "none"}
+gel_record_hash=${result.gel_record.record_hash}
+ledger_verification=${result.ledger_verification.ok ? "ok" : `failed:${result.ledger_verification.failure}`}
+`);
+      }
+      return result.ledger_verification.ok ? 0 : 1;
     }
 
     if (command === "explain" && subcommand === "--last-deny") {

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { cpSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { runCli } from "./index.js";
@@ -19,6 +19,34 @@ test("cli init creates a valid governance file", async () => {
     const check = await capture(["check"], dir);
     assert.equal(check.code, 0);
     assert.match(check.stdout, /policy_hash=/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("cli compat evaluate runs Faramesh-style action through AristotleOS", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    const examples = path.resolve(process.cwd(), "examples", "faramesh_compat");
+    cpSync(examples, path.join(dir, "faramesh_compat"), { recursive: true });
+    const result = await capture([
+      "compat",
+      "evaluate",
+      "--ward",
+      "faramesh_compat/ward.montana_drone_test_range.yaml",
+      "--envelope",
+      "faramesh_compat/authority_envelope.survey_planner.yaml",
+      "--action",
+      "faramesh_compat/actions/allow_takeoff.json",
+      "--ledger",
+      ".tmp/gel.jsonl",
+      "--now",
+      "2026-05-21T14:00:00.000Z"
+    ], dir);
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /decision=ALLOW/);
+    assert.match(result.stdout, /warrant_id=wrn-/);
+    assert.match(result.stdout, /ledger_verification=ok/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

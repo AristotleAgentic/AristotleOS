@@ -13,6 +13,7 @@
     "test": "tsx src/index.test.ts"
   },
   "dependencies": {
+    "@aristotle/faramesh-compat-runtime": "workspace:*",
     "@aristotle/trial-engine": "workspace:*"
   }
 }
