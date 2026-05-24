@@ -80,7 +80,51 @@ guarantees:
 - **Transport security (TLS)** is expected to be terminated by an upstream
   proxy/ingress; the boundary speaks plain HTTP on localhost by default.
 
-## Reporting a vulnerability
+## Responsible disclosure policy
 
-Please report suspected vulnerabilities privately via a GitHub security advisory
-on the repository rather than opening a public issue.
+We welcome reports from security researchers and treat them as a priority.
+
+**How to report**
+
+- Preferred: open a private [GitHub Security Advisory](https://github.com/AristotleAgentic/AristotleOS/security/advisories/new).
+- Alternative: email `security@aristotleos.dev`.
+- Please do **not** open a public issue for a suspected vulnerability.
+- A machine-readable contact is published at `/.well-known/security.txt` (RFC 9116).
+
+**What to include**
+
+- Affected component/version (a git commit or the `v0.1.0` tag is ideal).
+- Reproduction steps or a proof-of-concept, and the impact you observed.
+- Any suggested remediation.
+
+**Our commitments**
+
+| Stage | Target |
+|-------|--------|
+| Acknowledge receipt | within 3 business days |
+| Initial triage & severity | within 7 business days |
+| Status updates | at least every 14 days until resolved |
+| Fix or mitigation for high/critical | as fast as practicable; coordinated release |
+
+**Coordinated disclosure**
+
+- We ask for up to 90 days to remediate before public disclosure; we will
+  coordinate the timeline and a release/advisory with you.
+- We will credit reporters in the advisory unless you prefer to remain anonymous.
+
+**Safe harbor**
+
+If you make a good-faith effort to comply with this policy, we will not pursue or
+support legal action against you for your research. Good faith means: only
+testing systems/accounts you own or are authorized to test, avoiding privacy
+violations and service degradation, not exfiltrating more data than necessary to
+demonstrate the issue, and giving us reasonable time to respond before disclosure.
+
+**Scope**
+
+In scope: `shared/execution-control-runtime`, `apps/aristotle-cli`,
+`adapters/http-gateway`, `services/*`, and `apps/console-ui` in this repository.
+See [docs/AUDIT_SCOPE.md](docs/AUDIT_SCOPE.md) and
+[docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) for a deeper map. Out of scope:
+third-party dependencies' internals (track those via `sbom.json` / `pnpm audit`)
+and any infrastructure not part of this repository.

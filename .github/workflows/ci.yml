@@ -1,0 +1,82 @@
+name: CI
+
+# AristotleOS continuous integration: typecheck, test, build, and dependency
+# audit for the execution-control boundary, CLI, and console UI.
+# The workspace lives under extracted/ in this repository.
+
+on:
+  push:
+    branches: [main, ward-warrant-execution-control]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: extracted
+
+jobs:
+  build-test:
+    name: typecheck · test · build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          # Node >= 22.5 is required for the built-in node:sqlite ledger backend.
+          node-version: '22'
+
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Typecheck (runtime + CLI)
+        run: |
+          corepack pnpm -F @aristotle/execution-control-runtime build
+          corepack pnpm -F @aristotle/os-cli typecheck
+
+      - name: Test (governance · execution-control · cli · api · chain)
+        run: corepack pnpm test
+
+      - name: Build CLI bundle
+        run: corepack pnpm -F @aristotle/os-cli build
+
+      - name: Build console UI
+        run: corepack pnpm -F @aristotle/console-ui build
+
+      - name: Boundary self-check
+        run: node apps/aristotle-cli/dist/index.js pilot
+
+      - name: Generate SBOM (smoke)
+        run: corepack pnpm sbom
+
+  dependency-audit:
+    name: dependency audit (prod)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Audit production dependencies
+        # Informational: surfaces newly disclosed CVEs without blocking merges.
+        # Review findings against sbom.json and the threat model.
+        run: corepack pnpm audit --prod
+        continue-on-error: true
