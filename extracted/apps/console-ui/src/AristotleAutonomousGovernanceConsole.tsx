@@ -172,7 +172,15 @@ const DEPLOYABLE_TABS = [
   }
 ] as const;
 type DeployableTabId = (typeof DEPLOYABLE_TABS)[number]["id"];
-type DeployableProfile = (typeof DEPLOYABLE_TABS)[number];
+interface DeployableProfile {
+  id: DeployableTabId;
+  label: string;
+  preferredTarget: string;
+  authorityLane: string;
+  actuationBoundary: string;
+  objective: string;
+  assuranceFocus: string;
+}
 
 function deriveMissionAuthorities(targetSystem: string) {
   if (targetSystem === "safety") return ["mission.command", "safety.council"];
@@ -367,7 +375,7 @@ function deriveActiveKillScopes(snapshot: OperatorSnapshot | null) {
   return [...deduped.values()].filter((scope) => scope.state === "active");
 }
 
-function createVisualNodes(snapshot: OperatorSnapshot | null, animatedTick: number, killSwitchActive: boolean) {
+function createVisualNodes(snapshot: OperatorSnapshot | null, animatedTick: number, killSwitchActive: boolean): MeshNode[] {
   if (!snapshot) return INITIAL_NODES;
 
   const simulationLoad = snapshot.mesh.nodes.reduce((sum, node) => sum + node.load, 0) / Math.max(snapshot.mesh.nodes.length, 1);
@@ -497,16 +505,25 @@ export default function AristotleAutonomousGovernanceConsole({
     scope: "global" | "mission" | "domain" | "agent" | "device";
     scopeRef: string;
   }>({ scope: "global", scopeRef: "" });
-  const [missionDraft, setMissionDraft] = useState({
+  const [missionDraft, setMissionDraft] = useState<{
+    title: string;
+    objective: string;
+    priority: "low" | "medium" | "high" | "critical";
+    riskLevel: "low" | "medium" | "high";
+    targetSystem: (typeof MISSION_TARGET_OPTIONS)[number]["value"];
+  }>({
     title: "Bootstrap agentic workspace",
     objective: "Create the first governed delivery mission for the AI operating system.",
-    priority: "high" as const,
-    riskLevel: "medium" as const,
-    targetSystem: "workspace" as (typeof MISSION_TARGET_OPTIONS)[number]["value"]
+    priority: "high",
+    riskLevel: "medium",
+    targetSystem: "workspace"
   });
-  const [agentDraft, setAgentDraft] = useState({
+  const [agentDraft, setAgentDraft] = useState<{
+    name: string;
+    role: "planner" | "executor" | "reviewer" | "auditor" | "operator";
+  }>({
     name: "Console Field Operator",
-    role: "operator" as const
+    role: "operator"
   });
 
   useEffect(() => {
@@ -701,6 +718,11 @@ export default function AristotleAutonomousGovernanceConsole({
   });
   const focusedEnvelopeArtifact =
     focusedTaskArtifactTimeline.find((artifact) => artifact.artifactType === "authority-envelope") ?? latestEnvelope;
+  // The ledger-artifact arm carries id/verification; envelope-specific display fields
+  // (issuer/subject/domain/action) live only on the EnvelopeList arm. Narrow via `in`
+  // so reads are typed and fall back exactly as they did at runtime.
+  const focusedEnvelopeDetails =
+    focusedEnvelopeArtifact && "subject" in focusedEnvelopeArtifact ? focusedEnvelopeArtifact : null;
   const focusedWarrantArtifact =
     focusedTaskArtifactTimeline.find((artifact) => artifact.artifactType === "execution-warrant") ?? null;
   const focusedDecisionArtifact =
@@ -1019,7 +1041,7 @@ export default function AristotleAutonomousGovernanceConsole({
           focusedTask.governance?.finalityCertificateId,
           focusedTask.governance?.agentIdentityRef,
           focusedTask.governance?.deviceIdentityRef
-        ].filter((value): value is string => Boolean(value) && !knownArtifactIds.has(value));
+        ].filter((value): value is string => value !== undefined && !knownArtifactIds.has(value));
 
         if (relatedArtifactIds.length === 0) {
           setHydratedFocusedArtifacts([]);
@@ -2208,7 +2230,7 @@ export default function AristotleAutonomousGovernanceConsole({
             </div>
             <div className="space-y-3 text-sm">
               <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3">
-                {(latestMetaAuthority?.subject ?? "coalition.core")} to {(primaryMission?.requiredAuthorities[0] ?? "mission.command")} to {(focusedEnvelopeArtifact?.subject ?? "edge.actor.alpha")}
+                {(latestMetaAuthority?.subject ?? "coalition.core")} to {(primaryMission?.requiredAuthorities[0] ?? "mission.command")} to {(focusedEnvelopeDetails?.subject ?? "edge.actor.alpha")}
               </div>
               <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3">
                 Delegation class: {latestMetaAuthority?.delegationClass ?? "root"}
@@ -2328,10 +2350,10 @@ export default function AristotleAutonomousGovernanceConsole({
             <div className="space-y-3">
               <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/80 p-4 text-sm text-slate-300">
                 <div>Envelope ID: {focusedEnvelopeArtifact?.id ?? "env-awaiting"}</div>
-                <div>Issuer: {focusedEnvelopeArtifact?.issuer ?? primaryMission?.requiredAuthorities[0] ?? "mission.command"}</div>
-                <div>Subject: {focusedEnvelopeArtifact?.subject ?? "edge.actor.alpha"}</div>
-                <div>Domain: {focusedEnvelopeArtifact?.domain ?? "mission"}</div>
-                <div>Action: {focusedEnvelopeArtifact?.action ?? "governed execution"}</div>
+                <div>Issuer: {focusedEnvelopeDetails?.issuer ?? primaryMission?.requiredAuthorities[0] ?? "mission.command"}</div>
+                <div>Subject: {focusedEnvelopeDetails?.subject ?? "edge.actor.alpha"}</div>
+                <div>Domain: {focusedEnvelopeDetails?.domain ?? "mission"}</div>
+                <div>Action: {focusedEnvelopeDetails?.action ?? "governed execution"}</div>
                 <div className="text-emerald-300">
                   Verification: {focusedEnvelopeArtifact?.verification?.reason ?? focusedEnvelopeArtifact?.verification?.status ?? "awaiting validated meta-authority chain"}
                 </div>

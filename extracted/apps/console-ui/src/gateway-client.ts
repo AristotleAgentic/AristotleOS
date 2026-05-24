@@ -255,6 +255,7 @@ export interface AgentOSState {
     priority: "low" | "medium" | "high" | "critical";
     riskLevel: "low" | "medium" | "high";
     targetSystem: string;
+    workspaceId?: string;
     governanceProfile: string;
     assignedAgents: string[];
     requiredTools: string[];
