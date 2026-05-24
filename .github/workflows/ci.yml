@@ -57,6 +57,9 @@ jobs:
       - name: Generate SBOM (smoke)
         run: corepack pnpm sbom
 
+      - name: Clean-room scan
+        run: corepack pnpm clean-room
+
   cli-package:
     name: CLI package (pack + packed pilot smoke)
     runs-on: ubuntu-latest

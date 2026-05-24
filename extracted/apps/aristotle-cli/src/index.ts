@@ -991,7 +991,8 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
       const bundlePath = requiredOption(rest, "--bundle");
       const revocationsOpt = optionValue(rest, "--revocations");
       const revocations = revocationsOpt ? loadRevocationList(path.resolve(cwd, revocationsOpt)) : undefined;
-      const verification = verifyEvidenceBundle(loadEvidenceBundle(path.resolve(cwd, bundlePath)), { revocations });
+      const trustedKeyIds = optionValue(rest, "--trusted-key-ids")?.split(",").map((id) => id.trim()).filter(Boolean);
+      const verification = verifyEvidenceBundle(loadEvidenceBundle(path.resolve(cwd, bundlePath)), { revocations, trustedKeyIds });
       if (json) printJson(out, verification, true);
       else out(`evidence_verification=${verification.ok ? "ok" : `failed:${verification.failures.join(";")}`}\nbundle_hash=${verification.bundle_hash ?? "none"}\nledger_records=${verification.ledger.count}\n`);
       return verification.ok ? 0 : 1;

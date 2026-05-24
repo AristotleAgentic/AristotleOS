@@ -59,7 +59,8 @@
     "benchmark:runtime": "tsx scripts/benchmark-runtime.ts",
     "bench:execution-control": "tsx shared/execution-control-runtime/benchmark.mts",
     "sbom": "node scripts/generate-sbom.mjs",
-    "package:cli:check": "node scripts/check-cli-package.mjs"
+    "package:cli:check": "node scripts/check-cli-package.mjs",
+    "clean-room": "node scripts/clean-room-scan.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.0.1",
