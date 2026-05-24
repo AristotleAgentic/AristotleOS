@@ -37,10 +37,13 @@ jobs:
       - name: Install dependencies
         run: corepack pnpm install --frozen-lockfile
 
-      - name: Typecheck (runtime + CLI)
+      - name: Typecheck (runtime · CLI · console-ui · adapters)
+        # Build the runtime first so consumers resolve its emitted .d.ts, then
+        # strict-typecheck every project (tsc --noEmit) — the whole source tree,
+        # including the console UI that Vite/esbuild would otherwise build untyped.
         run: |
           corepack pnpm -F @aristotle/execution-control-runtime build
-          corepack pnpm -F @aristotle/os-cli typecheck
+          corepack pnpm typecheck
 
       - name: Test (governance · execution-control · cli · api · chain)
         run: corepack pnpm test
