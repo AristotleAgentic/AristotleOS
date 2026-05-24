@@ -304,6 +304,7 @@ Commands:
   kill engage|release  Engage/release the sovereign-halt kill switch
   revoke key|envelope|warrant <id>   Revoke a compromised trust root
   pilot                One-command self-check of the full boundary
+  preflight            Check production readiness (signing key, auth, config)
   demo payments        Run the flagship payments scenario
   doctor               Check local developer prerequisites
 `);
@@ -392,6 +393,7 @@ Keep the private key secret. The public key and key_id can be shared so others c
       const apiKey = optionValue(runArgs, "--api-key") ?? process.env.ARISTOTLE_OPERATOR_API_KEY;
       const replayProtection = !runArgs.includes("--no-replay-protection");
       const revocationListPath = path.resolve(cwd, optionValue(runArgs, "--revocations") ?? ".aristotle/revocations.json");
+      const warrantTtlSeconds = Number(optionValue(runArgs, "--warrant-ttl") ?? process.env.ARISTOTLE_WARRANT_TTL_SECONDS ?? "60");
       const { server } = createExecutionControlRuntimeServer({
         ward,
         authorityEnvelope,
@@ -401,7 +403,8 @@ Keep the private key secret. The public key and key_id can be shared so others c
         killSwitchPath,
         replayProtection,
         apiKey,
-        revocationListPath
+        revocationListPath,
+        warrantTtlSeconds
       });
       await new Promise<void>((resolve) => server.listen(config.port, "127.0.0.1", resolve));
       const address = server.address();
@@ -709,6 +712,7 @@ evidence_bundle=${evidenceOut ?? "not requested"}
       const apiKey = optionValue(rest, "--api-key") ?? process.env.ARISTOTLE_OPERATOR_API_KEY;
       const replayProtection = !rest.includes("--no-replay-protection");
       const revocationListPath = path.resolve(cwd, optionValue(rest, "--revocations") ?? ".aristotle/revocations.json");
+      const warrantTtlSeconds = Number(optionValue(rest, "--warrant-ttl") ?? process.env.ARISTOTLE_WARRANT_TTL_SECONDS ?? "60");
       const { server } = createExecutionControlRuntimeServer({
         ward,
         authorityEnvelope,
@@ -719,7 +723,8 @@ evidence_bundle=${evidenceOut ?? "not requested"}
         killSwitchPath,
         replayProtection,
         apiKey,
-        revocationListPath
+        revocationListPath,
+        warrantTtlSeconds
       });
       await new Promise<void>((resolve) => server.listen(port, "127.0.0.1", resolve));
       out(`AristotleOS execution-control runtime listening on http://127.0.0.1:${port}
@@ -920,6 +925,58 @@ Next: aristotle approvals && aristotle approve ${evaluation.deferToken ?? "<toke
       }
       rmSync(ledgerDir, { recursive: true, force: true });
       return failed.length === 0 ? 0 : 1;
+    }
+
+    if (command === "preflight") {
+      const pfArgs = argv.slice(1);
+      const checks: Array<{ name: string; level: "FAIL" | "WARN"; ok: boolean; detail?: string }> = [];
+      const fail = (name: string, ok: boolean, detail?: string) => checks.push({ name, level: "FAIL", ok, detail });
+      const warn = (name: string, ok: boolean, detail?: string) => checks.push({ name, level: "WARN", ok, detail });
+
+      const nodeMajor = Number(process.version.replace(/^v/, "").split(".")[0]);
+      fail("Node.js >= 18", nodeMajor >= 18, process.version);
+
+      try {
+        const config = discoverRunConfig(pfArgs, cwd);
+        loadWardManifest(config.wardPath);
+        loadAuthorityEnvelope(config.envelopePath);
+        fail("Ward & Authority Envelope present and valid", true, config.wardPath);
+        try {
+          mkdirSync(path.dirname(config.ledgerPath), { recursive: true });
+          const probe = path.join(path.dirname(config.ledgerPath), ".preflight-probe");
+          writeFileSync(probe, "ok");
+          rmSync(probe);
+          fail("Ledger path writable", true, config.ledgerPath);
+        } catch {
+          fail("Ledger path writable", false, config.ledgerPath);
+        }
+      } catch (error) {
+        fail("Ward & Authority Envelope present and valid", false, error instanceof Error ? error.message : String(error));
+      }
+
+      let durableKey = false;
+      try {
+        durableKey = !!loadWarrantSignerFromEnv() || !!optionValue(pfArgs, "--signing-key");
+      } catch {
+        durableKey = false;
+      }
+      fail("Durable Ed25519 signing key configured", durableKey, durableKey ? undefined : "run `aristotle keys generate` and set ARISTOTLE_WARRANT_SIGNING_PRIVATE_KEY_PATH");
+
+      const apiKey = optionValue(pfArgs, "--api-key") ?? process.env.ARISTOTLE_OPERATOR_API_KEY;
+      warn("Operator API key set", !!apiKey, apiKey ? undefined : "set ARISTOTLE_OPERATOR_API_KEY to require auth on /v1");
+      warn("Replay protection enabled", !pfArgs.includes("--no-replay-protection"));
+      warn("NODE_ENV=production", process.env.NODE_ENV === "production", process.env.NODE_ENV ?? "(unset)");
+
+      const fails = checks.filter((check) => check.level === "FAIL" && !check.ok);
+      const warns = checks.filter((check) => check.level === "WARN" && !check.ok);
+      if (json) {
+        printJson(out, { ok: fails.length === 0, checks }, true);
+      } else {
+        out("AristotleOS production preflight\n\n");
+        for (const check of checks) out(`  ${check.ok ? "PASS" : check.level}  ${check.name}${check.detail ? `  (${check.detail})` : ""}\n`);
+        out(`\n${fails.length === 0 ? (warns.length ? `READY (with ${warns.length} warning(s))` : "READY for production.") : `NOT READY — ${fails.length} blocking issue(s).`}\n`);
+      }
+      return fails.length === 0 ? 0 : 1;
     }
 
     throw new Error(`unknown command: ${[command, subcommand].filter(Boolean).join(" ")}`);

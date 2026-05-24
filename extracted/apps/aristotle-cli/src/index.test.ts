@@ -137,6 +137,32 @@ test("cli pilot self-check passes every boundary check", async () => {
   }
 });
 
+test("cli preflight blocks without a signing key and passes when configured", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  const savedPriv = process.env.ARISTOTLE_WARRANT_SIGNING_PRIVATE_KEY_PATH;
+  const savedPub = process.env.ARISTOTLE_WARRANT_SIGNING_PUBLIC_KEY_PATH;
+  try {
+    await capture(["init"], dir);
+    delete process.env.ARISTOTLE_WARRANT_SIGNING_PRIVATE_KEY_PATH;
+    delete process.env.ARISTOTLE_WARRANT_SIGNING_PUBLIC_KEY_PATH;
+
+    const notReady = await capture(["preflight"], dir);
+    assert.notEqual(notReady.code, 0);
+    assert.match(notReady.stdout, /NOT READY/);
+
+    await capture(["keys", "generate"], dir);
+    process.env.ARISTOTLE_WARRANT_SIGNING_PRIVATE_KEY_PATH = path.join(dir, "secrets", "warrant-ed25519-private.pem");
+    process.env.ARISTOTLE_WARRANT_SIGNING_PUBLIC_KEY_PATH = path.join(dir, "secrets", "warrant-ed25519-public.pem");
+    const ready = await capture(["preflight"], dir);
+    assert.equal(ready.code, 0, ready.stdout);
+    assert.match(ready.stdout, /READY/);
+  } finally {
+    if (savedPriv === undefined) delete process.env.ARISTOTLE_WARRANT_SIGNING_PRIVATE_KEY_PATH; else process.env.ARISTOTLE_WARRANT_SIGNING_PRIVATE_KEY_PATH = savedPriv;
+    if (savedPub === undefined) delete process.env.ARISTOTLE_WARRANT_SIGNING_PUBLIC_KEY_PATH; else process.env.ARISTOTLE_WARRANT_SIGNING_PUBLIC_KEY_PATH = savedPub;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("cli keys generate mints an Ed25519 warrant signing keypair", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
   try {

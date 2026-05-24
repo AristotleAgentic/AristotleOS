@@ -22,10 +22,14 @@ import {
   evaluateExecutionControl,
   exportEvidenceBundle,
   issueWarrant,
+  LedgerStore,
   loadGelChain,
+  loadWardManifest,
   proxyGovernedAction,
   requireAllowedWarrant,
   submitGovernedAction,
+  validateAuthorityEnvelope,
+  validateWardManifest,
   verifyEd25519,
   verifyEvidenceBundle,
   verifyGelChain,
@@ -499,6 +503,76 @@ test("evidence bundle verification fails against a revocation list", () => {
   assert.ok(verification.failures.some((failure) => failure.includes("REVOKED")));
 });
 
+test("validateWardManifest and validateAuthorityEnvelope flag bad config", () => {
+  const wardResult = validateWardManifest({ ward_id: "", permitted_subjects: [] });
+  assert.equal(wardResult.ok, false);
+  assert.ok(wardResult.issues.some((i) => i.path === "ward.ward_id"));
+  assert.ok(wardResult.issues.some((i) => i.path === "ward.permitted_subjects"));
+  assert.equal(validateWardManifest(ward).ok, true);
+
+  const envResult = validateAuthorityEnvelope({ envelope_id: "e", ward_id: "w", subject: "s", issuer: "i", allowed_actions: [], denied_actions: [], expires_at: "not-a-date" });
+  assert.equal(envResult.ok, false);
+  assert.ok(envResult.issues.some((i) => i.path === "envelope.expires_at"));
+  assert.equal(validateAuthorityEnvelope(envelope).ok, true);
+});
+
+test("loadWardManifest throws a readable error on invalid config", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aos-val-"));
+  const file = path.join(dir, "ward.json");
+  writeFileSync(file, JSON.stringify({ name: "missing required fields" }));
+  assert.throws(() => loadWardManifest(file), /Ward Manifest is invalid/);
+});
+
+test("warrant TTL is configurable", () => {
+  const decision = evaluateCommitGate({ ward, authorityEnvelope: envelope, action, now });
+  const warrant = issueWarrant(decision, action, envelope, now, undefined, 5);
+  assert.ok(warrant);
+  assert.equal(Date.parse(warrant.expires_at) - Date.parse(warrant.issued_at), 5000);
+});
+
+test("LedgerStore tracks tip/count/admitted in memory and rebuilds from disk", () => {
+  const file = ledgerPath();
+  const store = new LedgerStore(file);
+  assert.equal(store.count, 0);
+  assert.equal(typeof store.tipHash, "string");
+
+  const decision = evaluateCommitGate({ ward, authorityEnvelope: envelope, action, now });
+  const warrant = issueWarrant(decision, action, envelope, now);
+  const record = store.append({ ward, action, decision, warrant, now });
+  assert.equal(store.count, 1);
+  assert.equal(store.tipHash, record.record_hash);
+  assert.equal(store.hasPriorAdmission(record.canonical_action_hash), true);
+  assert.equal(store.hasPriorAdmission("not-a-known-hash"), false);
+
+  // A fresh store over the same file rebuilds the same index from the JSONL.
+  const reopened = new LedgerStore(file);
+  assert.equal(reopened.count, 1);
+  assert.equal(reopened.tipHash, record.record_hash);
+  assert.equal(reopened.hasPriorAdmission(record.canonical_action_hash), true);
+  assert.equal(reopened.verification().ok, true);
+});
+
+test("server enforces replay protection across requests via the shared ledger index", async () => {
+  const file = ledgerPath();
+  const { server } = createExecutionControlRuntimeServer({ ward, authorityEnvelope: envelope, ledgerPath: file, now });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const address = server.address();
+    const url = `http://127.0.0.1:${address && typeof address === "object" ? address.port : 0}/v1/execution-control/evaluate`;
+    const post = () => fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action }) });
+
+    const first = await post();
+    assert.equal(first.status, 200);
+
+    const second = await post();
+    assert.equal(second.status, 409);
+    const body = await second.json();
+    assert.deepEqual(body.reason_codes, ["REPLAY_DETECTED"]);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
 test("runtime server serves the playground and context when enabled", async () => {
   const file = ledgerPath();
   const { server } = createExecutionControlRuntimeServer({ ward, authorityEnvelope: envelope, ledgerPath: file, now, servePlayground: true });
@@ -587,6 +661,30 @@ test("proxy forwards an approved action with brokered credentials and never leak
     assert.doesNotMatch(JSON.stringify(result), /topsecret/);
   } finally {
     await new Promise<void>((resolve, reject) => downstream.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test("proxy refuses to forward when params.url diverges from the authorized target (SSRF guard)", async () => {
+  let evilHit = false;
+  const evil = createServer((_req, res) => { evilHit = true; res.end("x"); });
+  await new Promise<void>((resolve) => evil.listen(0, "127.0.0.1", resolve));
+  const evilPort = (evil.address() as { port: number }).port;
+  try {
+    const file = ledgerPath();
+    const proxyEnvelope: AuthorityEnvelope = { ...envelope, allowed_actions: ["http.post"], denied_actions: [], constraints: {} };
+    const httpAction: CanonicalActionInput = {
+      ...action,
+      action_type: "http.post",
+      target: "https://authorized.example.com/ok",
+      params: { url: `http://127.0.0.1:${evilPort}/evil` }
+    };
+    const result = await proxyGovernedAction({ ward, authorityEnvelope: proxyEnvelope, action: httpAction, ledgerPath: file, now });
+    assert.equal(result.decision, "ALLOW");
+    assert.equal(result.forwarded, false);
+    assert.match(result.error ?? "", /destination mismatch/);
+    assert.equal(evilHit, false);
+  } finally {
+    await new Promise<void>((resolve, reject) => evil.close((error) => error ? reject(error) : resolve()));
   }
 });
 

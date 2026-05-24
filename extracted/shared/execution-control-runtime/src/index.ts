@@ -1,5 +1,5 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { createHash } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import path from "node:path";
 import {
@@ -12,11 +12,13 @@ import {
 import { type CredentialBroker, proxyGovernedAction } from "./proxy.js";
 import { PLAYGROUND_HTML } from "./playground.js";
 import { type RevocationList, loadRevocationList, revocationReason } from "./revocation.js";
+import { assertValidAuthorityEnvelope, assertValidWardManifest } from "./validation.js";
 
 export * from "./proxy.js";
 export * from "./mcp.js";
 export * from "./playground.js";
 export * from "./revocation.js";
+export * from "./validation.js";
 
 export {
   type AristotleSigner,
@@ -209,6 +211,10 @@ export interface EvaluateExecutionControlInput extends CommitGateInput {
   replayProtection?: boolean;
   /** Path to a revocation list file; revoked keys/envelopes are refused at the gate. */
   revocationListPath?: string;
+  /** Optional in-memory ledger index for O(1) append/replay on the server hot path. */
+  ledger?: LedgerStore;
+  /** Warrant lifetime in seconds (default 60). */
+  warrantTtlSeconds?: number;
 }
 
 export interface EvaluateExecutionControlResult {
@@ -295,6 +301,8 @@ export interface ExecutionControlRuntimeServerOptions {
   apiKey?: string;
   /** Path to a revocation list file; revoked keys/envelopes are refused at the gate. */
   revocationListPath?: string;
+  /** Warrant lifetime in seconds (default 60). */
+  warrantTtlSeconds?: number;
 }
 
 export interface ExecutionControlRuntimeServer {
@@ -459,15 +467,19 @@ function warrantMaterial(fields: {
   return stableStringify({ ...fields, decision: "ALLOW", single_use: true });
 }
 
+export const DEFAULT_WARRANT_TTL_SECONDS = 60;
+
 export function issueWarrant(
   decision: CommitGateDecision,
   action: CanonicalActionInput,
   envelope: AuthorityEnvelope,
   now = new Date().toISOString(),
-  signer: AristotleSigner = getDefaultDevSigner()
+  signer: AristotleSigner = getDefaultDevSigner(),
+  ttlSeconds: number = DEFAULT_WARRANT_TTL_SECONDS
 ): Warrant | undefined {
   if (decision.decision !== "ALLOW") return undefined;
-  const expires_at = new Date(Date.parse(now) + 60_000).toISOString();
+  const ttl = Number.isFinite(ttlSeconds) && ttlSeconds > 0 ? ttlSeconds : DEFAULT_WARRANT_TTL_SECONDS;
+  const expires_at = new Date(Date.parse(now) + ttl * 1000).toISOString();
   const material = warrantMaterial({
     action_type: action.action_type,
     authority_envelope_id: envelope.envelope_id,
@@ -549,17 +561,19 @@ export function consumeWarrant(warrant: Warrant, canonicalActionHash: string, no
   return new AristotleWarrant(warrant).consume(canonicalActionHash, now, options);
 }
 
-export function appendGelRecord(input: {
-  ledgerPath: string;
+interface BuildGelRecordInput {
+  previous_hash: string;
   ward: WardManifest;
   action: CanonicalActionInput;
   decision: CommitGateDecision;
   warrant?: Warrant;
   now?: string;
   signer?: AristotleSigner;
-}): GelRecord {
-  const chain = loadGelChain(input.ledgerPath);
-  const previous_hash = chain.at(-1)?.record_hash ?? GENESIS_HASH;
+}
+
+/** Pure: build a (optionally signed) GEL record linked to a given previous hash. */
+function buildGelRecord(input: BuildGelRecordInput): GelRecord {
+  const { previous_hash } = input;
   const timestamp = input.now ?? new Date().toISOString();
   const base = {
     record_id: `gel-${sha256(stableStringify({ previous_hash, timestamp, action: input.decision.canonical_action_hash })).slice(0, 24)}`,
@@ -578,7 +592,7 @@ export function appendGelRecord(input: {
   };
   const record_hash = sha256(stableStringify(base));
   const signer = input.signer;
-  const record: GelRecord = {
+  return {
     ...base,
     record_hash,
     ...(signer
@@ -590,9 +604,76 @@ export function appendGelRecord(input: {
         }
       : {})
   };
-  mkdirSync(path.dirname(path.resolve(input.ledgerPath)), { recursive: true });
-  appendFileSync(input.ledgerPath, `${stableStringify(record)}\n`, "utf8");
+}
+
+function writeGelRecord(ledgerPath: string, record: GelRecord): void {
+  mkdirSync(path.dirname(path.resolve(ledgerPath)), { recursive: true });
+  appendFileSync(ledgerPath, `${stableStringify(record)}\n`, "utf8");
+}
+
+export function appendGelRecord(input: {
+  ledgerPath: string;
+  ward: WardManifest;
+  action: CanonicalActionInput;
+  decision: CommitGateDecision;
+  warrant?: Warrant;
+  now?: string;
+  signer?: AristotleSigner;
+}): GelRecord {
+  const previous_hash = loadGelChain(input.ledgerPath).at(-1)?.record_hash ?? GENESIS_HASH;
+  const record = buildGelRecord({ previous_hash, ...input });
+  writeGelRecord(input.ledgerPath, record);
   return record;
+}
+
+/**
+ * Stateful, append-only ledger with an in-memory index. Holds the chain tip, the
+ * record count, and the set of admitted canonical-action hashes so append and
+ * replay checks are O(1) on the server hot path. The JSONL file remains the
+ * source of truth; the index is rebuilt from it at construction.
+ */
+export class LedgerStore {
+  private tip_hash: string;
+  private _count: number;
+  private readonly admitted: Set<string>;
+  private _ok: boolean;
+  private _failure?: string;
+
+  constructor(public readonly ledgerPath: string) {
+    const chain = loadGelChain(ledgerPath);
+    const verification = verifyGelRecords(chain);
+    this._ok = verification.ok;
+    this._failure = verification.failure;
+    this._count = chain.length;
+    this.tip_hash = chain.at(-1)?.record_hash ?? GENESIS_HASH;
+    this.admitted = new Set(chain.filter((record) => record.decision === "ALLOW").map((record) => record.canonical_action_hash));
+  }
+
+  get count(): number {
+    return this._count;
+  }
+
+  get tipHash(): string {
+    return this.tip_hash;
+  }
+
+  hasPriorAdmission(canonicalActionHash: string): boolean {
+    return this.admitted.has(canonicalActionHash);
+  }
+
+  /** Integrity from the last full scan; appends preserve linkage by construction. */
+  verification(): { ok: boolean; count: number; failure?: string } {
+    return this._ok ? { ok: true, count: this._count } : { ok: false, count: this._count, failure: this._failure };
+  }
+
+  append(input: Omit<BuildGelRecordInput, "previous_hash">): GelRecord {
+    const record = buildGelRecord({ previous_hash: this.tip_hash, ...input });
+    writeGelRecord(this.ledgerPath, record);
+    this.tip_hash = record.record_hash;
+    this._count += 1;
+    if (record.decision === "ALLOW") this.admitted.add(record.canonical_action_hash);
+    return record;
+  }
 }
 
 export function loadGelChain(ledgerPath: string): GelRecord[] {
@@ -770,42 +851,43 @@ export function evaluateExecutionControl(input: EvaluateExecutionControlInput): 
     signing_key_id: signer.key_id,
     authority_envelope_id: input.authorityEnvelope?.envelope_id
   });
+  const replaySeen = input.replayProtection
+    ? (input.ledger ? input.ledger.hasPriorAdmission(canonical.canonical_action_hash) : hasPriorAdmission(input.ledgerPath, canonical.canonical_action_hash))
+    : false;
   let decision: CommitGateDecision;
   if (input.killSwitchPath && existsSync(input.killSwitchPath)) {
     decision = refuse("REFUSE", ["KILL_SWITCH_ENGAGED"], canonical, runtimeSnapshot, input.ward, input.authorityEnvelope ?? undefined);
   } else if (revoked) {
     decision = refuse("REFUSE", ["AUTHORITY_REVOKED"], canonical, runtimeSnapshot, input.ward, input.authorityEnvelope ?? undefined);
-  } else if (input.replayProtection && hasPriorAdmission(input.ledgerPath, canonical.canonical_action_hash)) {
+  } else if (replaySeen) {
     decision = refuse("REFUSE", ["REPLAY_DETECTED"], canonical, runtimeSnapshot, input.ward, input.authorityEnvelope ?? undefined);
   } else {
     decision = evaluateCommitGate(input);
   }
-  const warrant = decision.decision === "ALLOW" && input.authorityEnvelope ? issueWarrant(decision, input.action, input.authorityEnvelope, input.now, signer) : undefined;
-  const gel_record = appendGelRecord({
-    ledgerPath: input.ledgerPath,
-    ward: input.ward,
-    action: input.action,
-    decision,
-    warrant,
-    now: input.now,
-    signer
-  });
+  const warrant = decision.decision === "ALLOW" && input.authorityEnvelope ? issueWarrant(decision, input.action, input.authorityEnvelope, input.now, signer, input.warrantTtlSeconds) : undefined;
+  const gel_record = input.ledger
+    ? input.ledger.append({ ward: input.ward, action: input.action, decision, warrant, now: input.now, signer })
+    : appendGelRecord({ ledgerPath: input.ledgerPath, ward: input.ward, action: input.action, decision, warrant, now: input.now, signer });
   return {
     decision: decision.decision,
     reason_codes: decision.reason_codes,
     canonical_action_hash: decision.canonical_action_hash,
     warrant,
     gel_record,
-    ledger_verification: verifyGelChain(input.ledgerPath)
+    ledger_verification: input.ledger ? input.ledger.verification() : verifyGelChain(input.ledgerPath)
   };
 }
 
 export function loadWardManifest(file: string): WardManifest {
-  return loadStructuredFile(file) as unknown as WardManifest;
+  const parsed = loadStructuredFile(file);
+  assertValidWardManifest(parsed);
+  return parsed as unknown as WardManifest;
 }
 
 export function loadAuthorityEnvelope(file: string): AuthorityEnvelope {
-  return loadStructuredFile(file) as unknown as AuthorityEnvelope;
+  const parsed = loadStructuredFile(file);
+  assertValidAuthorityEnvelope(parsed);
+  return parsed as unknown as AuthorityEnvelope;
 }
 
 export function loadCanonicalAction(file: string): CanonicalActionInput {
@@ -1060,13 +1142,20 @@ export function executionControlOpenApiSpec() {
 
 export function createExecutionControlRuntimeServer(options: ExecutionControlRuntimeServerOptions): ExecutionControlRuntimeServer {
   const replayProtection = options.replayProtection !== false;
+  // One in-memory ledger index for the whole server lifetime keeps append and
+  // replay checks O(1) instead of rescanning the JSONL on every request.
+  const ledger = new LedgerStore(options.ledgerPath);
+  const apiKeyBuffer = options.apiKey ? Buffer.from(options.apiKey) : undefined;
   const authorized = (req: IncomingMessage): boolean => {
-    if (!options.apiKey) return true;
+    if (!apiKeyBuffer) return true;
     const header = req.headers["authorization"];
     const bearer = typeof header === "string" && header.startsWith("Bearer ") ? header.slice(7) : undefined;
     const apiKeyHeader = req.headers["x-api-key"];
     const provided = bearer ?? (typeof apiKeyHeader === "string" ? apiKeyHeader : undefined);
-    return provided === options.apiKey;
+    if (provided === undefined) return false;
+    const providedBuffer = Buffer.from(provided);
+    // Constant-time compare to avoid leaking the key via response timing.
+    return providedBuffer.length === apiKeyBuffer.length && timingSafeEqual(providedBuffer, apiKeyBuffer);
   };
 
   const server = createServer(async (req, res) => {
@@ -1131,7 +1220,9 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           signer: options.signer,
           killSwitchPath: options.killSwitchPath,
           replayProtection,
-          revocationListPath: options.revocationListPath
+          revocationListPath: options.revocationListPath,
+          warrantTtlSeconds: options.warrantTtlSeconds,
+          ledger
         });
         sendJson(res, result.decision === "ALLOW" ? 200 : result.decision === "ESCALATE" ? 202 : 409, result);
         return;
@@ -1150,7 +1241,9 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           now: typeof body.now === "string" ? body.now : options.now,
           killSwitchPath: options.killSwitchPath,
           replayProtection,
-          revocationListPath: options.revocationListPath
+          revocationListPath: options.revocationListPath,
+          warrantTtlSeconds: options.warrantTtlSeconds,
+          ledger
         });
         const status = result.decision === "ALLOW" ? (result.forwarded ? 200 : 502) : result.decision === "ESCALATE" ? 202 : 409;
         sendJson(res, status, result);

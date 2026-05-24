@@ -45,6 +45,7 @@ Warrant.
 | `aristotle keys generate` | Generate an Ed25519 Warrant signing keypair |
 | `aristotle kill engage\|release` | Sovereign-halt kill switch |
 | `aristotle revoke key\|envelope\|warrant <id>` | Revoke a compromised trust root |
+| `aristotle preflight` | Check production readiness (signing key, auth, config) |
 | `aristotle execution-control serve` | Run the boundary as a standalone daemon |
 | `aristotle execution-control evaluate` | Evaluate a single action |
 | `aristotle execution-control evidence export/verify` | Portable evidence bundles |

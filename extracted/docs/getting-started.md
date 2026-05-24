@@ -120,6 +120,9 @@ boundary — every decision is produced by the same code path as production.
 The boundary ships with enterprise safety controls:
 
 ```bash
+# Check production readiness before deploying (signing key, auth, valid config)
+aristotle preflight
+
 # Sovereign halt — refuse every action until released
 aristotle kill engage
 aristotle kill release
@@ -148,6 +151,15 @@ ARISTOTLE_OPERATOR_API_KEY=... aristotle run -- <your agent command>
 - **Request limits** — request bodies over 1 MB are rejected (`413`).
 - **Metrics** — `GET /v1/execution-control/metrics` reports decision counts, a
   reason-code histogram, ledger size, and integrity.
+- **Config validation** — Ward Manifests and Authority Envelopes are validated on
+  load; malformed config fails fast with a readable error.
+- **Configurable warrant TTL** — `--warrant-ttl <seconds>` or
+  `ARISTOTLE_WARRANT_TTL_SECONDS` (default 60).
+- **Preflight** — `aristotle preflight` blocks deploys missing a durable signing
+  key or other production essentials.
+- **Container** — run the boundary as a sidecar with
+  `manifests/docker/execution-control.Dockerfile`. See [SECURITY.md](../SECURITY.md)
+  for the threat model and known limitations.
 
 ### Portable evidence
 

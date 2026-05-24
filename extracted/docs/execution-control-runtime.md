@@ -59,6 +59,7 @@ Core exports:
 - `CredentialBroker` / `proxyGovernedAction`
 - `createExecutionControlMcpServer`
 - `loadRevocationList` / `addRevocation` / `revocationReason`
+- `LedgerStore` (O(1) in-memory ledger index)
 
 ## Demo
 
@@ -318,3 +319,14 @@ report and exits non-zero on any failure.
 - **Metrics** — `GET /v1/execution-control/metrics` returns decision counts, a
   reason-code histogram, ledger size, signing key id, kill-switch state, and
   ledger integrity.
+
+## Ledger performance
+
+The boundary keeps an in-memory ledger index (`LedgerStore`) for the lifetime of
+the running server: it holds the chain tip, the record count, and the set of
+admitted canonical-action hashes. This makes both **append** and **replay
+detection O(1)** on the hot path instead of rescanning the JSONL on every
+request. The JSONL file remains the source of truth; the index is rebuilt from it
+at startup (and full `verifyGelChain` is still available on demand via
+`/v1/execution-control/audit/verify`). One-shot CLI evaluations use the stateless
+file functions, so behavior is identical with or without the index.

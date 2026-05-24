@@ -6,6 +6,7 @@ import {
   type ExecutionControlReasonCode,
   type GelRecord,
   type JsonValue,
+  type LedgerStore,
   type WardManifest,
   type Warrant,
   evaluateExecutionControl,
@@ -90,10 +91,19 @@ function methodFor(action: CanonicalActionInput): string {
   return METHOD_BY_TYPE[action.action_type] ?? "GET";
 }
 
-function urlFor(action: CanonicalActionInput): string {
-  const explicit = action.params.url;
-  if (typeof explicit === "string") return explicit;
-  return action.target;
+/**
+ * The proxy only ever contacts the gate-authorized destination: `action.target`.
+ * The Commit Gate's allowed_targets constraint is evaluated against `target`, so
+ * forwarding to anything else (e.g. a divergent `params.url`) would be an
+ * authorization bypass / SSRF vector. A `params.url` that disagrees with `target`
+ * is rejected rather than silently followed.
+ */
+function resolveDestination(action: CanonicalActionInput): { url: string } | { error: string } {
+  const declared = action.params.url;
+  if (typeof declared === "string" && declared !== action.target) {
+    return { error: "proxy destination mismatch: params.url must equal the authorized target" };
+  }
+  return { url: action.target };
 }
 
 function bodyFor(action: CanonicalActionInput): string | undefined {
@@ -113,6 +123,8 @@ export interface ProxyGovernedActionInput {
   killSwitchPath?: string;
   replayProtection?: boolean;
   revocationListPath?: string;
+  ledger?: LedgerStore;
+  warrantTtlSeconds?: number;
   /** Injected for testing; defaults to global fetch. */
   fetchImpl?: typeof fetch;
 }
@@ -145,7 +157,9 @@ export async function proxyGovernedAction(input: ProxyGovernedActionInput): Prom
     now: input.now,
     killSwitchPath: input.killSwitchPath,
     replayProtection: input.replayProtection,
-    revocationListPath: input.revocationListPath
+    revocationListPath: input.revocationListPath,
+    ledger: input.ledger,
+    warrantTtlSeconds: input.warrantTtlSeconds
   });
 
   const base = {
@@ -166,6 +180,11 @@ export async function proxyGovernedAction(input: ProxyGovernedActionInput): Prom
     return { ...base, forwarded: false, injected_headers: [], error: `warrant verification failed: ${verification.reason}` };
   }
 
+  const destination = resolveDestination(input.action);
+  if ("error" in destination) {
+    return { ...base, forwarded: false, injected_headers: [], error: destination.error };
+  }
+
   let injected: Record<string, string> = {};
   try {
     injected = input.broker ? input.broker.resolve(input.action) : {};
@@ -180,7 +199,7 @@ export async function proxyGovernedAction(input: ProxyGovernedActionInput): Prom
 
   const fetchImpl = input.fetchImpl ?? fetch;
   try {
-    const response = await fetchImpl(urlFor(input.action), {
+    const response = await fetchImpl(destination.url, {
       method: methodFor(input.action),
       headers,
       body: bodyFor(input.action)
