@@ -1462,3 +1462,41 @@ test("evaluate endpoint honors degraded_conditions against the Ward criticality"
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });
+
+test("evaluate self-detects an unavailable ledger and returns a governed degraded decision (no 500)", async () => {
+  // A ledger path whose parent is a regular file ⇒ the default ledger-writability
+  // probe reports ledger_unavailable. The boundary must answer with a governed
+  // degraded decision, not an ungoverned 500 from a failed append.
+  const dir = mkdtempSync(path.join(tmpdir(), "aos-degraded-ledger-"));
+  const asFile = path.join(dir, "not-a-dir");
+  writeFileSync(asFile, "i am a file");
+  const badLedger = path.join(asFile, "gel.jsonl");
+
+  const safetyWard = { ...ward, criticality: "safety_critical" as const };
+  const safety = createExecutionControlRuntimeServer({ ward: safetyWard, authorityEnvelope: envelope, ledgerPath: badLedger, now });
+  await new Promise<void>((resolve) => safety.server.listen(0, "127.0.0.1", resolve));
+  try {
+    const r = await fetch(`${serverBase(safety.server)}/v1/execution-control/evaluate`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action }) });
+    assert.equal(r.status, 200); // governed, not a 500
+    const body = await r.json();
+    assert.equal(body.decision, "REFUSE");
+    assert.deepEqual(body.reason_codes, ["DEGRADED_MODE"]);
+    assert.equal(body.degraded, true);
+    assert.equal(body.anchored, false);
+  } finally {
+    await new Promise<void>((resolve, reject) => safety.server.close((error) => error ? reject(error) : resolve()));
+  }
+
+  // A best-effort Ward admits the action in a marked, unanchored degraded posture.
+  const beWard = { ...ward, criticality: "best_effort" as const };
+  const be = createExecutionControlRuntimeServer({ ward: beWard, authorityEnvelope: envelope, ledgerPath: badLedger, now });
+  await new Promise<void>((resolve) => be.server.listen(0, "127.0.0.1", resolve));
+  try {
+    const body = await fetch(`${serverBase(be.server)}/v1/execution-control/evaluate`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action }) }).then((r) => r.json());
+    assert.equal(body.decision, "ALLOW");
+    assert.equal(body.degraded, true);
+    assert.equal(body.anchored, false);
+  } finally {
+    await new Promise<void>((resolve, reject) => be.server.close((error) => error ? reject(error) : resolve()));
+  }
+});

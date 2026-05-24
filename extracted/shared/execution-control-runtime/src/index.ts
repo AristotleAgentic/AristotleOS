@@ -42,6 +42,7 @@ import { type AgentObservation, type AgentRegistry, runWardMarshalCensus } from 
 import { type BehaviorAnalysisConfig, type BehaviorEvent, analyzeAgentBehavior } from "./marshal-behavior.js";
 import { type Classification, enforceClassification } from "./classification.js";
 import { type DegradationCondition, type WardCriticality, resolveFailMode } from "./fail-mode.js";
+import { type DegradationProbe, collectDegradation, ledgerUnavailableProbe } from "./degradation.js";
 
 export * from "./proxy.js";
 export * from "./mcp.js";
@@ -70,6 +71,7 @@ export * from "./crypto-posture.js";
 export * from "./edge-containment.js";
 export * from "./classification.js";
 export * from "./fail-mode.js";
+export * from "./degradation.js";
 
 export {
   type AristotleSigner,
@@ -414,6 +416,12 @@ export interface ExecutionControlRuntimeServerOptions {
   revocationListPath?: string;
   /** Path to the Conflict Inbox state file; when unset, an in-memory store is used. */
   conflictInboxPath?: string;
+  /**
+   * Degradation detectors run per request; detected conditions feed the per-Ward
+   * fail-mode policy. Defaults to a ledger-writability probe when a file ledger path
+   * is configured (set to [] to disable; supply your own for control-plane/quorum).
+   */
+  degradationProbes?: DegradationProbe[];
   /** Warrant lifetime in seconds (default 60). */
   warrantTtlSeconds?: number;
   /** When set, limits requests per subject per minute (429 when exceeded). */
@@ -1645,6 +1653,12 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
   // Stateful Edge Conflict Inbox: durable when a path is configured, else per-process.
   const conflictInbox = new ConflictInboxStore(options.conflictInboxPath ?? null);
 
+  // Degradation detectors: default to a ledger-writability probe for file ledgers,
+  // so the boundary self-detects "no evidence ⇒ no irreversible action" out of the
+  // box. Operators can disable ([]) or add control-plane/quorum/timeout probes.
+  const degradationProbes: DegradationProbe[] = options.degradationProbes
+    ?? (options.ledgerPath && !options.ledger && !options.asyncLedger ? [ledgerUnavailableProbe(options.ledgerPath)] : []);
+
   // Minimum role per route: read paths need viewer, decisions need operator,
   // operator actions (kill switch, revocation) need admin. Unknown /v1 paths
   // default to admin (fail-closed).
@@ -1784,12 +1798,30 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           sendJson(res, 429, { error: "rate_limited", subject: action.subject });
           return;
         }
+        // Merge self-detected degradation with any caller-supplied conditions.
+        const conditions = [
+          ...(Array.isArray(body.degraded_conditions) ? (body.degraded_conditions as DegradationCondition[]) : []),
+          ...collectDegradation(degradationProbes)
+        ];
+        // The ledger is the one dependency that can't record its own failure: if it
+        // is unavailable, resolve the fail-mode and answer WITHOUT an append — a
+        // governed degraded decision instead of an ungoverned 500.
+        if (conditions.includes("ledger_unavailable")) {
+          const fm = resolveFailMode(options.ward.criticality, conditions);
+          const decision: ExecutionControlDecision = fm.action === "refuse" ? "REFUSE" : fm.action === "escalate" ? "ESCALATE" : "ALLOW";
+          const anchored = false; // no evidence could be written
+          const latencyMs = Date.now() - startedAt;
+          metrics.recordDecision(decision, ["DEGRADED_MODE"], latencyMs, false);
+          logDecision({ event: "evaluate_degraded", request_id: requestId(req), actor: principal ?? null, decision, condition: fm.condition, criticality: fm.criticality });
+          sendJson(res, 200, { decision, reason_codes: ["DEGRADED_MODE"], degraded: true, anchored, condition: fm.condition, detail: "ledger unavailable — decision returned without an evidence record; reconcile when restored" });
+          return;
+        }
         const evaluateParams = {
           ward: options.ward,
           authorityEnvelope: options.authorityEnvelope,
           action,
           runtimeRegister: body.runtime_register as RuntimeRegister | undefined,
-          degradedConditions: Array.isArray(body.degraded_conditions) ? (body.degraded_conditions as DegradationCondition[]) : undefined,
+          degradedConditions: conditions.length ? conditions : undefined,
           ledgerPath: options.ledgerPath,
           now: typeof body.now === "string" ? body.now : options.now,
           signer: options.signer,

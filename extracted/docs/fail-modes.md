@@ -110,14 +110,38 @@ active-active topology:
   edge-containment staleness-deny (T17) are independent, composable precautions
   that also fail closed; the criticality matrix is the *graduated* layer on top.
 
+## 5. Built-in degradation detectors (self-driving)
+
+The fail-mode policy is fed by real detectors (`degradation.ts`), not by hand:
+
+- **`ledgerUnavailableProbe(path)`** — a filesystem canary (write + remove) on the
+  ledger directory. **On by default** when a file-backed ledger is configured, so a
+  fresh boundary self-detects "no evidence ⇒ no irreversible action" out of the box.
+  Because the ledger can't record its own outage, the server **short-circuits** this
+  condition: it resolves the fail-mode and answers with a *governed* degraded
+  decision (REFUSE/ESCALATE, or a marked unanchored ALLOW for best-effort) instead
+  of an ungoverned 500 from a failed append.
+- **`controlPlaneStaleProbe(tracker)`** — reuses the DDIL containment tracker (B2/T17)
+  so control-plane staleness and the fail-mode policy share one freshness anchor.
+- **`predicateProbe(condition, healthy)`** and **`runWithTimeout(fn, ms)`** — adapt a
+  deployment's own heartbeats (DB quorum, dependency liveness) into `quorum_lost` /
+  `dependency_timeout`; a throwing health check is itself treated as a degradation.
+- **`collectDegradation(probes)`** runs the set each request and de-duplicates;
+  detected conditions merge with any caller-supplied `degraded_conditions`.
+
+Configure via the `degradationProbes` server option (`[]` to disable; or supply your
+own). Non-ledger conditions flow through the normal decision path, so the degraded
+REFUSE/ESCALATE is itself recorded in the evidence ledger.
+
 ## Honest residual
 
-- The boundary acts on degradation signals; **wiring real detectors** (DB quorum
-  probes, control-plane heartbeat, dependency timeouts) into `degraded_conditions`
-  is the operator's integration — the typed boundary and the policy are provided
-  and tested, the sensors are deployment-specific.
+- The ledger and control-plane detectors ship and are on by default; **quorum and
+  dependency-liveness probes are deployment-specific** — we provide the adapters
+  (`predicateProbe`, `runWithTimeout`), the operator wires them to their DB/cluster
+  heartbeats.
 - True multi-node soak + chaos on target hardware is **Tier C (C6)** — it needs
   real infrastructure and is tracked as a gate, not claimed in code.
 
 See also: `docs/secure-deployment.md`, `docs/THREAT_MODEL.md` (T17, T20),
-`shared/execution-control-runtime/src/fail-mode.ts`.
+`shared/execution-control-runtime/src/fail-mode.ts`,
+`shared/execution-control-runtime/src/degradation.ts`.
