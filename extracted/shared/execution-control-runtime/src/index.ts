@@ -59,6 +59,7 @@ export * from "./marshal-collectors.js";
 export * from "./credential-minter.js";
 export * from "./attestation.js";
 export * from "./crypto-posture.js";
+export * from "./edge-containment.js";
 
 export {
   type AristotleSigner,
