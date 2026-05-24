@@ -35,6 +35,7 @@ import {
 } from "./trace.js";
 import { RuntimeMetrics } from "./metrics.js";
 import { type GovernanceDraft, compileGovernanceManifest, diffGovernanceManifests, explainPolicy } from "./builder.js";
+import { type Classification, enforceClassification } from "./classification.js";
 
 export * from "./proxy.js";
 export * from "./mcp.js";
@@ -60,6 +61,7 @@ export * from "./credential-minter.js";
 export * from "./attestation.js";
 export * from "./crypto-posture.js";
 export * from "./edge-containment.js";
+export * from "./classification.js";
 
 export {
   type AristotleSigner,
@@ -91,6 +93,7 @@ export type ExecutionControlReasonCode =
   | "KILL_SWITCH_ENGAGED"
   | "REPLAY_DETECTED"
   | "AUTHORITY_REVOKED"
+  | "CLASSIFICATION_VIOLATION"
   | "ALLOWED";
 
 export interface WardManifest {
@@ -103,6 +106,8 @@ export interface WardManifest {
   permitted_subjects: string[];
   physical_bounds?: PhysicalBounds;
   metadata?: Record<string, JsonValue>;
+  /** MLS clearance ceiling for this Ward; actions whose data label it cannot dominate are refused. */
+  classification?: Classification;
 }
 
 export interface AuthorityEnvelope {
@@ -115,6 +120,8 @@ export interface AuthorityEnvelope {
   expires_at: string;
   issuer: string;
   signature?: string;
+  /** MLS clearance granted by this Authority Envelope. */
+  classification?: Classification;
 }
 
 export interface CanonicalActionInput {
@@ -128,6 +135,8 @@ export interface CanonicalActionInput {
   nonce?: string;
   request_id?: string;
   telemetry?: Record<string, JsonValue>;
+  /** MLS data label of this action; must be dominated by the Ward/Envelope clearance. */
+  classification?: Classification;
 }
 
 export interface CanonicalAction {
@@ -524,6 +533,11 @@ export function evaluateCommitGate(input: CommitGateInput): CommitGateDecision {
       ...refuse("REFUSE", ["PHYSICAL_INVARIANT_FAILED"], canonical, runtime_register_snapshot, ward, envelope),
       physical_invariant_result: physical
     };
+  }
+  // MLS: the action's data label must be dominated by the Ward and Envelope clearances
+  // (no read up). No-op when no classification labels are present (unclassified default).
+  if (!enforceClassification([ward.classification, envelope.classification], input.action.classification).ok) {
+    return refuse("REFUSE", ["CLASSIFICATION_VIOLATION"], canonical, runtime_register_snapshot, ward, envelope);
   }
   return {
     decision: "ALLOW",
