@@ -117,16 +117,35 @@ export interface LiveState {
   ledger: LedgerRecord[];
 }
 
+export interface DegradationStatusLike {
+  healthy?: boolean;
+  conditions?: string[];
+  fail_action?: string;
+  criticality?: string;
+}
+
+/** Pure: fold the boundary's degradation status into the header snapshot fields. */
+export function mapDegradationToSnapshot(status: DegradationStatusLike | null): Partial<SystemSnapshot> {
+  if (!status) return {};
+  const degraded = status.healthy === false || (status.conditions?.length ?? 0) > 0;
+  return {
+    degraded,
+    degradedConditions: status.conditions ?? [],
+    ...(status.fail_action ? { degradedFailAction: status.fail_action } : {})
+  };
+}
+
 /** Probe the execution-control boundary; returns mapped live state, or null when unreachable. */
 export async function fetchLiveState(signal?: AbortSignal): Promise<LiveState | null> {
   const metrics = await getJson<BoundaryMetrics>("/v1/execution-control/metrics", signal);
   if (!metrics) return null;
-  const [tail, verify] = await Promise.all([
+  const [tail, verify, degradation] = await Promise.all([
     getJson<{ items: GelRecordLike[] }>("/v1/execution-control/audit/tail?limit=40", signal),
-    getJson<{ ok: boolean; count: number }>("/v1/execution-control/audit/verify", signal)
+    getJson<{ ok: boolean; count: number }>("/v1/execution-control/audit/verify", signal),
+    getJson<DegradationStatusLike>("/v1/execution-control/degradation", signal)
   ]);
   return {
-    snapshot: mapMetricsToSnapshot(metrics, verify?.ok ?? Boolean(metrics.ledger_ok)),
+    snapshot: { ...mapMetricsToSnapshot(metrics, verify?.ok ?? Boolean(metrics.ledger_ok)), ...mapDegradationToSnapshot(degradation) },
     ledger: tail?.items?.length ? mapGelToLedger(tail.items) : []
   };
 }

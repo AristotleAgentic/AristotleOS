@@ -51,6 +51,25 @@ export function CommandHeader() {
         >
           {snapshot.source === "live" ? "LIVE" : "SAMPLE"}
         </span>
+        {snapshot.degraded && (
+          <span
+            title={`Boundary degraded — ${(snapshot.degradedConditions ?? []).join(", ") || "infrastructure"}; fail action: ${snapshot.degradedFailAction ?? "refuse"}`}
+            style={{
+              marginLeft: 6,
+              alignSelf: "center",
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: 0.6,
+              padding: "2px 6px",
+              borderRadius: 5,
+              border: "1px solid rgba(251,191,36,0.55)",
+              color: "var(--ac-amber)",
+              background: "rgba(251,191,36,0.10)"
+            }}
+          >
+            DEGRADED
+          </span>
+        )}
       </div>
 
       <div className="ac-posture">

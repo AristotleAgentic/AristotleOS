@@ -9,6 +9,7 @@ import {
   decisionToUi,
   mapCensusReport,
   mapConflictsToInbox,
+  mapDegradationToSnapshot,
   mapGelToLedger,
   mapMetricsToSnapshot,
   mapShadowReport
@@ -147,4 +148,14 @@ test("mapConflictsToInbox maps durable records into inbox items with derived nex
   assert.match(rows[0].operatorNextStep, /Reject to revert/);
   assert.match(rows[1].operatorNextStep, /agree/);
   assert.match(rows[2].operatorNextStep, /Resolved: reject by alice@corp/);
+});
+
+test("mapDegradationToSnapshot flags degraded state and carries conditions", () => {
+  assert.deepEqual(mapDegradationToSnapshot(null), {});
+  const healthy = mapDegradationToSnapshot({ healthy: true, conditions: [], fail_action: "allow" });
+  assert.equal(healthy.degraded, false);
+  const degraded = mapDegradationToSnapshot({ healthy: false, conditions: ["ledger_unavailable"], fail_action: "refuse" });
+  assert.equal(degraded.degraded, true);
+  assert.deepEqual(degraded.degradedConditions, ["ledger_unavailable"]);
+  assert.equal(degraded.degradedFailAction, "refuse");
 });

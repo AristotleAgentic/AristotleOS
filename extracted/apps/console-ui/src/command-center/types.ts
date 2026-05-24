@@ -199,6 +199,12 @@ export interface SystemSnapshot {
   killSwitchArmed: boolean;
   gateLatencyMs: number;
   source: "live" | "mock";
+  /** Boundary degradation (from GET /degradation): true when a condition is active. */
+  degraded?: boolean;
+  /** Active degradation conditions reported by the boundary's detectors. */
+  degradedConditions?: string[];
+  /** The fail action those conditions imply for the boundary's Ward criticality. */
+  degradedFailAction?: string;
 }
 
 export interface SimulationOutcome {
