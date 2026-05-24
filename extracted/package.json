@@ -70,6 +70,7 @@
     "test:chain": "tsx shared/governance-core/src/test/run.test.ts && tsx services/governance-kernel/src/governance-chain.test.ts && tsx services/agent-os/src/governance-chain-client.test.ts && tsx adapters/http-gateway/src/governance-chain-proxy.test.ts",
     "benchmark:runtime": "tsx scripts/benchmark-runtime.ts",
     "bench:execution-control": "tsx shared/execution-control-runtime/benchmark.mts",
+    "soak:execution-control": "node --expose-gc --import tsx shared/execution-control-runtime/soak.mts",
     "sbom": "node scripts/generate-sbom.mjs",
     "package:cli:check": "node scripts/check-cli-package.mjs",
     "clean-room": "node scripts/clean-room-scan.mjs",
