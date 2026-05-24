@@ -201,10 +201,13 @@ Gateway routes:
 - `POST /operator/os/leases/:leaseId/renew`
 
 ## Quick start
+This is a **pnpm workspace** (it uses the `workspace:` protocol; `npm install`/`yarn`
+will fail fast with a guide to pnpm). `pnpm-lock.yaml` is the single source of truth.
 ```bash
 cp .env.example .env
-npm install
-npm run dev
+corepack enable
+corepack pnpm install   # use pnpm — npm cannot resolve workspace: deps
+corepack pnpm dev
 ```
 
 Local control plane:

@@ -1,6 +1,10 @@
 node_modules
 dist
 .env
+# pnpm is the only supported package manager (workspace: protocol). Keep
+# pnpm-lock.yaml as the single source of truth; never commit npm/yarn lockfiles.
+package-lock.json
+yarn.lock
 coverage
 *.log
 secrets/

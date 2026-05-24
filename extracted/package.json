@@ -4,6 +4,10 @@
   "version": "0.1.1",
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=22.5",
+    "pnpm": ">=10"
+  },
   "workspaces": [
     "services/*",
     "adapters/*",
@@ -11,6 +15,7 @@
     "apps/*"
   ],
   "scripts": {
+    "preinstall": "node scripts/enforce-pnpm.mjs",
     "build": "npm run build --workspaces",
     "dev": "concurrently \"npm run dev -w @aristotle/shared-types\" \"npm run dev -w @aristotle/shared-schemas\" \"npm run dev -w @aristotle/governance-core\" \"npm run dev -w @aristotle/meta-authority-registry\" \"npm run dev -w @aristotle/policy-compiler\" \"npm run dev -w @aristotle/evidence-ledger\" \"npm run dev -w @aristotle/authority-router\" \"npm run dev -w @aristotle/witness-service\" \"npm run dev -w @aristotle/execution-gate\" \"npm run dev -w @aristotle/governance-kernel\" \"npm run dev -w @aristotle/simulation-engine\" \"npm run dev -w @aristotle/agent-os\" \"npm run dev -w @aristotle/http-gateway\" \"npm run dev -w @aristotle/console-ui\"",
     "local:up": "node scripts/local-control-plane.mjs up",
