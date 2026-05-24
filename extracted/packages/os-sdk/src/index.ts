@@ -56,6 +56,43 @@ export interface PolicyExplanation {
   [key: string]: unknown;
 }
 
+export interface ShadowReport {
+  ward_id: string;
+  authority_envelope_id: string;
+  count: number;
+  decisions: Record<string, number>;
+  rollout: { ready: boolean; allow_rate: number };
+  [key: string]: unknown;
+}
+
+export interface ReconciliationReport {
+  ward_id: string;
+  count: number;
+  agreements: number;
+  conflicts: number;
+  items: Array<Record<string, unknown>>;
+  [key: string]: unknown;
+}
+
+export interface ConflictSummary {
+  total: number;
+  open: number;
+  conflicts: number;
+  by_status: Record<string, number>;
+}
+
+export type DegradationCondition = "ledger_unavailable" | "control_plane_stale" | "quorum_lost" | "dependency_timeout";
+
+export interface DegradationStatus {
+  ward_id: string;
+  criticality: "safety_critical" | "mission_critical" | "routine" | "best_effort";
+  healthy: boolean;
+  conditions: DegradationCondition[];
+  fail_action: "allow" | "allow_degraded" | "escalate" | "refuse";
+  binding_condition: DegradationCondition | null;
+  probes: number;
+}
+
 export interface AuditVerifyResult {
   ok: boolean;
   count: number;
@@ -154,6 +191,50 @@ export class AristotleClient {
 
   explainGovernance(input: { ward?: unknown; authority_envelope?: unknown; sample_actions?: unknown[] }): Promise<PolicyExplanation> {
     return this.request<PolicyExplanation>("POST", "/v1/execution-control/governance/explain", input);
+  }
+
+  // --- Shadow Mode (operator) ---
+  /** Observe-only profiling of proposed actions; never mutates the live system. */
+  shadow(input: { actions: unknown[]; ward?: unknown; authority_envelope?: unknown; now?: string }): Promise<ShadowReport> {
+    return this.request<ShadowReport>("POST", "/v1/execution-control/shadow", input);
+  }
+
+  // --- Edge reconciliation + Conflict Inbox (operator/viewer) ---
+  /** Reconcile offline edge decisions against current/execution-time policy. */
+  reconcile(input: { records: unknown[]; ward?: unknown; authority_envelope?: unknown; now?: string }): Promise<ReconciliationReport> {
+    return this.request<ReconciliationReport>("POST", "/v1/execution-control/reconcile", input);
+  }
+
+  /** Ingest edge records into the durable Conflict Inbox (idempotent). */
+  ingestConflicts(input: { records: unknown[]; ward?: unknown; authority_envelope?: unknown; now?: string }): Promise<{ report: ReconciliationReport; summary: ConflictSummary }> {
+    return this.request("POST", "/v1/execution-control/conflicts/ingest", input);
+  }
+
+  /** List current Conflict Inbox items + summary (viewer). */
+  conflicts(): Promise<{ items: Array<Record<string, unknown>>; summary: ConflictSummary }> {
+    return this.request("GET", "/v1/execution-control/conflicts");
+  }
+
+  /** Apply an attributed operator resolution to a conflict. */
+  resolveConflict(input: { action_id: string; action: "accept" | "reject" | "escalate" | "reconcile"; reason?: string }): Promise<{ item: Record<string, unknown>; summary: ConflictSummary }> {
+    return this.request("POST", "/v1/execution-control/conflicts/resolve", input);
+  }
+
+  // --- Ward Marshal (operator) ---
+  /** Risk-score observed agents against the approved registry. */
+  marshalCensus(input: { observations: unknown[]; registry?: unknown; now?: string }): Promise<Record<string, unknown>> {
+    return this.request("POST", "/v1/execution-control/marshal/census", input);
+  }
+
+  /** Behavioral analysis over a governance event stream. */
+  marshalBehavior(input: { events: unknown[]; config?: unknown; now?: string }): Promise<Record<string, unknown>> {
+    return this.request("POST", "/v1/execution-control/marshal/behavior", input);
+  }
+
+  // --- Degradation health (viewer) ---
+  /** Live degradation status + the fail action it implies for this Ward. */
+  degradation(): Promise<DegradationStatus> {
+    return this.request<DegradationStatus>("GET", "/v1/execution-control/degradation");
   }
 }
 

@@ -1500,3 +1500,34 @@ test("evaluate self-detects an unavailable ledger and returns a governed degrade
     await new Promise<void>((resolve, reject) => be.server.close((error) => error ? reject(error) : resolve()));
   }
 });
+
+test("GET /degradation reports live health and the projected fail action", async () => {
+  // Healthy file ledger → no conditions, fail_action allow.
+  const healthy = createExecutionControlRuntimeServer({ ward, authorityEnvelope: envelope, ledgerPath: ledgerPath(), now });
+  await new Promise<void>((resolve) => healthy.server.listen(0, "127.0.0.1", resolve));
+  try {
+    const body = await fetch(`${serverBase(healthy.server)}/v1/execution-control/degradation`).then((r) => r.json());
+    assert.equal(body.healthy, true);
+    assert.deepEqual(body.conditions, []);
+    assert.equal(body.fail_action, "allow");
+    assert.equal(body.ward_id, ward.ward_id);
+  } finally {
+    await new Promise<void>((resolve, reject) => healthy.server.close((error) => error ? reject(error) : resolve()));
+  }
+
+  // Unwritable ledger → ledger_unavailable; mission-critical default ⇒ fail_action refuse.
+  const dir = mkdtempSync(path.join(tmpdir(), "aos-degr-health-"));
+  const asFile = path.join(dir, "not-a-dir");
+  writeFileSync(asFile, "file");
+  const degraded = createExecutionControlRuntimeServer({ ward, authorityEnvelope: envelope, ledgerPath: path.join(asFile, "gel.jsonl"), now });
+  await new Promise<void>((resolve) => degraded.server.listen(0, "127.0.0.1", resolve));
+  try {
+    const body = await fetch(`${serverBase(degraded.server)}/v1/execution-control/degradation`).then((r) => r.json());
+    assert.equal(body.healthy, false);
+    assert.deepEqual(body.conditions, ["ledger_unavailable"]);
+    assert.equal(body.fail_action, "refuse");
+    assert.equal(body.binding_condition, "ledger_unavailable");
+  } finally {
+    await new Promise<void>((resolve, reject) => degraded.server.close((error) => error ? reject(error) : resolve()));
+  }
+});

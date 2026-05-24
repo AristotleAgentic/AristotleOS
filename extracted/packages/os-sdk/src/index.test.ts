@@ -93,6 +93,42 @@ test("a non-2xx response throws AristotleApiError carrying status + body", async
   );
 });
 
+test("operator engines hit the right routes with the right methods", async () => {
+  const seen: Array<{ url: string; method?: string }> = [];
+  const { fn } = mockFetch((rec) => {
+    seen.push({ url: rec.url, method: rec.method });
+    return { status: 200, body: { ok: true, count: 0, agreements: 0, conflicts: 0, items: [], decisions: {}, rollout: { ready: true, allow_rate: 1 }, summary: { total: 0, open: 0, conflicts: 0, by_status: {} } } };
+  });
+  const aos = new AristotleClient({ baseUrl: "https://gate.internal", token: "t", fetch: fn });
+  await aos.shadow({ actions: [] });
+  await aos.reconcile({ records: [] });
+  await aos.ingestConflicts({ records: [] });
+  await aos.conflicts();
+  await aos.resolveConflict({ action_id: "c1", action: "reject" });
+  await aos.marshalCensus({ observations: [] });
+  await aos.marshalBehavior({ events: [] });
+  await aos.degradation();
+  assert.deepEqual(seen, [
+    { url: "https://gate.internal/v1/execution-control/shadow", method: "POST" },
+    { url: "https://gate.internal/v1/execution-control/reconcile", method: "POST" },
+    { url: "https://gate.internal/v1/execution-control/conflicts/ingest", method: "POST" },
+    { url: "https://gate.internal/v1/execution-control/conflicts", method: "GET" },
+    { url: "https://gate.internal/v1/execution-control/conflicts/resolve", method: "POST" },
+    { url: "https://gate.internal/v1/execution-control/marshal/census", method: "POST" },
+    { url: "https://gate.internal/v1/execution-control/marshal/behavior", method: "POST" },
+    { url: "https://gate.internal/v1/execution-control/degradation", method: "GET" }
+  ]);
+});
+
+test("degradation() parses the live status", async () => {
+  const { fn } = mockFetch(() => ({ status: 200, body: { ward_id: "w1", criticality: "safety_critical", healthy: false, conditions: ["ledger_unavailable"], fail_action: "refuse", binding_condition: "ledger_unavailable", probes: 1 } }));
+  const aos = new AristotleClient({ baseUrl: "https://gate.internal", token: "t", fetch: fn });
+  const status = await aos.degradation();
+  assert.equal(status.healthy, false);
+  assert.equal(status.fail_action, "refuse");
+  assert.deepEqual(status.conditions, ["ledger_unavailable"]);
+});
+
 test("constructor rejects a missing baseUrl", () => {
   assert.throws(() => new AristotleClient({ baseUrl: "" } as unknown as { baseUrl: string }), /requires a baseUrl/);
 });

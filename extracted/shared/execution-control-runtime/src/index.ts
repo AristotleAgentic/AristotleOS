@@ -1469,6 +1469,12 @@ export function executionControlOpenApiSpec() {
           responses: { "200": { description: "Runtime metrics" } }
         }
       },
+      "/v1/execution-control/degradation": {
+        get: {
+          summary: "Live degradation health: detected conditions + the fail action they imply for this Ward (viewer role)",
+          responses: { "200": { description: "Degradation status with conditions and projected fail action" } }
+        }
+      },
       "/v1/execution-control/audit/verify": {
         get: {
           summary: "Verify GEL hash-chain integrity",
@@ -1668,7 +1674,8 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
       pathname === "/v1/execution-control/audit/tail" ||
       pathname === "/v1/execution-control/audit/verify" ||
       pathname === "/v1/execution-control/metrics" ||
-      pathname === "/v1/execution-control/conflicts"
+      pathname === "/v1/execution-control/conflicts" ||
+      pathname === "/v1/execution-control/degradation"
     )) return "viewer";
     if (method === "POST" && (
       pathname === "/v1/execution-control/evaluate" ||
@@ -1780,6 +1787,23 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           denied_actions: options.authorityEnvelope.denied_actions,
           boundary_id: options.ward.physical_bounds?.permitted_boundary_id ?? "",
           signing_key_id: options.signer?.key_id ?? "ephemeral-dev"
+        });
+        return;
+      }
+
+      // Live degradation health: what the boundary's own detectors see right now, and
+      // the fail action that condition set would produce for this Ward's criticality.
+      if (req.method === "GET" && url.pathname === "/v1/execution-control/degradation") {
+        const conditions = collectDegradation(degradationProbes);
+        const resolution = resolveFailMode(options.ward.criticality, conditions);
+        sendJson(res, 200, {
+          ward_id: options.ward.ward_id,
+          criticality: resolution.criticality,
+          healthy: conditions.length === 0,
+          conditions,
+          fail_action: resolution.action,
+          binding_condition: resolution.condition ?? null,
+          probes: degradationProbes.length
         });
         return;
       }
