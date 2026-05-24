@@ -25,7 +25,7 @@ Status: `done` · `wip` · `planned` · `gated` (external/program).
 | B2 | DDIL / captured-edge containment (staleness-deny, offline quota) | 2.5 | planned |
 | B3 | Fail-mode per Ward criticality + gate-HA topology docs | 2.6 | planned |
 | B4 | mTLS + PIV/CAC client-cert auth seam; gate the admin key | 2.8 | planned |
-| B5 | FIPS-mode boot guard + crypto-posture doc | 2.3 | planned |
+| B5 | FIPS-mode boot guard + crypto-posture doc | 2.3 | done |
 | B6 | MLS classification labels + CDS boundary | 2.7 | planned |
 
 ## Tier C — cannot be closed in code (gates, not pretense)

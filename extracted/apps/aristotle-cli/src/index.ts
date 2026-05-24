@@ -27,7 +27,9 @@ import {
   type SequenceRule,
   type WardMarshalInterdictionKind,
   analyzeAgentBehavior,
+  assertCryptoPosture,
   behaviorEventsFromGel,
+  cryptoPostureFromEnv,
   buildWardMarshalInterdictionAction,
   collectObservations,
   explainWardMarshalFinding,
@@ -308,6 +310,8 @@ const authSummary = (apiKey: string | undefined, operators: OperatorCredential[]
 // Resolve the Warrant signing key: explicit --signing-key flag, then env, then a
 // process-stable ephemeral dev key. Refuses ephemeral keys under NODE_ENV=production.
 const resolveSigner = (rest: string[], cwd: string, err: Writer): AristotleSigner => {
+  // Fail closed at the crypto chokepoint when FIPS is required but not active.
+  assertCryptoPosture(cryptoPostureFromEnv());
   const privateKeyOpt = optionValue(rest, "--signing-key");
   const publicKeyOpt = optionValue(rest, "--signing-public-key");
   let signer: AristotleSigner;
