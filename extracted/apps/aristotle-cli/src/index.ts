@@ -394,6 +394,8 @@ Keep the private key secret. The public key and key_id can be shared so others c
       const replayProtection = !runArgs.includes("--no-replay-protection");
       const revocationListPath = path.resolve(cwd, optionValue(runArgs, "--revocations") ?? ".aristotle/revocations.json");
       const warrantTtlSeconds = Number(optionValue(runArgs, "--warrant-ttl") ?? process.env.ARISTOTLE_WARRANT_TTL_SECONDS ?? "60");
+      const rateLimitPerMinute = Number(optionValue(runArgs, "--rate-limit") ?? process.env.ARISTOTLE_RATE_LIMIT_PER_MINUTE ?? "0") || undefined;
+      const logFormat = optionValue(runArgs, "--log-format") === "json" ? ("json" as const) : undefined;
       const { server } = createExecutionControlRuntimeServer({
         ward,
         authorityEnvelope,
@@ -404,7 +406,9 @@ Keep the private key secret. The public key and key_id can be shared so others c
         replayProtection,
         apiKey,
         revocationListPath,
-        warrantTtlSeconds
+        warrantTtlSeconds,
+        rateLimitPerMinute,
+        logFormat
       });
       await new Promise<void>((resolve) => server.listen(config.port, "127.0.0.1", resolve));
       const address = server.address();
@@ -713,6 +717,8 @@ evidence_bundle=${evidenceOut ?? "not requested"}
       const replayProtection = !rest.includes("--no-replay-protection");
       const revocationListPath = path.resolve(cwd, optionValue(rest, "--revocations") ?? ".aristotle/revocations.json");
       const warrantTtlSeconds = Number(optionValue(rest, "--warrant-ttl") ?? process.env.ARISTOTLE_WARRANT_TTL_SECONDS ?? "60");
+      const rateLimitPerMinute = Number(optionValue(rest, "--rate-limit") ?? process.env.ARISTOTLE_RATE_LIMIT_PER_MINUTE ?? "0") || undefined;
+      const logFormat = optionValue(rest, "--log-format") === "json" ? ("json" as const) : undefined;
       const { server } = createExecutionControlRuntimeServer({
         ward,
         authorityEnvelope,
@@ -724,7 +730,9 @@ evidence_bundle=${evidenceOut ?? "not requested"}
         replayProtection,
         apiKey,
         revocationListPath,
-        warrantTtlSeconds
+        warrantTtlSeconds,
+        rateLimitPerMinute,
+        logFormat
       });
       await new Promise<void>((resolve) => server.listen(port, "127.0.0.1", resolve));
       out(`AristotleOS execution-control runtime listening on http://127.0.0.1:${port}

@@ -59,7 +59,8 @@ Core exports:
 - `CredentialBroker` / `proxyGovernedAction`
 - `createExecutionControlMcpServer`
 - `loadRevocationList` / `addRevocation` / `revocationReason`
-- `LedgerStore` (O(1) in-memory ledger index)
+- `LedgerStore` / `LedgerBackend` / `FileLedgerBackend` / `InMemoryLedgerBackend`
+- `SubjectRateLimiter`
 
 ## Demo
 
@@ -330,3 +331,15 @@ request. The JSONL file remains the source of truth; the index is rebuilt from i
 at startup (and full `verifyGelChain` is still available on demand via
 `/v1/execution-control/audit/verify`). One-shot CLI evaluations use the stateless
 file functions, so behavior is identical with or without the index.
+
+The index sits behind a `LedgerBackend` interface. `FileLedgerBackend` (JSONL) and
+`InMemoryLedgerBackend` ship in-box; a durable backend (Postgres/SQLite) only has
+to implement the same contract — the foundation for high-availability deployments
+with shared replay state.
+
+Two more operational controls for production:
+
+- **Rate limiting** — `--rate-limit <perMinute>` enforces a per-subject token
+  bucket; requests over budget receive `429`.
+- **Structured logging** — `--log-format json` emits one JSON decision line per
+  request (request id, decision, reason codes, signing key id, latency) to stderr.

@@ -1,5 +1,5 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import path from "node:path";
 import {
@@ -303,6 +303,10 @@ export interface ExecutionControlRuntimeServerOptions {
   revocationListPath?: string;
   /** Warrant lifetime in seconds (default 60). */
   warrantTtlSeconds?: number;
+  /** When set, limits requests per subject per minute (429 when exceeded). */
+  rateLimitPerMinute?: number;
+  /** When "json", emit a structured decision log line per request to stderr. */
+  logFormat?: "json";
 }
 
 export interface ExecutionControlRuntimeServer {
@@ -627,52 +631,146 @@ export function appendGelRecord(input: {
 }
 
 /**
- * Stateful, append-only ledger with an in-memory index. Holds the chain tip, the
- * record count, and the set of admitted canonical-action hashes so append and
- * replay checks are O(1) on the server hot path. The JSONL file remains the
- * source of truth; the index is rebuilt from it at construction.
+ * Pluggable persistence + index for the Governance Evidence Ledger. The hot-path
+ * state (tip hash, count, admitted action hashes) is maintained incrementally so
+ * append/replay checks are O(1). A durable backend (e.g. Postgres/SQLite) only has
+ * to implement this contract; see FileLedgerBackend for the reference design.
  */
-export class LedgerStore {
-  private tip_hash: string;
-  private _count: number;
-  private readonly admitted: Set<string>;
-  private _ok: boolean;
-  private _failure?: string;
+export interface LedgerBackend {
+  tipHash: string;
+  count: number;
+  hasAdmitted(canonicalActionHash: string): boolean;
+  verification(): { ok: boolean; count: number; failure?: string };
+  persist(record: GelRecord): void;
+  records(): GelRecord[];
+  tail(limit: number): GelRecord[];
+}
+
+/** Shared in-memory index used by every backend to keep the hot path O(1). */
+class LedgerIndex {
+  tip = GENESIS_HASH;
+  count = 0;
+  readonly admitted = new Set<string>();
+  ok = true;
+  failure?: string;
+
+  seed(chain: GelRecord[]): void {
+    const verification = verifyGelRecords(chain);
+    this.ok = verification.ok;
+    this.failure = verification.failure;
+    this.count = chain.length;
+    this.tip = chain.at(-1)?.record_hash ?? GENESIS_HASH;
+    for (const record of chain) if (record.decision === "ALLOW") this.admitted.add(record.canonical_action_hash);
+  }
+
+  record(record: GelRecord): void {
+    this.tip = record.record_hash;
+    this.count += 1;
+    if (record.decision === "ALLOW") this.admitted.add(record.canonical_action_hash);
+  }
+
+  verification(): { ok: boolean; count: number; failure?: string } {
+    return this.ok ? { ok: true, count: this.count } : { ok: false, count: this.count, failure: this.failure };
+  }
+}
+
+/** Default backend: append-only JSONL file, rebuilt into the index at startup. */
+export class FileLedgerBackend implements LedgerBackend {
+  private readonly index = new LedgerIndex();
 
   constructor(public readonly ledgerPath: string) {
-    const chain = loadGelChain(ledgerPath);
-    const verification = verifyGelRecords(chain);
-    this._ok = verification.ok;
-    this._failure = verification.failure;
-    this._count = chain.length;
-    this.tip_hash = chain.at(-1)?.record_hash ?? GENESIS_HASH;
-    this.admitted = new Set(chain.filter((record) => record.decision === "ALLOW").map((record) => record.canonical_action_hash));
+    this.index.seed(loadGelChain(ledgerPath));
   }
 
-  get count(): number {
-    return this._count;
+  get tipHash(): string { return this.index.tip; }
+  get count(): number { return this.index.count; }
+  hasAdmitted(hash: string): boolean { return this.index.admitted.has(hash); }
+  verification(): { ok: boolean; count: number; failure?: string } { return this.index.verification(); }
+  records(): GelRecord[] { return loadGelChain(this.ledgerPath); }
+  tail(limit: number): GelRecord[] { return this.records().slice(-limit); }
+
+  persist(record: GelRecord): void {
+    writeGelRecord(this.ledgerPath, record);
+    this.index.record(record);
+  }
+}
+
+/** Ephemeral backend: holds the chain in memory only (e.g. when shipping evidence elsewhere). */
+export class InMemoryLedgerBackend implements LedgerBackend {
+  private readonly index = new LedgerIndex();
+  private readonly chain: GelRecord[];
+
+  constructor(seed: GelRecord[] = []) {
+    this.chain = [...seed];
+    this.index.seed(this.chain);
   }
 
-  get tipHash(): string {
-    return this.tip_hash;
+  get tipHash(): string { return this.index.tip; }
+  get count(): number { return this.index.count; }
+  hasAdmitted(hash: string): boolean { return this.index.admitted.has(hash); }
+  verification(): { ok: boolean; count: number; failure?: string } { return this.index.verification(); }
+  records(): GelRecord[] { return [...this.chain]; }
+  tail(limit: number): GelRecord[] { return this.chain.slice(-limit); }
+
+  persist(record: GelRecord): void {
+    this.chain.push(record);
+    this.index.record(record);
+  }
+}
+
+/**
+ * Stateful ledger facade over a pluggable backend. Builds the next (signed) record
+ * linked to the backend's current tip and persists it. `new LedgerStore(path)`
+ * keeps the JSONL-file behavior; pass a backend for other stores.
+ */
+export class LedgerStore {
+  private readonly backend: LedgerBackend;
+
+  constructor(source: string | LedgerBackend) {
+    this.backend = typeof source === "string" ? new FileLedgerBackend(source) : source;
   }
 
-  hasPriorAdmission(canonicalActionHash: string): boolean {
-    return this.admitted.has(canonicalActionHash);
+  static file(ledgerPath: string): LedgerStore {
+    return new LedgerStore(new FileLedgerBackend(ledgerPath));
   }
 
-  /** Integrity from the last full scan; appends preserve linkage by construction. */
-  verification(): { ok: boolean; count: number; failure?: string } {
-    return this._ok ? { ok: true, count: this._count } : { ok: false, count: this._count, failure: this._failure };
+  static memory(seed: GelRecord[] = []): LedgerStore {
+    return new LedgerStore(new InMemoryLedgerBackend(seed));
   }
+
+  get count(): number { return this.backend.count; }
+  get tipHash(): string { return this.backend.tipHash; }
+  hasPriorAdmission(canonicalActionHash: string): boolean { return this.backend.hasAdmitted(canonicalActionHash); }
+  verification(): { ok: boolean; count: number; failure?: string } { return this.backend.verification(); }
+  records(): GelRecord[] { return this.backend.records(); }
+  tail(limit: number): GelRecord[] { return this.backend.tail(limit); }
 
   append(input: Omit<BuildGelRecordInput, "previous_hash">): GelRecord {
-    const record = buildGelRecord({ previous_hash: this.tip_hash, ...input });
-    writeGelRecord(this.ledgerPath, record);
-    this.tip_hash = record.record_hash;
-    this._count += 1;
-    if (record.decision === "ALLOW") this.admitted.add(record.canonical_action_hash);
+    const record = buildGelRecord({ previous_hash: this.backend.tipHash, ...input });
+    this.backend.persist(record);
     return record;
+  }
+}
+
+/** Token-bucket rate limiter keyed by subject. capacity = burst, refillPerSec = sustained rate. */
+export class SubjectRateLimiter {
+  private readonly buckets = new Map<string, { tokens: number; updated: number }>();
+
+  constructor(private readonly capacity: number, private readonly refillPerSec: number) {}
+
+  static perMinute(perMinute: number, burst?: number): SubjectRateLimiter {
+    return new SubjectRateLimiter(Math.max(1, burst ?? perMinute), perMinute / 60);
+  }
+
+  allow(subject: string, now = Date.now()): boolean {
+    const bucket = this.buckets.get(subject) ?? { tokens: this.capacity, updated: now };
+    const elapsedSec = Math.max(0, (now - bucket.updated) / 1000);
+    bucket.tokens = Math.min(this.capacity, bucket.tokens + elapsedSec * this.refillPerSec);
+    bucket.updated = now;
+    const ok = bucket.tokens >= 1;
+    if (ok) bucket.tokens -= 1;
+    this.buckets.set(subject, bucket);
+    return ok;
   }
 }
 
@@ -1145,6 +1243,13 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
   // One in-memory ledger index for the whole server lifetime keeps append and
   // replay checks O(1) instead of rescanning the JSONL on every request.
   const ledger = new LedgerStore(options.ledgerPath);
+  const rateLimiter = options.rateLimitPerMinute && options.rateLimitPerMinute > 0
+    ? SubjectRateLimiter.perMinute(options.rateLimitPerMinute)
+    : undefined;
+  const logDecision = (entry: Record<string, unknown>): void => {
+    if (options.logFormat === "json") process.stderr.write(`${JSON.stringify({ ts: new Date().toISOString(), ...entry })}\n`);
+  };
+  const requestId = (req: IncomingMessage): string => (typeof req.headers["x-request-id"] === "string" ? req.headers["x-request-id"] : randomUUID());
   const apiKeyBuffer = options.apiKey ? Buffer.from(options.apiKey) : undefined;
   const authorized = (req: IncomingMessage): boolean => {
     if (!apiKeyBuffer) return true;
@@ -1208,8 +1313,13 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
       }
 
       if (req.method === "POST" && url.pathname === "/v1/execution-control/evaluate") {
+        const startedAt = Date.now();
         const body = await readJsonBody(req);
         const action = (body.action ?? body) as CanonicalActionInput;
+        if (rateLimiter && !rateLimiter.allow(action.subject ?? "")) {
+          sendJson(res, 429, { error: "rate_limited", subject: action.subject });
+          return;
+        }
         const result = evaluateExecutionControl({
           ward: options.ward,
           authorityEnvelope: options.authorityEnvelope,
@@ -1224,13 +1334,29 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           warrantTtlSeconds: options.warrantTtlSeconds,
           ledger
         });
+        logDecision({
+          event: "evaluate",
+          request_id: requestId(req),
+          subject: action.subject,
+          action_type: action.action_type,
+          decision: result.decision,
+          reason_codes: result.reason_codes,
+          warrant_id: result.warrant?.warrant_id ?? null,
+          signing_key_id: result.warrant?.signing_key_id ?? null,
+          latency_ms: Date.now() - startedAt
+        });
         sendJson(res, result.decision === "ALLOW" ? 200 : result.decision === "ESCALATE" ? 202 : 409, result);
         return;
       }
 
       if (req.method === "POST" && url.pathname === "/v1/execution-control/proxy") {
+        const startedAt = Date.now();
         const body = await readJsonBody(req);
         const action = (body.action ?? body) as CanonicalActionInput;
+        if (rateLimiter && !rateLimiter.allow(action.subject ?? "")) {
+          sendJson(res, 429, { error: "rate_limited", subject: action.subject });
+          return;
+        }
         const result = await proxyGovernedAction({
           ward: options.ward,
           authorityEnvelope: options.authorityEnvelope,
@@ -1246,23 +1372,35 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           ledger
         });
         const status = result.decision === "ALLOW" ? (result.forwarded ? 200 : 502) : result.decision === "ESCALATE" ? 202 : 409;
+        logDecision({
+          event: "proxy",
+          request_id: requestId(req),
+          subject: action.subject,
+          action_type: action.action_type,
+          decision: result.decision,
+          reason_codes: result.reason_codes,
+          forwarded: result.forwarded,
+          warrant_id: result.warrant?.warrant_id ?? null,
+          status,
+          latency_ms: Date.now() - startedAt
+        });
         sendJson(res, status, result);
         return;
       }
 
       if (req.method === "GET" && url.pathname === "/v1/execution-control/audit/tail") {
         const limit = Number(url.searchParams.get("limit") ?? "20");
-        sendJson(res, 200, { items: loadGelChain(options.ledgerPath).slice(-limit) });
+        sendJson(res, 200, { items: ledger.tail(limit) });
         return;
       }
 
       if (req.method === "GET" && url.pathname === "/v1/execution-control/audit/verify") {
-        sendJson(res, 200, verifyGelChain(options.ledgerPath));
+        sendJson(res, 200, verifyGelRecords(ledger.records()));
         return;
       }
 
       if (req.method === "GET" && url.pathname === "/v1/execution-control/metrics") {
-        const chain = loadGelChain(options.ledgerPath);
+        const chain = ledger.records();
         const decisions: Record<string, number> = { ALLOW: 0, REFUSE: 0, ESCALATE: 0 };
         const reasonCodes: Record<string, number> = {};
         for (const record of chain) {
@@ -1273,7 +1411,7 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           total_records: chain.length,
           decisions,
           reason_codes: reasonCodes,
-          ledger_ok: verifyGelChain(options.ledgerPath).ok,
+          ledger_ok: ledger.verification().ok,
           signing_key_id: options.signer?.key_id ?? "ephemeral-dev",
           kill_switch_engaged: !!(options.killSwitchPath && existsSync(options.killSwitchPath)),
           replay_protection: replayProtection

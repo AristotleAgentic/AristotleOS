@@ -21,10 +21,12 @@ import {
   evaluateCommitGate,
   evaluateExecutionControl,
   exportEvidenceBundle,
+  InMemoryLedgerBackend,
   issueWarrant,
   LedgerStore,
   loadGelChain,
   loadWardManifest,
+  SubjectRateLimiter,
   proxyGovernedAction,
   requireAllowedWarrant,
   submitGovernedAction,
@@ -550,6 +552,42 @@ test("LedgerStore tracks tip/count/admitted in memory and rebuilds from disk", (
   assert.equal(reopened.tipHash, record.record_hash);
   assert.equal(reopened.hasPriorAdmission(record.canonical_action_hash), true);
   assert.equal(reopened.verification().ok, true);
+});
+
+test("LedgerStore works over a pluggable in-memory backend (no file)", () => {
+  const store = new LedgerStore(new InMemoryLedgerBackend());
+  assert.equal(store.count, 0);
+  const decision = evaluateCommitGate({ ward, authorityEnvelope: envelope, action, now });
+  const warrant = issueWarrant(decision, action, envelope, now);
+  const record = store.append({ ward, action, decision, warrant, now });
+  assert.equal(store.count, 1);
+  assert.equal(store.hasPriorAdmission(record.canonical_action_hash), true);
+  assert.equal(store.tail(10).length, 1);
+  assert.equal(store.verification().ok, true);
+  assert.equal(store.records()[0].record_hash, record.record_hash);
+});
+
+test("SubjectRateLimiter enforces an independent per-subject budget", () => {
+  const limiter = new SubjectRateLimiter(2, 0); // capacity 2, no refill
+  assert.equal(limiter.allow("agent:a"), true);
+  assert.equal(limiter.allow("agent:a"), true);
+  assert.equal(limiter.allow("agent:a"), false);
+  assert.equal(limiter.allow("agent:b"), true); // a different subject has its own bucket
+});
+
+test("server returns 429 when a subject exceeds its rate limit", async () => {
+  const file = ledgerPath();
+  const { server } = createExecutionControlRuntimeServer({ ward, authorityEnvelope: envelope, ledgerPath: file, now, rateLimitPerMinute: 1, replayProtection: false });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const address = server.address();
+    const url = `http://127.0.0.1:${address && typeof address === "object" ? address.port : 0}/v1/execution-control/evaluate`;
+    const post = () => fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action }) });
+    assert.equal((await post()).status, 200);
+    assert.equal((await post()).status, 429);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
 });
 
 test("server enforces replay protection across requests via the shared ledger index", async () => {

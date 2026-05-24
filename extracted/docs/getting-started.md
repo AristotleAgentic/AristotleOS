@@ -157,6 +157,12 @@ ARISTOTLE_OPERATOR_API_KEY=... aristotle run -- <your agent command>
   `ARISTOTLE_WARRANT_TTL_SECONDS` (default 60).
 - **Preflight** — `aristotle preflight` blocks deploys missing a durable signing
   key or other production essentials.
+- **Rate limiting** — `--rate-limit <perMinute>` (or `ARISTOTLE_RATE_LIMIT_PER_MINUTE`)
+  enforces a per-subject token bucket; over-budget requests get `429`.
+- **Structured logging** — `--log-format json` emits a JSON decision line per
+  request (request id, decision, reason codes, key id, latency) to stderr for SIEM/ops.
+- **Pluggable ledger** — the ledger sits behind a `LedgerBackend` interface
+  (file + in-memory shipped); a durable backend (Postgres/SQLite) can be dropped in.
 - **Container** — run the boundary as a sidecar with
   `manifests/docker/execution-control.Dockerfile`. See [SECURITY.md](../SECURITY.md)
   for the threat model and known limitations.
