@@ -21,7 +21,7 @@ Status: `done` · `wip` · `planned` · `gated` (external/program).
 
 | ID | Fix | Finding | Status |
 |----|-----|---------|--------|
-| B1 | Attested-telemetry binding for physical invariants | 2.1 | planned |
+| B1 | Attested-telemetry binding for physical invariants | 2.1 | done |
 | B2 | DDIL / captured-edge containment (staleness-deny, offline quota) | 2.5 | planned |
 | B3 | Fail-mode per Ward criticality + gate-HA topology docs | 2.6 | planned |
 | B4 | mTLS + PIV/CAC client-cert auth seam; gate the admin key | 2.8 | planned |
