@@ -59,7 +59,22 @@ Clients present the token as `Authorization: Bearer <token>` or `X-API-Key: <tok
 aristotle execution-control serve ... --oidc-config oidc.json
 ```
 
-`oidc.json`:
+`oidc.json` (live JWKS — recommended; keys fetched from the IdP and auto-rotated):
+
+```json
+{
+  "issuer": "https://idp.corp/",
+  "audience": "aristotle-boundary",
+  "jwksUri": "https://idp.corp/.well-known/jwks.json",
+  "jwksTtlSec": 300,
+  "rolesClaim": "groups",
+  "roleMap": { "platform-admins": "admin", "sre": "operator", "all-staff": "viewer" },
+  "defaultRole": null,
+  "clockSkewSec": 60
+}
+```
+
+…or with statically materialized keys (air-gapped / pinned PEMs):
 
 ```json
 {
@@ -75,6 +90,10 @@ aristotle execution-control serve ... --oidc-config oidc.json
 }
 ```
 
+`jwksUri` and `keys` may both be set — keys from both sources are merged, and a
+token whose `kid` is unknown triggers a background JWKS refresh (the current
+request still fails closed). At least one of the two is required.
+
 The boundary verifies the compact JWS, then maps the token to a role:
 
 - The token `sub` becomes the operator identity (written to the GEL).
@@ -83,16 +102,27 @@ The boundary verifies the compact JWS, then maps the token to a role:
 - If nothing maps and `defaultRole` is unset, the verified identity is **forbidden**
   (`403`) — a valid SSO token alone does not grant access.
 
-Each key may carry `publicKeyPem` inline or a `publicKeyFile` path (resolved
+Each static key may carry `publicKeyPem` inline or a `publicKeyFile` path (resolved
 relative to the working directory). Env: `ARISTOTLE_OIDC_CONFIG=<path>`.
+
+#### Live JWKS
+
+When `jwksUri` is set, the boundary fetches the issuer's JWK Set, converts each
+signing key (`use:"sig"` or unspecified; encryption keys are skipped) to a
+verification key, and caches it. The cache is primed once at startup and refreshed
+in the background when it ages past `jwksTtlSec` (default 300s) or when a token
+arrives with an unrecognized `kid` (a rotated signing key). Refresh is **fail-static**:
+a JWKS fetch error keeps the last-good keys rather than dropping all of them, so a
+transient IdP outage does not lock out every operator. The verification hot path is
+synchronous — it never blocks on a network call.
 
 #### OIDC hardening
 
 - **Asymmetric only.** Allowed algs: `RS256/384/512`, `ES256/384/512`, `EdDSA`.
   `alg:none` and all HMAC algs are rejected — there is no symmetric verification
   path, so there is no `alg:none` or alg-confusion vector.
-- The configured key's type must match the token's `alg`.
-- `kid` is required when more than one key is configured.
+- The key's type must match the token's `alg` (enforced for both static and JWKS keys).
+- `kid` is required when more than one verification key is available.
 - `iss` must match; `aud` is enforced when configured; `exp`/`nbf` are checked with
   `clockSkewSec` tolerance.
 
@@ -138,7 +168,9 @@ identically to pre-RBAC records — existing ledgers remain valid.
 - Prefer OIDC so operator identity ties to your IdP and SSO lifecycle.
 - Keep a single static **admin** "break-glass" token in a secrets manager for when
   the IdP is unavailable.
-- Rotate static tokens and OIDC signing keys on your own schedule; OIDC keys are
-  configured statically, so key rollover is a config update + reload.
+- With `jwksUri`, OIDC signing-key rollover is automatic — the boundary picks up
+  rotated keys on the next refresh (or immediately on first sight of a new `kid`),
+  no reload required. With statically materialized `keys`, rollover is a config
+  update + reload. Rotate static **tokens** on your own schedule either way.
 - Run `aristotle preflight` — it reports the configured auth methods and warns when
   no admin credential exists (operator actions over HTTP would be refused).

@@ -44,7 +44,18 @@ provider, policy, command, signer, ledger })`. Verify receipts offline with
 `verifySandboxReceipt(receipt, { warrant })` and bundles with
 `verifySandboxEvidence(evidence)`.
 
-## `LocalProcessSandboxProvider` (built-in)
+## Built-in providers
+
+`aristotle sandbox providers` lists all providers and shows which are **available**
+on the current host (runtime detected on `PATH`).
+
+| Provider | Isolation | Select |
+|----------|-----------|--------|
+| `local-process` | process wrapper: allowlist, timeout, output cap, cwd, env allowlist | default |
+| `container` | OS container: namespaces + cgroups | `--provider container --image <img>` |
+| `wasm` | WASI capability sandbox | `--provider wasm --cmd <module.wasm>` |
+
+### `local-process` (development)
 
 Enforces what a process wrapper can: an exact **command allowlist**, a
 **wall-clock timeout**, an **output-byte cap** (truncates + flags), **working-dir
@@ -52,10 +63,47 @@ isolation** (fresh temp dir), and an **environment allowlist** (`PATH`, and
 `SystemRoot`/`COMSPEC` on Windows, are always included so binaries resolve).
 
 > It is a **development** provider, **not** a kernel security boundary. It does not
-> enforce network or filesystem isolation; `allow_network` is advisory here. For
-> untrusted code, use a real isolating provider below.
+> contain network or filesystem access; `allow_network` is advisory here. For
+> untrusted code, use the container or wasm provider.
 
-## Optional providers (no SDK dependency)
+### `container` (real namespace + cgroup isolation)
+
+Runs the command inside a real OS container via a detected runtime (**Docker** or
+**Podman**) — a genuine kernel-enforced isolation boundary:
+
+- `--network=none` (no networking) unless the policy sets `allow_network`,
+- a **read-only root filesystem** with a small writable `/tmp` tmpfs and the working
+  dir bind-mounted at `/sandbox`,
+- `--cap-drop=ALL` and `--security-opt=no-new-privileges`,
+- **memory / CPU / PID limits** (`--memory`, `--cpus`, `--pids-limit`),
+- runs as a **non-root** user (the host uid:gid on POSIX by default).
+
+```bash
+aristotle sandbox run \
+  --ward ward.yaml --envelope envelope.yaml --action action.json \
+  --provider container --image alpine:3.20 \
+  --cmd /bin/echo --arg hello --allow /bin/echo \
+  --receipt-out receipt.json
+```
+
+The command allowlist is still enforced **before** the runtime is invoked (defense
+in depth), and the signed receipt records the *logical* command, not the `docker`
+wrapper. The exact `run` argv (every isolation flag) is built by the pure,
+unit-tested `buildContainerRunArgs`.
+
+> Residual risk: containers share the host **kernel**. For multi-tenant untrusted
+> code, layer a stronger boundary (gVisor/Kata, a tuned seccomp profile, or a remote
+> micro-VM provider) — see *Roadmap* below and `THREAT_MODEL.md`.
+
+### `wasm` (capability-based WASI isolation)
+
+Runs a **WASI module** (`--cmd module.wasm`) under **wasmtime**, which denies
+filesystem, network, and environment access by **default**. The provider grants only
+what the policy permits: one preopened working dir, the allowlisted env vars, and
+network *only* when `allow_network` is set. Use it to govern plugins/policies
+compiled to Wasm. The argv is built by the pure, unit-tested `buildWasmRunArgs`.
+
+## Optional remote providers (no SDK dependency)
 
 `examples/sandboxes/` ships adapters that implement `SandboxProvider` via an
 **injected client** — AristotleOS imports no third-party SDK:
@@ -83,3 +131,22 @@ const out = await governSandboxExecution({ ward, authorityEnvelope, action, prov
 Because every provider implements the same interface, the gate, Warrant
 verification, and signed-receipt evidence are identical no matter where execution
 lands.
+
+## Roadmap (honest about what is *not* yet enforced)
+
+The following are **not implemented** and are not claimed by any provider above. We
+document them as roadmap rather than ship user-space code that pretends to be
+kernel enforcement:
+
+- **Stronger kernel isolation** — gVisor / Kata Containers (user-space or VM-isolated
+  kernels) as a drop-in `container` runtime, for multi-tenant untrusted workloads.
+- **seccomp / LSM profiles** — a curated syscall-filtering profile and AppArmor/SELinux
+  policy shipped with the container provider (today you can pass your own via
+  `--security-opt`).
+- **eBPF runtime attestation** — observing/attesting the actual syscalls a sandboxed
+  process makes and binding that evidence into the GEL. This is genuinely
+  kernel-level work and is **not** present; the current boundary governs *whether*
+  execution may occur and isolates *where*, but does not yet attest *what* it did at
+  the syscall level.
+
+See `THREAT_MODEL.md` for how these map to residual risk.

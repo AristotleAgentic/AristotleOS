@@ -43,6 +43,9 @@ import {
   verifyWarrant,
   type OidcConfig,
   type OperatorCredential,
+  createJwksKeyStore,
+  importJwks,
+  jwkToOidcKey,
   maxRole,
   resolvePrincipal,
   roleSatisfies,
@@ -1124,4 +1127,78 @@ test("OIDC bearer token authenticates and attributes the sub at the HTTP boundar
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
+});
+
+function rsaJwk(kid: string, use?: string) {
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const jwk = { ...publicKey.export({ format: "jwk" }), kid, alg: "RS256", use };
+  return { privateKey, jwk };
+}
+
+test("jwkToOidcKey + importJwks materialize verification keys from a JWKS document", () => {
+  const nowSec = 1_800_000_000;
+  const { privateKey, jwk } = rsaJwk("k-2024");
+
+  // a single JWK -> OidcKey (SPKI PEM + kid/alg preserved)
+  const oidcKey = jwkToOidcKey(jwk);
+  assert.equal(oidcKey.kid, "k-2024");
+  assert.equal(oidcKey.alg, "RS256");
+  assert.match(oidcKey.publicKeyPem, /BEGIN PUBLIC KEY/);
+
+  // a full JWKS: an encryption key (use=enc) must be filtered out of the verification set
+  const { jwk: encJwk } = rsaJwk("enc-1", "enc");
+  const keys = importJwks({ keys: [jwk, encJwk] });
+  assert.equal(keys.length, 1, "encryption key (use=enc) is excluded from verification keys");
+  assert.equal(keys[0].kid, "k-2024");
+
+  // a token signed by the JWK's private key verifies against the imported key
+  const config: OidcConfig = { issuer: "https://idp.corp", audience: "aristotle", keys };
+  const claims = { sub: "u-9", iss: "https://idp.corp", aud: "aristotle", exp: nowSec + 3600, roles: ["operator"] };
+  const token = makeJwt({ alg: "RS256", kid: "k-2024", typ: "JWT" }, claims, signRs256(privateKey));
+  assert.equal(verifyJwt(token, config, nowSec).ok, true);
+});
+
+test("createJwksKeyStore caches, refreshes on key rotation, and fails static", async () => {
+  const nowSec = 1_800_000_000;
+  const a = rsaJwk("k1");
+  const b = rsaJwk("k2");
+  let served: { keys: unknown[] } = { keys: [a.jwk] };
+  let calls = 0;
+  let failNext = false;
+  const fetchImpl = (async () => {
+    calls += 1;
+    if (failNext) throw new Error("jwks endpoint unreachable");
+    return { ok: true, json: async () => served } as unknown as Response;
+  }) as unknown as typeof fetch;
+
+  const store = createJwksKeyStore({ uri: "https://idp.corp/.well-known/jwks.json", fetchImpl, ttlSec: 300 });
+  const config: OidcConfig = { issuer: "https://idp.corp", audience: "aristotle", keyStore: store };
+  const claimsFor = () => ({ sub: "u", iss: "https://idp.corp", aud: "aristotle", exp: nowSec + 3600, roles: ["operator"] });
+  const tokenA = makeJwt({ alg: "RS256", kid: "k1", typ: "JWT" }, claimsFor(), signRs256(a.privateKey));
+
+  // before any refresh the cache is empty -> verification fails closed (no keys)
+  assert.equal(verifyJwt(tokenA, config, nowSec).ok, false);
+
+  // the first refresh populates the cache from the JWKS endpoint
+  await store.refresh();
+  assert.equal(calls, 1);
+  assert.equal(store.keys().length, 1);
+  assert.equal(verifyJwt(tokenA, config, nowSec).ok, true);
+
+  // a keys() read within the TTL is a cache hit (no additional fetch)
+  store.keys();
+  assert.equal(calls, 1);
+
+  // key rotation: the IdP now serves k2. A k2 token misses and triggers a background refresh.
+  served = { keys: [b.jwk] };
+  const tokenB = makeJwt({ alg: "RS256", kid: "k2", typ: "JWT" }, claimsFor(), signRs256(b.privateKey));
+  assert.equal(verifyJwt(tokenB, config, nowSec).ok, false, "unknown kid fails closed on first sight");
+  await store.refresh(); // settle the rotation the verifier kicked off
+  assert.equal(verifyJwt(tokenB, config, nowSec).ok, true);
+
+  // fail-static: a failed fetch keeps the last-good cache rather than dropping all keys
+  failNext = true;
+  await store.refresh();
+  assert.equal(store.keys().length, 1, "last-good cache retained through a failed refresh");
+  assert.equal(verifyJwt(tokenB, config, nowSec).ok, true);
 });

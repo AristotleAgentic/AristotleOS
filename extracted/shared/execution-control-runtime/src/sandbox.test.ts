@@ -1,18 +1,31 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import {
   type AuthorityEnvelope,
   type CanonicalActionInput,
   type SandboxPolicy,
   type WardManifest,
+  ContainerSandboxProvider,
   LocalProcessSandboxProvider,
+  WasmSandboxProvider,
+  buildContainerRunArgs,
   buildSandboxReceipt,
+  buildWasmRunArgs,
   createEd25519Signer,
+  detectContainerRuntime,
+  executeInSandbox,
   governSandboxExecution,
   verifySandboxEvidence,
   verifySandboxReceipt
 } from "./index.js";
+
+/** Index of the value following a flag in an argv array (-1 if the flag is absent). */
+function flagValue(args: string[], flag: string): string | undefined {
+  const i = args.indexOf(flag);
+  return i >= 0 ? args[i + 1] : undefined;
+}
 
 function testSigner() {
   const { privateKey, publicKey } = generateKeyPairSync("ed25519");
@@ -171,4 +184,89 @@ test("buildSandboxReceipt + verify works for a standalone (unsigned) receipt", a
   );
   assert.equal(unsigned.signature, undefined);
   assert.equal(verifySandboxReceipt(unsigned, { warrant: allowed.warrant }).ok, true);
+});
+
+// --- Container provider (real namespace + cgroup isolation) -----------------
+
+test("buildContainerRunArgs enforces network-off, read-only rootfs, dropped caps, and limits", () => {
+  const p = policy({ allowed_commands: ["/bin/echo"], env_allowlist: ["MY_TOKEN"] });
+  const args = buildContainerRunArgs({ image: "alpine:3.20", user: "1000:1000", memory: "128m", pidsLimit: 64 }, p, { command: "/bin/echo", args: ["hi"] }, "/tmp/work");
+
+  assert.equal(flagValue(args, "--network"), "none", "network is off by default");
+  assert.ok(args.includes("--read-only"), "rootfs is read-only");
+  assert.equal(flagValue(args, "--cap-drop"), "ALL", "all capabilities dropped");
+  assert.equal(flagValue(args, "--security-opt"), "no-new-privileges");
+  assert.equal(flagValue(args, "--memory"), "128m");
+  assert.equal(flagValue(args, "--pids-limit"), "64");
+  assert.equal(flagValue(args, "--user"), "1000:1000");
+  assert.equal(flagValue(args, "--volume"), "/tmp/work:/sandbox:rw");
+  assert.equal(flagValue(args, "--workdir"), "/sandbox");
+
+  // env is passed by name only — the secret value must never reach the host argv
+  assert.equal(flagValue(args, "--env"), "MY_TOKEN");
+  assert.ok(!args.some((a) => a.includes("MY_TOKEN=")), "secret value must not appear in argv");
+
+  // image, then the logical command + args, come last
+  assert.deepEqual(args.slice(-3), ["alpine:3.20", "/bin/echo", "hi"]);
+});
+
+test("buildContainerRunArgs opts into bridge networking only when the policy allows it", () => {
+  const args = buildContainerRunArgs({ image: "x" }, policy({ allow_network: true }), { command: "/bin/echo" }, "/w");
+  assert.equal(flagValue(args, "--network"), "bridge");
+});
+
+test("ContainerSandboxProvider derives its name from the runtime and requires an image", () => {
+  assert.throws(() => new ContainerSandboxProvider({ image: "" }), /requires an image/);
+  const provider = new ContainerSandboxProvider({ image: "alpine:3.20", runtime: "podman" });
+  assert.equal(provider.name, "container:podman");
+});
+
+test("ContainerSandboxProvider denies a disallowed binary before invoking the runtime", async () => {
+  // runtime pinned so construction needs no docker on PATH; the allowlist denies pre-spawn.
+  const provider = new ContainerSandboxProvider({ image: "alpine:3.20", runtime: "docker" });
+  const res = await executeInSandbox(provider, { command: "/bin/badcmd" }, policy({ allowed_commands: ["/bin/echo"] }));
+  assert.equal(res.status, "denied");
+  assert.match(res.stderr, /not in sandbox allowlist/);
+});
+
+const containerRuntime = detectContainerRuntime();
+function containerDaemonUp(rt: string): boolean {
+  try { const p = spawnSync(rt, ["info"], { stdio: "ignore", timeout: 8000 }); return !p.error && p.status === 0; } catch { return false; }
+}
+// Opt-in (AOS_SANDBOX_E2E=1) AND a runtime whose daemon is actually reachable — so a
+// CLI-installed-but-daemon-down host skips cleanly instead of hard-failing.
+const containerE2E = process.env.AOS_SANDBOX_E2E === "1" && Boolean(containerRuntime) && containerDaemonUp(containerRuntime!);
+test("ContainerSandboxProvider runs a governed command in a real container (e2e)", { skip: containerE2E ? false : "set AOS_SANDBOX_E2E=1 with a running docker/podman daemon" }, async () => {
+  const signer = testSigner();
+  const out = await governSandboxExecution({
+    ward, authorityEnvelope: envelope, action: action("shell.exec", "ctr-e2e"),
+    provider: new ContainerSandboxProvider({ image: "alpine:3.20" }),
+    policy: policy({ allowed_commands: ["/bin/echo"], timeout_ms: 60000 }),
+    command: { command: "/bin/echo", args: ["hello-container"] }, signer
+  });
+  assert.equal(out.decision, "ALLOW");
+  assert.equal(out.receipt!.status, "ok");
+  assert.match(out.receipt!.stdout, /hello-container/);
+  assert.equal(out.receipt!.command, "/bin/echo", "receipt records the logical command, not the runtime");
+  assert.equal(verifySandboxEvidence(out.evidence!).ok, true);
+});
+
+// --- Wasm provider (capability-based WASI isolation) ------------------------
+
+test("buildWasmRunArgs denies fs/net/env by default and grants only what the policy allows", () => {
+  const noGrant = buildWasmRunArgs({ mountWorkingDir: false }, policy(), { command: "mod.wasm", args: ["x"] }, "/w", {});
+  assert.deepEqual(noGrant, ["run", "mod.wasm", "x"], "no --dir, no network, no env by default");
+
+  const granted = buildWasmRunArgs({}, policy({ allow_network: true }), { command: "mod.wasm" }, "/w", { TOK: "v" });
+  assert.equal(flagValue(granted, "-S"), "inherit-network", "network only when allowed");
+  assert.equal(flagValue(granted, "--dir"), "/w::/sandbox", "working dir preopened when mounting");
+  assert.equal(flagValue(granted, "--env"), "TOK=v");
+});
+
+test("WasmSandboxProvider denies a disallowed module before invoking wasmtime", async () => {
+  const provider = new WasmSandboxProvider({ binaryPath: "wasmtime" });
+  assert.equal(provider.name, "wasm:wasmtime");
+  const res = await executeInSandbox(provider, { command: "evil.wasm" }, policy({ allowed_commands: ["ok.wasm"] }));
+  assert.equal(res.status, "denied");
+  assert.match(res.stderr, /not in sandbox allowlist/);
 });

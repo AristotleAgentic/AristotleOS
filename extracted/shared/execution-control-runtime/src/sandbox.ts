@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -35,11 +35,26 @@ import {
  * the Warrant and the GEL record — so the proof chain runs intent -> decision ->
  * warrant -> execution -> evidence.
  *
- * `LocalProcessSandboxProvider` is a development provider: it enforces what a
- * process wrapper can (command allowlist, timeout, output-byte cap, working-dir
- * isolation, environment allowlist). It is NOT a kernel security boundary —
- * network and filesystem isolation are delegated to real providers (E2B, Daytona,
- * Modal, Riza, containers) via the same `SandboxProvider` interface.
+ * Three built-in providers, in ascending isolation strength:
+ *   - `LocalProcessSandboxProvider` — a *development* provider. It enforces what a
+ *     process wrapper can (command allowlist, timeout, output-byte cap, working-dir
+ *     isolation, environment allowlist) but is NOT a kernel security boundary; it
+ *     does not contain network or filesystem access.
+ *   - `ContainerSandboxProvider` — runs the command inside a real OS container via a
+ *     detected runtime (Docker/Podman) with `--network=none`, a read-only rootfs,
+ *     `--cap-drop=ALL`, `--security-opt=no-new-privileges`, and memory/CPU/PID
+ *     limits. This is a genuine namespace + cgroup isolation boundary. Its residual
+ *     (shared host kernel) is documented in THREAT_MODEL.md; it is not user-space
+ *     theater.
+ *   - `WasmSandboxProvider` — runs a WASI module under a capability-based runtime
+ *     (wasmtime) that denies filesystem, network, and environment access unless
+ *     explicitly granted. For governed plugins/policies compiled to Wasm.
+ *
+ * Remote managed sandboxes (E2B, Daytona, Modal, Riza) implement the same
+ * `SandboxProvider` interface via injected clients in examples/sandboxes/. Deeper
+ * host enforcement (eBPF/LSM, gVisor/Kata, seccomp profiles) is explicit roadmap,
+ * not implemented here — see THREAT_MODEL.md. We do not claim kernel enforcement we
+ * do not have.
  */
 
 export interface SandboxPolicy {
@@ -147,19 +162,8 @@ export class LocalProcessSandboxProvider implements SandboxProvider {
   }
 }
 
-function runLocalProcess(command: SandboxCommand, policy: SandboxPolicy, workingDir: string): Promise<SandboxExecutionResult> {
-  const args = command.args ?? [];
-  const startedMs = Date.now();
-  const startedAt = new Date(startedMs).toISOString();
-
-  if (!policy.allowed_commands.includes(command.command)) {
-    return Promise.resolve({
-      command: command.command, args, started_at: startedAt, finished_at: startedAt, duration_ms: 0,
-      exit_code: null, status: "denied", stdout: "",
-      stderr: `command not in sandbox allowlist: ${command.command}`, output_truncated: false
-    });
-  }
-
+/** Build the host environment for a sandboxed process from the policy allowlist. */
+function sandboxEnv(policy: SandboxPolicy): Record<string, string> {
   const env: Record<string, string> = {};
   if (process.env.PATH) env.PATH = process.env.PATH;
   if (process.platform === "win32") {
@@ -170,15 +174,46 @@ function runLocalProcess(command: SandboxCommand, policy: SandboxPolicy, working
     const value = process.env[key];
     if (value !== undefined) env[key] = value;
   }
+  return env;
+}
 
+/** A "command not in allowlist" result, with the logical command echoed back. */
+function deniedResult(command: string, args: string[]): SandboxExecutionResult {
+  const at = new Date().toISOString();
+  return {
+    command, args, started_at: at, finished_at: at, duration_ms: 0,
+    exit_code: null, status: "denied", stdout: "",
+    stderr: `command not in sandbox allowlist: ${command}`, output_truncated: false
+  };
+}
+
+/** What spawnCaptured runs vs. what it records — the two differ for wrappers (e.g. a
+ *  container runtime is the binary, but the receipt records the logical command). */
+interface SpawnSpec {
+  binary: string;
+  argv: string[];
+  env: Record<string, string>;
+  cwd: string;
+  stdin?: string;
+  timeout_ms: number;
+  max_output_bytes: number;
+  reportCommand: string;
+  reportArgs: string[];
+}
+
+/** The shared spawn core: byte-capped capture, wall-clock timeout, SIGKILL on breach.
+ *  No allowlist logic here — providers gate before calling this (defense in depth). */
+function spawnCaptured(spec: SpawnSpec): Promise<SandboxExecutionResult> {
+  const startedMs = Date.now();
+  const startedAt = new Date(startedMs).toISOString();
   return new Promise((resolve) => {
     let stdout = "";
     let stderr = "";
     let truncated = false;
     let killReason: "timeout" | "output_cap" | null = null;
-    const cap = policy.max_output_bytes;
+    const cap = spec.max_output_bytes;
 
-    const child = spawn(command.command, args, { cwd: workingDir, env, shell: false, stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn(spec.binary, spec.argv, { cwd: spec.cwd, env: spec.env, shell: false, stdio: ["pipe", "pipe", "pipe"] });
 
     const capture = (buf: Buffer, which: "out" | "err") => {
       const current = which === "out" ? stdout : stderr;
@@ -201,16 +236,16 @@ function runLocalProcess(command: SandboxCommand, policy: SandboxPolicy, working
     child.stdout.on("data", (b: Buffer) => capture(b, "out"));
     child.stderr.on("data", (b: Buffer) => capture(b, "err"));
     child.stdin.on("error", () => { /* ignore EPIPE when the child exits early */ });
-    if (command.stdin !== undefined) child.stdin.write(command.stdin);
+    if (spec.stdin !== undefined) child.stdin.write(spec.stdin);
     child.stdin.end();
 
-    const timer = setTimeout(() => { killReason = killReason ?? "timeout"; child.kill("SIGKILL"); }, policy.timeout_ms);
+    const timer = setTimeout(() => { killReason = killReason ?? "timeout"; child.kill("SIGKILL"); }, spec.timeout_ms);
 
     child.on("error", (error) => {
       clearTimeout(timer);
       const finishedMs = Date.now();
       resolve({
-        command: command.command, args, started_at: startedAt, finished_at: new Date(finishedMs).toISOString(),
+        command: spec.reportCommand, args: spec.reportArgs, started_at: startedAt, finished_at: new Date(finishedMs).toISOString(),
         duration_ms: finishedMs - startedMs, exit_code: null, status: "error",
         stdout, stderr: stderr || String((error as Error).message), output_truncated: truncated
       });
@@ -224,11 +259,21 @@ function runLocalProcess(command: SandboxCommand, policy: SandboxPolicy, working
         killReason === "output_cap" ? "ok" :
         code === 0 ? "ok" : "error";
       resolve({
-        command: command.command, args, started_at: startedAt, finished_at: new Date(finishedMs).toISOString(),
+        command: spec.reportCommand, args: spec.reportArgs, started_at: startedAt, finished_at: new Date(finishedMs).toISOString(),
         duration_ms: finishedMs - startedMs, exit_code: code, status,
         signal: signal ?? undefined, stdout, stderr, output_truncated: truncated
       });
     });
+  });
+}
+
+function runLocalProcess(command: SandboxCommand, policy: SandboxPolicy, workingDir: string): Promise<SandboxExecutionResult> {
+  const args = command.args ?? [];
+  if (!policy.allowed_commands.includes(command.command)) return Promise.resolve(deniedResult(command.command, args));
+  return spawnCaptured({
+    binary: command.command, argv: args, env: sandboxEnv(policy), cwd: workingDir,
+    stdin: command.stdin, timeout_ms: policy.timeout_ms, max_output_bytes: policy.max_output_bytes,
+    reportCommand: command.command, reportArgs: args
   });
 }
 
@@ -239,6 +284,243 @@ export async function executeInSandbox(provider: SandboxProvider, command: Sandb
     return await session.exec(command);
   } finally {
     await session.close();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Container provider — real namespace + cgroup isolation (Docker / Podman)
+// ---------------------------------------------------------------------------
+
+export type ContainerRuntime = "docker" | "podman";
+
+export interface ContainerSandboxOptions {
+  /** Image the command runs inside. Required (e.g. "node:22-alpine", "python:3.12-slim"). */
+  image: string;
+  /** Runtime binary; auto-detected (docker, then podman) when omitted. */
+  runtime?: ContainerRuntime;
+  /** Memory limit, e.g. "256m". Default "256m". */
+  memory?: string;
+  /** CPU limit, e.g. "1" or "0.5". Default "1". */
+  cpus?: string;
+  /** Max process count inside the container. Default 128. */
+  pidsLimit?: number;
+  /** User the command runs as inside the container. Defaults to the host uid:gid on
+   *  POSIX (non-root, can write the mounted workspace); omitted on Windows. */
+  user?: string;
+  /** Path the host working dir is mounted at inside the container. Default "/sandbox". */
+  guestDir?: string;
+  /** Extra `run` args inserted before the image (escape hatch, e.g. an seccomp profile). */
+  extraRunArgs?: string[];
+}
+
+/** Detect an available container runtime on PATH (docker, then podman). */
+export function detectContainerRuntime(): ContainerRuntime | undefined {
+  for (const runtime of ["docker", "podman"] as const) {
+    try {
+      const probe = spawnSync(runtime, ["--version"], { stdio: "ignore", timeout: 5000 });
+      if (!probe.error && probe.status === 0) return runtime;
+    } catch { /* not installed; try the next */ }
+  }
+  return undefined;
+}
+
+interface NormalizedContainerOptions {
+  image: string;
+  memory: string;
+  cpus: string;
+  pidsLimit: number;
+  user?: string;
+  guestDir: string;
+  extraRunArgs: string[];
+}
+
+function normalizeContainerOptions(options: ContainerSandboxOptions): NormalizedContainerOptions {
+  const defaultUser = process.platform === "win32"
+    ? undefined
+    : `${process.getuid?.() ?? 1000}:${process.getgid?.() ?? 1000}`;
+  return {
+    image: options.image,
+    memory: options.memory ?? "256m",
+    cpus: options.cpus ?? "1",
+    pidsLimit: options.pidsLimit ?? 128,
+    user: options.user ?? defaultUser,
+    guestDir: options.guestDir ?? "/sandbox",
+    extraRunArgs: options.extraRunArgs ?? []
+  };
+}
+
+/**
+ * Build the `run` argv for a container runtime. Pure and deterministic so the
+ * security-critical flags can be unit-tested without a runtime installed. Network
+ * is off (`--network=none`) unless the policy explicitly opts in; the root fs is
+ * read-only with a small writable `/tmp` tmpfs; all capabilities are dropped and
+ * privilege escalation is blocked; the host working dir is bind-mounted at guestDir.
+ */
+export function buildContainerRunArgs(options: ContainerSandboxOptions, policy: SandboxPolicy, command: SandboxCommand, hostWorkingDir: string): string[] {
+  const opts = normalizeContainerOptions(options);
+  const args = [
+    "run", "--rm",
+    "--network", policy.allow_network ? "bridge" : "none",
+    "--read-only",
+    "--tmpfs", "/tmp:rw,nosuid,nodev,size=64m",
+    "--cap-drop", "ALL",
+    "--security-opt", "no-new-privileges",
+    "--memory", opts.memory,
+    "--cpus", opts.cpus,
+    "--pids-limit", String(opts.pidsLimit),
+    "--workdir", opts.guestDir,
+    "--volume", `${hostWorkingDir}:${opts.guestDir}:rw`
+  ];
+  if (opts.user) args.push("--user", opts.user);
+  // Pass env by name (value inherited from the runtime's own environment) so secret
+  // values never appear in the host process argv.
+  for (const key of policy.env_allowlist ?? []) args.push("--env", key);
+  if (command.stdin !== undefined) args.push("--interactive");
+  args.push(...opts.extraRunArgs);
+  args.push(opts.image, command.command, ...(command.args ?? []));
+  return args;
+}
+
+class ContainerSandboxSession implements SandboxSession {
+  readonly id = `sbx-${randomUUID().slice(0, 12)}`;
+  constructor(
+    readonly provider: string,
+    private readonly runtime: ContainerRuntime,
+    private readonly options: ContainerSandboxOptions,
+    readonly workingDir: string,
+    private readonly policy: SandboxPolicy,
+    private readonly ownsDir: boolean
+  ) {}
+
+  exec(command: SandboxCommand): Promise<SandboxExecutionResult> {
+    const args = command.args ?? [];
+    if (!this.policy.allowed_commands.includes(command.command)) return Promise.resolve(deniedResult(command.command, args));
+    const runArgs = buildContainerRunArgs(this.options, this.policy, command, this.workingDir);
+    return spawnCaptured({
+      binary: this.runtime, argv: runArgs, env: sandboxEnv(this.policy), cwd: this.workingDir,
+      stdin: command.stdin, timeout_ms: this.policy.timeout_ms, max_output_bytes: this.policy.max_output_bytes,
+      reportCommand: command.command, reportArgs: args
+    });
+  }
+
+  async close(): Promise<void> {
+    if (this.ownsDir) {
+      try { rmSync(this.workingDir, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+  }
+}
+
+export class ContainerSandboxProvider implements SandboxProvider {
+  readonly name: string;
+  private readonly runtime: ContainerRuntime;
+
+  constructor(private readonly options: ContainerSandboxOptions) {
+    if (!options.image) throw new Error("ContainerSandboxProvider requires an image");
+    const runtime = options.runtime ?? detectContainerRuntime();
+    if (!runtime) throw new Error("no container runtime found on PATH (install docker or podman, or set options.runtime)");
+    this.runtime = runtime;
+    this.name = `container:${runtime}`;
+  }
+
+  async open(policy: SandboxPolicy): Promise<SandboxSession> {
+    const ownsDir = !policy.working_dir;
+    const workingDir = policy.working_dir ?? mkdtempSync(path.join(tmpdir(), "aos-sbx-"));
+    return new ContainerSandboxSession(this.name, this.runtime, this.options, workingDir, policy, ownsDir);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Wasm provider — capability-based isolation (wasmtime / WASI)
+// ---------------------------------------------------------------------------
+
+export interface WasmSandboxOptions {
+  /** wasmtime binary path/name. Default "wasmtime". */
+  binaryPath?: string;
+  /** Guest path the host working dir is preopened at. Default "/sandbox". */
+  guestDir?: string;
+  /** Preopen the host working dir as a writable guest dir. Default true. When false,
+   *  the module gets no filesystem access at all. */
+  mountWorkingDir?: boolean;
+  /** Extra `run` args inserted before the module (escape hatch). */
+  extraRunArgs?: string[];
+}
+
+/** Detect wasmtime on PATH (honoring a custom binary path). */
+export function detectWasmRuntime(binaryPath = "wasmtime"): boolean {
+  try {
+    const probe = spawnSync(binaryPath, ["--version"], { stdio: "ignore", timeout: 5000 });
+    return !probe.error && probe.status === 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Build the wasmtime `run` argv for a WASI module. Pure/deterministic for testing.
+ * wasmtime denies filesystem, network, and environment access by default; this grants
+ * only what the policy permits: a single preopened working dir, the allowlisted env
+ * vars, and network *only* when `allow_network` is set. `command.command` is the path
+ * to the `.wasm` module; `command.args` are passed to the module.
+ */
+export function buildWasmRunArgs(options: WasmSandboxOptions, policy: SandboxPolicy, command: SandboxCommand, hostWorkingDir: string, env: Record<string, string>): string[] {
+  const guestDir = options.guestDir ?? "/sandbox";
+  const mount = options.mountWorkingDir ?? true;
+  const args = ["run"];
+  if (policy.allow_network) args.push("-S", "inherit-network");
+  if (mount) args.push("--dir", `${hostWorkingDir}::${guestDir}`);
+  for (const [key, value] of Object.entries(env)) args.push("--env", `${key}=${value}`);
+  args.push(...(options.extraRunArgs ?? []));
+  args.push(command.command, ...(command.args ?? []));
+  return args;
+}
+
+class WasmSandboxSession implements SandboxSession {
+  readonly id = `sbx-${randomUUID().slice(0, 12)}`;
+  constructor(
+    readonly provider: string,
+    private readonly binaryPath: string,
+    private readonly options: WasmSandboxOptions,
+    readonly workingDir: string,
+    private readonly policy: SandboxPolicy,
+    private readonly ownsDir: boolean
+  ) {}
+
+  exec(command: SandboxCommand): Promise<SandboxExecutionResult> {
+    const args = command.args ?? [];
+    if (!this.policy.allowed_commands.includes(command.command)) return Promise.resolve(deniedResult(command.command, args));
+    // Only the allowlisted env is granted to the module (no PATH inheritance).
+    const granted: Record<string, string> = {};
+    for (const key of this.policy.env_allowlist ?? []) {
+      const value = process.env[key];
+      if (value !== undefined) granted[key] = value;
+    }
+    const runArgs = buildWasmRunArgs(this.options, this.policy, command, this.workingDir, granted);
+    return spawnCaptured({
+      binary: this.binaryPath, argv: runArgs, env: sandboxEnv(this.policy), cwd: this.workingDir,
+      stdin: command.stdin, timeout_ms: this.policy.timeout_ms, max_output_bytes: this.policy.max_output_bytes,
+      reportCommand: command.command, reportArgs: args
+    });
+  }
+
+  async close(): Promise<void> {
+    if (this.ownsDir) {
+      try { rmSync(this.workingDir, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+  }
+}
+
+export class WasmSandboxProvider implements SandboxProvider {
+  readonly name = "wasm:wasmtime";
+  private readonly binaryPath: string;
+
+  constructor(private readonly options: WasmSandboxOptions = {}) {
+    this.binaryPath = options.binaryPath ?? "wasmtime";
+  }
+
+  async open(policy: SandboxPolicy): Promise<SandboxSession> {
+    const ownsDir = !policy.working_dir;
+    const workingDir = policy.working_dir ?? mkdtempSync(path.join(tmpdir(), "aos-wasm-"));
+    return new WasmSandboxSession(this.name, this.binaryPath, this.options, workingDir, policy, ownsDir);
   }
 }
 

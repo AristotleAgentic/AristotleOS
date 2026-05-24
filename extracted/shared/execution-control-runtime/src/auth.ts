@@ -1,4 +1,4 @@
-import { createPublicKey, timingSafeEqual, verify as verifySignature, type KeyObject } from "node:crypto";
+import { createPublicKey, timingSafeEqual, verify as verifySignature, type JsonWebKey, type KeyObject } from "node:crypto";
 
 /**
  * Operator access control for the AristotleOS execution-control boundary.
@@ -82,13 +82,23 @@ export interface OidcKey {
   publicKeyPem: string;
 }
 
+/** A live source of verification keys (e.g. a cached, periodically-refreshed JWKS). */
+export interface OidcKeyStore {
+  /** Current keys (synchronous; read on the verification hot path). */
+  keys(): OidcKey[];
+  /** Refresh the cache from the source (e.g. re-fetch the JWKS endpoint). */
+  refresh(): Promise<void>;
+}
+
 export interface OidcConfig {
   /** Expected `iss` claim. */
   issuer: string;
   /** When set, the token `aud` must include one of these. */
   audience?: string | string[];
-  /** Trusted verification keys (the issuer's JWKS, materialized as PEMs). */
-  keys: OidcKey[];
+  /** Static verification keys (the issuer's JWKS, materialized as PEMs). Optional when `keyStore` is set. */
+  keys?: OidcKey[];
+  /** Live JWKS source (e.g. createJwksKeyStore({ uri })). Keys here are merged with `keys` and refresh on rotation. */
+  keyStore?: OidcKeyStore;
   /** Claim carrying the role/group(s); defaults to "roles". */
   rolesClaim?: string;
   /** Map raw claim values (e.g. IdP group names) to AristotleOS roles. */
@@ -143,12 +153,19 @@ export function verifyJwt(token: string, config: OidcConfig, nowSec: number = Ma
   const algKey = alg as JwtAlg;
   const params = ALG_PARAMS[algKey];
 
+  // Combine statically-configured keys with any live JWKS cache.
+  const candidateKeys = [...(config.keys ?? []), ...(config.keyStore?.keys() ?? [])];
   let key: OidcKey | undefined;
   if (typeof header.kid === "string") {
-    key = config.keys.find((candidate) => candidate.kid === header.kid);
-    if (!key) return { ok: false, reason: `no configured key for kid ${header.kid}` };
-  } else if (config.keys.length === 1) {
-    key = config.keys[0];
+    key = candidateKeys.find((candidate) => candidate.kid === header.kid);
+    if (!key) {
+      // Unknown kid may be a freshly-rotated JWKS key; refresh in the background so
+      // the next attempt succeeds. This attempt still fails closed.
+      if (config.keyStore) void config.keyStore.refresh();
+      return { ok: false, reason: `no configured key for kid ${header.kid}` };
+    }
+  } else if (candidateKeys.length === 1) {
+    key = candidateKeys[0];
   } else {
     return { ok: false, reason: "kid required when multiple verification keys are configured" };
   }
@@ -275,4 +292,74 @@ export function resolvePrincipal(presented: string | undefined, config: AuthConf
   }
 
   return { status: "rejected", reason: "unrecognized credential" };
+}
+
+// ---------------------------------------------------------------------------
+// Live JWKS: import a JSON Web Key Set and keep it refreshed
+// ---------------------------------------------------------------------------
+
+type JwkEntry = JsonWebKey & { kid?: string; alg?: string; use?: string };
+
+/** Convert a single JWK into an OidcKey (SPKI PEM + kid/alg) for verification. */
+export function jwkToOidcKey(jwk: JwkEntry): OidcKey {
+  const publicKeyPem = createPublicKey({ key: jwk, format: "jwk" }).export({ type: "spki", format: "pem" }).toString();
+  const alg = typeof jwk.alg === "string" && Object.prototype.hasOwnProperty.call(ALG_PARAMS, jwk.alg) ? (jwk.alg as JwtAlg) : undefined;
+  return { kid: jwk.kid, alg, publicKeyPem };
+}
+
+/** Import a JWKS document into OidcKeys, skipping non-signing and unconvertible keys. */
+export function importJwks(jwks: { keys?: JwkEntry[] }): OidcKey[] {
+  return (jwks.keys ?? [])
+    .filter((jwk) => jwk.use === undefined || jwk.use === "sig")
+    .map((jwk) => { try { return jwkToOidcKey(jwk); } catch { return undefined; } })
+    .filter((key): key is OidcKey => key !== undefined);
+}
+
+export interface JwksKeyStoreOptions {
+  /** JWKS endpoint URI (e.g. https://idp/.well-known/jwks.json). */
+  uri: string;
+  /** Injected for testing; defaults to global fetch. */
+  fetchImpl?: typeof fetch;
+  /** Cache lifetime in seconds; a keys() read past this triggers a background refresh. Default 300. */
+  ttlSec?: number;
+}
+
+/**
+ * A live JWKS-backed OidcKeyStore. `keys()` is synchronous (serves the cache and
+ * triggers a non-blocking refresh when stale); `refresh()` re-fetches. A failed
+ * fetch keeps the last-good cache (fail-static) rather than dropping all keys.
+ * Call `refresh()` once at startup so the first verification has keys.
+ */
+export function createJwksKeyStore(options: JwksKeyStoreOptions): OidcKeyStore {
+  const ttlMs = (options.ttlSec ?? 300) * 1000;
+  const fetchImpl = options.fetchImpl ?? fetch;
+  let cached: OidcKey[] = [];
+  let fetchedAt = 0;
+  let inflight: Promise<void> | null = null;
+
+  const refresh = (): Promise<void> => {
+    if (inflight) return inflight;
+    inflight = (async () => {
+      try {
+        const res = await fetchImpl(options.uri, { headers: { accept: "application/json" } });
+        if (!res.ok) return;
+        const doc = (await res.json()) as { keys?: JwkEntry[] };
+        const keys = importJwks(doc);
+        if (keys.length > 0) { cached = keys; fetchedAt = Date.now(); }
+      } catch {
+        // Keep the last-good cache; verification continues with current keys.
+      } finally {
+        inflight = null;
+      }
+    })();
+    return inflight;
+  };
+
+  return {
+    keys() {
+      if (Date.now() - fetchedAt > ttlMs) void refresh();
+      return cached;
+    },
+    refresh
+  };
 }

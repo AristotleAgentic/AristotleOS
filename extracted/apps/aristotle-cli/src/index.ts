@@ -8,6 +8,7 @@ import { pathToFileURL } from "node:url";
 import {
   type AristotleSigner,
   type OidcConfig,
+  type OidcKey,
   type OperatorCredential,
   type OperatorRole,
   type RevocationKind,
@@ -20,7 +21,11 @@ import {
   type SandboxPolicy,
   type ShadowAction,
   compileGovernanceManifest,
+  ContainerSandboxProvider,
   createEd25519Signer,
+  createJwksKeyStore,
+  detectContainerRuntime,
+  detectWasmRuntime,
   diffGovernanceManifests,
   explainPolicy,
   createExecutionControlMcpServer,
@@ -32,6 +37,8 @@ import {
   governSandboxExecution,
   LedgerStore,
   LocalProcessSandboxProvider,
+  WasmSandboxProvider,
+  type SandboxProvider,
   profileShadowMode,
   reconcileEdgeRecords,
   loadEvidenceBundle,
@@ -227,26 +234,42 @@ const loadOperators = (args: string[]): OperatorCredential[] | undefined => {
   return credentials.length ? credentials : undefined;
 };
 
-// OIDC verification from a JSON config (--oidc-config / ARISTOTLE_OIDC_CONFIG). Each
-// key may carry publicKeyPem inline or a publicKeyFile path (resolved relative to cwd).
-const loadOidc = (args: string[], cwd: string): OidcConfig | undefined => {
+// OIDC verification from a JSON config (--oidc-config / ARISTOTLE_OIDC_CONFIG).
+// Keys come from a live JWKS endpoint (jwksUri, refreshed + rotated automatically)
+// and/or static keys (publicKeyPem inline or a publicKeyFile path, resolved vs cwd).
+// At least one source is required.
+const loadOidc = (args: string[], cwd: string, warn?: Writer): OidcConfig | undefined => {
   const file = optionValue(args, "--oidc-config") ?? process.env.ARISTOTLE_OIDC_CONFIG;
   if (!file) return undefined;
-  const raw = JSON.parse(readFileSync(path.resolve(cwd, file), "utf8")) as Omit<OidcConfig, "keys"> & {
-    keys: Array<{ kid?: string; alg?: OidcConfig["keys"][number]["alg"]; publicKeyPem?: string; publicKeyFile?: string }>;
+  const raw = JSON.parse(readFileSync(path.resolve(cwd, file), "utf8")) as Omit<OidcConfig, "keys" | "keyStore"> & {
+    keys?: Array<{ kid?: string; alg?: OidcKey["alg"]; publicKeyPem?: string; publicKeyFile?: string }>;
+    jwksUri?: string;
+    jwksTtlSec?: number;
   };
-  if (!raw.issuer || !Array.isArray(raw.keys) || raw.keys.length === 0) throw new Error("--oidc-config requires { issuer, keys: [...] }");
-  const keys = raw.keys.map((key) => {
+  if (!raw.issuer) throw new Error("--oidc-config requires an issuer");
+  const hasStaticKeys = Array.isArray(raw.keys) && raw.keys.length > 0;
+  if (!hasStaticKeys && !raw.jwksUri) {
+    throw new Error("--oidc-config requires { issuer, keys: [...] } and/or { issuer, jwksUri }");
+  }
+  const keys = (raw.keys ?? []).map((key) => {
     const publicKeyPem = key.publicKeyPem ?? (key.publicKeyFile ? readFileSync(path.resolve(cwd, key.publicKeyFile), "utf8") : undefined);
     if (!publicKeyPem) throw new Error("each OIDC key requires publicKeyPem or publicKeyFile");
     return { kid: key.kid, alg: key.alg, publicKeyPem };
   });
-  return { ...raw, keys };
+  let keyStore: OidcConfig["keyStore"];
+  if (raw.jwksUri) {
+    keyStore = createJwksKeyStore({ uri: raw.jwksUri, ttlSec: raw.jwksTtlSec });
+    // Prime the cache so the first verification has keys; verification fails closed
+    // until this completes, and a failed prime keeps trying on demand.
+    void keyStore.refresh().catch((error) => warn?.(`warning: initial JWKS fetch failed (${String((error as Error).message)}); will retry on demand\n`));
+  }
+  const { jwksUri: _jwksUri, jwksTtlSec: _jwksTtlSec, keys: _rawKeys, ...rest } = raw;
+  return { ...rest, ...(keys.length ? { keys } : {}), ...(keyStore ? { keyStore } : {}) };
 };
 
 const authSummary = (apiKey: string | undefined, operators: OperatorCredential[] | undefined, oidc: OidcConfig | undefined): string => {
   const methods: string[] = [];
-  if (oidc) methods.push("oidc");
+  if (oidc) methods.push(oidc.keyStore ? "oidc+jwks" : "oidc");
   if (operators?.length) methods.push(`${operators.length} token${operators.length === 1 ? "" : "s"}`);
   if (apiKey) methods.push("api-key");
   return methods.length ? `required (${methods.join(", ")})` : "open";
@@ -444,8 +467,11 @@ Commands:
   keys generate        Generate an Ed25519 Warrant signing keypair
   kill engage|release  Engage/release the sovereign-halt kill switch
   revoke key|envelope|warrant <id>   Revoke a compromised trust root
-  sandbox providers    List sandbox execution providers
+  sandbox providers    List sandbox execution providers (and which are available here)
   sandbox run          Evaluate an action, then run a command in a sandbox only on ALLOW
+                       --provider local-process|container|wasm (default local-process)
+                       container: --image <img> [--runtime docker|podman] [--memory 256m] [--cpus 1]
+                       wasm:      --cmd <module.wasm> [--wasm-binary <path>]
   sandbox receipt verify   Verify a signed, Warrant-bound execution receipt
   pilot                One-command self-check of the full boundary
   preflight            Check production readiness (signing key, auth, config)
@@ -456,6 +482,7 @@ Operator access control (run / execution-control serve):
   --api-key <key>                     Single full-access (admin) key. Env: ARISTOTLE_OPERATOR_API_KEY
   --operator <role:token[:subject]>   Role-scoped token (viewer|operator|admin). Repeatable. Env: ARISTOTLE_OPERATORS
   --oidc-config <file.json>           Verify OIDC bearer tokens; the sub is attributed in the GEL. Env: ARISTOTLE_OIDC_CONFIG
+                                      Config: { issuer, audience?, jwksUri? (live, auto-rotating), keys?: [{kid,alg,publicKeyPem|publicKeyFile}] }
   Roles: viewer (read) < operator (decisions) < admin (kill switch / revocation over HTTP)
 `);
       return 0;
@@ -542,7 +569,7 @@ Keep the private key secret. The public key and key_id can be shared so others c
       const killSwitchPath = path.resolve(cwd, optionValue(runArgs, "--kill-switch") ?? ".aristotle/KILL_SWITCH");
       const apiKey = optionValue(runArgs, "--api-key") ?? process.env.ARISTOTLE_OPERATOR_API_KEY;
       const operators = loadOperators(runArgs);
-      const oidc = loadOidc(runArgs, cwd);
+      const oidc = loadOidc(runArgs, cwd, err);
       const replayProtection = !runArgs.includes("--no-replay-protection");
       const revocationListPath = path.resolve(cwd, optionValue(runArgs, "--revocations") ?? ".aristotle/revocations.json");
       const warrantTtlSeconds = Number(optionValue(runArgs, "--warrant-ttl") ?? process.env.ARISTOTLE_WARRANT_TTL_SECONDS ?? "60");
@@ -876,7 +903,7 @@ evidence_bundle=${evidenceOut ?? "not requested"}
       const killSwitchPath = path.resolve(cwd, optionValue(rest, "--kill-switch") ?? ".aristotle/KILL_SWITCH");
       const apiKey = optionValue(rest, "--api-key") ?? process.env.ARISTOTLE_OPERATOR_API_KEY;
       const operators = loadOperators(rest);
-      const oidc = loadOidc(rest, cwd);
+      const oidc = loadOidc(rest, cwd, err);
       const replayProtection = !rest.includes("--no-replay-protection");
       const revocationListPath = path.resolve(cwd, optionValue(rest, "--revocations") ?? ".aristotle/revocations.json");
       const warrantTtlSeconds = Number(optionValue(rest, "--warrant-ttl") ?? process.env.ARISTOTLE_WARRANT_TTL_SECONDS ?? "60");
@@ -1151,17 +1178,21 @@ Next: aristotle approvals && aristotle approve ${evaluation.deferToken ?? "<toke
     }
 
     if (command === "sandbox" && subcommand === "providers") {
+      const containerRuntime = detectContainerRuntime();
+      const wasmAvailable = detectWasmRuntime();
       const providers = [
-        { name: "local-process", builtin: true, isolation: "process (allowlist/timeout/output-cap/cwd/env)", note: "development provider; not a kernel security boundary" },
-        { name: "e2b", builtin: false, isolation: "remote micro-VM", note: "wire via examples/sandboxes/e2b-provider.ts" },
-        { name: "daytona", builtin: false, isolation: "remote workspace", note: "wire via examples/sandboxes/daytona-provider.ts" },
-        { name: "modal", builtin: false, isolation: "remote container/job", note: "wire via examples/sandboxes/modal-provider.ts" },
-        { name: "riza", builtin: false, isolation: "hosted code interpreter", note: "wire via examples/sandboxes/riza-provider.ts" }
+        { name: "local-process", builtin: true, available: true, isolation: "process (allowlist/timeout/output-cap/cwd/env)", note: "development provider; not a kernel security boundary" },
+        { name: "container", builtin: true, available: Boolean(containerRuntime), isolation: "OS container (namespaces+cgroups, --network=none, read-only rootfs, cap-drop=ALL)", note: containerRuntime ? `runtime detected: ${containerRuntime}; pass --provider container --image <img>` : "needs docker or podman on PATH" },
+        { name: "wasm", builtin: true, available: wasmAvailable, isolation: "WASI capability sandbox (no fs/net/env unless granted)", note: wasmAvailable ? "wasmtime detected; pass --provider wasm --cmd module.wasm" : "needs wasmtime on PATH" },
+        { name: "e2b", builtin: false, available: false, isolation: "remote micro-VM", note: "wire via examples/sandboxes/e2b-provider.ts" },
+        { name: "daytona", builtin: false, available: false, isolation: "remote workspace", note: "wire via examples/sandboxes/daytona-provider.ts" },
+        { name: "modal", builtin: false, available: false, isolation: "remote container/job", note: "wire via examples/sandboxes/modal-provider.ts" },
+        { name: "riza", builtin: false, available: false, isolation: "hosted code interpreter", note: "wire via examples/sandboxes/riza-provider.ts" }
       ];
       if (json) { printJson(out, { providers }, true); return 0; }
       out("AristotleOS sandbox providers\n\n");
-      for (const p of providers) out(`  ${p.builtin ? "*" : " "} ${p.name.padEnd(14)} ${p.isolation}\n      ${p.note}\n`);
-      out("\n  * built-in. See docs/sandboxes.md to wire optional providers.\n");
+      for (const p of providers) out(`  ${p.builtin ? "*" : " "} ${p.name.padEnd(14)} ${p.available ? "[available]" : "[unavailable]"} ${p.isolation}\n      ${p.note}\n`);
+      out("\n  * built-in. eBPF/LSM, gVisor/Kata, seccomp profiles are roadmap (see THREAT_MODEL.md).\n  See docs/sandboxes.md to wire optional remote providers.\n");
       return 0;
     }
 
@@ -1179,10 +1210,26 @@ Next: aristotle approvals && aristotle approve ${evaluation.deferToken ?? "<toke
         max_output_bytes: Number(optionValue(rest, "--max-output") ?? "1000000"),
         allow_network: rest.includes("--allow-network")
       };
+      const providerKind = optionValue(rest, "--provider") ?? "local-process";
+      let provider: SandboxProvider;
+      if (providerKind === "local-process") {
+        provider = new LocalProcessSandboxProvider();
+      } else if (providerKind === "container") {
+        provider = new ContainerSandboxProvider({
+          image: requiredOption(rest, "--image"),
+          runtime: optionValue(rest, "--runtime") as "docker" | "podman" | undefined,
+          memory: optionValue(rest, "--memory"),
+          cpus: optionValue(rest, "--cpus")
+        });
+      } else if (providerKind === "wasm") {
+        provider = new WasmSandboxProvider({ binaryPath: optionValue(rest, "--wasm-binary") });
+      } else {
+        throw new Error(`unknown --provider: ${providerKind} (expected local-process | container | wasm)`);
+      }
       const ledgerPath = optionValue(rest, "--ledger");
       const result = await governSandboxExecution({
         ward, authorityEnvelope, action,
-        provider: new LocalProcessSandboxProvider(), policy,
+        provider, policy,
         command: { command: binary, args, stdin: optionValue(rest, "--stdin") },
         signer,
         ledgerPath: ledgerPath ? path.resolve(cwd, ledgerPath) : undefined,

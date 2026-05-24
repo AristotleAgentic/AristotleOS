@@ -59,6 +59,7 @@ onboarding and [../SECURITY.md](../SECURITY.md) for the control summary.
 | T12 | Weak production posture | `aristotle preflight`; refuses ephemeral keys under `NODE_ENV=production` | CLI + `requireProductionSigner` |
 | T13 | Operator over-reach / unattributed admin action | RBAC (viewer/operator/admin) per route; admin-only, fail-closed kill/revoke; authenticated identity written to the signed GEL | `auth.ts`, server route gate, `GelActor` |
 | T14 | Forged/abused OIDC token (alg:none, alg-confusion, expiry, audience) | Asymmetric-only JWS verification; `none`/HMAC rejected; `iss`/`aud`/`exp`/`nbf`/`kid` validated | `auth.ts` → `verifyJwt` |
+| T14b | Stale/rotated IdP signing key (DoS via key rollover, or accepting a retired key) | Live JWKS cache: TTL + on-unknown-`kid` background refresh picks up rotations; fail-static keeps last-good keys; only `use:"sig"` keys imported | `auth.ts` → `createJwksKeyStore`/`importJwks` |
 
 ## 5. Areas to probe (priorities for the auditor)
 1. **Cryptography**: canonical-action determinism, signature material binding (could a different action reuse a signature?), key-id pinning, GEL chain + bundle verification edge cases.
@@ -70,8 +71,9 @@ onboarding and [../SECURITY.md](../SECURITY.md) for the control summary.
 6. **Supply chain**: dependencies (`sbom.json`), bundle integrity, Docker/k8s config.
 
 ## 6. Known limitations / residual risk
-- **Operator RBAC is in place** at the boundary (viewer/operator/admin, OIDC-capable, with identity attribution in the signed GEL). Residual: role *mapping* is only as trustworthy as the configured IdP/token issuance, and there is no built-in token-rotation scheduler — rotate static tokens and OIDC keys via your own process.
-- **OIDC keys are configured statically** (PEM/JWKS materialized in config); the boundary does not fetch a remote JWKS endpoint, so key rollover requires a config update/reload.
+- **Operator RBAC is in place** at the boundary (viewer/operator/admin, OIDC-capable, with identity attribution in the signed GEL). Residual: role *mapping* is only as trustworthy as the configured IdP/token issuance, and there is no built-in static-token-rotation scheduler — rotate static tokens via your own process.
+- **OIDC signing keys can be live or static.** With `jwksUri` the boundary fetches the issuer's JWKS, caches it with a TTL, refreshes in the background, and picks up rotated `kid`s automatically; refresh is fail-static (a fetch failure keeps the last-good keys). Static PEM/JWK config is still supported for air-gapped deployments, where rollover is a config update/reload. (`auth.ts` → `createJwksKeyStore`/`importJwks`.)
+- **Sandbox isolation is real but layered, not absolute.** AristotleOS governs *whether* execution may occur (Commit Gate → Warrant) and isolates *where*: the built-in `container` provider uses real namespaces + cgroups (`--network=none`, read-only rootfs, `--cap-drop=ALL`, `--security-opt=no-new-privileges`, mem/CPU/PID limits, non-root), and the `wasm` provider uses capability-based WASI (deny fs/net/env by default). Residual: containers **share the host kernel**, so a kernel-level escape is out of scope for the container provider — layer gVisor/Kata, a seccomp/LSM profile, or a remote micro-VM for multi-tenant untrusted code. The `local-process` provider is explicitly a dev wrapper, **not** an isolation boundary. **Roadmap (not implemented, not faked):** gVisor/Kata runtimes, shipped seccomp/LSM profiles, and eBPF syscall attestation into the GEL. (`sandbox.ts` → `ContainerSandboxProvider`/`WasmSandboxProvider`; see `docs/sandboxes.md`.)
 - **No third-party security audit yet** (this document exists to commission one).
 - **TLS** is expected to be terminated by an upstream proxy/ingress; the boundary speaks plain HTTP by default.
 - **Throughput** is bounded per node by signing cost (see `npm run bench:execution-control`); scale horizontally via the shared Postgres backend.
