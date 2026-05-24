@@ -15,7 +15,7 @@ Status: `done` · `wip` · `planned` · `gated` (external/program).
 | A2 | Trusted time + nonce-bound warrants (staleness-deny) | 2.2 | planned |
 | A3 | Asymmetric (Ed25519) credential minter; HMAC → dev-only | 2.3 | done |
 | A4 | Supply-chain: blocking dep audit + signed-artifact provenance | 2.9 | planned |
-| A5 | Evaluator quickstart + console honesty + replay/idempotency docs | 2.10 | planned |
+| A5 | Evaluator quickstart + console honesty + replay/idempotency docs | 2.10 | done |
 
 ## Tier B — code + an explicit integration boundary
 

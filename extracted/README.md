@@ -34,9 +34,12 @@ aristotle mcp                         # JSON-RPC over stdio
 ```
 
 Docs:
+- [Evaluator quickstart](docs/evaluator-quickstart.md) — prove the boundary offline in ~10 min
 - [Getting started](docs/getting-started.md)
 - [Execution-control runtime](docs/execution-control-runtime.md)
 - [Ward Marshal](docs/ward-marshal.md)
+- [Defense readiness roadmap](docs/defense-readiness.md)
+- [Crypto posture](docs/crypto-posture.md)
 - [Commercial adoption path](docs/commercial-adoption-path.md)
 - [Architecture](docs/architecture.md)
 - [Deployment runbook](docs/deployment-runbook.md)
