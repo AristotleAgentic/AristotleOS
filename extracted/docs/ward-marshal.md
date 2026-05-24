@@ -66,7 +66,15 @@ the collector runs **inside your environment** so no telemetry leaves it.
 - `kubernetesCollector` — `kubectl get pods` → observations, reading `aristotle.io/*`
   labels/annotations (agent-id, ward, tools, credentials) plus structural facts
   (namespace, image, service account, phase).
-- `normalizeObservations` — map any feed (CI, SaaS, host, network) into observations
+- `processCollector` / `parseProcessList` / `parsePsText` — host & workstation
+  discovery: parse `ps -eo pid,user,comm,args`, keep only **candidate agents** (a
+  `looksLikeAgent` heuristic: an agent runtime + agent-ish args, or any LLM egress),
+  and extract LLM endpoints / outbound hosts from the command line. Catches the
+  shadow agent running on a developer laptop or an edge node.
+- `mcpCollector` / `parseMcpInventory` — MCP tool-server discovery: an inventory of
+  servers → observations carrying the exposed tool surface, service account, and
+  credentials (e.g. a `prod-shell` server with `shell.exec` + prod kubeconfig).
+- `normalizeObservations` — map any other feed (CI, SaaS, network) into observations
   via a field mapping.
 - `collectObservations` — run many collectors, merge + dedupe deterministically.
 

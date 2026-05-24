@@ -177,6 +177,156 @@ export function normalizeObservations(records: Array<Record<string, JsonValue>>,
     .sort((a, b) => a.observation_id.localeCompare(b.observation_id));
 }
 
+// --- Host / process collector (developer-workstation, edge-node) ------------
+
+export interface ProcessRecord {
+  pid?: number | string;
+  user?: string;
+  comm?: string;
+  args?: string;
+}
+
+const AGENT_RUNTIMES = ["node", "python", "python3", "deno", "bun", "java", "ruby", "tsx"];
+const AGENT_KEYWORDS = ["agent", "langgraph", "langchain", "crewai", "autogen", "llama", "autonomous", "mcp", "copilot"];
+
+/** Fresh regex per call — global state (lastIndex) must not leak across records. */
+function llmHostRegex(): RegExp {
+  return /https?:\/\/[^\s"']*(?:openai|anthropic|googleapis|cohere|mistral|bedrock|perplexity)[^\s"']*/gi;
+}
+
+/** Heuristic: does this process look like an autonomous-agent runtime? */
+export function looksLikeAgent(rec: ProcessRecord): boolean {
+  const comm = (rec.comm ?? "").toLowerCase();
+  const args = (rec.args ?? "").toLowerCase();
+  const runtime = AGENT_RUNTIMES.some((r) => comm === r || comm.endsWith(`/${r}`) || comm.endsWith(`\\${r}`) || comm === `${r}.exe`);
+  const keyword = AGENT_KEYWORDS.some((k) => args.includes(k));
+  return (runtime && keyword) || llmHostRegex().test(args);
+}
+
+/**
+ * Parse a process list into AgentObservations, keeping only likely-agent processes
+ * (a workstation/host runs hundreds of processes; the census wants the candidates).
+ * LLM endpoints are extracted from the command line. Pure + deterministic.
+ */
+export function parseProcessList(records: ProcessRecord[], now: string, host = "host"): AgentObservation[] {
+  return records
+    .filter(looksLikeAgent)
+    .map((rec, index) => {
+      const args = rec.args ?? "";
+      const endpoints = [...args.matchAll(llmHostRegex())].map((m) => m[0]);
+      const observation: AgentObservation = {
+        observation_id: `process:${host}/${rec.pid ?? index}`,
+        source: host.startsWith("edge") ? "edge-node" : "developer-workstation",
+        observed_at: now,
+        location: `${host}/process/${rec.pid ?? index}`,
+        process_name: rec.comm,
+        command_line: args || undefined,
+        owner: rec.user,
+        llm_endpoints: endpoints.length ? [...new Set(endpoints)] : undefined,
+        outbound_hosts: endpoints.length ? [...new Set(endpoints.map((e) => { try { return new URL(e).host; } catch { return e; } }))] : undefined
+      };
+      return observation;
+    })
+    .sort((a, b) => a.observation_id.localeCompare(b.observation_id));
+}
+
+/** Parse `ps -eo pid,user,comm,args` output (header + rows) into ProcessRecords. */
+export function parsePsText(stdout: string): ProcessRecord[] {
+  const lines = stdout.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (lines.length && /\bPID\b/i.test(lines[0])) lines.shift(); // drop header row
+  const row = /^(\d+)\s+(\S+)\s+(\S+)\s+(.*)$/;
+  return lines
+    .map((line) => {
+      const m = row.exec(line);
+      if (!m) return undefined;
+      return { pid: m[1], user: m[2], comm: m[3], args: m[4] } as ProcessRecord;
+    })
+    .filter((r): r is ProcessRecord => Boolean(r));
+}
+
+export interface ProcessCollectorOptions {
+  runner?: CommandRunner;
+  psPath?: string;
+  psArgs?: string[];
+  host?: string;
+  now?: string;
+}
+
+export function processCollector(options: ProcessCollectorOptions = {}): AgentCollector {
+  const runner: CommandRunner = options.runner ?? (({ command, args }) => defaultRunner(command, args));
+  const ps = options.psPath ?? "ps";
+  const args = options.psArgs ?? ["-eo", "pid,user,comm,args"];
+  const host = options.host ?? "localhost";
+  return {
+    source: host.startsWith("edge") ? "edge-node" : "developer-workstation",
+    async collect() {
+      const now = options.now ?? new Date().toISOString();
+      const result = await runner({ command: ps, args });
+      if (result.status !== 0 || !result.stdout) return [];
+      return parseProcessList(parsePsText(result.stdout), now, host);
+    }
+  };
+}
+
+// --- MCP tool-server collector ----------------------------------------------
+
+interface McpServerEntry {
+  name?: string;
+  host?: string;
+  service_account?: string;
+  owner?: string;
+  ward_id?: string;
+  tools?: string[];
+  credentials?: string[];
+  agent_id?: string;
+}
+
+/** Parse an MCP server inventory ({ servers: [...] }) into AgentObservations. Pure. */
+export function parseMcpInventory(doc: { servers?: McpServerEntry[] }, now: string): AgentObservation[] {
+  return (doc.servers ?? [])
+    .map((server, index) => {
+      const name = server.name ?? `server-${index}`;
+      const observation: AgentObservation = {
+        observation_id: `mcp:${name}`,
+        source: "mcp",
+        observed_at: now,
+        location: server.host ? `mcp/${server.host}/${name}` : `mcp/server/${name}`,
+        process_name: "mcp-tool-server",
+        service_account: server.service_account,
+        declared_agent_id: server.agent_id,
+        owner: server.owner,
+        ward_id: server.ward_id,
+        tool_targets: server.tools,
+        credential_refs: server.credentials
+      };
+      return observation;
+    })
+    .sort((a, b) => a.observation_id.localeCompare(b.observation_id));
+}
+
+export interface McpCollectorOptions {
+  runner?: CommandRunner;
+  /** Command that prints the MCP inventory as JSON ({ servers: [...] }). */
+  command?: string;
+  args?: string[];
+  now?: string;
+}
+
+export function mcpCollector(options: McpCollectorOptions): AgentCollector {
+  const runner: CommandRunner = options.runner ?? (({ command, args }) => defaultRunner(command, args));
+  return {
+    source: "mcp",
+    async collect() {
+      const now = options.now ?? new Date().toISOString();
+      const result = await runner({ command: options.command ?? "mcp", args: options.args ?? ["inventory", "--json"] });
+      if (result.status !== 0 || !result.stdout) return [];
+      let doc: { servers?: McpServerEntry[] };
+      try { doc = JSON.parse(result.stdout) as { servers?: McpServerEntry[] }; } catch { return []; }
+      return parseMcpInventory(doc, now);
+    }
+  };
+}
+
 // --- Orchestration ----------------------------------------------------------
 
 /** Run every collector and merge into one deduped, deterministically-ordered set. */
