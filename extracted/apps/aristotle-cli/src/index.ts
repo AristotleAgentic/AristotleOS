@@ -16,6 +16,7 @@ import {
   evaluateExecutionControl,
   exportEvidenceBundle,
   getDefaultDevSigner,
+  LedgerStore,
   loadEvidenceBundle,
   loadAuthorityEnvelope,
   loadCanonicalAction,
@@ -24,6 +25,7 @@ import {
   loadWarrantSignerFromEnv,
   requireAllowedWarrant,
   saveRevocationList,
+  SqliteLedgerBackend,
   submitGovernedAction,
   verifyEvidenceBundle,
   verifyGelChain,
@@ -263,6 +265,14 @@ const loadBroker = (runArgs: string[], cwd: string): CredentialBroker | undefine
   return CredentialBroker.fromConfig({ rules: rules as Parameters<typeof CredentialBroker.fromConfig>[0]["rules"] });
 };
 
+// Build a ledger store from --ledger-backend. Default (undefined) lets the server
+// create a JSONL file store; "sqlite" uses a durable node:sqlite database.
+const buildLedger = (args: string[], cwd: string, ledgerPath: string): LedgerStore | undefined => {
+  if (optionValue(args, "--ledger-backend") !== "sqlite") return undefined;
+  const dbPath = path.resolve(cwd, optionValue(args, "--ledger-db") ?? ledgerPath.replace(/\.jsonl$/, ".db"));
+  return new LedgerStore(new SqliteLedgerBackend(dbPath));
+};
+
 export const ARISTOTLE_CLI_VERSION = "0.1.0";
 
 export async function runCli(argv: string[], cwd = process.cwd(), out: Writer = process.stdout.write.bind(process.stdout), err: Writer = process.stderr.write.bind(process.stderr)) {
@@ -396,6 +406,7 @@ Keep the private key secret. The public key and key_id can be shared so others c
       const warrantTtlSeconds = Number(optionValue(runArgs, "--warrant-ttl") ?? process.env.ARISTOTLE_WARRANT_TTL_SECONDS ?? "60");
       const rateLimitPerMinute = Number(optionValue(runArgs, "--rate-limit") ?? process.env.ARISTOTLE_RATE_LIMIT_PER_MINUTE ?? "0") || undefined;
       const logFormat = optionValue(runArgs, "--log-format") === "json" ? ("json" as const) : undefined;
+      const ledger = buildLedger(runArgs, cwd, config.ledgerPath);
       const { server } = createExecutionControlRuntimeServer({
         ward,
         authorityEnvelope,
@@ -408,7 +419,8 @@ Keep the private key secret. The public key and key_id can be shared so others c
         revocationListPath,
         warrantTtlSeconds,
         rateLimitPerMinute,
-        logFormat
+        logFormat,
+        ledger
       });
       await new Promise<void>((resolve) => server.listen(config.port, "127.0.0.1", resolve));
       const address = server.address();
@@ -465,6 +477,7 @@ Or wrap it directly:
       process.off("SIGINT", onSigint);
       process.off("SIGTERM", onSigterm);
       await new Promise<void>((resolve) => server.close(() => resolve()));
+      ledger?.close();
       out(`AristotleOS boundary stopped. Audit ledger: ${config.ledgerPath}\n`);
       return code;
     }
@@ -719,6 +732,7 @@ evidence_bundle=${evidenceOut ?? "not requested"}
       const warrantTtlSeconds = Number(optionValue(rest, "--warrant-ttl") ?? process.env.ARISTOTLE_WARRANT_TTL_SECONDS ?? "60");
       const rateLimitPerMinute = Number(optionValue(rest, "--rate-limit") ?? process.env.ARISTOTLE_RATE_LIMIT_PER_MINUTE ?? "0") || undefined;
       const logFormat = optionValue(rest, "--log-format") === "json" ? ("json" as const) : undefined;
+      const ledger = buildLedger(rest, cwd, path.resolve(cwd, ledgerPath));
       const { server } = createExecutionControlRuntimeServer({
         ward,
         authorityEnvelope,
@@ -732,7 +746,8 @@ evidence_bundle=${evidenceOut ?? "not requested"}
         revocationListPath,
         warrantTtlSeconds,
         rateLimitPerMinute,
-        logFormat
+        logFormat,
+        ledger
       });
       await new Promise<void>((resolve) => server.listen(port, "127.0.0.1", resolve));
       out(`AristotleOS execution-control runtime listening on http://127.0.0.1:${port}

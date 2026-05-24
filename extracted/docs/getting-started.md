@@ -161,8 +161,10 @@ ARISTOTLE_OPERATOR_API_KEY=... aristotle run -- <your agent command>
   enforces a per-subject token bucket; over-budget requests get `429`.
 - **Structured logging** — `--log-format json` emits a JSON decision line per
   request (request id, decision, reason codes, key id, latency) to stderr for SIEM/ops.
-- **Pluggable ledger** — the ledger sits behind a `LedgerBackend` interface
-  (file + in-memory shipped); a durable backend (Postgres/SQLite) can be dropped in.
+- **Durable ledger** — run with `--ledger-backend sqlite` for an ACID, indexed,
+  restart-durable ledger (built on Node's `node:sqlite`, no extra dependency).
+  The default file (JSONL) and in-memory backends also ship; the `LedgerBackend`
+  interface lets a Postgres adapter drop in for multi-node HA.
 - **Container** — run the boundary as a sidecar with
   `manifests/docker/execution-control.Dockerfile`. See [SECURITY.md](../SECURITY.md)
   for the threat model and known limitations.

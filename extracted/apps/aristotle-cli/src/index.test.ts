@@ -83,6 +83,18 @@ test("cli run governs a child agent process and writes a verifiable ledger", asy
   }
 });
 
+test("cli run with the SQLite backend governs an agent and persists a durable ledger", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    await capture(["init"], dir);
+    const run = await capture(["run", "--ledger-backend", "sqlite", "--", "node", "aristotle/agent.mjs"], dir);
+    assert.equal(run.code, 0, run.stderr);
+    assert.equal(existsSync(path.join(dir, ".aristotle", "gel.db")), true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("cli kill switch halts governed runs until released", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
   try {

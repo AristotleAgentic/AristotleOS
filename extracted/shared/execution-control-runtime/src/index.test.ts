@@ -26,6 +26,7 @@ import {
   LedgerStore,
   loadGelChain,
   loadWardManifest,
+  SqliteLedgerBackend,
   SubjectRateLimiter,
   proxyGovernedAction,
   requireAllowedWarrant,
@@ -565,6 +566,37 @@ test("LedgerStore works over a pluggable in-memory backend (no file)", () => {
   assert.equal(store.tail(10).length, 1);
   assert.equal(store.verification().ok, true);
   assert.equal(store.records()[0].record_hash, record.record_hash);
+});
+
+test("SqliteLedgerBackend is durable across restarts and enforces replay via SQL", () => {
+  const dbPath = path.join(mkdtempSync(path.join(tmpdir(), "aos-sqlite-")), "gel.db");
+
+  const store = new LedgerStore(new SqliteLedgerBackend(dbPath));
+  const decision = evaluateCommitGate({ ward, authorityEnvelope: envelope, action, now });
+  const warrant = issueWarrant(decision, action, envelope, now);
+  const record = store.append({ ward, action, decision, warrant, now });
+  assert.equal(store.count, 1);
+  assert.equal(store.hasPriorAdmission(record.canonical_action_hash), true);
+  assert.equal(store.verification().ok, true);
+
+  // Reopen the same database file in a fresh backend — state must persist.
+  const reopened = new LedgerStore(new SqliteLedgerBackend(dbPath));
+  assert.equal(reopened.count, 1);
+  assert.equal(reopened.tipHash, record.record_hash);
+  assert.equal(reopened.hasPriorAdmission(record.canonical_action_hash), true);
+  assert.equal(reopened.hasPriorAdmission("unknown-hash"), false);
+  assert.equal(reopened.verification().ok, true);
+  assert.equal(reopened.records()[0].record_hash, record.record_hash);
+});
+
+test("evaluateExecutionControl enforces replay over a durable SQLite store", () => {
+  const dbPath = path.join(mkdtempSync(path.join(tmpdir(), "aos-sqlite-")), "gel.db");
+  const ledger = new LedgerStore(new SqliteLedgerBackend(dbPath));
+  const first = evaluateExecutionControl({ ward, authorityEnvelope: envelope, action, ledgerPath: "unused", now, ledger, replayProtection: true });
+  assert.equal(first.decision, "ALLOW");
+  const second = evaluateExecutionControl({ ward, authorityEnvelope: envelope, action, ledgerPath: "unused", now, ledger, replayProtection: true });
+  assert.equal(second.decision, "REFUSE");
+  assert.deepEqual(second.reason_codes, ["REPLAY_DETECTED"]);
 });
 
 test("SubjectRateLimiter enforces an independent per-subject budget", () => {

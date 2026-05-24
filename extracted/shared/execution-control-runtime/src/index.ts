@@ -19,6 +19,7 @@ export * from "./mcp.js";
 export * from "./playground.js";
 export * from "./revocation.js";
 export * from "./validation.js";
+export * from "./sqlite-ledger.js";
 
 export {
   type AristotleSigner,
@@ -307,6 +308,8 @@ export interface ExecutionControlRuntimeServerOptions {
   rateLimitPerMinute?: number;
   /** When "json", emit a structured decision log line per request to stderr. */
   logFormat?: "json";
+  /** Pre-built ledger store (e.g. a SQLite-backed one). Defaults to a file store at ledgerPath. */
+  ledger?: LedgerStore;
 }
 
 export interface ExecutionControlRuntimeServer {
@@ -322,7 +325,7 @@ export interface ExecutionControlClientOptions {
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
-const GENESIS_HASH = "GENESIS";
+export const GENESIS_HASH = "GENESIS";
 
 export function stableNormalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map((item) => stableNormalize(item));
@@ -644,6 +647,8 @@ export interface LedgerBackend {
   persist(record: GelRecord): void;
   records(): GelRecord[];
   tail(limit: number): GelRecord[];
+  /** Release any held resources (e.g. a database handle). Optional. */
+  close?(): void;
 }
 
 /** Shared in-memory index used by every backend to keep the hot path O(1). */
@@ -749,6 +754,11 @@ export class LedgerStore {
     const record = buildGelRecord({ previous_hash: this.backend.tipHash, ...input });
     this.backend.persist(record);
     return record;
+  }
+
+  /** Release backend resources (e.g. a SQLite handle). Safe to call on any backend. */
+  close(): void {
+    this.backend.close?.();
   }
 }
 
@@ -1240,9 +1250,10 @@ export function executionControlOpenApiSpec() {
 
 export function createExecutionControlRuntimeServer(options: ExecutionControlRuntimeServerOptions): ExecutionControlRuntimeServer {
   const replayProtection = options.replayProtection !== false;
-  // One in-memory ledger index for the whole server lifetime keeps append and
-  // replay checks O(1) instead of rescanning the JSONL on every request.
-  const ledger = new LedgerStore(options.ledgerPath);
+  // One ledger store for the whole server lifetime keeps append and replay checks
+  // off the per-request full-scan path. Defaults to the file store; a durable
+  // store (e.g. SQLite) can be supplied via options.ledger.
+  const ledger = options.ledger ?? new LedgerStore(options.ledgerPath);
   const rateLimiter = options.rateLimitPerMinute && options.rateLimitPerMinute > 0
     ? SubjectRateLimiter.perMinute(options.rateLimitPerMinute)
     : undefined;

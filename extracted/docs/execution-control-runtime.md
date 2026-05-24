@@ -59,7 +59,7 @@ Core exports:
 - `CredentialBroker` / `proxyGovernedAction`
 - `createExecutionControlMcpServer`
 - `loadRevocationList` / `addRevocation` / `revocationReason`
-- `LedgerStore` / `LedgerBackend` / `FileLedgerBackend` / `InMemoryLedgerBackend`
+- `LedgerStore` / `LedgerBackend` / `FileLedgerBackend` / `InMemoryLedgerBackend` / `SqliteLedgerBackend`
 - `SubjectRateLimiter`
 
 ## Demo
@@ -332,10 +332,13 @@ at startup (and full `verifyGelChain` is still available on demand via
 `/v1/execution-control/audit/verify`). One-shot CLI evaluations use the stateless
 file functions, so behavior is identical with or without the index.
 
-The index sits behind a `LedgerBackend` interface. `FileLedgerBackend` (JSONL) and
-`InMemoryLedgerBackend` ship in-box; a durable backend (Postgres/SQLite) only has
-to implement the same contract — the foundation for high-availability deployments
-with shared replay state.
+The index sits behind a `LedgerBackend` interface. Three backends ship in-box:
+`FileLedgerBackend` (JSONL, default), `InMemoryLedgerBackend` (ephemeral), and
+`SqliteLedgerBackend` — an ACID, indexed, restart-durable store built on Node's
+built-in `node:sqlite` (no extra dependency, no native build). Replay lookups use
+a SQL index (bounded memory) and records survive restarts. Enable it with
+`aristotle run --ledger-backend sqlite`. A Postgres adapter implementing the same
+contract is the path to multi-node high availability with shared replay state.
 
 Two more operational controls for production:
 
