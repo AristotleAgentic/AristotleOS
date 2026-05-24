@@ -23,9 +23,14 @@ import {
   type ShadowAction,
   type AgentObservation,
   type AgentRegistry,
+  type BehaviorEvent,
+  type SequenceRule,
   type WardMarshalInterdictionKind,
+  analyzeAgentBehavior,
+  behaviorEventsFromGel,
   buildWardMarshalInterdictionAction,
   explainWardMarshalFinding,
+  loadGelChain,
   CredentialRevocationAdapter,
   EndpointQuarantineAdapter,
   KubernetesScaleDownAdapter,
@@ -492,6 +497,9 @@ Commands:
   governance explain              Show what a policy permits/refuses/escalates for sample actions
   reconcile                       Reconcile disconnected-edge decisions against current policy
   ward-marshal scan               Discover, inventory, and risk-score autonomous agents
+  ward-marshal behavior           Detect denial bursts, rate spikes, first-seen, off-hours, fan-out, and
+                                  cross-agent sequence chains over --events <json> and/or --ledger <gel.jsonl>
+                                  (--rules seq.json, --registry/--known, --allowed-hours 13-21)
   ward-marshal interdict          Submit/evaluate a containment action; add --execute to run the adapter after Warrant verification
   ward-marshal demo               Run the sample census and governed interdiction path
   execution-control dev           Start the sample execution-control runtime on localhost
@@ -1177,6 +1185,49 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
         out(`report_hash=${report.report_hash}${outPath ? `\nwritten → ${outPath}` : ""}\n`);
       }
       return report.summary.rogue || report.summary.orphaned ? 2 : 0;
+    }
+
+    if (command === "ward-marshal" && subcommand === "behavior") {
+      const events: BehaviorEvent[] = [];
+      const eventsPath = optionValue(rest, "--events");
+      if (eventsPath) events.push(...(JSON.parse(readFileSync(path.resolve(cwd, eventsPath), "utf8")) as BehaviorEvent[]));
+      const ledgerPath = optionValue(rest, "--ledger");
+      if (ledgerPath) events.push(...behaviorEventsFromGel(loadGelChain(path.resolve(cwd, ledgerPath))));
+      if (events.length === 0) throw new Error("ward-marshal behavior requires --events <file.json> and/or --ledger <gel.jsonl>");
+
+      const rulesPath = optionValue(rest, "--rules");
+      const sequenceRules = rulesPath ? (JSON.parse(readFileSync(path.resolve(cwd, rulesPath), "utf8")) as SequenceRule[]) : undefined;
+      const registryPath = optionValue(rest, "--registry");
+      const knownSubjects = registryPath
+        ? (JSON.parse(readFileSync(path.resolve(cwd, registryPath), "utf8")) as AgentRegistry).agents.map((agent) => agent.subject)
+        : optionValue(rest, "--known")?.split(",").map((value) => value.trim()).filter(Boolean);
+      const allowedHoursRaw = optionValue(rest, "--allowed-hours");
+      const allowedHoursUtc = allowedHoursRaw && /^\d+-\d+$/.test(allowedHoursRaw)
+        ? { start: Number(allowedHoursRaw.split("-")[0]), end: Number(allowedHoursRaw.split("-")[1]) }
+        : undefined;
+      const windowRaw = optionValue(rest, "--window-ms");
+
+      const report = analyzeAgentBehavior(events, {
+        now: optionValue(rest, "--now"),
+        windowMs: windowRaw ? Number(windowRaw) : undefined,
+        knownSubjects,
+        sequenceRules,
+        allowedHoursUtc
+      });
+
+      const outPath = optionValue(rest, "--out");
+      if (outPath) writeJson(path.resolve(cwd, outPath), report);
+      if (json) {
+        printJson(out, report, true);
+      } else {
+        out(`Ward Marshal behavior — ${report.summary.events} event(s), ${report.summary.findings} finding(s), ${report.summary.high_or_critical} high/critical\n`);
+        for (const finding of report.findings) {
+          out(`  ${finding.severity.toUpperCase().padEnd(8)} ${finding.kind.padEnd(15)} ${finding.subjects.join(", ")} → ${finding.recommended_disposition}\n`);
+          out(`    ${finding.detail}\n`);
+        }
+        out(`report_hash=${report.report_hash}${outPath ? `\nwritten → ${outPath}` : ""}\n`);
+      }
+      return report.summary.high_or_critical > 0 ? 2 : 0;
     }
 
     if (command === "ward-marshal" && subcommand === "interdict") {

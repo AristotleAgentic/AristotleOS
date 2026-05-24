@@ -1,0 +1,10 @@
+[
+  { "event_id": "e1", "occurred_at": "2026-05-24T03:00:00.000Z", "subject": "agent:analyst-bot", "action_type": "data.read", "target": "warehouse/customers", "decision": "ALLOW" },
+  { "event_id": "e2", "occurred_at": "2026-05-24T03:00:20.000Z", "subject": "agent:courier-bot", "action_type": "net.egress", "target": "https://paste.example.com", "decision": "ALLOW" },
+  { "event_id": "e3", "occurred_at": "2026-05-24T03:00:55.000Z", "subject": "agent:janitor-bot", "action_type": "data.delete", "target": "warehouse/customers", "decision": "ALLOW" },
+  { "event_id": "e4", "occurred_at": "2026-05-24T03:01:00.000Z", "subject": "agent:probe", "action_type": "tool.invoke", "decision": "REFUSE" },
+  { "event_id": "e5", "occurred_at": "2026-05-24T03:01:05.000Z", "subject": "agent:probe", "action_type": "tool.invoke", "decision": "REFUSE" },
+  { "event_id": "e6", "occurred_at": "2026-05-24T03:01:10.000Z", "subject": "agent:probe", "action_type": "tool.invoke", "decision": "REFUSE" },
+  { "event_id": "e7", "occurred_at": "2026-05-24T03:01:15.000Z", "subject": "agent:probe", "action_type": "tool.invoke", "decision": "REFUSE" },
+  { "event_id": "e8", "occurred_at": "2026-05-24T03:01:20.000Z", "subject": "agent:probe", "action_type": "tool.invoke", "decision": "REFUSE" }
+]

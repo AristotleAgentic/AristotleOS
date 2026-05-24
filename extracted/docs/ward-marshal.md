@@ -55,6 +55,42 @@ npm run aristotle -- ward-marshal interdict \
 
 If required runtime registers are missing, the action escalates. If the Authority Envelope does not delegate the requested containment class, the action is refused and no Warrant is issued.
 
+## Behavioral analysis
+
+Census answers *which agents exist*. Behavioral analysis answers *what they are doing
+over time* — and feeds the same warrant-gated interdiction. `analyzeAgentBehavior`
+runs deterministic detectors over a time-ordered event stream and emits content-hashed
+findings, each with a recommended disposition:
+
+- **denial_burst** — a subject accumulating refusals (probing / misconfigured agent)
+- **rate_spike** — a subject accelerating past its own baseline (runaway / cost spike)
+- **first_seen** — a subject absent from the approved registry
+- **off_hours** — activity outside allowed UTC hours
+- **target_fanout** — one subject touching many distinct targets (lateral movement)
+- **sequence_chain** — a configurable, optionally **cross-agent** ordered pattern where
+  each step is individually compliant but the sequence is not (e.g. *read → external
+  egress → delete* spread across three colluding agents)
+
+It is AristotleOS-native in two ways: it can run directly over the **signed Governance
+Evidence Ledger** (`behaviorEventsFromGel`) — the same tamper-evident record the gate
+already produces — and a high/critical finding carries a disposition that routes
+straight into warrant-gated interdiction. Detection is not the end state; **governed
+response is.**
+
+```bash
+npm run aristotle -- ward-marshal behavior \
+  --events examples/ward_marshal/behavior-events.sample.json \
+  --rules examples/ward_marshal/behavior-rules.sample.json \
+  --registry examples/ward_marshal/agent-registry.json \
+  --allowed-hours 13-21
+# or analyze the signed ledger itself:
+npm run aristotle -- ward-marshal behavior --ledger .tmp/ward-marshal.gel.jsonl
+```
+
+The GEL stores the action *hash*, not the action body, so `sequence_chain` rules need
+an enriched stream (action type/target, e.g. from the proxy/audit layer); the other
+detectors run natively over the ledger.
+
 ## Real Adapters
 
 Ward Marshal ships with three execution adapters. They never run from discovery

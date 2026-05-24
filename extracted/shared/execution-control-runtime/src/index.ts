@@ -54,6 +54,7 @@ export * from "./builder.js";
 export * from "./reconcile.js";
 export * from "./ward-marshal.js";
 export * from "./ward-marshal-adapters.js";
+export * from "./marshal-behavior.js";
 
 export {
   type AristotleSigner,
