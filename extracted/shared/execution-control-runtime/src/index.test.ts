@@ -1352,3 +1352,61 @@ test("shadow/reconcile/marshal endpoints run the real engines over the boundary,
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });
+
+test("conflict inbox: ingest, list, resolve over the durable store, role-gated", async () => {
+  const file = ledgerPath();
+  const { server } = createExecutionControlRuntimeServer({ ward, authorityEnvelope: envelope, ledgerPath: file, now, operators });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const base = serverBase(server);
+    const post = (path: string, body: unknown, token: string) =>
+      fetch(`${base}${path}`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+    const get = (path: string, token: string) =>
+      fetch(`${base}${path}`, { headers: { authorization: `Bearer ${token}` } });
+
+    // An edge that ALLOWED an action central now denies, plus an agreement.
+    const permissive = { ...action, action_id: "edge-permissive", action_type: "drone.disable_geofence" };
+    const agree = { ...action, action_id: "edge-agree" };
+    const ingested = await post("/v1/execution-control/conflicts/ingest", { records: [{ action: permissive, edge_decision: "ALLOW", occurred_at: now }, { action: agree, edge_decision: "ALLOW", occurred_at: now }], now }, "tok-operator");
+    assert.equal(ingested.status, 200);
+    const ingestBody = await ingested.json();
+    assert.equal(ingestBody.report.count, 2);
+    assert.equal(ingestBody.report.conflicts, 1);
+    assert.equal(ingestBody.summary.open, 1);
+
+    // Viewer can list.
+    const listed = await get("/v1/execution-control/conflicts", "tok-viewer");
+    assert.equal(listed.status, 200);
+    const listBody = await listed.json();
+    assert.equal(listBody.items.length, 2);
+    assert.equal(listBody.items[0].agrees, false); // conflict ordered first
+
+    // Operator resolves the conflict; attribution is recorded.
+    const resolved = await post("/v1/execution-control/conflicts/resolve", { action_id: "edge-permissive", action: "reject", reason: "edge exceeded current authority" }, "tok-operator");
+    assert.equal(resolved.status, 200);
+    const resolveBody = await resolved.json();
+    assert.equal(resolveBody.item.status, "rejected");
+    assert.equal(resolveBody.item.resolved_by, "alice@corp");
+    assert.equal(resolveBody.summary.open, 0);
+
+    // Double resolution is refused.
+    const again = await post("/v1/execution-control/conflicts/resolve", { action_id: "edge-permissive", action: "accept" }, "tok-operator");
+    assert.equal(again.status, 409);
+
+    // Invalid resolution is a 400.
+    const bad = await post("/v1/execution-control/conflicts/resolve", { action_id: "edge-permissive", action: "bogus" }, "tok-operator");
+    assert.equal(bad.status, 400);
+
+    // Role-gated: a viewer cannot ingest or resolve.
+    assert.equal((await post("/v1/execution-control/conflicts/ingest", { records: [] }, "tok-viewer")).status, 403);
+    assert.equal((await post("/v1/execution-control/conflicts/resolve", { action_id: "edge-agree", action: "accept" }, "tok-viewer")).status, 403);
+
+    // The OpenAPI contract advertises the inbox routes.
+    const spec = await fetch(`${base}/openapi.json`).then((r) => r.json());
+    for (const p of ["/v1/execution-control/conflicts", "/v1/execution-control/conflicts/ingest", "/v1/execution-control/conflicts/resolve"]) {
+      assert.ok(spec.paths[p], `spec advertises ${p}`);
+    }
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});

@@ -36,7 +36,8 @@ import {
 import { RuntimeMetrics } from "./metrics.js";
 import { type GovernanceDraft, compileGovernanceManifest, diffGovernanceManifests, explainPolicy } from "./builder.js";
 import { type ShadowAction, profileShadowMode } from "./shadow.js";
-import { type EdgeRecord, reconcileEdgeRecords } from "./reconcile.js";
+import { type EdgeRecord, type ResolutionAction, reconcileEdgeRecords } from "./reconcile.js";
+import { ConflictInboxStore } from "./conflict-inbox.js";
 import { type AgentObservation, type AgentRegistry, runWardMarshalCensus } from "./ward-marshal.js";
 import { type BehaviorAnalysisConfig, type BehaviorEvent, analyzeAgentBehavior } from "./marshal-behavior.js";
 import { type Classification, enforceClassification } from "./classification.js";
@@ -57,6 +58,7 @@ export * from "./sandbox.js";
 export * from "./shadow.js";
 export * from "./builder.js";
 export * from "./reconcile.js";
+export * from "./conflict-inbox.js";
 export * from "./ward-marshal.js";
 export * from "./ward-marshal-adapters.js";
 export * from "./marshal-behavior.js";
@@ -403,6 +405,8 @@ export interface ExecutionControlRuntimeServerOptions {
   oidc?: OidcConfig;
   /** Path to a revocation list file; revoked keys/envelopes are refused at the gate. */
   revocationListPath?: string;
+  /** Path to the Conflict Inbox state file; when unset, an in-memory store is used. */
+  conflictInboxPath?: string;
   /** Warrant lifetime in seconds (default 60). */
   warrantTtlSeconds?: number;
   /** When set, limits requests per subject per minute (429 when exceeded). */
@@ -1491,6 +1495,25 @@ export function executionControlOpenApiSpec() {
           responses: { "200": { description: "Reconciliation report with conflicts and resolution state" }, "403": { description: "Requires operator role" } }
         }
       },
+      "/v1/execution-control/conflicts/ingest": {
+        post: {
+          summary: "Ingest edge records into the durable Conflict Inbox; idempotent re-ingest (operator role)",
+          responses: { "200": { description: "Reconciliation report + inbox summary" }, "403": { description: "Requires operator role" } }
+        }
+      },
+      "/v1/execution-control/conflicts": {
+        get: {
+          summary: "List current Conflict Inbox items and summary (viewer role)",
+          responses: { "200": { description: "Inbox items + summary" } }
+        }
+      },
+      "/v1/execution-control/conflicts/resolve": {
+        post: {
+          summary: "Apply an attributed operator resolution to a conflict (operator role)",
+          requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { action_id: { type: "string" }, action: { type: "string", enum: ["accept", "reject", "escalate", "reconcile"] }, reason: { type: "string" } }, required: ["action_id", "action"] } } } },
+          responses: { "200": { description: "Updated item + summary" }, "400": { description: "Invalid resolution" }, "403": { description: "Requires operator role" }, "409": { description: "Item unknown or already resolved" } }
+        }
+      },
       "/v1/execution-control/marshal/census": {
         post: {
           summary: "Ward Marshal census: risk-score observed agents against the approved registry (operator role)",
@@ -1603,6 +1626,9 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
   const authConfig: AuthConfig = { apiKey: options.apiKey, operators: options.operators, oidc: options.oidc };
   const requireAuth = authEnabled(authConfig) && !options.servePlayground;
 
+  // Stateful Edge Conflict Inbox: durable when a path is configured, else per-process.
+  const conflictInbox = new ConflictInboxStore(options.conflictInboxPath ?? null);
+
   // Minimum role per route: read paths need viewer, decisions need operator,
   // operator actions (kill switch, revocation) need admin. Unknown /v1 paths
   // default to admin (fail-closed).
@@ -1611,7 +1637,8 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
       pathname === "/v1/execution-control/context" ||
       pathname === "/v1/execution-control/audit/tail" ||
       pathname === "/v1/execution-control/audit/verify" ||
-      pathname === "/v1/execution-control/metrics"
+      pathname === "/v1/execution-control/metrics" ||
+      pathname === "/v1/execution-control/conflicts"
     )) return "viewer";
     if (method === "POST" && (
       pathname === "/v1/execution-control/evaluate" ||
@@ -1621,6 +1648,8 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
       pathname === "/v1/execution-control/governance/explain" ||
       pathname === "/v1/execution-control/shadow" ||
       pathname === "/v1/execution-control/reconcile" ||
+      pathname === "/v1/execution-control/conflicts/ingest" ||
+      pathname === "/v1/execution-control/conflicts/resolve" ||
       pathname === "/v1/execution-control/marshal/census" ||
       pathname === "/v1/execution-control/marshal/behavior"
     )) return "operator";
@@ -1936,6 +1965,48 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
         });
         logDecision({ event: "reconcile", request_id: requestId(req), actor: principal ?? null, items: report.count, conflicts: report.conflicts });
         sendJson(res, 200, report);
+        return;
+      }
+
+      // Conflict Inbox: ingest edge records into the durable inbox (re-evaluated
+      // through the real gate). Idempotent: re-ingest refreshes evidence but never
+      // reopens an operator's resolution.
+      if (req.method === "POST" && url.pathname === "/v1/execution-control/conflicts/ingest") {
+        const body = await readJsonBody(req);
+        const report = conflictInbox.ingest({
+          records: Array.isArray(body.records) ? (body.records as EdgeRecord[]) : [],
+          ward: (body.ward ?? options.ward) as WardManifest,
+          authorityEnvelope: (body.authority_envelope ?? body.authorityEnvelope ?? options.authorityEnvelope) as AuthorityEnvelope,
+          now: typeof body.now === "string" ? body.now : options.now
+        });
+        logDecision({ event: "conflicts_ingest", request_id: requestId(req), actor: principal ?? null, items: report.count, conflicts: report.conflicts });
+        sendJson(res, 200, { report, summary: conflictInbox.summary() });
+        return;
+      }
+
+      // Conflict Inbox: list current items (viewer).
+      if (req.method === "GET" && url.pathname === "/v1/execution-control/conflicts") {
+        sendJson(res, 200, { items: conflictInbox.list(), summary: conflictInbox.summary() });
+        return;
+      }
+
+      // Conflict Inbox: apply an attributed operator resolution (operator).
+      if (req.method === "POST" && url.pathname === "/v1/execution-control/conflicts/resolve") {
+        const body = await readJsonBody(req);
+        const actionId = typeof body.action_id === "string" ? body.action_id : undefined;
+        const resolution = typeof body.action === "string" ? (body.action as ResolutionAction) : undefined;
+        const reason = typeof body.reason === "string" ? body.reason : undefined;
+        if (!actionId || !resolution || !["accept", "reject", "escalate", "reconcile"].includes(resolution)) {
+          sendJson(res, 400, { error: "invalid_resolution", detail: "action_id and a valid action (accept|reject|escalate|reconcile) are required" });
+          return;
+        }
+        try {
+          const item = conflictInbox.resolve(actionId, resolution, principal?.subject ?? "anonymous", reason, typeof body.now === "string" ? body.now : options.now);
+          forwardOperatorAudit("conflict.resolve", principal, { action_id: actionId, resolution, status: item.status, reason: reason ?? null });
+          sendJson(res, 200, { item, summary: conflictInbox.summary() });
+        } catch (error) {
+          sendJson(res, 409, { error: "resolution_rejected", detail: error instanceof Error ? error.message : String(error) });
+        }
         return;
       }
 

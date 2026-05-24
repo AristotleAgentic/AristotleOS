@@ -191,6 +191,26 @@ export const MARSHAL_CENSUS_SEED = {
   ]
 };
 
+/**
+ * Representative edge-record seed for the Conflict Inbox. When the live boundary
+ * is reachable, these reconnecting-edge decisions are re-evaluated through the
+ * real Commit Gate (POST /conflicts/ingest) and the console renders the engine's
+ * classified, resolvable inbox — proving the reconciliation is server-computed.
+ * Evaluated against the boundary's configured Ward + Authority.
+ */
+export const CONFLICT_EDGE_SEED = {
+  records: [
+    // Edge ALLOWED a now-denied action → edge_more_permissive (open conflict).
+    { action: { action_id: "edge-disable-geofence", ward_id: "montana-drone-test-range", subject: "agent:survey-planner", action_type: "drone.disable_geofence", target: "drone-swarm/unit-7", params: { boundary_id: "ranch-test-grid-a" }, requested_at: new Date(Date.now() - 52 * 60_000).toISOString(), telemetry: { gps_lock: true } }, edge_decision: "ALLOW", edge_policy_version: "0.0.9", occurred_at: new Date(Date.now() - 52 * 60_000).toISOString() },
+    // Edge ALLOWED an in-bounds takeoff that central also allows → agreement (reconciled).
+    { action: { action_id: "edge-takeoff", ward_id: "montana-drone-test-range", subject: "agent:survey-planner", action_type: "drone.takeoff", target: "drone-swarm/unit-7", params: { boundary_id: "ranch-test-grid-a", altitude_m: 80, battery_pct: 87 }, requested_at: new Date(Date.now() - 47 * 60_000).toISOString(), telemetry: { gps_lock: true } }, edge_decision: "ALLOW", occurred_at: new Date(Date.now() - 47 * 60_000).toISOString() },
+    // Edge REFUSED a scan central now allows → edge_more_restrictive (open conflict).
+    { action: { action_id: "edge-scan-restrictive", ward_id: "montana-drone-test-range", subject: "agent:survey-planner", action_type: "drone.scan_area", target: "drone-swarm/unit-7", params: { boundary_id: "ranch-test-grid-a", altitude_m: 90 }, requested_at: new Date(Date.now() - 33 * 60_000).toISOString(), telemetry: { gps_lock: true } }, edge_decision: "REFUSE", occurred_at: new Date(Date.now() - 33 * 60_000).toISOString() },
+    // Edge ALLOWED a scan with missing telemetry central would escalate → edge_more_permissive (open).
+    { action: { action_id: "edge-scan-noreg", ward_id: "montana-drone-test-range", subject: "agent:survey-planner", action_type: "drone.scan_area", target: "drone-swarm/unit-7", params: { boundary_id: "ranch-test-grid-a", altitude_m: 95 }, requested_at: new Date(Date.now() - 18 * 60_000).toISOString() }, edge_decision: "ALLOW", occurred_at: new Date(Date.now() - 18 * 60_000).toISOString() }
+  ]
+};
+
 const registersFor = (gps = true): RuntimeRegister[] => [
   { name: "telemetry.gps_lock", value: gps ? "true" : "missing", ok: gps },
   { name: "registers.battery_pct", value: "87", ok: true },

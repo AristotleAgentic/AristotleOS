@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type {
   CommitRequest,
+  ConflictInboxItem,
   GatePipelineSample,
   LedgerRecord,
   OperationalMode,
@@ -11,6 +12,7 @@ import type {
 } from "./types.js";
 import {
   AGENTS,
+  CONFLICT_EDGE_SEED,
   ENVELOPES,
   INITIAL_REQUESTS,
   MARSHAL_CENSUS_SEED,
@@ -21,7 +23,7 @@ import {
   shortHash
 } from "./mockData.js";
 import { gatewayContract, postOperator, probeGateway } from "./service.js";
-import { boundaryCompile, fetchLiveState, runLiveMarshalCensus, runLiveShadowProfile } from "./boundary.js";
+import { boundaryCompile, boundaryListConflicts, boundaryResolveConflict, fetchLiveState, mapConflictsToInbox, runLiveConflicts, runLiveMarshalCensus, runLiveShadowProfile } from "./boundary.js";
 
 export type SectionId =
   | "overview"
@@ -83,6 +85,7 @@ interface CommandState {
   // Live engine results (null ⇒ console renders curated sample data instead).
   shadowProfile: ShadowProfileSummary | null;
   marshalFindings: WardMarshalFinding[] | null;
+  conflicts: ConflictInboxItem[] | null;
 
   section: SectionId;
   selectedRequestId: string | null;
@@ -119,6 +122,8 @@ interface CommandState {
   compileGovernance: () => Promise<void>;
   runShadowProfile: () => Promise<void>;
   runMarshalCensus: () => Promise<void>;
+  loadConflicts: () => Promise<void>;
+  resolveConflict: (id: string, action: "accept" | "reject" | "escalate" | "reconcile", reason?: string) => Promise<void>;
 }
 
 let toastSeq = 0;
@@ -130,6 +135,7 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   pipeline: seedPipeline(60),
   shadowProfile: null,
   marshalFindings: null,
+  conflicts: null,
 
   section: "overview",
   selectedRequestId: INITIAL_REQUESTS[0]?.id ?? null,
@@ -200,10 +206,12 @@ export const useCommandStore = create<CommandState>((set, get) => ({
         ledger: live.ledger.length ? live.ledger : s.ledger
       }));
       get().toast("Live boundary connected — metrics and ledger are real.", "green");
-      // Boundary is up: profile Shadow Mode and run the Ward Marshal census
-      // against the real engines so those consoles render live results too.
+      // Boundary is up: profile Shadow Mode, run the Ward Marshal census, and
+      // load the Conflict Inbox against the real engines so those consoles render
+      // live results too.
       void get().runShadowProfile();
       void get().runMarshalCensus();
+      void get().loadConflicts();
       return;
     }
     const partial = await probeGateway();
@@ -302,6 +310,40 @@ export const useCommandStore = create<CommandState>((set, get) => ({
     set({ marshalFindings: findings });
     const rogue = findings.filter((f) => f.status === "rogue").length;
     get().toast(`Ward Marshal census computed live — ${findings.length} agents, ${rogue} rogue.`, rogue ? "red" : "green");
+  },
+
+  // Conflict Inbox: ingest a representative edge-record seed into the durable
+  // inbox (POST /conflicts/ingest) and list the engine-classified items. Idempotent
+  // — re-ingest never reopens an operator's resolution. Falls back to the sample
+  // inbox when the boundary is offline.
+  loadConflicts: async () => {
+    const conflicts = await runLiveConflicts(CONFLICT_EDGE_SEED);
+    if (!conflicts) {
+      get().toast("Boundary offline — Conflict Inbox is showing sample items. Run `aristotle execution-control serve` to reconcile live.", "amber");
+      return;
+    }
+    set({ conflicts });
+    const open = conflicts.filter((c) => c.status === "open" || c.status === "escalated").length;
+    get().toast(`Conflict Inbox reconciled live — ${conflicts.length} items, ${open} need review.`, open ? "amber" : "green");
+  },
+
+  // Conflict Inbox: apply an attributed operator resolution (POST /conflicts/resolve)
+  // then refresh the list from the boundary. The boundary records the operator and
+  // reason; nothing is decided on the operator's behalf.
+  resolveConflict: async (id, action, reason) => {
+    const result = await boundaryResolveConflict(id, action, reason);
+    if (!result.reachable) {
+      get().toast("Boundary offline — resolution not recorded. Connect the boundary to resolve live.", "amber");
+      return;
+    }
+    if (!result.ok) {
+      get().toast(`Boundary rejected the resolution (HTTP ${result.status}).`, "red");
+      return;
+    }
+    const list = await boundaryListConflicts();
+    if (list) set({ conflicts: mapConflictsToInbox(list.items) });
+    const tone = action === "reject" ? "red" : action === "escalate" ? "amber" : "green";
+    get().toast(`Conflict ${id} → ${action} recorded on the live boundary.`, tone);
   }
 }));
 

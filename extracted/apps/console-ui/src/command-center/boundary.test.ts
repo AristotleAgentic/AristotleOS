@@ -1,12 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  type ConflictRecordLike,
   type GelRecordLike,
   type MarshalReportLike,
   type ShadowReportLike,
   buildRepresentativeActions,
   decisionToUi,
   mapCensusReport,
+  mapConflictsToInbox,
   mapGelToLedger,
   mapMetricsToSnapshot,
   mapShadowReport
@@ -128,4 +130,21 @@ test("mapCensusReport maps live census findings into the console finding shape",
   assert.equal(rows[0].owner, "unknown"); // undefined owner defaults
   assert.equal(rows[0].recommendedDisposition, "revoke_credentials");
   assert.equal(rows[0].evidenceHash, "deadbeef");
+});
+
+test("mapConflictsToInbox maps durable records into inbox items with derived next-steps", () => {
+  const records: ConflictRecordLike[] = [
+    { action_id: "c1", action_type: "drone.disable_geofence", ward_id: "w1", edge_decision: "ALLOW", current_decision: "REFUSE", agrees: false, conflict_kind: "edge_more_permissive", status: "open", occurred_at: "2026-05-24T11:00:00.000Z", gel_record_id: "gel-1" },
+    { action_id: "c2", action_type: "drone.takeoff", ward_id: "w1", edge_decision: "ALLOW", current_decision: "ALLOW", agrees: true, status: "reconciled", occurred_at: "2026-05-24T11:01:00.000Z" },
+    { action_id: "c3", action_type: "drone.scan_area", ward_id: "w1", edge_decision: "ALLOW", current_decision: "REFUSE", agrees: false, conflict_kind: "edge_more_permissive", status: "rejected", resolved_by: "alice@corp", resolution_action: "reject", occurred_at: "2026-05-24T11:02:00.000Z" }
+  ];
+  const rows = mapConflictsToInbox(records);
+  assert.equal(rows.length, 3);
+  assert.equal(rows[0].id, "c1");
+  assert.equal(rows[0].edgeDecision, "allow");
+  assert.equal(rows[0].currentDecision, "refuse");
+  assert.equal(rows[0].conflictKind, "edge_more_permissive");
+  assert.match(rows[0].operatorNextStep, /Reject to revert/);
+  assert.match(rows[1].operatorNextStep, /agree/);
+  assert.match(rows[2].operatorNextStep, /Resolved: reject by alice@corp/);
 });

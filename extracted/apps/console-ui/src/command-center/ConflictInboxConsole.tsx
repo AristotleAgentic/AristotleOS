@@ -15,6 +15,7 @@ function conflictTone(kind: ConflictInboxItem["conflictKind"]) {
 
 function ConflictCard({ item }: { item: ConflictInboxItem }) {
   const toast = useCommandStore((s) => s.toast);
+  const resolveConflict = useCommandStore((s) => s.resolveConflict);
   return (
     <article className="ac-conflict-card">
       <div className="ac-conflict-head">
@@ -43,9 +44,9 @@ function ConflictCard({ item }: { item: ConflictInboxItem }) {
       <div className="ac-muted" style={{ marginTop: 10 }}>{item.operatorNextStep}</div>
 
       <div className="ac-conflict-actions">
-        <button className="ac-btn" onClick={() => toast(`${item.id}: edge evidence accepted for review.`, "green")}><CheckCircle2 size={13} /> Accept edge</button>
-        <button className="ac-btn" onClick={() => toast(`${item.id}: rejection recorded; revert workflow required.`, "red")}><XCircle size={13} /> Reject</button>
-        <button className="ac-btn" onClick={() => toast(`${item.id}: escalated to sovereign authority.`, "amber")}><ShieldAlert size={13} /> Escalate</button>
+        <button className="ac-btn" onClick={() => void resolveConflict(item.id, "accept", "edge evidence accepted for review")}><CheckCircle2 size={13} /> Accept edge</button>
+        <button className="ac-btn" onClick={() => void resolveConflict(item.id, "reject", "rejected; revert workflow required")}><XCircle size={13} /> Reject</button>
+        <button className="ac-btn" onClick={() => void resolveConflict(item.id, "escalate", "escalated to sovereign authority")}><ShieldAlert size={13} /> Escalate</button>
         <button className="ac-btn" onClick={() => toast(`${item.id}: evidence bundle export requested.`, "cyan")}><Archive size={13} /> Export</button>
       </div>
     </article>
@@ -53,9 +54,12 @@ function ConflictCard({ item }: { item: ConflictInboxItem }) {
 }
 
 export function ConflictInboxConsole() {
-  const forceReconcile = useCommandStore((s) => s.forceReconcile);
-  const open = CONFLICT_INBOX.filter((c) => c.status === "open" || c.status === "escalated").length;
-  const reconciled = CONFLICT_INBOX.filter((c) => c.status === "reconciled").length;
+  const loadConflicts = useCommandStore((s) => s.loadConflicts);
+  // Live engine-classified inbox when the boundary is reachable; sample otherwise.
+  const liveConflicts = useCommandStore((s) => s.conflicts);
+  const items = liveConflicts ?? CONFLICT_INBOX;
+  const open = items.filter((c) => c.status === "open" || c.status === "escalated").length;
+  const reconciled = items.filter((c) => c.status === "reconciled").length;
 
   return (
     <div className="ac-grid" style={{ gridTemplateColumns: "1fr", gap: 14 }}>
@@ -70,7 +74,7 @@ export function ConflictInboxConsole() {
             </p>
           </div>
           <div className="ac-adoption-kpis">
-            <div className="ac-metric"><span className="ac-metric-label">Inbox items</span><span className="ac-metric-val">{CONFLICT_INBOX.length}</span></div>
+            <div className="ac-metric"><span className="ac-metric-label">Inbox items</span><span className="ac-metric-val">{items.length}</span></div>
             <div className="ac-metric"><span className="ac-metric-label">Open/escalated</span><span className="ac-metric-val" style={{ color: "var(--ac-amber)" }}>{open}</span></div>
             <div className="ac-metric"><span className="ac-metric-label">Reconciled</span><span className="ac-metric-val" style={{ color: "var(--ac-green)" }}>{reconciled}</span></div>
           </div>
@@ -78,10 +82,10 @@ export function ConflictInboxConsole() {
       </Panel>
 
       <div className="ac-grid" style={{ gridTemplateColumns: "minmax(0, 1fr)", gap: 10 }}>
-        {CONFLICT_INBOX.map((item) => <ConflictCard key={item.id} item={item} />)}
+        {items.map((item) => <ConflictCard key={item.id} item={item} />)}
       </div>
 
-      <Panel title="Reconnection Workflow" icon={<GitBranch size={15} />} right={<button className="ac-btn" onClick={forceReconcile}><RefreshCw size={13} /> Force reconcile</button>}>
+      <Panel title="Reconnection Workflow" icon={<GitBranch size={15} />} right={<button className="ac-btn" onClick={() => void loadConflicts()}><RefreshCw size={13} /> Force reconcile</button>}>
         <div className="ac-chip-row">
           <span className="ac-chip">load edge GEL bundle</span>
           <span className="ac-chip">replay against current policy</span>

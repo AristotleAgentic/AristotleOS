@@ -1,4 +1,4 @@
-import type { CommitDecision, LedgerRecord, ShadowProfileSummary, SystemSnapshot, WardMarshalFinding } from "./types.js";
+import type { CommitDecision, ConflictInboxItem, LedgerRecord, ShadowProfileSummary, SystemSnapshot, WardMarshalFinding } from "./types.js";
 
 /**
  * Live client for the AristotleOS execution-control boundary.
@@ -314,4 +314,87 @@ export async function runLiveMarshalCensus(body: MarshalCensusBody): Promise<War
   const result = await boundaryMarshalCensus(body);
   if (!result.reachable || !result.ok || !result.data) return null;
   return mapCensusReport(result.data);
+}
+
+// --- Conflict Inbox ---------------------------------------------------------
+
+export interface ConflictRecordLike {
+  action_id: string;
+  action_type: string;
+  ward_id: string;
+  edge_decision: string;
+  current_decision: string;
+  current_reason_codes?: string[];
+  agrees: boolean;
+  conflict_kind?: "edge_more_permissive" | "edge_more_restrictive" | "reason_divergence";
+  status: ConflictInboxItem["status"];
+  occurred_at?: string;
+  first_seen_at?: string;
+  gel_record_id?: string;
+  replay?: { against_execution_time?: { decision: string } };
+  resolved_by?: string;
+  resolution_action?: string;
+}
+
+export interface ConflictListLike {
+  items: ConflictRecordLike[];
+}
+
+function conflictNextStep(item: ConflictRecordLike): string {
+  if (item.resolved_by && item.resolution_action) return `Resolved: ${item.resolution_action} by ${item.resolved_by}.`;
+  if (item.agrees) return "Edge and central decisions agree — no operator action required.";
+  switch (item.conflict_kind) {
+    case "edge_more_permissive": return "Edge allowed an action central now blocks. Reject to revert, or accept with justification.";
+    case "edge_more_restrictive": return "Edge blocked an action central now allows. Reconcile if the edge was correct.";
+    default: return "Reason divergence — review the replay evidence and resolve.";
+  }
+}
+
+/** Pure: map durable Conflict Inbox records into the console's inbox item shape. */
+export function mapConflictsToInbox(items: ConflictRecordLike[]): ConflictInboxItem[] {
+  return (items ?? []).map((item) => ({
+    id: item.action_id,
+    wardId: item.ward_id,
+    action: item.action_type,
+    edgeDecision: decisionToUi(item.edge_decision),
+    currentDecision: decisionToUi(item.current_decision),
+    executionTimeDecision: decisionToUi(item.replay?.against_execution_time?.decision ?? item.current_decision),
+    conflictKind: item.conflict_kind ?? "reason_divergence",
+    status: item.status,
+    gelRecordId: item.gel_record_id ?? "—",
+    occurredAt: item.occurred_at ?? item.first_seen_at ?? new Date().toISOString(),
+    operatorNextStep: conflictNextStep(item)
+  }));
+}
+
+export interface ConflictIngestBody {
+  records: unknown[];
+  ward?: unknown;
+  authority_envelope?: unknown;
+  now?: string;
+}
+
+export async function boundaryIngestConflicts(body: ConflictIngestBody): Promise<PostResult<unknown>> {
+  return postJson("/v1/execution-control/conflicts/ingest", body);
+}
+
+export async function boundaryListConflicts(signal?: AbortSignal): Promise<ConflictListLike | null> {
+  return getJson<ConflictListLike>("/v1/execution-control/conflicts", signal);
+}
+
+export async function boundaryResolveConflict(actionId: string, action: "accept" | "reject" | "escalate" | "reconcile", reason?: string): Promise<PostResult<unknown>> {
+  return postJson("/v1/execution-control/conflicts/resolve", { action_id: actionId, action, reason });
+}
+
+/**
+ * Ingest a representative edge-record seed into the durable inbox, then list the
+ * result. Returns mapped inbox items, or null when the boundary is unreachable
+ * (caller keeps sample data). Idempotent — re-ingest never reopens a resolution.
+ */
+export async function runLiveConflicts(seed: ConflictIngestBody): Promise<ConflictInboxItem[] | null> {
+  const ingest = await boundaryIngestConflicts(seed);
+  if (!ingest.reachable || !ingest.ok) return null;
+  const list = await boundaryListConflicts();
+  if (!list) return null;
+  return mapConflictsToInbox(list.items);
 }
