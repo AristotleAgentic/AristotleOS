@@ -1,0 +1,41 @@
+# Staging profile — pre-production, production-shaped.
+#
+# Real production posture (durable secrets via existingSecret, restricted Pod
+# Security, network policy) with observability and an ingress host, but pointed at
+# non-production hostnames. Provision `secrets.existingSecret` before installing.
+global:
+  image:
+    tag: "0.1.1"
+    pullPolicy: IfNotPresent
+
+telemetry:
+  otel:
+    enabled: true
+    resourceAttributes: "deployment.environment=staging,service.namespace=aristotle-governance-os"
+
+observability:
+  serviceMonitor:
+    enabled: true
+  prometheusRules:
+    enabled: true
+
+networkPolicy:
+  enabled: true
+
+podSecurity:
+  enforceRestricted: true
+
+ingress:
+  enabled: true
+  className: "nginx"
+  hosts:
+    - host: aristotle.staging.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          serviceName: console-ui
+          servicePort: 4173
+  tls:
+    - hosts:
+        - aristotle.staging.example.com
+      secretName: aristotle-staging-tls

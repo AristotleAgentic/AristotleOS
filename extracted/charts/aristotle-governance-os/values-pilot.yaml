@@ -1,0 +1,62 @@
+# Pilot profile — an enterprise pilot deployment.
+#
+# Full production posture: pinned image tag, HA where it matters, OpenTelemetry +
+# Prometheus on, NetworkPolicy + restricted Pod Security enforced, and a TLS
+# ingress. Provision `secrets.existingSecret` (durable Ed25519 signing keys,
+# operator session secret, operator API key) before installing. Workload identity
+# via SPIFFE/SPIRE is available — see values-spiffe.example.yaml and
+# docs/deployment/pilot.md.
+global:
+  image:
+    tag: "0.1.1"
+    pullPolicy: IfNotPresent
+
+runtimeConfig:
+  NODE_ENV: "production"
+  ALLOW_INSECURE_PRODUCTION_BOOT: "false"
+  GOVERNANCE_CHAIN_MODE: "enforce"
+  OPERATOR_SESSION_ENFORCEMENT: "true"
+  OPERATOR_ROLE_ENFORCEMENT: "true"
+
+telemetry:
+  otel:
+    enabled: true
+    exporterEndpoint: "http://otel-collector.monitoring.svc.cluster.local:4318"
+    resourceAttributes: "deployment.environment=pilot,service.namespace=aristotle-governance-os"
+
+observability:
+  serviceMonitor:
+    enabled: true
+  prometheusRules:
+    enabled: true
+
+networkPolicy:
+  enabled: true
+
+podSecurity:
+  enforceRestricted: true
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    # Example: terminate TLS with cert-manager. Adjust to your issuer.
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: aristotle.pilot.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          serviceName: console-ui
+          servicePort: 4173
+  tls:
+    - hosts:
+        - aristotle.pilot.example.com
+      secretName: aristotle-pilot-tls
+
+# Enable in-cluster workload identity for the pilot (requires SPIRE + the SPIFFE
+# CSI driver). Merge with values-spiffe.example.yaml or uncomment below.
+# identity:
+#   spiffe:
+#     enabled: true
+#     trustDomain: "pilot.aristotle"

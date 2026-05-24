@@ -23,7 +23,10 @@ try {
 const checks = [
   ["lint", `lint ${chart}`],
   ["template (default values)", `template aristotle ${chart}`],
-  ["template (kind-smoke values)", `template aristotle ${chart} -f ${chart}/values-kind-smoke.yaml`]
+  ["template (kind-smoke values)", `template aristotle ${chart} -f ${chart}/values-kind-smoke.yaml`],
+  ["template (local profile)", `template aristotle ${chart} -f ${chart}/values-local.yaml`],
+  ["template (staging profile)", `template aristotle ${chart} -f ${chart}/values-staging.yaml`],
+  ["template (pilot profile)", `template aristotle ${chart} -f ${chart}/values-pilot.yaml`]
 ];
 
 console.log("AristotleOS Helm chart validation\n");

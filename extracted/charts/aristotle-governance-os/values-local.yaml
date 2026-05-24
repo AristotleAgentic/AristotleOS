@@ -1,0 +1,48 @@
+# Local profile — a laptop kind/minikube cluster.
+#
+# Minimal footprint, single replicas, observability/ingress off, and an
+# insecure-boot allowance so the stack starts without externally-provisioned
+# production secrets. NOT for shared, staging, or production use.
+global:
+  image:
+    tag: "0.1.1-local"
+    pullPolicy: IfNotPresent
+
+runtimeConfig:
+  # Local convenience: boot without provisioned durable keys / operator secrets.
+  ALLOW_INSECURE_PRODUCTION_BOOT: "true"
+  OPERATOR_SESSION_ENFORCEMENT: "false"
+  # Single witness replica below ⇒ quorum of 1.
+  WITNESS_QUORUM: "1"
+
+observability:
+  serviceMonitor:
+    enabled: false
+  prometheusRules:
+    enabled: false
+
+telemetry:
+  otel:
+    enabled: false
+
+ingress:
+  enabled: false
+
+networkPolicy:
+  enabled: false
+
+services:
+  http-gateway:
+    replicas: 1
+  policy-compiler:
+    replicas: 1
+  meta-authority-registry:
+    replicas: 1
+  simulation-engine:
+    replicas: 1
+  authority-router:
+    replicas: 1
+  witness-service:
+    replicas: 1
+  execution-gate:
+    replicas: 1
