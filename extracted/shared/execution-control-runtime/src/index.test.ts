@@ -1232,3 +1232,44 @@ test("createJwksKeyStore caches, refreshes on key rotation, and fails static", a
   assert.equal(store.keys().length, 1, "last-good cache retained through a failed refresh");
   assert.equal(verifyJwt(tokenB, config, nowSec).ok, true);
 });
+
+test("governance builder endpoints compile/diff/explain over the real backend, role-gated", async () => {
+  const file = ledgerPath();
+  const { server } = createExecutionControlRuntimeServer({ ward, authorityEnvelope: envelope, ledgerPath: file, now, operators });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const base = serverBase(server);
+    const post = (path: string, body: unknown, token: string) =>
+      fetch(`${base}${path}`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+
+    // compile — returns a real content-addressed manifest with a hash
+    const compiled = await post("/v1/execution-control/governance/compile", { ward, authority_envelope: envelope }, "tok-operator");
+    assert.equal(compiled.status, 200);
+    const manifest = await compiled.json();
+    assert.equal(manifest.manifest_version, "aristotle.governance-manifest.v1");
+    assert.match(manifest.hashes.manifest_hash, /^[0-9a-f]{64}$/);
+    assert.equal(manifest.validation.ok, true);
+
+    // diff — adding an allowed action is flagged as authority-weakening
+    const after = { ...envelope, allowed_actions: [...envelope.allowed_actions, "drone.deploy_payload"] };
+    const diffed = await post("/v1/execution-control/governance/diff", { before: { ward, authority_envelope: envelope }, after: { ward, authority_envelope: after } }, "tok-operator");
+    assert.equal(diffed.status, 200);
+    const diff = await diffed.json();
+    assert.equal(diff.summary.requires_review, true);
+    assert.ok(diff.entries.some((e: { path: string; weakening: boolean }) => e.weakening && e.path.includes("drone.deploy_payload")));
+
+    // explain — runs sample actions through the real Commit Gate
+    const explained = await post("/v1/execution-control/governance/explain", { ward, authority_envelope: envelope, sample_actions: [action, { ...action, action_id: "act-x", action_type: "drone.disable_geofence" }] }, "tok-operator");
+    assert.equal(explained.status, 200);
+    const explanation = await explained.json();
+    assert.equal(explanation.samples.length, 2);
+    assert.equal(explanation.samples[0].decision, "ALLOW");
+    assert.equal(explanation.samples[1].decision, "REFUSE");
+
+    // role-gated: a viewer cannot author (requires operator)
+    const forbidden = await post("/v1/execution-control/governance/compile", { ward, authority_envelope: envelope }, "tok-viewer");
+    assert.equal(forbidden.status, 403);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});

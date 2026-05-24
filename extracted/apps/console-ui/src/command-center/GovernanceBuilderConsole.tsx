@@ -5,18 +5,21 @@ import { Badge, Metric, Panel, decisionTone } from "./primitives.js";
 import { useCommandStore } from "./store.js";
 
 export function GovernanceBuilderConsole() {
-  const toast = useCommandStore((s) => s.toast);
   const exportEvidence = useCommandStore((s) => s.exportEvidence);
+  const compileGovernance = useCommandStore((s) => s.compileGovernance);
   return (
     <div className="ac-grid" style={{ gridTemplateColumns: "1fr", gap: 14 }}>
-      <Panel title="Visual Governance Builder" icon={<ClipboardCheck size={15} />} right={<Badge tone="cyan">backend: governance compile/diff/explain</Badge>}>
+      <Panel title="Visual Governance Builder" icon={<ClipboardCheck size={15} />} right={<Badge tone="cyan">preview · live via /governance/compile</Badge>}>
         <div className="ac-adoption-hero">
           <div>
             <div className="ac-label">Visual artifact, real enforcement shape</div>
             <h2>Build Ward and Authority policy without turning AristotleOS into a workflow toy.</h2>
             <p>
-              This surface mirrors the deterministic builder backend: compile a Ward Manifest and Authority Envelope,
-              preview the manifest hash, inspect weakening diffs, and test sample Commit Gate outcomes before promotion.
+              This surface drives the real builder backend (<span className="mono">builder.ts</span>, exposed at
+              <span className="mono"> POST /v1/execution-control/governance/compile · /diff · /explain</span>): compile a Ward
+              Manifest and Authority Envelope, preview the manifest hash, inspect weakening diffs, and test sample Commit
+              Gate outcomes before promotion. Compile attempts the live gateway and falls back to a deterministic local
+              preview when none is connected.
             </p>
           </div>
           <div className="ac-adoption-kpis">
@@ -42,7 +45,7 @@ export function GovernanceBuilderConsole() {
             {BUILDER_PREVIEW.requiredRegisters.map((r) => <span className="ac-chip" key={r}>{r}</span>)}
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-            <button className="ac-btn is-primary" onClick={() => toast("Governance manifest compiled and hash-bound.", "green")}><ShieldCheck size={13} /> Compile</button>
+            <button className="ac-btn is-primary" onClick={() => void compileGovernance()}><ShieldCheck size={13} /> Compile</button>
             <button className="ac-btn" onClick={exportEvidence}><Download size={13} /> Export</button>
           </div>
         </Panel>

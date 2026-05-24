@@ -107,6 +107,7 @@ interface CommandState {
   triggerKillSwitch: () => void;
   exportEvidence: () => void;
   escalate: () => void;
+  compileGovernance: () => Promise<void>;
 }
 
 let toastSeq = 0;
@@ -225,6 +226,19 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   escalate: () => {
     void postOperator(gatewayContract.govern, { escalate: true });
     get().toast("Escalated to human authority. Awaiting sovereign decision.", "amber");
+  },
+
+  // Attempts a real compile against the gateway; falls back to the deterministic
+  // local preview when no gateway is connected. Honest about which path ran — the
+  // backend is execution-control-runtime's POST /v1/execution-control/governance/compile.
+  compileGovernance: async () => {
+    const ok = await postOperator(gatewayContract.compilePolicy, { compile: "governance-manifest" });
+    get().toast(
+      ok
+        ? "Compiled via live gateway — Ward + Authority manifest hash-bound."
+        : "Gateway offline — deterministic local preview. Live compile: run a boundary and POST /v1/execution-control/governance/compile (see docs/sandboxes & ACCESS_CONTROL).",
+      ok ? "green" : "amber"
+    );
   }
 }));
 

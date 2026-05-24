@@ -130,7 +130,15 @@ The daemon listens on `http://127.0.0.1:8181` and exposes:
 - `POST /v1/execution-control/evaluate`
 - `GET /v1/execution-control/audit/tail`
 - `GET /v1/execution-control/audit/verify`
+- `POST /v1/execution-control/governance/compile` — validate + hash a Ward+Authority draft into a content-addressed governance manifest
+- `POST /v1/execution-control/governance/diff` — diff two drafts, flagging authority-**weakening** changes (`summary.requires_review`)
+- `POST /v1/execution-control/governance/explain` — run `sample_actions` through the real Commit Gate and return allow/refuse/escalate per action
 - `GET /openapi.json`
+
+The three `governance/*` routes are the Visual Governance Builder backend (`builder.ts`).
+They are pure analysis — **no ledger mutation** — and are role-gated to `operator`.
+Body: `{ ward?, authority_envelope? }` (defaults to the server's configured artifacts),
+plus `{ before, after }` for diff and `{ sample_actions }` for explain.
 
 Submit an action from another terminal:
 

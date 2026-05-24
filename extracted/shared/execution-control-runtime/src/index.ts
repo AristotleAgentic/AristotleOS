@@ -34,6 +34,7 @@ import {
   traceSpan
 } from "./trace.js";
 import { RuntimeMetrics } from "./metrics.js";
+import { type GovernanceDraft, compileGovernanceManifest, diffGovernanceManifests, explainPolicy } from "./builder.js";
 
 export * from "./proxy.js";
 export * from "./mcp.js";
@@ -1507,7 +1508,10 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
     )) return "viewer";
     if (method === "POST" && (
       pathname === "/v1/execution-control/evaluate" ||
-      pathname === "/v1/execution-control/proxy"
+      pathname === "/v1/execution-control/proxy" ||
+      pathname === "/v1/execution-control/governance/compile" ||
+      pathname === "/v1/execution-control/governance/diff" ||
+      pathname === "/v1/execution-control/governance/explain"
     )) return "operator";
     return "admin";
   };
@@ -1750,6 +1754,46 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           // ledger-derived totals above.
           runtime: metrics.snapshot()
         });
+        return;
+      }
+
+      // Visual Governance Builder backend — pure analysis over provided artifacts
+      // (no ledger mutation): compile/hash a draft, diff two drafts (flagging
+      // authority-weakening changes), and explain what a draft permits/refuses by
+      // running sample actions through the real Commit Gate.
+      if (req.method === "POST" && url.pathname === "/v1/execution-control/governance/compile") {
+        const body = await readJsonBody(req);
+        const ward = (body.ward ?? options.ward) as WardManifest;
+        const authorityEnvelope = (body.authority_envelope ?? body.authorityEnvelope ?? options.authorityEnvelope) as AuthorityEnvelope;
+        const manifest = compileGovernanceManifest({ ward, authorityEnvelope, now: typeof body.now === "string" ? body.now : options.now });
+        logDecision({ event: "governance_compile", request_id: requestId(req), actor: principal ?? null, manifest_hash: manifest.hashes.manifest_hash, validation_ok: manifest.validation.ok });
+        sendJson(res, manifest.validation.ok ? 200 : 422, manifest);
+        return;
+      }
+
+      if (req.method === "POST" && url.pathname === "/v1/execution-control/governance/diff") {
+        const body = await readJsonBody(req);
+        const toDraft = (raw: unknown): GovernanceDraft => {
+          const d = (raw ?? {}) as Record<string, unknown>;
+          return { ward: (d.ward ?? options.ward) as WardManifest, authorityEnvelope: (d.authority_envelope ?? d.authorityEnvelope ?? options.authorityEnvelope) as AuthorityEnvelope };
+        };
+        const before = toDraft(body.before);
+        const after = toDraft(body.after);
+        const entries = diffGovernanceManifests(before, after);
+        const weakening = entries.filter((e) => e.weakening);
+        logDecision({ event: "governance_diff", request_id: requestId(req), actor: principal ?? null, changes: entries.length, weakening: weakening.length });
+        sendJson(res, 200, { entries, summary: { total: entries.length, weakening: weakening.length, requires_review: weakening.length > 0 } });
+        return;
+      }
+
+      if (req.method === "POST" && url.pathname === "/v1/execution-control/governance/explain") {
+        const body = await readJsonBody(req);
+        const ward = (body.ward ?? options.ward) as WardManifest;
+        const authorityEnvelope = (body.authority_envelope ?? body.authorityEnvelope ?? options.authorityEnvelope) as AuthorityEnvelope;
+        const sampleActions = Array.isArray(body.sample_actions) ? (body.sample_actions as CanonicalActionInput[]) : undefined;
+        const explanation = explainPolicy({ ward, authorityEnvelope, sampleActions, runtimeRegister: body.runtime_register as RuntimeRegister | undefined, now: typeof body.now === "string" ? body.now : options.now });
+        logDecision({ event: "governance_explain", request_id: requestId(req), actor: principal ?? null, samples: explanation.samples.length });
+        sendJson(res, 200, explanation);
         return;
       }
 
