@@ -39,6 +39,7 @@
     "enterprise:drill": "node scripts/validate-recovery.mjs",
     "enterprise:contracts": "node scripts/validate-deployment-contracts.mjs",
     "enterprise:ui-safety": "node scripts/validate-console-safety.mjs",
+    "enterprise:adoption-path": "node scripts/validate-adoption-path.mjs",
     "enterprise:release-manifest": "node scripts/generate-release-manifest.mjs",
     "enterprise:preflight": "node scripts/validate-enterprise-config.mjs --production",
     "enterprise:verify": "npm run enterprise:preflight && npm run enterprise:contracts && npm run enterprise:ui-safety && npm run enterprise:release-manifest && npm run test:chain && npm run stack:verify",

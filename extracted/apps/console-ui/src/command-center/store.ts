@@ -21,6 +21,11 @@ import { gatewayContract, postOperator, probeGateway } from "./service.js";
 
 export type SectionId =
   | "overview"
+  | "builder"
+  | "shadow"
+  | "conflicts"
+  | "adoption"
+  | "failure"
   | "mesh"
   | "commit"
   | "warrants"

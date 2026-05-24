@@ -207,3 +207,110 @@ export interface SimulationOutcome {
   reasonCodes: string[];
   invariants: GovernanceInvariant[];
 }
+
+export type PromotionStageKey = "draft" | "shadow" | "staged" | "enforced" | "retired";
+export type PromotionStageState = "complete" | "active" | "blocked" | "pending";
+
+export interface PolicyPromotionStage {
+  key: PromotionStageKey;
+  label: string;
+  state: PromotionStageState;
+  owner: string;
+  evidence: string;
+}
+
+export interface GovernanceMissionTemplate {
+  id: string;
+  name: string;
+  ward: string;
+  domain: string;
+  consequenceClass: string;
+  defaultDecision: CommitDecision;
+  requiredEvidence: string[];
+  operatorValue: string;
+}
+
+export interface ToolGatewayAdapter {
+  id: string;
+  label: string;
+  target: string;
+  posture: Posture;
+  boundary: string;
+  sampleAction: string;
+}
+
+export interface PolicyHarnessCase {
+  id: string;
+  action: string;
+  expected: CommitDecision;
+  actual: CommitDecision;
+  reasonCodes: string[];
+  coverage: string;
+}
+
+export interface EvidenceBundleProfile {
+  formatVersion: string;
+  signing: string;
+  verifier: string;
+  contents: string[];
+  lastExportHash: string;
+}
+
+export interface RuntimeSlo {
+  id: string;
+  label: string;
+  target: string;
+  current: string;
+  posture: Posture;
+}
+
+export interface FailureModeDrill {
+  id: string;
+  mode: "network-partition" | "stale-authority" | "revocation-lag" | "witness-disagreement" | "replay-divergence" | "degraded-edge";
+  ward: string;
+  state: "contained" | "investigating" | "requires-operator" | "resolved";
+  consequence: string;
+  failClosed: boolean;
+  evidenceHash: string;
+  operatorNextStep: string;
+}
+
+export interface BuilderPreview {
+  wardId: string;
+  wardName: string;
+  sovereignty: string;
+  subject: string;
+  allowedActions: string[];
+  refusedActions: string[];
+  requiredRegisters: string[];
+  warrantTtlSeconds: number;
+  manifestHash: string;
+  weakeningDiffs: Array<{ path: string; before: string; after: string; note: string }>;
+  sampleOutcomes: Array<{ action: string; decision: CommitDecision; reasonCodes: string[] }>;
+}
+
+export interface ShadowProfileSummary {
+  wardId: string;
+  envelopeId: string;
+  evaluatedActions: number;
+  wouldAllow: number;
+  wouldRefuse: number;
+  wouldEscalate: number;
+  rolloutReady: boolean;
+  allowRate: number;
+  findings: Array<{ kind: "missing-register" | "near-miss" | "revoked-authority"; actionId: string; detail: string }>;
+}
+
+export interface ConflictInboxItem {
+  id: string;
+  wardId: string;
+  action: string;
+  edgeDecision: CommitDecision;
+  currentDecision: CommitDecision;
+  executionTimeDecision: CommitDecision;
+  conflictKind: "edge_more_permissive" | "edge_more_restrictive" | "reason_divergence";
+  status: "open" | "accepted" | "rejected" | "escalated" | "reconciled";
+  gelRecordId: string;
+  occurredAt: string;
+  operatorNextStep: string;
+}

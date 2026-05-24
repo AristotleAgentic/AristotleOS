@@ -2,15 +2,25 @@ import type {
   Agent,
   AuthorityDomain,
   AuthorityEnvelope,
+  BuilderPreview,
   CommitRequest,
+  ConflictInboxItem,
   GatePipelineSample,
+  EvidenceBundleProfile,
+  FailureModeDrill,
   GovernanceInvariant,
+  GovernanceMissionTemplate,
   InterlockEvent,
   LedgerRecord,
   MeshLink,
   MeshNode,
   PhysicalChannel,
+  PolicyHarnessCase,
+  PolicyPromotionStage,
   RuntimeRegister,
+  RuntimeSlo,
+  ShadowProfileSummary,
+  ToolGatewayAdapter,
   Ward,
   WarrantStep
 } from "./types.js";
@@ -257,3 +267,173 @@ export function seedPipeline(n = 60): GatePipelineSample[] {
   }
   return out;
 }
+
+/* ---------- commercial adoption path ---------- */
+export const POLICY_PROMOTION: PolicyPromotionStage[] = [
+  { key: "draft", label: "Draft", state: "complete", owner: "Policy engineer", evidence: "Ward manifest validated; authority references resolve." },
+  { key: "shadow", label: "Shadow", state: "active", owner: "Runtime operator", evidence: "72h would-block report attached; no irreversible blocking." },
+  { key: "staged", label: "Staged", state: "pending", owner: "Security approver", evidence: "Policy diff and mission impact require review." },
+  { key: "enforced", label: "Enforced", state: "pending", owner: "Sovereign operator", evidence: "Promotion waits for signed approval and rollback marker." },
+  { key: "retired", label: "Retired", state: "pending", owner: "Auditor", evidence: "Superseded policy keeps replay material and evidence chain." }
+];
+
+export const MISSION_TEMPLATES: GovernanceMissionTemplate[] = [
+  {
+    id: "tpl-payments-refund",
+    name: "Payments remediation",
+    ward: "ward-payments",
+    domain: "Refund Authority",
+    consequenceClass: "Money movement",
+    defaultDecision: "escalate",
+    requiredEvidence: ["policy_hash", "authority_hash", "operator_identity", "warrant", "ledger_record"],
+    operatorValue: "Proves large refunds are deferred, warranted, and reconstructable."
+  },
+  {
+    id: "tpl-k8s-prod-deploy",
+    name: "Kubernetes production deployment",
+    ward: "ward-grid",
+    domain: "Infrastructure mutation",
+    consequenceClass: "Production change",
+    defaultDecision: "escalate",
+    requiredEvidence: ["deployment_diff", "approver", "image_digest", "runtime_registers"],
+    operatorValue: "Puts Aristotle in front of cluster mutations before they hit the API server."
+  },
+  {
+    id: "tpl-edge-drone-patrol",
+    name: "Disconnected drone patrol",
+    ward: "ward-montana-range",
+    domain: "Flight Operations",
+    consequenceClass: "Physical motion",
+    defaultDecision: "allow",
+    requiredEvidence: ["physical_invariants", "cached_authority", "edge_clock", "replay_bundle"],
+    operatorValue: "Shows offline authority bounded by Wards, Warrants, and physical invariant checks."
+  },
+  {
+    id: "tpl-health-record",
+    name: "Healthcare record correction",
+    ward: "ward-cyber",
+    domain: "Protected record mutation",
+    consequenceClass: "Regulated data",
+    defaultDecision: "refuse",
+    requiredEvidence: ["patient_scope", "human_approval", "policy_version", "audit_export"],
+    operatorValue: "Demonstrates refusal when subject scope and evidence are incomplete."
+  }
+];
+
+export const TOOL_GATEWAYS: ToolGatewayAdapter[] = [
+  { id: "gw-http", label: "HTTP API Gateway", target: "POST /external/*", posture: "green", boundary: "Commit Gate before outbound mutation", sampleAction: "stripe.refund" },
+  { id: "gw-k8s", label: "Kubernetes Mutator", target: "apps/v1.Deployment", posture: "amber", boundary: "Admission-style warrant check", sampleAction: "k8s.deployment.rollout" },
+  { id: "gw-shell", label: "Shell Command Broker", target: "allowlisted process", posture: "green", boundary: "Sandbox receipt tied to warrant", sampleAction: "shell.run" },
+  { id: "gw-robotics", label: "Robotics Bus Bridge", target: "ROS command topic", posture: "amber", boundary: "Physical Invariant Gater plus warrant", sampleAction: "drone.takeoff" }
+];
+
+export const POLICY_HARNESS: PolicyHarnessCase[] = [
+  { id: "case-under-cap", action: "stripe.refund amount=240", expected: "allow", actual: "allow", reasonCodes: ["ALLOWED"], coverage: "refund threshold" },
+  { id: "case-large-refund", action: "stripe.refund amount=8000", expected: "escalate", actual: "escalate", reasonCodes: ["HUMAN_APPROVAL_REQUIRED"], coverage: "defer band" },
+  { id: "case-payout", action: "stripe.payout amount=8000", expected: "refuse", actual: "refuse", reasonCodes: ["ACTION_DENIED"], coverage: "forbidden action" },
+  { id: "case-missing-register", action: "breaker.open missing grid_load", expected: "fail-closed", actual: "fail-closed", reasonCodes: ["RUNTIME_STATE_MISSING"], coverage: "fail-closed state" }
+];
+
+export const EVIDENCE_PROFILE: EvidenceBundleProfile = {
+  formatVersion: "aos-evidence-bundle/v0.1",
+  signing: "Ed25519 warrant + GEL record signatures",
+  verifier: "aristotle evidence verify --bundle",
+  contents: ["canonical_action", "ward_context", "authority_envelope", "commit_gate_decision", "warrant", "gel_record", "runtime_register_snapshot", "replay_material"],
+  lastExportHash: shortHash("evidence-bundle-commercial-readiness", 20)
+};
+
+export const RUNTIME_SLOS: RuntimeSlo[] = [
+  { id: "slo-gate", label: "Commit Gate p95", target: "< 25 ms", current: "8.7 ms", posture: "green" },
+  { id: "slo-warrant", label: "Warrant issuance p95", target: "< 50 ms", current: "14.2 ms", posture: "green" },
+  { id: "slo-ledger", label: "GEL append p95", target: "< 75 ms", current: "31.4 ms", posture: "green" },
+  { id: "slo-revoke", label: "Revocation propagation", target: "< 2 s", current: "0.8 s", posture: "green" },
+  { id: "slo-replay", label: "Replay verify", target: "< 500 ms", current: "146 ms", posture: "green" }
+];
+
+export const FAILURE_DRILLS: FailureModeDrill[] = [
+  { id: "fm-partition-mt", mode: "network-partition", ward: "ward-montana-range", state: "contained", consequence: "Edge node continues under cached authority until warrant TTL expires.", failClosed: true, evidenceHash: shortHash("fm-partition-mt", 16), operatorNextStep: "Review edge evidence bundle and reconcile patrol records." },
+  { id: "fm-stale-pay", mode: "stale-authority", ward: "ward-payments", state: "requires-operator", consequence: "Large refund escalates because authority version is behind central policy.", failClosed: true, evidenceHash: shortHash("fm-stale-pay", 16), operatorNextStep: "Approve one-time warrant or reject pending fresh authority." },
+  { id: "fm-revoke-cyber", mode: "revocation-lag", ward: "ward-cyber", state: "investigating", consequence: "Revoked incident bot cannot isolate host until revocation bus catches up.", failClosed: true, evidenceHash: shortHash("fm-revoke-cyber", 16), operatorNextStep: "Confirm envelope revocation reached all gateways." },
+  { id: "fm-witness-grid", mode: "witness-disagreement", ward: "ward-grid", state: "contained", consequence: "Witness quorum disagreement blocks breaker operation before consequence.", failClosed: true, evidenceHash: shortHash("fm-witness-grid", 16), operatorNextStep: "Run replay against both witness snapshots." },
+  { id: "fm-replay-grid", mode: "replay-divergence", ward: "ward-grid", state: "resolved", consequence: "Historical policy replay diverged from current policy as expected.", failClosed: false, evidenceHash: shortHash("fm-replay-grid", 16), operatorNextStep: "Attach divergence explanation to audit export." }
+];
+
+export const BUILDER_PREVIEW: BuilderPreview = {
+  wardId: "ward-payments",
+  wardName: "Enterprise Payments",
+  sovereignty: "Treasury Risk",
+  subject: "agent:remediation",
+  allowedActions: ["stripe.refund"],
+  refusedActions: ["stripe.payout", "stripe.transfer"],
+  requiredRegisters: ["operator_identity", "customer_dispute_id", "amount_usd", "policy_version"],
+  warrantTtlSeconds: 60,
+  manifestHash: shortHash("builder-preview-manifest", 20),
+  weakeningDiffs: [
+    { path: "authority_envelope.expires_at", before: "15m", after: "30m", note: "Expiry extension broadens delegated authority and requires review." },
+    { path: "constraints.max_amount_usd", before: "500", after: "1000", note: "Autonomous refund threshold increase weakens governance." }
+  ],
+  sampleOutcomes: [
+    { action: "stripe.refund amount=240", decision: "allow", reasonCodes: ["ALLOWED"] },
+    { action: "stripe.refund amount=8000", decision: "escalate", reasonCodes: ["HUMAN_APPROVAL_REQUIRED"] },
+    { action: "stripe.payout amount=8000", decision: "refuse", reasonCodes: ["ACTION_DENIED"] },
+    { action: "stripe.refund missing customer_dispute_id", decision: "fail-closed", reasonCodes: ["RUNTIME_STATE_MISSING"] }
+  ]
+};
+
+export const SHADOW_PROFILE: ShadowProfileSummary = {
+  wardId: "ward-payments",
+  envelopeId: "ae-refund-114",
+  evaluatedActions: 128,
+  wouldAllow: 91,
+  wouldRefuse: 22,
+  wouldEscalate: 15,
+  rolloutReady: false,
+  allowRate: 0.711,
+  findings: [
+    { kind: "missing-register", actionId: "shadow-081", detail: "customer_dispute_id absent on high-value refund path." },
+    { kind: "near-miss", actionId: "shadow-097", detail: "amount_usd 492 is within 2% of autonomous threshold." },
+    { kind: "revoked-authority", actionId: "shadow-119", detail: "stale envelope ae-refund-109 observed in replay batch." }
+  ]
+};
+
+export const CONFLICT_INBOX: ConflictInboxItem[] = [
+  {
+    id: "conf-edge-001",
+    wardId: "ward-montana-range",
+    action: "drone.scan_area boundary=ranch-test-grid-a",
+    edgeDecision: "allow",
+    currentDecision: "allow",
+    executionTimeDecision: "allow",
+    conflictKind: "reason_divergence",
+    status: "reconciled",
+    gelRecordId: `gel-${shortHash("conf-edge-001", 14)}`,
+    occurredAt: new Date(Date.now() - 1000 * 60 * 47).toISOString(),
+    operatorNextStep: "No operator action; edge and central decisions agree."
+  },
+  {
+    id: "conf-edge-002",
+    wardId: "ward-montana-range",
+    action: "drone.scan_area altitude_m=118",
+    edgeDecision: "allow",
+    currentDecision: "escalate",
+    executionTimeDecision: "allow",
+    conflictKind: "edge_more_permissive",
+    status: "open",
+    gelRecordId: `gel-${shortHash("conf-edge-002", 14)}`,
+    occurredAt: new Date(Date.now() - 1000 * 60 * 112).toISOString(),
+    operatorNextStep: "Accept if execution-time policy was valid; attach near-miss explanation."
+  },
+  {
+    id: "conf-edge-003",
+    wardId: "ward-grid",
+    action: "breaker.open feeder=3",
+    edgeDecision: "escalate",
+    currentDecision: "allow",
+    executionTimeDecision: "escalate",
+    conflictKind: "edge_more_restrictive",
+    status: "escalated",
+    gelRecordId: `gel-${shortHash("conf-edge-003", 14)}`,
+    occurredAt: new Date(Date.now() - 1000 * 60 * 196).toISOString(),
+    operatorNextStep: "Review runtime register gap before marking reconciled."
+  }
+];

@@ -1,6 +1,8 @@
 import {
   Boxes,
   CheckCircle2,
+  ClipboardCheck,
+  Construction,
   FlaskConical,
   Gauge,
   GitBranch,
@@ -9,20 +11,28 @@ import {
   Landmark,
   LayoutGrid,
   Network,
+  Radar,
   Siren,
+  ShieldAlert,
+  Workflow,
   TriangleAlert
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import React from "react";
 import "./theme.css";
+import { AdoptionPathConsole } from "./AdoptionPathConsole.js";
 import { CommandHeader } from "./CommandHeader.js";
 import { CommitGateConsole } from "./CommitGateConsole.js";
+import { ConflictInboxConsole } from "./ConflictInboxConsole.js";
+import { FailureModeConsole } from "./FailureModeConsole.js";
+import { GovernanceBuilderConsole } from "./GovernanceBuilderConsole.js";
 import { LedgerExplorer } from "./LedgerExplorer.js";
 import { MeshNodeDetail, MeshView } from "./MeshView.js";
 import { OperatorActionBar } from "./OperatorActionBar.js";
 import { PhysicalInvariantPanel } from "./PhysicalInvariantPanel.js";
 import { ReplayTimeMachine } from "./ReplayTimeMachine.js";
 import { SimulationPanel } from "./SimulationPanel.js";
+import { ShadowModeConsole } from "./ShadowModeConsole.js";
 import { WardBrowser } from "./WardBrowser.js";
 import { WarrantLifecycle } from "./WarrantLifecycle.js";
 import { Drawer, SectionErrorBoundary, cx } from "./primitives.js";
@@ -30,6 +40,11 @@ import { useCommandStore, type SectionId } from "./store.js";
 
 const NAV: Array<{ id: SectionId; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "Overview", icon: LayoutGrid },
+  { id: "builder", label: "Builder", icon: Construction },
+  { id: "shadow", label: "Shadow", icon: Radar },
+  { id: "conflicts", label: "Conflicts", icon: Workflow },
+  { id: "adoption", label: "Adopt", icon: ClipboardCheck },
+  { id: "failure", label: "Failure", icon: ShieldAlert },
   { id: "mesh", label: "Mesh", icon: Network },
   { id: "commit", label: "Commits", icon: GitCommitHorizontal },
   { id: "warrants", label: "Warrants", icon: GitBranch },
@@ -42,6 +57,11 @@ const NAV: Array<{ id: SectionId; label: string; icon: LucideIcon }> = [
 
 const SECTION_META: Record<SectionId, { title: string; sub: string }> = {
   overview: { title: "Command Overview", sub: "Live governance posture across every ward and gate" },
+  builder: { title: "Visual Governance Builder", sub: "Compile Ward and Authority artifacts without weakening governance silently" },
+  shadow: { title: "Shadow Mode Profiling", sub: "Observe would-ALLOW / REFUSE / ESCALATE before live enforcement" },
+  conflicts: { title: "Edge Conflict Inbox", sub: "Resolve disconnected edge reality against central governance" },
+  adoption: { title: "Commercial Adoption Path", sub: "From sandbox to shadow to enforcement to evidence export" },
+  failure: { title: "Failure Mode Console", sub: "Partitions, stale authority, witness disagreement, and replay divergence" },
   mesh: { title: "Governance Mesh", sub: "Distributed runtime enforcement fabric" },
   commit: { title: "Commit Gate Console", sub: "Authority is decided before action becomes consequence" },
   warrants: { title: "Warrant Lifecycle", sub: "Request → authority → invariants → gate → warrant → evidence" },
@@ -65,6 +85,16 @@ function SectionBody({ section }: { section: SectionId }) {
           <PhysicalInvariantPanel compact />
         </div>
       );
+    case "builder":
+      return <GovernanceBuilderConsole />;
+    case "shadow":
+      return <ShadowModeConsole />;
+    case "conflicts":
+      return <ConflictInboxConsole />;
+    case "adoption":
+      return <AdoptionPathConsole />;
+    case "failure":
+      return <FailureModeConsole />;
     case "mesh":
       return <div style={{ minHeight: 560 }}><MeshView /></div>;
     case "commit":

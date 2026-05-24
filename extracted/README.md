@@ -36,6 +36,7 @@ aristotle mcp                         # JSON-RPC over stdio
 Docs:
 - [Getting started](docs/getting-started.md)
 - [Execution-control runtime](docs/execution-control-runtime.md)
+- [Commercial adoption path](docs/commercial-adoption-path.md)
 - [Architecture](docs/architecture.md)
 - [Deployment runbook](docs/deployment-runbook.md)
 
@@ -55,6 +56,27 @@ npm run pilot:smoke:kind -- --tag 0.1.0-smoke --keep-port-forward
 ```
 
 The smoke path builds the image set, installs the Helm chart into kind, then proves the governance boundary with a deferred payments action, one-time warrant issuance after approval, GEL commit, and fail-closed missing-authority behavior.
+
+## Commercial Adoption Path
+
+The Command Center now includes operator surfaces for the enterprise adoption motion:
+
+- policy promotion from draft to shadow to staged to enforced
+- operator tabs for Builder, Shadow, Conflicts, Adopt, and Failure
+- mission templates for payments, Kubernetes deployment, disconnected drone patrol, and protected record correction
+- governed tool gateway posture for HTTP APIs, Kubernetes, shell commands, and robotics buses
+- portable Evidence Bundle profile
+- policy test harness status
+- runtime SLO cards
+- failure-mode drills for partitions, stale authority, revocation lag, witness disagreement, and replay divergence
+
+Run the adoption-path validator:
+
+```bash
+npm run enterprise:adoption-path
+```
+
+The adoption doctrine is simple: authority before consequence, warrant before execution, evidence after every decision.
 
 ## Ward/Warrant Execution-Control Path
 
