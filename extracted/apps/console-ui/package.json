@@ -8,7 +8,8 @@
     "build": "vite build",
     "dev": "vite",
     "preview": "vite preview",
-    "serve": "node server.mjs"
+    "serve": "node server.mjs",
+    "test:e2e": "vite build && playwright test"
   },
   "dependencies": {
     "@aristotle/shared-schemas": "workspace:*",
@@ -23,6 +24,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.4.1",

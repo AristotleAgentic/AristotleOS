@@ -101,6 +101,30 @@ jobs:
       - name: Validate chart (lint + template, default + kind-smoke)
         run: node scripts/validate-helm.mjs
 
+  e2e-layout:
+    name: console UI layout (Playwright, desktop + mobile)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: corepack pnpm -F @aristotle/console-ui exec playwright install --with-deps chromium
+
+      - name: Layout check (build + desktop/mobile, no horizontal overflow)
+        run: corepack pnpm -F @aristotle/console-ui test:e2e
+
   dependency-audit:
     name: dependency audit (prod)
     runs-on: ubuntu-latest

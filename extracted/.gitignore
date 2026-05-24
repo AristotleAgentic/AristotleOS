@@ -9,3 +9,6 @@ backups/
 .aristotle/
 .tmp/
 reports/
+playwright-report/
+test-results/
+.playwright/
