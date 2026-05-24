@@ -44,7 +44,7 @@ const bom = {
   version: 1,
   metadata: {
     timestamp: new Date().toISOString(),
-    tools: [{ vendor: "AristotleOS", name: "generate-sbom", version: "0.1.0" }],
+    tools: [{ vendor: "AristotleOS", name: "generate-sbom", version: "0.1.1" }],
     component: { type: "application", name: pkg.name, version: pkg.version, "bom-ref": `${pkg.name}@${pkg.version}` }
   },
   components: [...components.values()].sort((a, b) => a.name.localeCompare(b.name))

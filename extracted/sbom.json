@@ -3,19 +3,19 @@
   "specVersion": "1.5",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-05-24T03:29:34.831Z",
+    "timestamp": "2026-05-24T04:33:49.812Z",
     "tools": [
       {
         "vendor": "AristotleOS",
         "name": "generate-sbom",
-        "version": "0.1.0"
+        "version": "0.1.1"
       }
     ],
     "component": {
       "type": "application",
       "name": "aristotle-autonomous-governance-os",
-      "version": "0.1.0",
-      "bom-ref": "aristotle-autonomous-governance-os@0.1.0"
+      "version": "0.1.1",
+      "bom-ref": "aristotle-autonomous-governance-os@0.1.1"
     }
   },
   "components": [

@@ -392,7 +392,7 @@ const buildAsyncLedger = async (args: string[]): Promise<AsyncLedgerStore | unde
   return new AsyncLedgerStore(backend);
 };
 
-export const ARISTOTLE_CLI_VERSION = "0.1.0";
+export const ARISTOTLE_CLI_VERSION = "0.1.1";
 
 export async function runCli(argv: string[], cwd = process.cwd(), out: Writer = process.stdout.write.bind(process.stdout), err: Writer = process.stderr.write.bind(process.stderr)) {
   const [command = "help", subcommand, ...rest] = argv;

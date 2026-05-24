@@ -5,7 +5,9 @@ This document onboards a third-party security auditor in minutes. Pair it with
 component inventory in [`../sbom.json`](../sbom.json).
 
 ## Target of evaluation
-- **Artifact:** git tag `v0.1.0` on branch `ward-warrant-execution-control`.
+- **Artifact:** git tag `v0.1.1` on branch `ward-warrant-execution-control`
+  (supersedes `v0.1.0`; adds operator RBAC/OIDC, the sandbox execution layer,
+  trace/metrics observability, and the clean-room CI scan).
 - **Primary in scope:**
   - `shared/execution-control-runtime/` — the Ward/Warrant boundary, signing,
     ledger backends (file / SQLite / Postgres), proxy + credential broker, MCP,

@@ -1306,7 +1306,7 @@ export function executionControlOpenApiSpec() {
     openapi: "3.0.3",
     info: {
       title: "AristotleOS Ward/Warrant Execution-Control Path",
-      version: "0.1.0",
+      version: "0.1.1",
       description: "AristotleOS-native execution-control boundary: Canonical Governed Action -> Commit Gate -> Warrant -> GEL."
     },
     // When any operator auth method is configured, /v1 routes require a credential

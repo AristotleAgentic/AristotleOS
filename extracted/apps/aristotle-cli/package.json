@@ -1,6 +1,6 @@
 {
   "name": "@aristotle/os-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AristotleOS CLI — run AI agents behind a governed execution-control boundary with signed, single-use Warrants and a tamper-evident evidence ledger.",
   "type": "module",
   "bin": {
