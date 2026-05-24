@@ -26,6 +26,14 @@ import {
   resolvePrincipal,
   roleSatisfies
 } from "./auth.js";
+import {
+  type AristotleTracer,
+  type TraceContext,
+  normalizeTraceContext,
+  parseTraceparent,
+  traceSpan
+} from "./trace.js";
+import { RuntimeMetrics } from "./metrics.js";
 
 export * from "./proxy.js";
 export * from "./mcp.js";
@@ -36,6 +44,8 @@ export * from "./sqlite-ledger.js";
 export * from "./postgres-ledger.js";
 export * from "./audit-sink.js";
 export * from "./auth.js";
+export * from "./trace.js";
+export * from "./metrics.js";
 export * from "./sandbox.js";
 
 export {
@@ -212,6 +222,10 @@ export interface GelRecord {
   authority_envelope_id?: string;
   warrant_id?: string;
   policy_version?: string;
+  /** Caller/idempotency request id (from the action), surfaced for correlation. */
+  request_id?: string;
+  /** W3C distributed-trace context, when provided, so evidence joins your traces. */
+  trace_context?: TraceContext;
   /** Authenticated operator/principal behind the request (RBAC attribution). Part of the signed hash material. */
   actor?: GelActor;
   runtime_register_snapshot: RuntimeRegister;
@@ -248,6 +262,10 @@ export interface EvaluateExecutionControlInput extends CommitGateInput {
   warrantTtlSeconds?: number;
   /** Authenticated operator attributed to the decision in the GEL. */
   actor?: GelActor;
+  /** W3C trace context stamped into the GEL record for correlation. */
+  trace_context?: TraceContext;
+  /** Optional OpenTelemetry-shaped tracer; emits spans around the decision phases. */
+  tracer?: AristotleTracer;
 }
 
 export interface EvaluateExecutionControlResult {
@@ -350,6 +368,8 @@ export interface ExecutionControlRuntimeServerOptions {
   asyncLedger?: AsyncLedgerStore;
   /** When set, each decision's signed GEL record is forwarded to this URL (best-effort). */
   auditSink?: string;
+  /** Optional OpenTelemetry-shaped tracer; emits spans around each decision. */
+  tracer?: AristotleTracer;
 }
 
 export interface ExecutionControlRuntimeServer {
@@ -618,6 +638,8 @@ interface BuildGelRecordInput {
   signer?: AristotleSigner;
   /** Authenticated operator attributed to this record. */
   actor?: GelActor;
+  /** W3C trace context to stamp into the record. */
+  trace_context?: TraceContext;
 }
 
 /** Pure: build a (optionally signed) GEL record linked to a given previous hash. */
@@ -636,6 +658,8 @@ function buildGelRecord(input: BuildGelRecordInput): GelRecord {
     authority_envelope_id: input.decision.authority_envelope_id,
     warrant_id: input.warrant?.warrant_id,
     policy_version: input.decision.policy_version,
+    request_id: input.action.request_id,
+    trace_context: input.trace_context,
     actor: input.actor,
     runtime_register_snapshot: input.decision.runtime_register_snapshot,
     physical_invariant_result: input.decision.physical_invariant_result
@@ -673,6 +697,7 @@ export function appendGelRecord(input: {
   now?: string;
   signer?: AristotleSigner;
   actor?: GelActor;
+  trace_context?: TraceContext;
 }): GelRecord {
   const previous_hash = loadGelChain(input.ledgerPath).at(-1)?.record_hash ?? GENESIS_HASH;
   const record = buildGelRecord({ previous_hash, ...input });
@@ -1071,24 +1096,29 @@ function decideAndWarrant(
 
 export function evaluateExecutionControl(input: EvaluateExecutionControlInput): EvaluateExecutionControlResult {
   if (!input.ward) throw new Error("ward manifest is required for GEL recording");
-  const signer = input.signer ?? getDefaultDevSigner();
-  const canonical = canonicalizeAction(input.action);
-  const runtimeSnapshot = stableNormalize(input.runtimeRegister ?? {}) as RuntimeRegister;
-  const replaySeen = input.replayProtection
-    ? (input.ledger ? input.ledger.hasPriorAdmission(canonical.canonical_action_hash) : hasPriorAdmission(input.ledgerPath, canonical.canonical_action_hash))
-    : false;
-  const { decision, warrant } = decideAndWarrant(input, signer, canonical, runtimeSnapshot, replaySeen);
-  const gel_record = input.ledger
-    ? input.ledger.append({ ward: input.ward, action: input.action, decision, warrant, now: input.now, signer, actor: input.actor })
-    : appendGelRecord({ ledgerPath: input.ledgerPath, ward: input.ward, action: input.action, decision, warrant, now: input.now, signer, actor: input.actor });
-  return {
-    decision: decision.decision,
-    reason_codes: decision.reason_codes,
-    canonical_action_hash: decision.canonical_action_hash,
-    warrant,
-    gel_record,
-    ledger_verification: input.ledger ? input.ledger.verification() : verifyGelChain(input.ledgerPath)
-  };
+  const tracer = input.tracer;
+  const traceAttrs = input.trace_context ? { "aristotle.trace_id": input.trace_context.trace_id } : undefined;
+  return traceSpan(tracer, "aristotle.execution_control.evaluate", { ...traceAttrs, "aristotle.ward_id": input.ward.ward_id, "aristotle.action_type": input.action.action_type }, (span) => {
+    const signer = input.signer ?? getDefaultDevSigner();
+    const canonical = traceSpan(tracer, "aristotle.canonicalize", undefined, () => canonicalizeAction(input.action));
+    const runtimeSnapshot = stableNormalize(input.runtimeRegister ?? {}) as RuntimeRegister;
+    const replaySeen = input.replayProtection
+      ? (input.ledger ? input.ledger.hasPriorAdmission(canonical.canonical_action_hash) : hasPriorAdmission(input.ledgerPath, canonical.canonical_action_hash))
+      : false;
+    const { decision, warrant } = traceSpan(tracer, "aristotle.commit_gate.decide", undefined, () => decideAndWarrant(input, signer, canonical, runtimeSnapshot, replaySeen));
+    const gel_record = traceSpan(tracer, "aristotle.gel.append", undefined, () => (input.ledger
+      ? input.ledger.append({ ward: input.ward!, action: input.action, decision, warrant, now: input.now, signer, actor: input.actor, trace_context: input.trace_context })
+      : appendGelRecord({ ledgerPath: input.ledgerPath, ward: input.ward!, action: input.action, decision, warrant, now: input.now, signer, actor: input.actor, trace_context: input.trace_context })));
+    span.setAttribute("aristotle.decision", decision.decision);
+    return {
+      decision: decision.decision,
+      reason_codes: decision.reason_codes,
+      canonical_action_hash: decision.canonical_action_hash,
+      warrant,
+      gel_record,
+      ledger_verification: input.ledger ? input.ledger.verification() : verifyGelChain(input.ledgerPath)
+    };
+  });
 }
 
 /**
@@ -1108,7 +1138,7 @@ export async function evaluateExecutionControlAsync(input: EvaluateExecutionCont
   const runtimeSnapshot = stableNormalize(input.runtimeRegister ?? {}) as RuntimeRegister;
   const replaySeen = input.replayProtection ? await input.ledger.hasPriorAdmission(canonical.canonical_action_hash) : false;
   const { decision, warrant } = decideAndWarrant(input, signer, canonical, runtimeSnapshot, replaySeen);
-  const gel_record = await input.ledger.append({ ward: input.ward, action: input.action, decision, warrant, now: input.now, signer, actor: input.actor });
+  const gel_record = await input.ledger.append({ ward: input.ward, action: input.action, decision, warrant, now: input.now, signer, actor: input.actor, trace_context: input.trace_context });
   return {
     decision: decision.decision,
     reason_codes: decision.reason_codes,
@@ -1422,6 +1452,17 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
     if (options.logFormat === "json") process.stderr.write(`${JSON.stringify({ ts: new Date().toISOString(), ...entry })}\n`);
   };
   const requestId = (req: IncomingMessage): string => (typeof req.headers["x-request-id"] === "string" ? req.headers["x-request-id"] : randomUUID());
+  const metrics = new RuntimeMetrics();
+  // Resolve W3C trace context from (in priority) the request body, the traceparent
+  // header, or explicit trace_id; stamped into the GEL record for correlation.
+  const traceContextFor = (req: IncomingMessage, body: Record<string, unknown>): TraceContext | undefined => {
+    if (body.trace_context && typeof body.trace_context === "object") {
+      const normalized = normalizeTraceContext(body.trace_context as TraceContext);
+      if (normalized) return normalized;
+    }
+    const traceparentHeader = typeof req.headers["traceparent"] === "string" ? req.headers["traceparent"] : undefined;
+    return parseTraceparent(typeof body.traceparent === "string" ? body.traceparent : traceparentHeader);
+  };
   const forwardAudit = (
     event: "evaluate" | "proxy",
     action: CanonicalActionInput,
@@ -1536,14 +1577,10 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
 
       if (req.method === "GET" && url.pathname === "/metrics") {
         const chain = await readRecords();
-        const counts: Record<string, number> = { ALLOW: 0, REFUSE: 0, ESCALATE: 0 };
-        for (const record of chain) counts[record.decision] = (counts[record.decision] ?? 0) + 1;
+        // Live in-process counters/histogram (decisions, reason codes, latency,
+        // warrant/append failures, replay refusals) plus cumulative ledger gauges.
         const lines = [
-          "# HELP aristotle_decisions_total Governance decisions by outcome",
-          "# TYPE aristotle_decisions_total counter",
-          `aristotle_decisions_total{decision="ALLOW"} ${counts.ALLOW}`,
-          `aristotle_decisions_total{decision="REFUSE"} ${counts.REFUSE}`,
-          `aristotle_decisions_total{decision="ESCALATE"} ${counts.ESCALATE}`,
+          ...metrics.prometheus(),
           "# HELP aristotle_ledger_records Total Governance Evidence Ledger records",
           "# TYPE aristotle_ledger_records gauge",
           `aristotle_ledger_records ${chain.length}`,
@@ -1594,14 +1631,25 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           replayProtection,
           revocationListPath: options.revocationListPath,
           warrantTtlSeconds: options.warrantTtlSeconds,
-          actor: principal
+          actor: principal,
+          trace_context: traceContextFor(req, body),
+          tracer: options.tracer
         };
-        const result = asyncLedger
-          ? await evaluateExecutionControlAsync({ ...evaluateParams, ledger: asyncLedger })
-          : evaluateExecutionControl({ ...evaluateParams, ledger });
+        let result: EvaluateExecutionControlResult;
+        try {
+          result = asyncLedger
+            ? await evaluateExecutionControlAsync({ ...evaluateParams, ledger: asyncLedger })
+            : evaluateExecutionControl({ ...evaluateParams, ledger });
+        } catch (error) {
+          metrics.recordLedgerAppendFailure();
+          throw error;
+        }
+        const latencyMs = Date.now() - startedAt;
+        metrics.recordDecision(result.decision, result.reason_codes, latencyMs, !!result.warrant);
         logDecision({
           event: "evaluate",
           request_id: requestId(req),
+          trace_id: result.gel_record.trace_context?.trace_id ?? null,
           subject: action.subject,
           action_type: action.action_type,
           decision: result.decision,
@@ -1609,7 +1657,7 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           warrant_id: result.warrant?.warrant_id ?? null,
           signing_key_id: result.warrant?.signing_key_id ?? null,
           actor: principal ?? null,
-          latency_ms: Date.now() - startedAt
+          latency_ms: latencyMs
         });
         forwardAudit("evaluate", action, result, principal);
         sendJson(res, result.decision === "ALLOW" ? 200 : result.decision === "ESCALATE" ? 202 : 409, result);
@@ -1638,12 +1686,18 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           warrantTtlSeconds: options.warrantTtlSeconds,
           ledger,
           asyncLedger,
-          actor: principal
+          actor: principal,
+          trace_context: traceContextFor(req, body),
+          tracer: options.tracer
         });
         const status = result.decision === "ALLOW" ? (result.forwarded ? 200 : 502) : result.decision === "ESCALATE" ? 202 : 409;
+        const latencyMs = Date.now() - startedAt;
+        metrics.recordDecision(result.decision, result.reason_codes, latencyMs, !!result.warrant);
+        if (result.decision === "ALLOW" && !result.forwarded && /warrant verification failed/.test(result.error ?? "")) metrics.recordWarrantFailure();
         logDecision({
           event: "proxy",
           request_id: requestId(req),
+          trace_id: result.gel_record.trace_context?.trace_id ?? null,
           subject: action.subject,
           action_type: action.action_type,
           decision: result.decision,
@@ -1652,7 +1706,7 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           warrant_id: result.warrant?.warrant_id ?? null,
           actor: principal ?? null,
           status,
-          latency_ms: Date.now() - startedAt
+          latency_ms: latencyMs
         });
         forwardAudit("proxy", action, result, principal);
         sendJson(res, status, result);
@@ -1685,7 +1739,11 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           ledger_ok: readVerification().ok,
           signing_key_id: options.signer?.key_id ?? "ephemeral-dev",
           kill_switch_engaged: !!(options.killSwitchPath && existsSync(options.killSwitchPath)),
-          replay_protection: replayProtection
+          replay_protection: replayProtection,
+          // Live in-process counters since this process started (latency histogram,
+          // warrant/append failures, replay refusals) — complements the cumulative
+          // ledger-derived totals above.
+          runtime: metrics.snapshot()
         });
         return;
       }

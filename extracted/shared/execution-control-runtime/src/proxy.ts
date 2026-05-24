@@ -4,11 +4,13 @@ import {
   type AuthorityEnvelope,
   type CanonicalActionInput,
   type ExecutionControlDecision,
+  type AristotleTracer,
   type ExecutionControlReasonCode,
   type GelActor,
   type GelRecord,
   type JsonValue,
   type LedgerStore,
+  type TraceContext,
   type WardManifest,
   type Warrant,
   evaluateExecutionControl,
@@ -131,6 +133,10 @@ export interface ProxyGovernedActionInput {
   warrantTtlSeconds?: number;
   /** Authenticated operator attributed to the decision in the GEL. */
   actor?: GelActor;
+  /** W3C trace context stamped into the GEL record. */
+  trace_context?: TraceContext;
+  /** Optional OpenTelemetry-shaped tracer. */
+  tracer?: AristotleTracer;
   /** Injected for testing; defaults to global fetch. */
   fetchImpl?: typeof fetch;
 }
@@ -165,7 +171,9 @@ export async function proxyGovernedAction(input: ProxyGovernedActionInput): Prom
     replayProtection: input.replayProtection,
     revocationListPath: input.revocationListPath,
     warrantTtlSeconds: input.warrantTtlSeconds,
-    actor: input.actor
+    actor: input.actor,
+    trace_context: input.trace_context,
+    tracer: input.tracer
   };
   const evaluation = input.asyncLedger
     ? await evaluateExecutionControlAsync({ ...evaluateParams, ledger: input.asyncLedger })

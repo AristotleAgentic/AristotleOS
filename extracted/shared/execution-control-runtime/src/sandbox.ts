@@ -5,6 +5,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import {
   type AristotleSigner,
+  type AristotleTracer,
   type AuthorityEnvelope,
   type CanonicalActionInput,
   type ExecutionControlDecision,
@@ -12,6 +13,7 @@ import {
   type GelRecord,
   type RuntimeRegister,
   type SignatureAlgorithm,
+  type TraceContext,
   type WardManifest,
   type Warrant,
   LedgerStore,
@@ -345,6 +347,10 @@ export interface GovernSandboxExecutionInput {
   now?: string;
   runtimeRegister?: RuntimeRegister;
   replayProtection?: boolean;
+  /** W3C trace context stamped into the GEL record. */
+  trace_context?: TraceContext;
+  /** Optional OpenTelemetry-shaped tracer. */
+  tracer?: AristotleTracer;
 }
 
 export interface GovernSandboxExecutionResult {
@@ -377,7 +383,9 @@ export async function governSandboxExecution(input: GovernSandboxExecutionInput)
     ledgerPath: input.ledgerPath ?? "unused",
     signer,
     now: input.now,
-    replayProtection: input.replayProtection ?? true
+    replayProtection: input.replayProtection ?? true,
+    trace_context: input.trace_context,
+    tracer: input.tracer
   });
 
   const base = {

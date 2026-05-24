@@ -102,6 +102,12 @@ E2B/Daytona/Modal/Riza adapters use an injected-client pattern (no SDK
 dependency). `aristotle sandbox run|providers|receipt verify`. See
 [docs/sandboxes.md](docs/sandboxes.md).
 
+Observability: pass W3C trace context (`traceparent`) into a governed action and
+it is stamped into the signed GEL record; inject an OpenTelemetry-shaped tracer for
+spans around each decision phase; scrape `/metrics` for decision/reason-code/
+latency/failure series. No OTel dependency. See
+[docs/observability.md](docs/observability.md).
+
 Operator access control at the boundary: authenticate `/v1` with an API key,
 role-scoped `--operator` tokens, or OIDC (`--oidc-config`); roles
 `viewer < operator < admin` are enforced per route, the operator identity is
