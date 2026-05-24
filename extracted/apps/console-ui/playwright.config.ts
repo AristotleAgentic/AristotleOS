@@ -1,8 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Layout smoke for the public site / playground. Builds are produced by the
-// `test:e2e` script; this config just serves the built dist via `vite preview`
-// and checks desktop + mobile layouts.
+// Layout smoke for the public site / playground. The `test:e2e` script produces a
+// fresh build; this config serves THAT build via `vite preview` on a dedicated
+// port (4188) so the tests always exercise the just-built dist and never reuse an
+// unrelated dev/preview server that may be running on the app's default 4173.
+const PORT = 4188;
+const BASE = `http://127.0.0.1:${PORT}`;
+
 export default defineConfig({
   testDir: "./e2e",
   timeout: 30_000,
@@ -10,7 +14,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:4173",
+    baseURL: BASE,
     trace: "off"
   },
   projects: [
@@ -18,9 +22,10 @@ export default defineConfig({
     { name: "mobile", use: { ...devices["Pixel 5"] } }
   ],
   webServer: {
-    command: "pnpm exec vite preview --host 127.0.0.1 --port 4173 --strictPort",
-    url: "http://127.0.0.1:4173",
-    reuseExistingServer: !process.env.CI,
+    command: `npx vite preview --host 127.0.0.1 --port ${PORT} --strictPort`,
+    url: BASE,
+    // Dedicated port: never reuse a foreign server; always test the fresh build.
+    reuseExistingServer: false,
     timeout: 60_000
   }
 });

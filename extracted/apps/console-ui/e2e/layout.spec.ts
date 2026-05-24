@@ -32,3 +32,17 @@ test("Command Center renders without horizontal overflow", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Overview" })).toBeVisible();
   expect(await horizontalOverflow(page)).toBeLessThanOrEqual(2);
 });
+
+// Deep links must resolve to the Try view on a fresh load, not fall through to
+// the marketing site. Both the hash form (#playground) and the path form (/try)
+// are entry points, so each is guarded. The app shell's back button confirms we
+// are inside the app; the absence of the marketing "Try the playground" CTA
+// confirms we did not land on the marketing site.
+for (const route of ["/#playground", "/try"]) {
+  test(`deep link ${route} renders the playground, not the marketing site`, async ({ page }) => {
+    await page.goto(route);
+    await expect(page.getByRole("button", { name: /AristotleOS/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Try the playground" })).toHaveCount(0);
+    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(2);
+  });
+}
