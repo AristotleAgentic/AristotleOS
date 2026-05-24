@@ -18,6 +18,7 @@ import {
   shortHash
 } from "./mockData.js";
 import { gatewayContract, postOperator, probeGateway } from "./service.js";
+import { boundaryCompile, fetchLiveState } from "./boundary.js";
 
 export type SectionId =
   | "overview"
@@ -179,11 +180,24 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   },
 
   hydrate: async () => {
+    // Prefer the execution-control boundary (real metrics + signed ledger); fall back
+    // to the operator gateway; otherwise stay on sample data and say so.
+    const live = await fetchLiveState();
+    if (live) {
+      set((s) => ({
+        snapshot: { ...s.snapshot, ...live.snapshot },
+        ledger: live.ledger.length ? live.ledger : s.ledger
+      }));
+      get().toast("Live boundary connected — metrics and ledger are real.", "green");
+      return;
+    }
     const partial = await probeGateway();
     if (partial) {
       set((s) => ({ snapshot: { ...s.snapshot, ...partial } }));
       get().toast("Live gateway connected", "green");
+      return;
     }
+    set((s) => ({ snapshot: { ...s.snapshot, source: "mock" } }));
   },
 
   setMode: (mode) => {
@@ -233,13 +247,18 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   // local preview when no gateway is connected. Honest about which path ran — the
   // backend is execution-control-runtime's POST /v1/execution-control/governance/compile.
   compileGovernance: async () => {
-    const ok = await postOperator(gatewayContract.compilePolicy, { compile: "governance-manifest" });
-    get().toast(
-      ok
-        ? "Compiled via live gateway — Ward + Authority manifest hash-bound."
-        : "Gateway offline — deterministic local preview. Live compile: run a boundary and POST /v1/execution-control/governance/compile (see docs/sandboxes & ACCESS_CONTROL).",
-      ok ? "green" : "amber"
-    );
+    // Real compile against the execution-control boundary's configured Ward + Authority.
+    const result = await boundaryCompile({});
+    if (!result.reachable) {
+      get().toast("Boundary offline — deterministic local preview. Run `aristotle execution-control serve` to compile live (POST /v1/execution-control/governance/compile).", "amber");
+      return;
+    }
+    const hash = result.data?.hashes?.manifest_hash;
+    if (result.ok && hash) {
+      get().toast(`Compiled on the live boundary — manifest ${hash.slice(0, 12)} (validation ${result.data?.validation?.ok ? "ok" : "failed"}).`, result.data?.validation?.ok ? "green" : "amber");
+    } else {
+      get().toast(`Boundary rejected the compile (HTTP ${result.status}).`, "red");
+    }
   }
 }));
 

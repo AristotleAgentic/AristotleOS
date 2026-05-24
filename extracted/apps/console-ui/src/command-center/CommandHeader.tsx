@@ -33,6 +33,24 @@ export function CommandHeader() {
           <div className="ac-brand-name">AristotleOS</div>
           <div className="ac-brand-sub">Governance Command</div>
         </span>
+        <span
+          title={snapshot.source === "live" ? "Connected to a live execution-control boundary" : "No boundary connected — showing sample data"}
+          style={{
+            marginLeft: 8,
+            alignSelf: "center",
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: 0.6,
+            padding: "2px 6px",
+            borderRadius: 5,
+            border: "1px solid",
+            borderColor: snapshot.source === "live" ? "rgba(52,211,153,0.5)" : "rgba(148,163,184,0.35)",
+            color: snapshot.source === "live" ? "var(--ac-green)" : "var(--ac-text-3)",
+            background: snapshot.source === "live" ? "rgba(52,211,153,0.10)" : "transparent"
+          }}
+        >
+          {snapshot.source === "live" ? "LIVE" : "SAMPLE"}
+        </span>
       </div>
 
       <div className="ac-posture">
