@@ -36,7 +36,7 @@ export function maxRole(roles: OperatorRole[]): OperatorRole | undefined {
   return roles.reduce<OperatorRole | undefined>((best, role) => (best && ROLE_RANK[best] >= ROLE_RANK[role] ? best : role), undefined);
 }
 
-export type AuthMethod = "api-key" | "token" | "oidc";
+export type AuthMethod = "api-key" | "token" | "oidc" | "mtls";
 
 /** The authenticated operator behind a request. Written to the GEL as the actor. */
 export interface Principal {
@@ -231,6 +231,43 @@ export interface AuthConfig {
   operators?: OperatorCredential[];
   /** OIDC bearer-token verification. */
   oidc?: OidcConfig;
+  /** mTLS / client-certificate (PIV/CAC) auth. */
+  cert?: CertAuthConfig;
+  /** When true, the standing static admin `apiKey` is refused — forcing token/OIDC/mTLS.
+   *  Recommended in production; the api-key is a single high-value static credential. */
+  requireStrongAuth?: boolean;
+}
+
+/** A presented client certificate (from a terminating proxy/ingress or a TLS-terminating boundary). */
+export interface ClientCertificate {
+  /** DN subject, e.g. "CN=alice.doe.1234567890,OU=PKI,O=U.S. Government,C=US". */
+  subject: string;
+  /** Subject Alternative Names — e.g. a PIV UPN ("alice@agency.mil") or a SPIFFE URI. */
+  sans?: string[];
+  /** Lowercase hex SHA-256 fingerprint of the DER certificate. */
+  fingerprint?: string;
+  /** Whether the chain was cryptographically verified by the terminator. */
+  verified?: boolean;
+}
+
+export interface CertAuthRule {
+  /** Exact CN match (from the subject DN). */
+  cn?: string;
+  /** Regex matched against any SAN (e.g. a UPN domain, a SPIFFE path). */
+  sanRegex?: string;
+  /** Exact fingerprint pin. */
+  fingerprint?: string;
+  role: OperatorRole;
+  /** Identity attributed to the actor; defaults to the cert CN, else first SAN, else the DN. */
+  subject?: string;
+}
+
+export interface CertAuthConfig {
+  rules: CertAuthRule[];
+  /** Require a verified chain (default true). */
+  requireVerified?: boolean;
+  /** When set, the cert fingerprint must be in this allowlist (pinning). */
+  trustedFingerprints?: string[];
 }
 
 export type AuthOutcome =
@@ -241,7 +278,7 @@ export type AuthOutcome =
 
 /** True when any authentication method is configured (i.e. /v1 requires credentials). */
 export function authEnabled(config: AuthConfig): boolean {
-  return Boolean(config.apiKey || (config.operators && config.operators.length > 0) || config.oidc);
+  return Boolean(config.apiKey || (config.operators && config.operators.length > 0) || config.oidc || (config.cert && config.cert.rules.length > 0));
 }
 
 function constantTimeEquals(a: string, b: string): boolean {
@@ -275,6 +312,9 @@ export function resolvePrincipal(presented: string | undefined, config: AuthConf
   }
 
   if (config.apiKey && constantTimeEquals(presented, config.apiKey)) {
+    if (config.requireStrongAuth) {
+      return { status: "rejected", reason: "static admin api key is disabled (requireStrongAuth); use a token, OIDC, or mTLS" };
+    }
     return { status: "authenticated", principal: { subject: "api-key", role: "admin", auth: "api-key" } };
   }
 
@@ -292,6 +332,41 @@ export function resolvePrincipal(presented: string | undefined, config: AuthConf
   }
 
   return { status: "rejected", reason: "unrecognized credential" };
+}
+
+/** Extract the CN value from a DN subject string. */
+export function certCommonName(subject: string): string | undefined {
+  const match = /(?:^|,)\s*CN=([^,]+)/i.exec(subject);
+  return match ? match[1].trim() : undefined;
+}
+
+/**
+ * Resolve a presented client certificate (mTLS / PIV / CAC) to a Principal. The cert
+ * is supplied by the TLS terminator (ingress/mesh did mTLS and forwarded the verified
+ * peer cert, or the boundary terminated TLS itself). Rules map CN / SAN / fingerprint
+ * to a role + attributed identity; an unverified or unpinned cert is rejected.
+ */
+export function resolvePrincipalFromCert(cert: ClientCertificate | undefined, config: CertAuthConfig): AuthOutcome {
+  if (!cert) return { status: "anonymous" };
+  if ((config.requireVerified ?? true) && !cert.verified) {
+    return { status: "rejected", reason: "client certificate chain was not verified" };
+  }
+  if (config.trustedFingerprints && (!cert.fingerprint || !config.trustedFingerprints.includes(cert.fingerprint))) {
+    return { status: "rejected", reason: "client certificate fingerprint is not trusted" };
+  }
+  const cn = certCommonName(cert.subject);
+  for (const rule of config.rules) {
+    if (rule.cn !== undefined && rule.cn !== cn) continue;
+    if (rule.fingerprint !== undefined && rule.fingerprint !== cert.fingerprint) continue;
+    if (rule.sanRegex !== undefined) {
+      let re: RegExp;
+      try { re = new RegExp(rule.sanRegex); } catch { continue; }
+      if (!(cert.sans ?? []).some((san) => re.test(san))) continue;
+    }
+    const subject = rule.subject ?? cn ?? cert.sans?.[0] ?? cert.subject;
+    return { status: "authenticated", principal: { subject, role: rule.role, auth: "mtls", key_id: cert.fingerprint } };
+  }
+  return { status: "forbidden", reason: "client certificate matched no role rule", subject: cn ?? cert.subject };
 }
 
 // ---------------------------------------------------------------------------

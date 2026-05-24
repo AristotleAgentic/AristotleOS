@@ -126,6 +126,42 @@ synchronous — it never blocks on a network call.
 - `iss` must match; `aud` is enforced when configured; `exp`/`nbf` are checked with
   `clockSkewSec` tolerance.
 
+### 4. mTLS / PIV / CAC client certificates
+
+For environments that authenticate with client certificates (DoD PKI, PIV/CAC,
+SPIFFE), map a verified peer certificate to a role with `resolvePrincipalFromCert`.
+The cert comes from the TLS terminator (an ingress/mesh that did mTLS and forwarded
+the verified peer cert, or a TLS-terminating boundary):
+
+```ts
+const outcome = resolvePrincipalFromCert(clientCert, {
+  rules: [
+    { sanRegex: "@army\\.mil$", role: "operator" },           // PIV UPN domain → operator
+    { cn: "DOE.JANE.A.1234567890", role: "admin" }            // a specific identity → admin
+  ],
+  requireVerified: true,                                       // reject unverified chains (default)
+  trustedFingerprints: ["<sha256-hex>"]                        // optional pinning
+});
+// outcome.principal.auth === "mtls"; subject defaults to the cert CN; key_id is the fingerprint
+```
+
+Rules match on CN, a SAN regex, and/or an exact fingerprint; an unverified or
+unpinned cert is rejected, and a cert matching no rule is **forbidden** (a valid cert
+alone does not grant access). The attributed identity is written to the signed GEL
+like any other principal.
+
+#### Disable the standing admin key in production
+
+The legacy `apiKey` is a single high-value static credential. Set
+`requireStrongAuth: true` and it is **refused** — forcing token, OIDC, or mTLS:
+
+```jsonc
+{ "apiKey": "<break-glass-only>", "requireStrongAuth": true }  // api-key path now rejected
+```
+
+Keep a break-glass admin credential in a secrets manager, but prefer short-lived
+OIDC/mTLS sessions for routine admin.
+
 ## Operator actions (admin only)
 
 These turn the previously file-only kill switch and revocation into
