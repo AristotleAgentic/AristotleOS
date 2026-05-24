@@ -1,0 +1,23 @@
+{
+  "registry_version": "2026-05-24.1",
+  "agents": [
+    {
+      "agent_id": "payments-remediation",
+      "subject": "agent:payments-remediation",
+      "ward_id": "enterprise-autonomy-ward",
+      "owner": "finance-automation",
+      "approved_tools": ["stripe.refunds.write", "crm.customer.update"],
+      "credential_refs": ["spiffe://enterprise/payments/remediation"],
+      "status": "approved"
+    },
+    {
+      "agent_id": "k8s-release-planner",
+      "subject": "agent:k8s-release-planner",
+      "ward_id": "enterprise-autonomy-ward",
+      "owner": "platform",
+      "approved_tools": ["kubernetes.plan", "incident.ticket.create"],
+      "credential_refs": ["spiffe://enterprise/platform/release-planner"],
+      "status": "shadow"
+    }
+  ]
+}

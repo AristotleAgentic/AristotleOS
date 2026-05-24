@@ -188,6 +188,57 @@ test("cli keys generate mints an Ed25519 warrant signing keypair", async () => {
   }
 });
 
+test("cli ward-marshal scans and governs an interdiction", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    const examples = path.resolve(process.cwd(), "examples", "ward_marshal");
+    cpSync(examples, path.join(dir, "ward_marshal"), { recursive: true });
+    const scan = await capture([
+      "ward-marshal",
+      "scan",
+      "--observations",
+      "ward_marshal/observations.enterprise.json",
+      "--registry",
+      "ward_marshal/agent-registry.json",
+      "--out",
+      ".tmp/ward-marshal-report.json",
+      "--now",
+      "2026-05-24T12:00:00.000Z"
+    ], dir);
+    assert.equal(scan.code, 2, scan.stderr);
+    assert.match(scan.stdout, /Ward Marshal census/);
+    assert.match(scan.stdout, /ROGUE/);
+    assert.equal(existsSync(path.join(dir, ".tmp", "ward-marshal-report.json")), true);
+
+    const interdict = await capture([
+      "ward-marshal",
+      "interdict",
+      "--report",
+      ".tmp/ward-marshal-report.json",
+      "--ward",
+      "ward_marshal/ward.enterprise_autonomy.yaml",
+      "--envelope",
+      "ward_marshal/authority_envelope.ward_marshal.yaml",
+      "--ledger",
+      ".tmp/ward-marshal.gel.jsonl",
+      "--kind",
+      "revoke_credentials",
+      "--operator-ticket",
+      "SEC-1042",
+      "--interdiction-authority",
+      "soc-commander",
+      "--now",
+      "2026-05-24T12:05:00.000Z"
+    ], dir);
+    assert.equal(interdict.code, 0, interdict.stderr);
+    assert.match(interdict.stdout, /decision=ALLOW/);
+    assert.match(interdict.stdout, /warrant_id=wrn-/);
+    assert.match(interdict.stdout, /ledger_verification=ok/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("cli plan and demo produce real governance output", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
   try {

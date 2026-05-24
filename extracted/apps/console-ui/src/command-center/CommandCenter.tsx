@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Construction,
+  Crosshair,
   FlaskConical,
   Gauge,
   GitBranch,
@@ -34,6 +35,7 @@ import { ReplayTimeMachine } from "./ReplayTimeMachine.js";
 import { SimulationPanel } from "./SimulationPanel.js";
 import { ShadowModeConsole } from "./ShadowModeConsole.js";
 import { WardBrowser } from "./WardBrowser.js";
+import { WardMarshalConsole } from "./WardMarshalConsole.js";
 import { WarrantLifecycle } from "./WarrantLifecycle.js";
 import { Drawer, SectionErrorBoundary, cx } from "./primitives.js";
 import { useCommandStore, type SectionId } from "./store.js";
@@ -45,6 +47,7 @@ const NAV: Array<{ id: SectionId; label: string; icon: LucideIcon }> = [
   { id: "conflicts", label: "Conflicts", icon: Workflow },
   { id: "adoption", label: "Adopt", icon: ClipboardCheck },
   { id: "failure", label: "Failure", icon: ShieldAlert },
+  { id: "marshal", label: "Marshal", icon: Crosshair },
   { id: "mesh", label: "Mesh", icon: Network },
   { id: "commit", label: "Commits", icon: GitCommitHorizontal },
   { id: "warrants", label: "Warrants", icon: GitBranch },
@@ -62,6 +65,7 @@ const SECTION_META: Record<SectionId, { title: string; sub: string }> = {
   conflicts: { title: "Edge Conflict Inbox", sub: "Resolve disconnected edge reality against central governance" },
   adoption: { title: "Commercial Adoption Path", sub: "From sandbox to shadow to enforcement to evidence export" },
   failure: { title: "Failure Mode Console", sub: "Partitions, stale authority, witness disagreement, and replay divergence" },
+  marshal: { title: "Ward Marshal", sub: "Rogue-agent census and warrant-backed interdiction" },
   mesh: { title: "Governance Mesh", sub: "Distributed runtime enforcement fabric" },
   commit: { title: "Commit Gate Console", sub: "Authority is decided before action becomes consequence" },
   warrants: { title: "Warrant Lifecycle", sub: "Request → authority → invariants → gate → warrant → evidence" },
@@ -95,6 +99,8 @@ function SectionBody({ section }: { section: SectionId }) {
       return <AdoptionPathConsole />;
     case "failure":
       return <FailureModeConsole />;
+    case "marshal":
+      return <WardMarshalConsole />;
     case "mesh":
       return <div style={{ minHeight: 560 }}><MeshView /></div>;
     case "commit":

@@ -26,6 +26,7 @@ export type SectionId =
   | "conflicts"
   | "adoption"
   | "failure"
+  | "marshal"
   | "mesh"
   | "commit"
   | "warrants"

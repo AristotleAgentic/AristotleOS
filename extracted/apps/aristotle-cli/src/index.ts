@@ -20,6 +20,11 @@ import {
   type SandboxExecutionReceipt,
   type SandboxPolicy,
   type ShadowAction,
+  type AgentObservation,
+  type AgentRegistry,
+  type WardMarshalInterdictionKind,
+  buildWardMarshalInterdictionAction,
+  explainWardMarshalFinding,
   compileGovernanceManifest,
   ContainerSandboxProvider,
   createEd25519Signer,
@@ -41,6 +46,7 @@ import {
   type SandboxProvider,
   profileShadowMode,
   reconcileEdgeRecords,
+  runWardMarshalCensus,
   loadEvidenceBundle,
   loadAuthorityEnvelope,
   loadCanonicalAction,
@@ -458,6 +464,9 @@ Commands:
   governance diff                 Diff two policies; flags changes that weaken authority
   governance explain              Show what a policy permits/refuses/escalates for sample actions
   reconcile                       Reconcile disconnected-edge decisions against current policy
+  ward-marshal scan               Discover, inventory, and risk-score autonomous agents
+  ward-marshal interdict          Submit a warrant-backed containment action to the Commit Gate
+  ward-marshal demo               Run the sample census and governed interdiction path
   execution-control dev           Start the sample execution-control runtime on localhost
   execution-control serve         Run the AristotleOS execution boundary
   execution-control submit        Submit an action JSON file to the execution boundary
@@ -1120,6 +1129,114 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
         for (const s of explanation.samples) out(`  ${s.decision.padEnd(8)} ${s.action_type} — ${s.reason_codes.join(", ")}\n`);
       }
       return 0;
+    }
+
+    if (command === "ward-marshal" && subcommand === "scan") {
+      const observations = JSON.parse(readFileSync(path.resolve(cwd, requiredOption(rest, "--observations")), "utf8")) as AgentObservation[];
+      const registryPath = optionValue(rest, "--registry");
+      const registry = registryPath ? JSON.parse(readFileSync(path.resolve(cwd, registryPath), "utf8")) as AgentRegistry : undefined;
+      const report = runWardMarshalCensus({ observations, registry, generatedAt: optionValue(rest, "--now") });
+      const outPath = optionValue(rest, "--out");
+      if (outPath) writeJson(path.resolve(cwd, outPath), report);
+      if (json) {
+        printJson(out, report, true);
+      } else {
+        out(`Ward Marshal census — ${report.summary.observed} agent surface(s)\n`);
+        out(`governed=${report.summary.governed} shadow=${report.summary.shadow} rogue=${report.summary.rogue} orphaned=${report.summary.orphaned} high_or_critical=${report.summary.high_or_critical}\n`);
+        for (const finding of report.findings) {
+          out(`  ${finding.status.toUpperCase().padEnd(9)} ${finding.subject} risk=${finding.risk_band}/${finding.risk_score} disposition=${finding.recommended_disposition}\n`);
+          out(`    ${explainWardMarshalFinding(finding)}\n`);
+        }
+        out(`report_hash=${report.report_hash}${outPath ? `\nwritten → ${outPath}` : ""}\n`);
+      }
+      return report.summary.rogue || report.summary.orphaned ? 2 : 0;
+    }
+
+    if (command === "ward-marshal" && subcommand === "interdict") {
+      const reportPath = optionValue(rest, "--report");
+      const observationsPath = optionValue(rest, "--observations");
+      const registryPath = optionValue(rest, "--registry");
+      const report = reportPath
+        ? JSON.parse(readFileSync(path.resolve(cwd, reportPath), "utf8")) as ReturnType<typeof runWardMarshalCensus>
+        : runWardMarshalCensus({
+            observations: JSON.parse(readFileSync(path.resolve(cwd, observationsPath ?? "examples/ward_marshal/observations.enterprise.json"), "utf8")) as AgentObservation[],
+            registry: registryPath ? JSON.parse(readFileSync(path.resolve(cwd, registryPath), "utf8")) as AgentRegistry : undefined,
+            generatedAt: optionValue(rest, "--now")
+          });
+      const findingId = optionValue(rest, "--finding-id");
+      const finding = findingId
+        ? report.findings.find((item) => item.finding_id === findingId)
+        : report.findings.find((item) => item.status === "rogue" && (item.risk_band === "critical" || item.risk_band === "high"))
+          ?? report.findings.find((item) => item.status === "orphaned")
+          ?? report.findings.find((item) => item.status === "rogue");
+      if (!finding) throw new Error("no Ward Marshal finding selected. Pass --finding-id or scan observations with rogue/orphaned agents.");
+      const kind = (optionValue(rest, "--kind") ?? finding.recommended_disposition) as WardMarshalInterdictionKind;
+      if (!["quarantine", "revoke_credentials", "disable_tool_access", "scale_to_zero", "terminate_execution"].includes(kind)) {
+        throw new Error("--kind must be quarantine|revoke_credentials|disable_tool_access|scale_to_zero|terminate_execution");
+      }
+      const ward = loadWardManifest(path.resolve(cwd, optionValue(rest, "--ward") ?? "examples/ward_marshal/ward.enterprise_autonomy.yaml"));
+      const authorityEnvelope = loadAuthorityEnvelope(path.resolve(cwd, optionValue(rest, "--envelope") ?? "examples/ward_marshal/authority_envelope.ward_marshal.yaml"));
+      const ledgerPath = path.resolve(cwd, optionValue(rest, "--ledger") ?? ".tmp/ward-marshal.gel.jsonl");
+      const action = buildWardMarshalInterdictionAction({
+        finding: { ...finding, ward_id: finding.ward_id ?? ward.ward_id },
+        kind,
+        requestedBy: optionValue(rest, "--requested-by") ?? authorityEnvelope.subject,
+        requestedAt: optionValue(rest, "--now") ?? new Date().toISOString(),
+        reason: optionValue(rest, "--reason") ?? `Ward Marshal ${kind} for ${finding.subject}`,
+        target: optionValue(rest, "--target")
+      });
+      const registers: Record<string, string> = {};
+      const operatorTicket = optionValue(rest, "--operator-ticket");
+      const interdictionAuthority = optionValue(rest, "--interdiction-authority");
+      if (operatorTicket) registers.operator_ticket = operatorTicket;
+      if (interdictionAuthority) registers.interdiction_authority = interdictionAuthority;
+      const result = evaluateExecutionControl({
+        ward,
+        authorityEnvelope,
+        action,
+        runtimeRegister: {
+          policy_version: ward.policy_version,
+          registers
+        },
+        ledgerPath,
+        now: optionValue(rest, "--now"),
+        signer: resolveSigner(rest, cwd, err),
+        replayProtection: !rest.includes("--no-replay-protection")
+      });
+      if (json) {
+        printJson(out, { finding, action, result }, true);
+      } else {
+        out(`Ward Marshal interdiction — ${kind}\n`);
+        out(`target=${finding.subject} finding=${finding.finding_id} risk=${finding.risk_band}/${finding.risk_score}\n`);
+        out(`decision=${result.decision}\nreason_codes=${result.reason_codes.join(",")}\nwarrant_id=${result.warrant?.warrant_id ?? "none"}\ngel_record_hash=${result.gel_record.record_hash}\nledger_verification=${result.ledger_verification.ok ? "ok" : `failed:${result.ledger_verification.failure}`}\n`);
+      }
+      return result.decision === "ALLOW" && result.ledger_verification.ok ? 0 : result.decision === "ESCALATE" ? 2 : 1;
+    }
+
+    if (command === "ward-marshal" && subcommand === "demo") {
+      const demoArgs = [
+        "ward-marshal",
+        "interdict",
+        "--observations",
+        "examples/ward_marshal/observations.enterprise.json",
+        "--registry",
+        "examples/ward_marshal/agent-registry.json",
+        "--ward",
+        "examples/ward_marshal/ward.enterprise_autonomy.yaml",
+        "--envelope",
+        "examples/ward_marshal/authority_envelope.ward_marshal.yaml",
+        "--ledger",
+        ".tmp/ward-marshal.gel.jsonl",
+        "--kind",
+        optionValue(rest, "--kind") ?? "revoke_credentials",
+        "--operator-ticket",
+        optionValue(rest, "--operator-ticket") ?? "SEC-DEMO-001",
+        "--interdiction-authority",
+        optionValue(rest, "--interdiction-authority") ?? "soc-commander",
+        "--now",
+        optionValue(rest, "--now") ?? "2026-05-24T12:05:00.000Z"
+      ];
+      return runCli(demoArgs, cwd, out, err);
     }
 
     if (command === "reconcile") {

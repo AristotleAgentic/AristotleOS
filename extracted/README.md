@@ -36,6 +36,7 @@ aristotle mcp                         # JSON-RPC over stdio
 Docs:
 - [Getting started](docs/getting-started.md)
 - [Execution-control runtime](docs/execution-control-runtime.md)
+- [Ward Marshal](docs/ward-marshal.md)
 - [Commercial adoption path](docs/commercial-adoption-path.md)
 - [Architecture](docs/architecture.md)
 - [Deployment runbook](docs/deployment-runbook.md)
@@ -77,6 +78,26 @@ npm run enterprise:adoption-path
 ```
 
 The adoption doctrine is simple: authority before consequence, warrant before execution, evidence after every decision.
+
+## Ward Marshal
+
+Ward Marshal adds rogue-agent discovery and warrant-backed interdiction to AristotleOS. It builds a deterministic Agent Census from observed runtime signals, risk-scores undeclared autonomous execution, and routes quarantine, credential revocation, tool disablement, scale-down, or termination through the same Ward, Authority Envelope, Commit Gate, Warrant, and GEL path as any other consequential action.
+
+Run the sample:
+
+```bash
+npm run ward-marshal:demo
+```
+
+Or inspect the inventory first:
+
+```bash
+npm run aristotle -- ward-marshal scan \
+  --observations examples/ward_marshal/observations.enterprise.json \
+  --registry examples/ward_marshal/agent-registry.json
+```
+
+Even containment is governed: authority before consequence, warrant before execution, evidence after every intervention. See [docs/ward-marshal.md](docs/ward-marshal.md).
 
 ## Ward/Warrant Execution-Control Path
 

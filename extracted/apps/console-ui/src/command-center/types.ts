@@ -314,3 +314,20 @@ export interface ConflictInboxItem {
   occurredAt: string;
   operatorNextStep: string;
 }
+
+export interface WardMarshalFinding {
+  id: string;
+  subject: string;
+  wardId: string;
+  status: "governed" | "shadow" | "rogue" | "orphaned" | "contained";
+  riskScore: number;
+  riskBand: "low" | "medium" | "high" | "critical";
+  owner: string;
+  observedLocations: string[];
+  observedTools: string[];
+  credentialRefs: string[];
+  signals: Array<{ code: string; weight: number; detail: string }>;
+  recommendedDisposition: "bind_to_ward" | "shadow_profile" | "request_authority_review" | "quarantine" | "revoke_credentials" | "terminate_execution";
+  evidenceHash: string;
+  lastSeen: string;
+}

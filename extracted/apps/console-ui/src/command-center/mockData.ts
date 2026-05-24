@@ -21,6 +21,7 @@ import type {
   RuntimeSlo,
   ShadowProfileSummary,
   ToolGatewayAdapter,
+  WardMarshalFinding,
   Ward,
   WarrantStep
 } from "./types.js";
@@ -83,6 +84,88 @@ export const AGENTS: Agent[] = [
   { id: "agent:grid-balancer", callsign: "GRID-BAL-1", ward: "ward-grid", domain: "dom-grid-switch", kind: "infra", state: "degraded", authorityHeld: "ae-switch-22", lastAction: "breaker.close" },
   { id: "agent:ir-bot", callsign: "IR-SENTRY", ward: "ward-cyber", domain: "dom-cyber-contain", kind: "cyber", state: "revoked", authorityHeld: "ae-contain-09", lastAction: "host.isolate" },
   { id: "agent:robotics-2", callsign: "ARM-2", ward: "ward-grid", domain: "dom-grid-load", kind: "robotics", state: "active", authorityHeld: "—", lastAction: "load.shed" }
+];
+
+export const WARD_MARSHAL_FINDINGS: WardMarshalFinding[] = [
+  {
+    id: "wmf-shadow-refund",
+    subject: "agent:shadow-refund-runner",
+    wardId: "ward-payments",
+    status: "rogue",
+    riskScore: 95,
+    riskBand: "critical",
+    owner: "unknown",
+    observedLocations: ["workstation/finance-17/process/4421"],
+    observedTools: ["stripe.refunds.write", "crm.customer.update", "secrets.vault.read"],
+    credentialRefs: ["oauth:finance-user", "vault:stripe-prod"],
+    signals: [
+      { code: "UNREGISTERED_AGENT", weight: 30, detail: "No approved registry entry exists for this subject." },
+      { code: "CREDENTIAL_ACCESS", weight: 20, detail: "Production payment credentials observed." },
+      { code: "CONSEQUENTIAL_TOOL_ACCESS", weight: 20, detail: "The tool surface can mutate money and customer records." },
+      { code: "UNKNOWN_OWNER", weight: 10, detail: "No accountable owner is declared." }
+    ],
+    recommendedDisposition: "revoke_credentials",
+    evidenceHash: shortHash("wmf-shadow-refund", 24),
+    lastSeen: new Date(Date.now() - 4 * 60_000).toISOString()
+  },
+  {
+    id: "wmf-prod-shell",
+    subject: "agent:unclaimed:prod-shell",
+    wardId: "ward-cyber",
+    status: "rogue",
+    riskScore: 100,
+    riskBand: "critical",
+    owner: "unknown",
+    observedLocations: ["mcp/server/prod-shell"],
+    observedTools: ["shell.exec", "kubectl.production.deploy", "firewall.rules.write"],
+    credentialRefs: ["kubeconfig:prod-admin"],
+    signals: [
+      { code: "PRIVILEGED_IDENTITY", weight: 20, detail: "Privileged service account observed." },
+      { code: "SENSITIVE_TARGET", weight: 15, detail: "Production infrastructure target detected." },
+      { code: "CONSEQUENTIAL_TOOL_ACCESS", weight: 20, detail: "Can mutate cluster and network state." },
+      { code: "UNREGISTERED_AGENT", weight: 30, detail: "No approved registry entry exists." }
+    ],
+    recommendedDisposition: "terminate_execution",
+    evidenceHash: shortHash("wmf-prod-shell", 24),
+    lastSeen: new Date(Date.now() - 90_000).toISOString()
+  },
+  {
+    id: "wmf-release-planner",
+    subject: "agent:k8s-release-planner",
+    wardId: "ward-cyber",
+    status: "shadow",
+    riskScore: 35,
+    riskBand: "medium",
+    owner: "platform",
+    observedLocations: ["cluster/staging/ns/release/deploy/planner"],
+    observedTools: ["kubernetes.plan", "incident.ticket.create"],
+    credentialRefs: ["spiffe://enterprise/platform/release-planner"],
+    signals: [
+      { code: "LLM_EGRESS", weight: 10, detail: "Approved model endpoint observed under shadow rollout." },
+      { code: "AGENT_RUNTIME_SIGNATURE", weight: 10, detail: "Autonomous planning runtime observed." }
+    ],
+    recommendedDisposition: "shadow_profile",
+    evidenceHash: shortHash("wmf-release-planner", 24),
+    lastSeen: new Date(Date.now() - 11 * 60_000).toISOString()
+  },
+  {
+    id: "wmf-payments-approved",
+    subject: "agent:payments-remediation",
+    wardId: "ward-payments",
+    status: "governed",
+    riskScore: 20,
+    riskBand: "low",
+    owner: "finance-automation",
+    observedLocations: ["cluster/prod/ns/payments/deploy/remediation-agent"],
+    observedTools: ["stripe.refunds.write", "crm.customer.update"],
+    credentialRefs: ["spiffe://enterprise/payments/remediation"],
+    signals: [
+      { code: "LLM_EGRESS", weight: 10, detail: "Approved model endpoint observed under Authority Envelope." }
+    ],
+    recommendedDisposition: "shadow_profile",
+    evidenceHash: shortHash("wmf-payments-approved", 24),
+    lastSeen: new Date(Date.now() - 40_000).toISOString()
+  }
 ];
 
 const registersFor = (gps = true): RuntimeRegister[] => [

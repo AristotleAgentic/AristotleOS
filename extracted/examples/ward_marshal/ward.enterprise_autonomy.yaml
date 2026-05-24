@@ -1,0 +1,10 @@
+ward_id: enterprise-autonomy-ward
+name: Enterprise Autonomous Execution Ward
+sovereignty_context: regulated-enterprise
+authority_domain: rogue-agent-control
+policy_version: 0.3.0
+permitted_subjects:
+  - agent:ward-marshal
+metadata:
+  owner: security-operations
+  purpose: discover and contain unauthorized autonomous execution
