@@ -41,18 +41,23 @@ ESCALATE, and replay. Run them with `npm run test:adapters`.
 
 ## Worked examples
 
-| Framework | File | Notes |
-|-----------|------|-------|
-| OpenAI Agents SDK / function calling | `openai-tool-call.ts` | uses the harness (ALLOW → Warrant → GEL) |
-| MCP (`tools/call`) | `mcp-tool-call.ts` | uses the harness; returns an MCP-style result |
-| Anthropic tool use | `anthropic-tool-use.ts` | |
-| LangChain / LangGraph tool | `langchain-tool.ts` | |
-| AutoGen / CrewAI pre-tool hook | `autogen-agent.ts` | |
-| Plain HTTP API mutation | `http-api-action.ts` | |
-| Kubernetes deployment action | `kubernetes-deploy-action.ts` | |
-| Drone / robotics action | `drone-robotics-action.ts` | |
+All examples run through the harness (real Commit Gate → ALLOW → Warrant → GEL);
+shared Ward/Authority fixtures live in `_fixtures.ts`.
 
-Run any example with `npx tsx examples/framework-adapters/<file>`.
+| Framework | File | Shows |
+|-----------|------|-------|
+| OpenAI Agents SDK / function calling | `openai-tool-call.ts` | ALLOW → Warrant → GEL |
+| MCP (`tools/call`) | `mcp-tool-call.ts` | returns an MCP-style result |
+| Anthropic tool use | `anthropic-tool-use.ts` | `tool_use` block → governed |
+| LangChain / LangGraph tool | `langchain-tool.ts` | exported governed tool, branchable outcome |
+| AutoGen / CrewAI pre-tool hook | `autogen-agent.ts` | pre-execution gate (`proceed` + Warrant) |
+| Plain HTTP API mutation | `http-api-action.ts` | POST allowed / DELETE denied |
+| Kubernetes deployment action | `kubernetes-deploy-action.ts` | `apply` allowed / namespace delete denied |
+| Drone / robotics action | `drone-robotics-action.ts` | Physical Invariants (out-of-bounds → REFUSE) |
+
+Run any example with `npx tsx examples/framework-adapters/<file>`. Tests
+(`npm run test:adapters`) cover ALLOW, REFUSE (constraint, denied action, physical
+invariant), ESCALATE, and replay through the shared harness.
 
 ## Where AristotleOS sits
 

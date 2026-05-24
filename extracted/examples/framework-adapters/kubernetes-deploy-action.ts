@@ -1,6 +1,25 @@
-import { evaluateTrialAction, PAYMENTS_GOVERNANCE_SOURCE, TRIAL_SCENARIOS } from "@aristotle/trial-engine";
+// Kubernetes deploy action adapter.
+//
+// `kubectl apply` is a consequential, often-irreversible action. Here it runs only
+// on ALLOW + verified Warrant; a destructive namespace delete is denied at the gate.
+// Run: npx tsx examples/framework-adapters/kubernetes-deploy-action.ts
+import { governToolCall, type ToolCall } from "./govern.js";
+import { k8sBinding } from "./_fixtures.js";
 
-const scenario = TRIAL_SCENARIOS.find((item) => item.id === "kubernetes-production-deploy") ?? TRIAL_SCENARIOS[0];
-const decision = evaluateTrialAction({ source: PAYMENTS_GOVERNANCE_SOURCE, intent: scenario.intent });
+void (async () => {
+  const apply: ToolCall = {
+    name: "k8s.apply", callId: "deploy-1",
+    arguments: { resource: "deployment/web", manifest: "apps/web/deployment.yaml" }
+  };
+  const outcome = await governToolCall(apply, k8sBinding, ({ warrant }) => ({ applied: "deployment/web", under_warrant: warrant.warrant_id }));
+  if (outcome.status === "executed") {
+    console.log(`ALLOW — kubectl apply ran under warrant ${outcome.warrant.warrant_id} (GEL ${outcome.record.record_id})`);
+  } else {
+    console.log(`${outcome.decision} — apply withheld`, "reason_codes" in outcome ? outcome.reason_codes : outcome.reason);
+  }
 
-console.log("kubectl apply only after PERMIT", decision.decision, decision.gelRecord.recordId);
+  // A destructive action the envelope denies.
+  const destroy: ToolCall = { name: "k8s.delete_namespace", callId: "destroy-1", arguments: { resource: "namespace/prod" } };
+  const blocked = await governToolCall(destroy, k8sBinding, () => "should not run");
+  console.log(`${blocked.decision} — namespace delete`, "reason_codes" in blocked ? blocked.reason_codes : "");
+})();

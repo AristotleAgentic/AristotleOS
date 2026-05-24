@@ -8,6 +8,7 @@ import {
   createEd25519Signer
 } from "@aristotle/execution-control-runtime";
 import { governToolCall, type GovernedToolBinding, type ToolCall } from "./govern.js";
+import { droneBinding } from "./_fixtures.js";
 
 function testSigner() {
   const { privateKey, publicKey } = generateKeyPairSync("ed25519");
@@ -125,4 +126,23 @@ test("adapter replay: an identical approved call is refused the second time (sin
   assert.equal(second.status, "refused");
   assert.equal(executions, 1);
   if (second.status === "refused") assert.deepEqual(second.reason_codes, ["REPLAY_DETECTED"]);
+});
+
+test("adapter physical invariants: an out-of-bounds robotics command is refused", async () => {
+  let fired = false;
+  const refused = await governToolCall(
+    { name: "drone.takeoff", arguments: { unit: "u7", altitude_m: 400, boundary_id: "zone-a", battery_pct: 90 }, callId: "phys-bad" },
+    droneBinding,
+    () => { fired = true; return {}; }
+  );
+  assert.equal(refused.status, "refused");
+  assert.equal(fired, false);
+  if (refused.status === "refused") assert.deepEqual(refused.reason_codes, ["PHYSICAL_INVARIANT_FAILED"]);
+
+  const ok = await governToolCall(
+    { name: "drone.takeoff", arguments: { unit: "u7", altitude_m: 80, boundary_id: "zone-a", battery_pct: 90 }, callId: "phys-ok" },
+    droneBinding,
+    () => "actuator fired"
+  );
+  assert.equal(ok.status, "executed");
 });
