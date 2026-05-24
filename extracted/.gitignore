@@ -6,3 +6,5 @@ coverage
 secrets/
 services/*/data/
 backups/
+.aristotle/
+.tmp/

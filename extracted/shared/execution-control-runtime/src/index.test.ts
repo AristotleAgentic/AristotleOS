@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { generateKeyPairSync } from "node:crypto";
+import { createHmac, generateKeyPairSync, sign as cryptoSign, type KeyObject } from "node:crypto";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -40,7 +40,13 @@ import {
   verifyEvidenceBundle,
   verifyGelChain,
   verifyGelRecords,
-  verifyWarrant
+  verifyWarrant,
+  type OidcConfig,
+  type OperatorCredential,
+  maxRole,
+  resolvePrincipal,
+  roleSatisfies,
+  verifyJwt
 } from "./index.js";
 
 function testSigner() {
@@ -886,5 +892,236 @@ test("proxy refuses a denied action and never forwards", async () => {
     assert.equal(called, false);
   } finally {
     await new Promise<void>((resolve, reject) => downstream.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Operator RBAC + OIDC attribution
+// ---------------------------------------------------------------------------
+
+function b64url(input: Buffer | string): string {
+  return Buffer.from(input).toString("base64url");
+}
+
+function makeJwt(header: Record<string, unknown>, payload: Record<string, unknown>, sign: (data: Buffer) => Buffer): string {
+  const signingInput = `${b64url(JSON.stringify(header))}.${b64url(JSON.stringify(payload))}`;
+  return `${signingInput}.${b64url(sign(Buffer.from(signingInput, "ascii")))}`;
+}
+
+function rsaKeypair() {
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  return { privateKey, publicKeyPem: publicKey.export({ type: "spki", format: "pem" }).toString() };
+}
+function ecKeypair() {
+  const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
+  return { privateKey, publicKeyPem: publicKey.export({ type: "spki", format: "pem" }).toString() };
+}
+function edKeypair() {
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  return { privateKey, publicKeyPem: publicKey.export({ type: "spki", format: "pem" }).toString() };
+}
+const signRs256 = (key: KeyObject) => (data: Buffer) => cryptoSign("sha256", data, key);
+const signEs256 = (key: KeyObject) => (data: Buffer) => cryptoSign("sha256", data, { key, dsaEncoding: "ieee-p1363" });
+const signEdDsa = (key: KeyObject) => (data: Buffer) => cryptoSign(null, data, key);
+
+const operators: OperatorCredential[] = [
+  { token: "tok-viewer", role: "viewer", subject: "obs@corp", label: "viewer-key" },
+  { token: "tok-operator", role: "operator", subject: "alice@corp", label: "operator-key" },
+  { token: "tok-admin", role: "admin", subject: "root@corp", label: "admin-key" }
+];
+
+function serverBase(server: ReturnType<typeof createExecutionControlRuntimeServer>["server"]): string {
+  const address = server.address();
+  return `http://127.0.0.1:${address && typeof address === "object" ? address.port : 0}`;
+}
+
+test("role hierarchy and static-token principal resolution", () => {
+  assert.equal(roleSatisfies("admin", "operator"), true);
+  assert.equal(roleSatisfies("operator", "admin"), false);
+  assert.equal(roleSatisfies("viewer", "viewer"), true);
+  assert.equal(maxRole(["viewer", "admin", "operator"]), "admin");
+  assert.equal(maxRole([]), undefined);
+
+  const config = { operators };
+  assert.equal(resolvePrincipal(undefined, config).status, "anonymous");
+  assert.equal(resolvePrincipal("nope", config).status, "rejected");
+  const ok = resolvePrincipal("tok-operator", config);
+  assert.equal(ok.status, "authenticated");
+  if (ok.status === "authenticated") {
+    assert.equal(ok.principal.subject, "alice@corp");
+    assert.equal(ok.principal.role, "operator");
+    assert.equal(ok.principal.auth, "token");
+    assert.equal(ok.principal.key_id, "operator-key");
+  }
+});
+
+test("RBAC: viewer can read but not decide; operator can decide", async () => {
+  const file = ledgerPath();
+  const { server } = createExecutionControlRuntimeServer({ ward, authorityEnvelope: envelope, ledgerPath: file, now, operators });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const base = serverBase(server);
+    const evaluate = (token: string) => fetch(`${base}/v1/execution-control/evaluate`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ action }) });
+
+    assert.equal((await fetch(`${base}/v1/execution-control/context`)).status, 401); // no creds
+    assert.equal((await fetch(`${base}/v1/execution-control/context`, { headers: { authorization: "Bearer tok-viewer" } })).status, 200);
+
+    const viewerDecide = await evaluate("tok-viewer");
+    assert.equal(viewerDecide.status, 403); // viewer cannot evaluate
+    assert.equal((await viewerDecide.json()).required, "operator");
+
+    const operatorDecide = await evaluate("tok-operator");
+    assert.equal(operatorDecide.status, 200);
+
+    assert.equal((await fetch(`${base}/health`)).status, 200); // health stays open
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test("operator identity is attributed in the GEL and is tamper-evident", async () => {
+  const file = ledgerPath();
+  const { server } = createExecutionControlRuntimeServer({ ward, authorityEnvelope: envelope, ledgerPath: file, now, operators });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const base = serverBase(server);
+    const decided = await fetch(`${base}/v1/execution-control/evaluate`, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer tok-operator" }, body: JSON.stringify({ action }) });
+    assert.equal(decided.status, 200);
+
+    const tail = await fetch(`${base}/v1/execution-control/audit/tail?limit=1`, { headers: { authorization: "Bearer tok-viewer" } }).then((r) => r.json());
+    assert.equal(tail.items[0].actor.subject, "alice@corp");
+    assert.equal(tail.items[0].actor.role, "operator");
+    assert.equal(tail.items[0].actor.auth, "token");
+
+    // The chain verifies as written...
+    assert.equal(verifyGelChain(file).ok, true);
+    // ...but tampering with the attributed actor breaks the signed hash.
+    const lines = readFileSync(file, "utf8").trim().split(/\r?\n/);
+    const last = JSON.parse(lines[lines.length - 1]);
+    last.actor.subject = "mallory@corp";
+    lines[lines.length - 1] = JSON.stringify(last);
+    writeFileSync(file, `${lines.join("\n")}\n`, "utf8");
+    assert.equal(verifyGelChain(file).ok, false);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test("admin-only kill switch and revocation; non-admins are refused", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aos-rbac-admin-"));
+  const file = path.join(dir, "gel.jsonl");
+  const killSwitchPath = path.join(dir, "HALT");
+  const revocationListPath = path.join(dir, "revocations.json");
+  const { server } = createExecutionControlRuntimeServer({ ward, authorityEnvelope: envelope, ledgerPath: file, now, operators, killSwitchPath, revocationListPath, replayProtection: false });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const base = serverBase(server);
+    const evaluate = (token: string) => fetch(`${base}/v1/execution-control/evaluate`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ action }) }).then((r) => r.json());
+    const kill = (token: string, engaged: boolean) => fetch(`${base}/v1/execution-control/admin/kill`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ engaged, reason: "drill" }) });
+
+    // operator cannot engage the kill switch
+    assert.equal((await kill("tok-operator", true)).status, 403);
+    assert.equal((await evaluate("tok-operator")).decision, "ALLOW");
+
+    // admin engages it -> decisions fail closed
+    assert.equal((await kill("tok-admin", true)).status, 200);
+    assert.deepEqual((await evaluate("tok-operator")).reason_codes, ["KILL_SWITCH_ENGAGED"]);
+
+    // admin disengages it -> decisions resume
+    assert.equal((await kill("tok-admin", false)).status, 200);
+    assert.equal((await evaluate("tok-operator")).decision, "ALLOW");
+
+    // admin revokes the envelope -> decisions fail closed
+    const revoked = await fetch(`${base}/v1/execution-control/admin/revoke`, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer tok-admin" }, body: JSON.stringify({ kind: "envelope", id: envelope.envelope_id, reason: "compromised" }) });
+    assert.equal(revoked.status, 200);
+    assert.deepEqual((await evaluate("tok-operator")).reason_codes, ["AUTHORITY_REVOKED"]);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test("verifyJwt accepts RS256/ES256/EdDSA and enforces iss/aud/exp", () => {
+  const nowSec = 1_800_000_000;
+  for (const [alg, kp, sign] of [
+    ["RS256", rsaKeypair(), (k: KeyObject) => signRs256(k)],
+    ["ES256", ecKeypair(), (k: KeyObject) => signEs256(k)],
+    ["EdDSA", edKeypair(), (k: KeyObject) => signEdDsa(k)]
+  ] as const) {
+    const config: OidcConfig = { issuer: "https://idp.corp", audience: "aristotle", keys: [{ publicKeyPem: kp.publicKeyPem, alg }] };
+    const claims = { sub: "u-1", iss: "https://idp.corp", aud: "aristotle", exp: nowSec + 3600, roles: ["operator"] };
+    const token = makeJwt({ alg, typ: "JWT" }, claims, sign(kp.privateKey));
+    const ok = verifyJwt(token, config, nowSec);
+    assert.equal(ok.ok, true, `${alg} should verify`);
+    if (ok.ok) assert.equal(ok.claims.sub, "u-1");
+
+    // expired (beyond the default 60s clock-skew tolerance)
+    const expired = makeJwt({ alg, typ: "JWT" }, { ...claims, exp: nowSec - 3600 }, sign(kp.privateKey));
+    assert.equal(verifyJwt(expired, config, nowSec).ok, false);
+    // wrong issuer
+    const wrongIss = makeJwt({ alg, typ: "JWT" }, { ...claims, iss: "https://evil" }, sign(kp.privateKey));
+    assert.equal(verifyJwt(wrongIss, config, nowSec).ok, false);
+    // wrong audience
+    const wrongAud = makeJwt({ alg, typ: "JWT" }, { ...claims, aud: "someone-else" }, sign(kp.privateKey));
+    assert.equal(verifyJwt(wrongAud, config, nowSec).ok, false);
+    // tampered payload (signature no longer matches)
+    const [h, , s] = token.split(".");
+    const tampered = `${h}.${b64url(JSON.stringify({ ...claims, sub: "attacker" }))}.${s}`;
+    assert.equal(verifyJwt(tampered, config, nowSec).ok, false);
+  }
+});
+
+test("verifyJwt rejects alg:none and HMAC alg-confusion", () => {
+  const nowSec = 1_800_000_000;
+  const kp = rsaKeypair();
+  const config: OidcConfig = { issuer: "https://idp.corp", keys: [{ publicKeyPem: kp.publicKeyPem, alg: "RS256" }] };
+  const claims = { sub: "u-1", iss: "https://idp.corp", exp: nowSec + 3600, roles: ["admin"] };
+
+  // alg:none with empty signature
+  const none = `${b64url(JSON.stringify({ alg: "none", typ: "JWT" }))}.${b64url(JSON.stringify(claims))}.`;
+  const noneResult = verifyJwt(none, config, nowSec);
+  assert.equal(noneResult.ok, false);
+  if (!noneResult.ok) assert.match(noneResult.reason, /disallowed alg/);
+
+  // alg-confusion: HS256 signed with the RSA *public* key as the HMAC secret
+  const hs = makeJwt({ alg: "HS256", typ: "JWT" }, claims, (data) => createHmac("sha256", kp.publicKeyPem).update(data).digest());
+  assert.equal(verifyJwt(hs, config, nowSec).ok, false);
+
+  // unknown kid when multiple keys are configured
+  const multi: OidcConfig = { issuer: "https://idp.corp", keys: [{ kid: "k1", publicKeyPem: kp.publicKeyPem, alg: "RS256" }, { kid: "k2", publicKeyPem: rsaKeypair().publicKeyPem, alg: "RS256" }] };
+  const unknownKid = makeJwt({ alg: "RS256", kid: "k9", typ: "JWT" }, claims, signRs256(kp.privateKey));
+  assert.equal(verifyJwt(unknownKid, multi, nowSec).ok, false);
+});
+
+test("OIDC bearer token authenticates and attributes the sub at the HTTP boundary", async () => {
+  const kp = rsaKeypair();
+  const oidc: OidcConfig = {
+    issuer: "https://idp.corp",
+    audience: "aristotle",
+    keys: [{ kid: "main", publicKeyPem: kp.publicKeyPem, alg: "RS256" }],
+    roleMap: { "ops-engineers": "operator" }
+  };
+  const file = ledgerPath();
+  const { server } = createExecutionControlRuntimeServer({ ward, authorityEnvelope: envelope, ledgerPath: file, now, oidc });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const base = serverBase(server);
+    const claims = { sub: "alice@corp", iss: "https://idp.corp", aud: "aristotle", exp: Math.floor(Date.now() / 1000) + 3600, roles: ["ops-engineers"] };
+    const token = makeJwt({ alg: "RS256", kid: "main", typ: "JWT" }, claims, signRs256(kp.privateKey));
+
+    const decided = await fetch(`${base}/v1/execution-control/evaluate`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ action }) });
+    assert.equal(decided.status, 200);
+
+    const tail = await fetch(`${base}/v1/execution-control/audit/tail?limit=1`, { headers: { authorization: `Bearer ${token}` } }).then((r) => r.json());
+    assert.equal(tail.items[0].actor.subject, "alice@corp");
+    assert.equal(tail.items[0].actor.auth, "oidc");
+    assert.equal(tail.items[0].actor.issuer, "https://idp.corp");
+
+    // a verified token whose role does not map is forbidden (no role)
+    const rolelessClaims = { ...claims, roles: ["interns"] };
+    const rolelessToken = makeJwt({ alg: "RS256", kid: "main", typ: "JWT" }, rolelessClaims, signRs256(kp.privateKey));
+    const forbidden = await fetch(`${base}/v1/execution-control/context`, { headers: { authorization: `Bearer ${rolelessToken}` } });
+    assert.equal(forbidden.status, 403);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });

@@ -37,7 +37,7 @@ onboarding and [../SECURITY.md](../SECURITY.md) for the control summary.
 
 - **A1 Malicious/compromised agent** — tries to act without authority, replay approvals, exfiltrate credentials, or hit internal targets (SSRF).
 - **A2 Network attacker** — intercepts/replays HTTP, forges requests, induces partition.
-- **A3 Insider/operator misuse** — issues dangerous operator actions; mitigated by confirmation + ledger attribution (not by access control yet — see residual risk).
+- **A3 Insider/operator misuse** — issues dangerous operator actions; mitigated by role-based access control (viewer/operator/admin), authenticated identity attribution in the signed ledger, and fail-closed operator actions.
 - **A4 Supply-chain attacker** — malicious dependency or build tampering.
 - **A5 Storage attacker** — tampers with the ledger at rest.
 
@@ -57,17 +57,21 @@ onboarding and [../SECURITY.md](../SECURITY.md) for the control summary.
 | T10 | Operate under partition | Fail-closed; cached-authority only; kill switch | gate + `killSwitchPath` |
 | T11 | Multi-writer chain fork | Serialized append (advisory-locked transaction) | `postgres-ledger.ts` |
 | T12 | Weak production posture | `aristotle preflight`; refuses ephemeral keys under `NODE_ENV=production` | CLI + `requireProductionSigner` |
+| T13 | Operator over-reach / unattributed admin action | RBAC (viewer/operator/admin) per route; admin-only, fail-closed kill/revoke; authenticated identity written to the signed GEL | `auth.ts`, server route gate, `GelActor` |
+| T14 | Forged/abused OIDC token (alg:none, alg-confusion, expiry, audience) | Asymmetric-only JWS verification; `none`/HMAC rejected; `iss`/`aud`/`exp`/`nbf`/`kid` validated | `auth.ts` → `verifyJwt` |
 
 ## 5. Areas to probe (priorities for the auditor)
 1. **Cryptography**: canonical-action determinism, signature material binding (could a different action reuse a signature?), key-id pinning, GEL chain + bundle verification edge cases.
 2. **Authorization bypass**: envelope/scope matching, target vs `params.url`, constraint evaluation, escalate/fail-closed paths.
+2b. **Operator RBAC / OIDC** (`auth.ts`): role gating per route, constant-time token compare, JWS verification edge cases (alg confusion, `none`, key/alg mismatch, kid selection, `iss`/`aud`/`exp`/`nbf`), role-claim mapping, and the admin-only kill/revoke endpoints.
 3. **Replay & idempotency**: across restarts and across nodes (shared Postgres).
 4. **Credential broker**: any path where a secret reaches the caller, logs, or the ledger.
 5. **Concurrency**: serialized append correctness; race between revocation and in-flight decisions.
 6. **Supply chain**: dependencies (`sbom.json`), bundle integrity, Docker/k8s config.
 
 ## 6. Known limitations / residual risk
-- **No operator RBAC** at the execution-control boundary itself (operator actions are confirmation-gated and ledger-attributed, not access-controlled). The service mesh has separate operator RBAC.
+- **Operator RBAC is in place** at the boundary (viewer/operator/admin, OIDC-capable, with identity attribution in the signed GEL). Residual: role *mapping* is only as trustworthy as the configured IdP/token issuance, and there is no built-in token-rotation scheduler — rotate static tokens and OIDC keys via your own process.
+- **OIDC keys are configured statically** (PEM/JWKS materialized in config); the boundary does not fetch a remote JWKS endpoint, so key rollover requires a config update/reload.
 - **No third-party security audit yet** (this document exists to commission one).
 - **TLS** is expected to be terminated by an upstream proxy/ingress; the boundary speaks plain HTTP by default.
 - **Throughput** is bounded per node by signing cost (see `npm run bench:execution-control`); scale horizontally via the shared Postgres backend.

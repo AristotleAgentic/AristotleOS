@@ -7,6 +7,9 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   type AristotleSigner,
+  type OidcConfig,
+  type OperatorCredential,
+  type OperatorRole,
   type RevocationKind,
   AsyncLedgerStore,
   CredentialBroker,
@@ -174,6 +177,67 @@ const requiredOption = (args: string[], name: string) => {
   const value = optionValue(args, name);
   if (!value) throw new Error(`missing required option ${name}`);
   return value;
+};
+
+const optionValues = (args: string[], name: string): string[] => {
+  const values: string[] = [];
+  for (let i = 0; i < args.length; i++) if (args[i] === name && args[i + 1] !== undefined) values.push(args[i + 1]);
+  return values;
+};
+
+// Parse a role-scoped operator token spec: role:token[:subject[:label]]
+const parseOperatorSpec = (spec: string): OperatorCredential => {
+  const [role, token, subject, label] = spec.split(":");
+  if (role !== "viewer" && role !== "operator" && role !== "admin") {
+    throw new Error(`--operator role must be viewer|operator|admin (got "${role}")`);
+  }
+  if (!token) throw new Error(`--operator requires a token: ${role}:<token>[:subject[:label]]`);
+  return { role: role as OperatorRole, token, subject: subject || `token:${role}`, label: label || undefined };
+};
+
+// Role-scoped static tokens from repeated --operator flags and/or ARISTOTLE_OPERATORS
+// (a JSON array of OperatorCredential, or a ";"-separated list of role:token:subject specs).
+const loadOperators = (args: string[]): OperatorCredential[] | undefined => {
+  const credentials: OperatorCredential[] = optionValues(args, "--operator").map(parseOperatorSpec);
+  const env = process.env.ARISTOTLE_OPERATORS?.trim();
+  if (env) {
+    if (env.startsWith("[")) {
+      const parsed = JSON.parse(env) as OperatorCredential[];
+      for (const cred of parsed) {
+        if (cred.role !== "viewer" && cred.role !== "operator" && cred.role !== "admin") throw new Error(`invalid role in ARISTOTLE_OPERATORS: ${cred.role}`);
+        if (!cred.token || !cred.subject) throw new Error("ARISTOTLE_OPERATORS entries require token and subject");
+        credentials.push(cred);
+      }
+    } else {
+      for (const spec of env.split(";").map((entry) => entry.trim()).filter(Boolean)) credentials.push(parseOperatorSpec(spec));
+    }
+  }
+  return credentials.length ? credentials : undefined;
+};
+
+// OIDC verification from a JSON config (--oidc-config / ARISTOTLE_OIDC_CONFIG). Each
+// key may carry publicKeyPem inline or a publicKeyFile path (resolved relative to cwd).
+const loadOidc = (args: string[], cwd: string): OidcConfig | undefined => {
+  const file = optionValue(args, "--oidc-config") ?? process.env.ARISTOTLE_OIDC_CONFIG;
+  if (!file) return undefined;
+  const raw = JSON.parse(readFileSync(path.resolve(cwd, file), "utf8")) as Omit<OidcConfig, "keys"> & {
+    keys: Array<{ kid?: string; alg?: OidcConfig["keys"][number]["alg"]; publicKeyPem?: string; publicKeyFile?: string }>;
+  };
+  if (!raw.issuer || !Array.isArray(raw.keys) || raw.keys.length === 0) throw new Error("--oidc-config requires { issuer, keys: [...] }");
+  const keys = raw.keys.map((key) => {
+    const publicKeyPem = key.publicKeyPem ?? (key.publicKeyFile ? readFileSync(path.resolve(cwd, key.publicKeyFile), "utf8") : undefined);
+    if (!publicKeyPem) throw new Error("each OIDC key requires publicKeyPem or publicKeyFile");
+    return { kid: key.kid, alg: key.alg, publicKeyPem };
+  });
+  return { ...raw, keys };
+};
+
+const authSummary = (apiKey: string | undefined, operators: OperatorCredential[] | undefined, oidc: OidcConfig | undefined): string => {
+  const methods: string[] = [];
+  if (oidc) methods.push("oidc");
+  if (operators?.length) methods.push(`${operators.length} token${operators.length === 1 ? "" : "s"}`);
+  if (apiKey) methods.push("api-key");
+  return methods.length ? `required (${methods.join(", ")})` : "open";
 };
 
 // Resolve the Warrant signing key: explicit --signing-key flag, then env, then a
@@ -367,6 +431,12 @@ Commands:
   preflight            Check production readiness (signing key, auth, config)
   demo payments        Run the flagship payments scenario
   doctor               Check local developer prerequisites
+
+Operator access control (run / execution-control serve):
+  --api-key <key>                     Single full-access (admin) key. Env: ARISTOTLE_OPERATOR_API_KEY
+  --operator <role:token[:subject]>   Role-scoped token (viewer|operator|admin). Repeatable. Env: ARISTOTLE_OPERATORS
+  --oidc-config <file.json>           Verify OIDC bearer tokens; the sub is attributed in the GEL. Env: ARISTOTLE_OIDC_CONFIG
+  Roles: viewer (read) < operator (decisions) < admin (kill switch / revocation over HTTP)
 `);
       return 0;
     }
@@ -451,6 +521,8 @@ Keep the private key secret. The public key and key_id can be shared so others c
       const broker = loadBroker(runArgs, cwd);
       const killSwitchPath = path.resolve(cwd, optionValue(runArgs, "--kill-switch") ?? ".aristotle/KILL_SWITCH");
       const apiKey = optionValue(runArgs, "--api-key") ?? process.env.ARISTOTLE_OPERATOR_API_KEY;
+      const operators = loadOperators(runArgs);
+      const oidc = loadOidc(runArgs, cwd);
       const replayProtection = !runArgs.includes("--no-replay-protection");
       const revocationListPath = path.resolve(cwd, optionValue(runArgs, "--revocations") ?? ".aristotle/revocations.json");
       const warrantTtlSeconds = Number(optionValue(runArgs, "--warrant-ttl") ?? process.env.ARISTOTLE_WARRANT_TTL_SECONDS ?? "60");
@@ -467,6 +539,8 @@ Keep the private key secret. The public key and key_id can be shared so others c
         killSwitchPath,
         replayProtection,
         apiKey,
+        operators,
+        oidc,
         revocationListPath,
         warrantTtlSeconds,
         rateLimitPerMinute,
@@ -486,7 +560,7 @@ Authority Envelope: ${authorityEnvelope.envelope_id}
 Subject: ${authorityEnvelope.subject}
 Signing key: ${signer.key_id}${signer.ephemeral ? " (ephemeral dev key)" : ""}
 Credential broker: ${broker ? "enabled" : "none"}
-Replay protection: ${replayProtection ? "on" : "off"}   Auth: ${apiKey ? "required" : "open"}   Kill switch: ${killSwitchPath}
+Replay protection: ${replayProtection ? "on" : "off"}   Auth: ${authSummary(apiKey, operators, oidc)}   Kill switch: ${killSwitchPath}
 Boundary: ${endpoint}
 Proxy: ${baseUrl}/v1/execution-control/proxy
 `);
@@ -781,6 +855,8 @@ evidence_bundle=${evidenceOut ?? "not requested"}
       const broker = loadBroker(rest, cwd);
       const killSwitchPath = path.resolve(cwd, optionValue(rest, "--kill-switch") ?? ".aristotle/KILL_SWITCH");
       const apiKey = optionValue(rest, "--api-key") ?? process.env.ARISTOTLE_OPERATOR_API_KEY;
+      const operators = loadOperators(rest);
+      const oidc = loadOidc(rest, cwd);
       const replayProtection = !rest.includes("--no-replay-protection");
       const revocationListPath = path.resolve(cwd, optionValue(rest, "--revocations") ?? ".aristotle/revocations.json");
       const warrantTtlSeconds = Number(optionValue(rest, "--warrant-ttl") ?? process.env.ARISTOTLE_WARRANT_TTL_SECONDS ?? "60");
@@ -798,6 +874,8 @@ evidence_bundle=${evidenceOut ?? "not requested"}
         killSwitchPath,
         replayProtection,
         apiKey,
+        operators,
+        oidc,
         revocationListPath,
         warrantTtlSeconds,
         rateLimitPerMinute,
@@ -812,7 +890,7 @@ Ward: ${ward.ward_id}
 Authority Envelope: ${authorityEnvelope.envelope_id}
 Signing key: ${signer.key_id}${signer.ephemeral ? " (ephemeral dev key)" : ""}
 Credential broker: ${broker ? "enabled" : "none"}
-Replay protection: ${replayProtection ? "on" : "off"}   Auth: ${apiKey ? "required" : "open"}
+Replay protection: ${replayProtection ? "on" : "off"}   Auth: ${authSummary(apiKey, operators, oidc)}
 Ledger: ${asyncLedger ? "postgres" : ledger ? "sqlite" : "file"}
 Evaluate: POST http://127.0.0.1:${port}/v1/execution-control/evaluate
 Proxy: POST http://127.0.0.1:${port}/v1/execution-control/proxy
@@ -1056,7 +1134,12 @@ Next: aristotle approvals && aristotle approve ${evaluation.deferToken ?? "<toke
       fail("Durable Ed25519 signing key configured", durableKey, durableKey ? undefined : "run `aristotle keys generate` and set ARISTOTLE_WARRANT_SIGNING_PRIVATE_KEY_PATH");
 
       const apiKey = optionValue(pfArgs, "--api-key") ?? process.env.ARISTOTLE_OPERATOR_API_KEY;
-      warn("Operator API key set", !!apiKey, apiKey ? undefined : "set ARISTOTLE_OPERATOR_API_KEY to require auth on /v1");
+      const pfOperators = loadOperators(pfArgs);
+      const pfOidc = loadOidc(pfArgs, cwd);
+      const authConfigured = !!apiKey || !!pfOperators?.length || !!pfOidc;
+      warn("Operator authentication configured", authConfigured, authConfigured ? authSummary(apiKey, pfOperators, pfOidc) : "configure --api-key, --operator role:token, or --oidc-config to require & role-gate /v1");
+      const hasAdmin = !!apiKey || (pfOperators?.some((operator) => operator.role === "admin") ?? false);
+      warn("Admin role available for operator actions", hasAdmin, hasAdmin ? undefined : "no admin credential: kill-switch/revoke over HTTP will be refused");
       warn("Replay protection enabled", !pfArgs.includes("--no-replay-protection"));
       warn("NODE_ENV=production", process.env.NODE_ENV === "production", process.env.NODE_ENV ?? "(unset)");
 

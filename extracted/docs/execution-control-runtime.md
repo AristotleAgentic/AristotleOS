@@ -314,9 +314,14 @@ report and exits non-zero on any failure.
   or Evidence Bundle bound to a revoked key/envelope/warrant fails verification
   (`REVOKED`). Verify offline against a list with
   `aristotle execution-control evidence verify --bundle b.json --revocations r.json`.
-- **API key auth** — set `ARISTOTLE_OPERATOR_API_KEY` (or `--api-key`) to require
-  `Authorization: Bearer <key>` / `x-api-key` on `/v1` routes. `/health` and
-  `/openapi.json` stay open for probes and discovery.
+- **Operator access control (RBAC)** — authenticate `/v1` with a single
+  `--api-key` (admin), role-scoped `--operator role:token[:subject]` tokens, or
+  `--oidc-config` (OIDC bearer/JWT). Roles `viewer < operator < admin` are enforced
+  per route (`401` unauthenticated, `403` under-privileged). The authenticated
+  identity (incl. OIDC `sub`) is written into the signed GEL as the record `actor`.
+  `/health`, `/openapi.json`, and Prometheus `/metrics` stay open for probes.
+  Admin-only operator actions: `POST /v1/execution-control/admin/{kill,revoke}`.
+  See [ACCESS_CONTROL.md](ACCESS_CONTROL.md).
 - **Request limits** — request bodies over 1 MB are rejected with `413`.
 - **Metrics** — `GET /v1/execution-control/metrics` returns decision counts, a
   reason-code histogram, ledger size, signing key id, kill-switch state, and

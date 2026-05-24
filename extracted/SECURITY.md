@@ -31,6 +31,37 @@ Ed25519, but discarded on exit). Under `NODE_ENV=production` the boundary
 **refuses** to issue with an ephemeral key — a durable key must be configured via
 `ARISTOTLE_WARRANT_SIGNING_PRIVATE_KEY_PATH`.
 
+## Operator access control (RBAC) and attribution
+
+The boundary authenticates and authorizes the operators behind `/v1` requests,
+and attributes every decision and operator action to an identity.
+
+- **Credential models.** Configure any combination of:
+  - `--api-key` — a single full-access (admin) key (legacy / simplest).
+  - `--operator role:token[:subject]` (repeatable) — role-scoped static bearer
+    tokens. Tokens are compared in constant time.
+  - `--oidc-config <file>` — OIDC bearer tokens (compact JWS) verified against the
+    issuer's public keys. The token `sub` becomes the operator identity; a roles
+    claim (optionally re-mapped) becomes the role.
+- **Roles.** `viewer` (read context/audit/metrics) < `operator` (request
+  decisions: evaluate, proxy) < `admin` (operator actions: kill switch,
+  revocation). Each route enforces a minimum role; insufficient role → `403`.
+- **Attribution.** The authenticated principal (`subject`, `role`, `auth` method,
+  OIDC `issuer`/`kid`) is written into the **signed, hash-chained** GEL record for
+  the decision, so who-authorized-what is tamper-evident and non-repudiable. It is
+  also emitted in structured logs and forwarded to the audit sink.
+- **Operator actions are access-controlled.** `POST /v1/execution-control/admin/kill`
+  and `.../admin/revoke` require the `admin` role and are disabled entirely unless
+  authentication is configured (an open/dev boundary never exposes a network kill
+  switch). Engaging the kill switch fails closed; both actions are audit-logged
+  with the operator identity.
+- **OIDC hardening.** Only asymmetric algorithms (RS256/384/512, ES256/384/512,
+  EdDSA) are accepted; `alg:none` and HMAC algorithms are rejected, so there is no
+  unsigned-token or alg-confusion path. `iss`, `aud` (when configured), `exp`/`nbf`
+  (with clock-skew tolerance), and `kid` selection are all validated.
+
+See [docs/ACCESS_CONTROL.md](docs/ACCESS_CONTROL.md) for configuration and examples.
+
 ## Controls enforced at the boundary
 
 | Control | Mechanism | Failure mode |
@@ -42,7 +73,9 @@ Ed25519, but discarded on exit). Under `NODE_ENV=production` the boundary
 | Sovereign halt | file-backed kill switch, checked per request | `KILL_SWITCH_ENGAGED` |
 | Revocation | key / envelope / warrant revocation list | `AUTHORITY_REVOKED` / `REVOKED` |
 | Tamper evidence | hash-chained, Ed25519-signed GEL; offline-verifiable bundles | verification fails |
-| Transport auth | optional API key on `/v1` routes | `401` |
+| Operator authentication | API key, role-scoped static tokens, or OIDC bearer (JWT) on `/v1` | `401` |
+| Operator authorization (RBAC) | viewer / operator / admin roles enforced per route | `403` |
+| Operator attribution | authenticated identity (incl. OIDC `sub`) written into the signed GEL | non-repudiable record |
 | Resource limits | 1 MB request body cap | `413` |
 | Credential isolation | broker injects secrets at forward time only | secret never returned/logged |
 | Proxy destination | only the gate-authorized `target` is contacted; a divergent `params.url` is rejected | not forwarded (SSRF guard) |

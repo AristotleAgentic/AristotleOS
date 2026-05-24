@@ -5,6 +5,7 @@ import {
   type CanonicalActionInput,
   type ExecutionControlDecision,
   type ExecutionControlReasonCode,
+  type GelActor,
   type GelRecord,
   type JsonValue,
   type LedgerStore,
@@ -128,6 +129,8 @@ export interface ProxyGovernedActionInput {
   ledger?: LedgerStore;
   asyncLedger?: AsyncLedgerStore;
   warrantTtlSeconds?: number;
+  /** Authenticated operator attributed to the decision in the GEL. */
+  actor?: GelActor;
   /** Injected for testing; defaults to global fetch. */
   fetchImpl?: typeof fetch;
 }
@@ -161,7 +164,8 @@ export async function proxyGovernedAction(input: ProxyGovernedActionInput): Prom
     killSwitchPath: input.killSwitchPath,
     replayProtection: input.replayProtection,
     revocationListPath: input.revocationListPath,
-    warrantTtlSeconds: input.warrantTtlSeconds
+    warrantTtlSeconds: input.warrantTtlSeconds,
+    actor: input.actor
   };
   const evaluation = input.asyncLedger
     ? await evaluateExecutionControlAsync({ ...evaluateParams, ledger: input.asyncLedger })

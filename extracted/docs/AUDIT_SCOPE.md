@@ -9,7 +9,7 @@ component inventory in [`../sbom.json`](../sbom.json).
 - **Primary in scope:**
   - `shared/execution-control-runtime/` — the Ward/Warrant boundary, signing,
     ledger backends (file / SQLite / Postgres), proxy + credential broker, MCP,
-    revocation, validation.
+    revocation, validation, and operator RBAC + OIDC verification (`auth.ts`).
   - `apps/aristotle-cli/` — the `@aristotle/os-cli` CLI and its bundle.
 - **Secondary:** `adapters/http-gateway/`, `services/*`, `apps/console-ui/`.
 - **Out of scope:** third-party dependencies' internals (covered by SBOM/`pnpm audit`),
@@ -20,8 +20,10 @@ component inventory in [`../sbom.json`](../sbom.json).
    canonical-action hashing, GEL hash-chain, evidence-bundle verification, key
    pinning, revocation.
 2. Authorization-bypass review of the Commit Gate and the credential-brokering proxy.
-3. Replay / idempotency (incl. multi-node via shared Postgres) and fail-closed behavior.
-4. Supply-chain & deployment (deps, bundle, Docker, Kubernetes).
+3. Operator access control: RBAC role gating, OIDC JWS verification (`auth.ts`), and
+   the admin-only kill/revoke endpoints.
+4. Replay / idempotency (incl. multi-node via shared Postgres) and fail-closed behavior.
+5. Supply-chain & deployment (deps, bundle, Docker, Kubernetes).
 
 ## Where the crypto lives
 | Concern | File / symbol |
@@ -34,6 +36,8 @@ component inventory in [`../sbom.json`](../sbom.json).
 | Evidence bundles | `index.ts` → `exportEvidenceBundle`, `verifyEvidenceBundle` |
 | Revocation | `revocation.ts` |
 | Proxy / broker (SSRF, secrets) | `proxy.ts` |
+| Operator RBAC + OIDC JWS verification | `auth.ts` → `resolvePrincipal`, `verifyJwt` |
+| Operator attribution in the ledger | `index.ts` → `GelActor`, `buildGelRecord` |
 | Postgres serialized append | `postgres-ledger.ts` |
 
 ## Build, run, test (Windows/macOS/Linux, Node ≥ 20; Node ≥ 22.5 for SQLite)
@@ -54,10 +58,14 @@ node apps/aristotle-cli/dist/index.js execution-control audit verify --ledger .a
 ```
 
 ## Test coverage to build on
-129 tests live in `shared/execution-control-runtime/src/index.test.ts` and
-`apps/aristotle-cli/src/index.test.ts`, including forged/tampered signatures,
-key pinning, replay, revocation, the SSRF guard, credential non-leakage, durable
-SQLite, and serialized Postgres append (via PGlite).
+The runtime and CLI suites (70+ tests across
+`shared/execution-control-runtime/src/index.test.ts` and
+`apps/aristotle-cli/src/index.test.ts`, run via `corepack pnpm test`) include
+forged/tampered signatures, key pinning, replay, revocation, the SSRF guard,
+credential non-leakage, durable SQLite, serialized Postgres append (via PGlite),
+operator RBAC (viewer/operator/admin), OIDC JWS verification (RS256/ES256/EdDSA,
+with `alg:none` and HMAC alg-confusion rejected), and tamper-evident operator
+attribution in the GEL.
 
 ## Deliverables requested
 Findings with CVSS-style severity, remediation guidance, and a **retest pass**

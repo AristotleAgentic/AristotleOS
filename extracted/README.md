@@ -94,6 +94,14 @@ npm run execution-control:evidence:verify
 
 The runtime also publishes `GET /openapi.json` so agent adapters can discover the execution-boundary contract.
 
+Operator access control at the boundary: authenticate `/v1` with an API key,
+role-scoped `--operator` tokens, or OIDC (`--oidc-config`); roles
+`viewer < operator < admin` are enforced per route, the operator identity is
+written into the signed ledger, and admin-only kill switch / revocation are exposed
+at `POST /v1/execution-control/admin/{kill,revoke}`. See
+[docs/ACCESS_CONTROL.md](docs/ACCESS_CONTROL.md). (This is distinct from the
+service-mesh gateway operator RBAC documented under "Operator RBAC" below.)
+
 ## Stack
 - Node.js 20
 - TypeScript

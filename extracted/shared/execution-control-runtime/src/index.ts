@@ -1,5 +1,5 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash, randomUUID } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import path from "node:path";
 import {
@@ -11,9 +11,21 @@ import {
 } from "./signing.js";
 import { type CredentialBroker, proxyGovernedAction } from "./proxy.js";
 import { PLAYGROUND_HTML } from "./playground.js";
-import { type RevocationList, loadRevocationList, revocationReason } from "./revocation.js";
+import { type RevocationKind, type RevocationList, addRevocation, loadRevocationList, revocationReason } from "./revocation.js";
 import { assertValidAuthorityEnvelope, assertValidWardManifest } from "./validation.js";
 import { type AuditEvent, deliverAuditEvent } from "./audit-sink.js";
+import {
+  type AuthConfig,
+  type AuthMethod,
+  type OperatorCredential,
+  type OperatorRole,
+  type OidcConfig,
+  type Principal,
+  authEnabled,
+  presentedCredential,
+  resolvePrincipal,
+  roleSatisfies
+} from "./auth.js";
 
 export * from "./proxy.js";
 export * from "./mcp.js";
@@ -23,6 +35,7 @@ export * from "./validation.js";
 export * from "./sqlite-ledger.js";
 export * from "./postgres-ledger.js";
 export * from "./audit-sink.js";
+export * from "./auth.js";
 
 export {
   type AristotleSigner,
@@ -174,6 +187,17 @@ export interface WarrantVerifyOptions {
   revocations?: RevocationList;
 }
 
+/** The authenticated operator/principal attributed to a ledger record. */
+export interface GelActor {
+  subject: string;
+  role: OperatorRole;
+  auth: AuthMethod;
+  /** OIDC issuer (iss), when authenticated via OIDC. */
+  issuer?: string;
+  /** Static-token label or JWT `kid`. Never the token/secret itself. */
+  key_id?: string;
+}
+
 export interface GelRecord {
   record_id: string;
   previous_hash: string;
@@ -187,6 +211,8 @@ export interface GelRecord {
   authority_envelope_id?: string;
   warrant_id?: string;
   policy_version?: string;
+  /** Authenticated operator/principal behind the request (RBAC attribution). Part of the signed hash material. */
+  actor?: GelActor;
   runtime_register_snapshot: RuntimeRegister;
   physical_invariant_result?: PhysicalInvariantResult;
   /** Base64 Ed25519 signature over record_hash. Present when a signer is configured. */
@@ -219,6 +245,8 @@ export interface EvaluateExecutionControlInput extends CommitGateInput {
   ledger?: LedgerStore;
   /** Warrant lifetime in seconds (default 60). */
   warrantTtlSeconds?: number;
+  /** Authenticated operator attributed to the decision in the GEL. */
+  actor?: GelActor;
 }
 
 export interface EvaluateExecutionControlResult {
@@ -301,8 +329,12 @@ export interface ExecutionControlRuntimeServerOptions {
   killSwitchPath?: string;
   /** When true, identical previously-admitted actions are refused as replays. Defaults to true. */
   replayProtection?: boolean;
-  /** When set, /v1 routes require this bearer token / x-api-key. */
+  /** When set, /v1 routes require this bearer token / x-api-key (full-access / admin). */
   apiKey?: string;
+  /** Role-scoped static bearer tokens (viewer/operator/admin) with operator identities. */
+  operators?: OperatorCredential[];
+  /** OIDC bearer-token verification; the token `sub` is attributed as the operator. */
+  oidc?: OidcConfig;
   /** Path to a revocation list file; revoked keys/envelopes are refused at the gate. */
   revocationListPath?: string;
   /** Warrant lifetime in seconds (default 60). */
@@ -583,6 +615,8 @@ interface BuildGelRecordInput {
   warrant?: Warrant;
   now?: string;
   signer?: AristotleSigner;
+  /** Authenticated operator attributed to this record. */
+  actor?: GelActor;
 }
 
 /** Pure: build a (optionally signed) GEL record linked to a given previous hash. */
@@ -601,9 +635,13 @@ function buildGelRecord(input: BuildGelRecordInput): GelRecord {
     authority_envelope_id: input.decision.authority_envelope_id,
     warrant_id: input.warrant?.warrant_id,
     policy_version: input.decision.policy_version,
+    actor: input.actor,
     runtime_register_snapshot: input.decision.runtime_register_snapshot,
     physical_invariant_result: input.decision.physical_invariant_result
   };
+  // `actor` is undefined when no operator is attributed; stableStringify drops
+  // undefined keys, so records without an actor hash identically to before
+  // (backward-compatible with existing ledgers and evidence bundles).
   const record_hash = sha256(stableStringify(base));
   const signer = input.signer;
   return {
@@ -633,6 +671,7 @@ export function appendGelRecord(input: {
   warrant?: Warrant;
   now?: string;
   signer?: AristotleSigner;
+  actor?: GelActor;
 }): GelRecord {
   const previous_hash = loadGelChain(input.ledgerPath).at(-1)?.record_hash ?? GENESIS_HASH;
   const record = buildGelRecord({ previous_hash, ...input });
@@ -1039,8 +1078,8 @@ export function evaluateExecutionControl(input: EvaluateExecutionControlInput): 
     : false;
   const { decision, warrant } = decideAndWarrant(input, signer, canonical, runtimeSnapshot, replaySeen);
   const gel_record = input.ledger
-    ? input.ledger.append({ ward: input.ward, action: input.action, decision, warrant, now: input.now, signer })
-    : appendGelRecord({ ledgerPath: input.ledgerPath, ward: input.ward, action: input.action, decision, warrant, now: input.now, signer });
+    ? input.ledger.append({ ward: input.ward, action: input.action, decision, warrant, now: input.now, signer, actor: input.actor })
+    : appendGelRecord({ ledgerPath: input.ledgerPath, ward: input.ward, action: input.action, decision, warrant, now: input.now, signer, actor: input.actor });
   return {
     decision: decision.decision,
     reason_codes: decision.reason_codes,
@@ -1068,7 +1107,7 @@ export async function evaluateExecutionControlAsync(input: EvaluateExecutionCont
   const runtimeSnapshot = stableNormalize(input.runtimeRegister ?? {}) as RuntimeRegister;
   const replaySeen = input.replayProtection ? await input.ledger.hasPriorAdmission(canonical.canonical_action_hash) : false;
   const { decision, warrant } = decideAndWarrant(input, signer, canonical, runtimeSnapshot, replaySeen);
-  const gel_record = await input.ledger.append({ ward: input.ward, action: input.action, decision, warrant, now: input.now, signer });
+  const gel_record = await input.ledger.append({ ward: input.ward, action: input.action, decision, warrant, now: input.now, signer, actor: input.actor });
   return {
     decision: decision.decision,
     reason_codes: decision.reason_codes,
@@ -1239,10 +1278,14 @@ export function executionControlOpenApiSpec() {
       version: "0.1.0",
       description: "AristotleOS-native execution-control boundary: Canonical Governed Action -> Commit Gate -> Warrant -> GEL."
     },
+    // When any operator auth method is configured, /v1 routes require a credential
+    // (viewer < operator < admin). Open routes override this with `security: []`.
+    security: [{ bearerAuth: [] }, { apiKeyAuth: [] }],
     paths: {
       "/health": {
         get: {
           summary: "Runtime health and active governance context",
+          security: [],
           responses: { "200": { description: "Runtime is healthy" } }
         }
       },
@@ -1302,14 +1345,33 @@ export function executionControlOpenApiSpec() {
           responses: { "200": { description: "Ledger verification result" } }
         }
       },
+      "/v1/execution-control/admin/kill": {
+        post: {
+          summary: "Engage/disengage the sovereign-halt kill switch (admin role; requires auth configured)",
+          requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { engaged: { type: "boolean" }, reason: { type: "string" } }, required: ["engaged"] } } } },
+          responses: { "200": { description: "Kill-switch state updated" }, "401": { description: "Unauthenticated" }, "403": { description: "Requires admin role / auth not configured" }, "409": { description: "Kill switch path not configured" } }
+        }
+      },
+      "/v1/execution-control/admin/revoke": {
+        post: {
+          summary: "Add a revocation (key/envelope/warrant) to the revocation list (admin role; requires auth configured)",
+          requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { kind: { type: "string", enum: ["key", "envelope", "warrant"] }, id: { type: "string" }, reason: { type: "string" } }, required: ["kind", "id"] } } } },
+          responses: { "200": { description: "Revocation recorded" }, "400": { description: "Invalid revocation" }, "401": { description: "Unauthenticated" }, "403": { description: "Requires admin role / auth not configured" }, "409": { description: "Revocation list not configured" } }
+        }
+      },
       "/openapi.json": {
         get: {
           summary: "OpenAPI contract for the Ward/Warrant execution-control runtime",
+          security: [],
           responses: { "200": { description: "OpenAPI 3 specification" } }
         }
       }
     },
     components: {
+      securitySchemes: {
+        bearerAuth: { type: "http", scheme: "bearer", description: "Operator credential: a role-scoped static token, the admin API key, or an OIDC JWT. When any auth method is configured, /v1 routes require it (viewer < operator < admin)." },
+        apiKeyAuth: { type: "apiKey", in: "header", name: "x-api-key", description: "Alternative header for the same operator credential." }
+      },
       schemas: {
         EvaluateRequest: {
           type: "object",
@@ -1362,7 +1424,8 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
   const forwardAudit = (
     event: "evaluate" | "proxy",
     action: CanonicalActionInput,
-    result: { decision: ExecutionControlDecision; reason_codes: ExecutionControlReasonCode[]; warrant?: Warrant; gel_record: GelRecord }
+    result: { decision: ExecutionControlDecision; reason_codes: ExecutionControlReasonCode[]; warrant?: Warrant; gel_record: GelRecord },
+    principal?: Principal
   ): void => {
     if (!options.auditSink) return;
     const payload: AuditEvent = {
@@ -1375,35 +1438,75 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
       reason_codes: result.reason_codes,
       warrant_id: result.warrant?.warrant_id,
       signing_key_id: result.warrant?.signing_key_id,
+      actor: principal,
       record: result.gel_record
     };
     void deliverAuditEvent(options.auditSink, payload).then((delivery) => {
       if (!delivery.ok) logDecision({ event: "audit_sink_error", sink: options.auditSink, status: delivery.status, error: delivery.error });
     });
   };
-  const apiKeyBuffer = options.apiKey ? Buffer.from(options.apiKey) : undefined;
-  const authorized = (req: IncomingMessage): boolean => {
-    if (!apiKeyBuffer) return true;
-    const header = req.headers["authorization"];
-    const bearer = typeof header === "string" && header.startsWith("Bearer ") ? header.slice(7) : undefined;
-    const apiKeyHeader = req.headers["x-api-key"];
-    const provided = bearer ?? (typeof apiKeyHeader === "string" ? apiKeyHeader : undefined);
-    if (provided === undefined) return false;
-    const providedBuffer = Buffer.from(provided);
-    // Constant-time compare to avoid leaking the key via response timing.
-    return providedBuffer.length === apiKeyBuffer.length && timingSafeEqual(providedBuffer, apiKeyBuffer);
+  const authConfig: AuthConfig = { apiKey: options.apiKey, operators: options.operators, oidc: options.oidc };
+  const requireAuth = authEnabled(authConfig) && !options.servePlayground;
+
+  // Minimum role per route: read paths need viewer, decisions need operator,
+  // operator actions (kill switch, revocation) need admin. Unknown /v1 paths
+  // default to admin (fail-closed).
+  const requiredRoleFor = (method: string, pathname: string): OperatorRole => {
+    if (method === "GET" && (
+      pathname === "/v1/execution-control/context" ||
+      pathname === "/v1/execution-control/audit/tail" ||
+      pathname === "/v1/execution-control/audit/verify" ||
+      pathname === "/v1/execution-control/metrics"
+    )) return "viewer";
+    if (method === "POST" && (
+      pathname === "/v1/execution-control/evaluate" ||
+      pathname === "/v1/execution-control/proxy"
+    )) return "operator";
+    return "admin";
+  };
+
+  const forwardOperatorAudit = (action_type: string, principal: Principal | undefined, detail: Record<string, unknown>): void => {
+    logDecision({ event: "operator_action", action_type, actor: principal ?? null, ...detail });
+    if (!options.auditSink) return;
+    const payload: AuditEvent = {
+      event: "operator_action",
+      ts: new Date().toISOString(),
+      ward_id: options.ward.ward_id,
+      subject: principal?.subject ?? "anonymous",
+      action_type,
+      decision: "ALLOW",
+      reason_codes: [],
+      actor: principal
+    };
+    void deliverAuditEvent(options.auditSink, payload).then((delivery) => {
+      if (!delivery.ok) logDecision({ event: "audit_sink_error", sink: options.auditSink, status: delivery.status, error: delivery.error });
+    });
   };
 
   const server = createServer(async (req, res) => {
     try {
       const url = new URL(req.url ?? "/", "http://127.0.0.1");
 
-      // Health and the OpenAPI contract stay open for liveness/discovery. When an
-      // API key is configured (and the demo playground is not being served), the
-      // /v1 routes require it.
-      if (options.apiKey && !options.servePlayground && url.pathname.startsWith("/v1/execution-control/") && !authorized(req)) {
-        sendJson(res, 401, { error: "unauthorized" });
-        return;
+      // Health, OpenAPI, and Prometheus /metrics stay open for liveness/discovery.
+      // /v1 routes are role-gated when any credential method is configured (and the
+      // demo playground is not being served).
+      let principal: Principal | undefined;
+      if (requireAuth && url.pathname.startsWith("/v1/execution-control/")) {
+        const outcome = resolvePrincipal(presentedCredential(req.headers), authConfig);
+        if (outcome.status === "anonymous") { sendJson(res, 401, { error: "unauthorized" }); return; }
+        if (outcome.status === "rejected") { sendJson(res, 401, { error: "unauthorized", detail: outcome.reason }); return; }
+        if (outcome.status === "forbidden") {
+          logDecision({ event: "rbac_denied", reason: outcome.reason, subject: outcome.subject, path: url.pathname });
+          sendJson(res, 403, { error: "forbidden", detail: outcome.reason });
+          return;
+        }
+        principal = outcome.principal;
+        const needed = requiredRoleFor(req.method ?? "GET", url.pathname);
+        if (!roleSatisfies(principal.role, needed)) {
+          logDecision({ event: "rbac_denied", subject: principal.subject, role: principal.role, required: needed, path: url.pathname });
+          sendJson(res, 403, { error: "forbidden", detail: `requires role ${needed}`, role: principal.role, required: needed });
+          return;
+        }
       }
 
       if (req.method === "GET" && url.pathname === "/health") {
@@ -1415,7 +1518,12 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           authority_envelope_id: options.authorityEnvelope.envelope_id,
           kill_switch_engaged: !!(options.killSwitchPath && existsSync(options.killSwitchPath)),
           replay_protection: replayProtection,
-          auth_required: !!options.apiKey
+          auth_required: requireAuth,
+          auth_methods: {
+            api_key: !!options.apiKey,
+            operator_tokens: (options.operators?.length ?? 0) > 0,
+            oidc: !!options.oidc
+          }
         });
         return;
       }
@@ -1484,7 +1592,8 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           killSwitchPath: options.killSwitchPath,
           replayProtection,
           revocationListPath: options.revocationListPath,
-          warrantTtlSeconds: options.warrantTtlSeconds
+          warrantTtlSeconds: options.warrantTtlSeconds,
+          actor: principal
         };
         const result = asyncLedger
           ? await evaluateExecutionControlAsync({ ...evaluateParams, ledger: asyncLedger })
@@ -1498,9 +1607,10 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           reason_codes: result.reason_codes,
           warrant_id: result.warrant?.warrant_id ?? null,
           signing_key_id: result.warrant?.signing_key_id ?? null,
+          actor: principal ?? null,
           latency_ms: Date.now() - startedAt
         });
-        forwardAudit("evaluate", action, result);
+        forwardAudit("evaluate", action, result, principal);
         sendJson(res, result.decision === "ALLOW" ? 200 : result.decision === "ESCALATE" ? 202 : 409, result);
         return;
       }
@@ -1526,7 +1636,8 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           revocationListPath: options.revocationListPath,
           warrantTtlSeconds: options.warrantTtlSeconds,
           ledger,
-          asyncLedger
+          asyncLedger,
+          actor: principal
         });
         const status = result.decision === "ALLOW" ? (result.forwarded ? 200 : 502) : result.decision === "ESCALATE" ? 202 : 409;
         logDecision({
@@ -1538,10 +1649,11 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           reason_codes: result.reason_codes,
           forwarded: result.forwarded,
           warrant_id: result.warrant?.warrant_id ?? null,
+          actor: principal ?? null,
           status,
           latency_ms: Date.now() - startedAt
         });
-        forwardAudit("proxy", action, result);
+        forwardAudit("proxy", action, result, principal);
         sendJson(res, status, result);
         return;
       }
@@ -1574,6 +1686,42 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           kill_switch_engaged: !!(options.killSwitchPath && existsSync(options.killSwitchPath)),
           replay_protection: replayProtection
         });
+        return;
+      }
+
+      // Admin-only operator actions. The top-of-handler gate already requires the
+      // `admin` role; these are additionally disabled unless authentication is
+      // configured, so an open/dev boundary never exposes a network kill switch.
+      if (req.method === "POST" && url.pathname === "/v1/execution-control/admin/kill") {
+        if (!requireAuth) { sendJson(res, 403, { error: "forbidden", detail: "operator actions require authentication to be configured" }); return; }
+        if (!options.killSwitchPath) { sendJson(res, 409, { error: "kill_switch_not_configured" }); return; }
+        const body = await readJsonBody(req);
+        const engage = body.engaged === true || body.engaged === "true";
+        const reason = typeof body.reason === "string" ? body.reason : undefined;
+        if (engage) {
+          mkdirSync(path.dirname(path.resolve(options.killSwitchPath)), { recursive: true });
+          writeFileSync(options.killSwitchPath, `${JSON.stringify({ engaged_at: new Date().toISOString(), by: principal?.subject, role: principal?.role, reason }, null, 2)}\n`, "utf8");
+        } else if (existsSync(options.killSwitchPath)) {
+          rmSync(options.killSwitchPath);
+        }
+        forwardOperatorAudit(engage ? "kill_switch.engage" : "kill_switch.disengage", principal, { reason: reason ?? null });
+        sendJson(res, 200, { kill_switch_engaged: engage, by: principal?.subject, reason });
+        return;
+      }
+
+      if (req.method === "POST" && url.pathname === "/v1/execution-control/admin/revoke") {
+        if (!requireAuth) { sendJson(res, 403, { error: "forbidden", detail: "operator actions require authentication to be configured" }); return; }
+        if (!options.revocationListPath) { sendJson(res, 409, { error: "revocation_list_not_configured" }); return; }
+        const body = await readJsonBody(req);
+        const kind = body.kind;
+        const id = body.id;
+        if ((kind !== "key" && kind !== "envelope" && kind !== "warrant") || typeof id !== "string" || id.length === 0) {
+          sendJson(res, 400, { error: "invalid_revocation", detail: "kind must be key|envelope|warrant and id is required" });
+          return;
+        }
+        const list = addRevocation(options.revocationListPath, kind as RevocationKind, id);
+        forwardOperatorAudit("revocation.add", principal, { kind, id, reason: typeof body.reason === "string" ? body.reason : null });
+        sendJson(res, 200, { revoked: { kind, id }, list });
         return;
       }
 

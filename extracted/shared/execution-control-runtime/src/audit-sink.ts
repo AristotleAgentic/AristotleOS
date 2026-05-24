@@ -1,4 +1,4 @@
-import type { ExecutionControlDecision, ExecutionControlReasonCode, GelRecord } from "./index.js";
+import type { ExecutionControlDecision, ExecutionControlReasonCode, GelActor, GelRecord } from "./index.js";
 
 /**
  * Forward governance decisions to an external audit sink (SIEM, log pipeline,
@@ -7,7 +7,7 @@ import type { ExecutionControlDecision, ExecutionControlReasonCode, GelRecord } 
  * the signed GEL record, so the sink receives tamper-evident evidence.
  */
 export interface AuditEvent {
-  event: "evaluate" | "proxy";
+  event: "evaluate" | "proxy" | "operator_action";
   ts: string;
   ward_id: string;
   subject: string;
@@ -16,7 +16,10 @@ export interface AuditEvent {
   reason_codes: ExecutionControlReasonCode[];
   warrant_id?: string;
   signing_key_id?: string;
-  record: GelRecord;
+  /** Authenticated operator behind the request (RBAC attribution). */
+  actor?: GelActor;
+  /** The signed GEL record for decision events; absent for operator actions that produce none. */
+  record?: GelRecord;
 }
 
 export interface AuditDeliveryResult {

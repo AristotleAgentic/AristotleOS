@@ -133,8 +133,9 @@ aristotle revoke envelope ae-prod-001
 aristotle revoke warrant wrn-…
 aristotle revoke list
 
-# Require an API key on /v1 routes
-ARISTOTLE_OPERATOR_API_KEY=... aristotle run -- <your agent command>
+# Require auth on /v1 routes (role-scoped operators or a single admin key)
+aristotle run --operator "operator:$OPS_TOKEN:alice@corp" --operator "admin:$ROOT_TOKEN:root@corp" -- <your agent command>
+ARISTOTLE_OPERATOR_API_KEY=... aristotle run -- <your agent command>   # single admin key
 ```
 
 - **Kill switch** — while engaged, the Commit Gate refuses every action with
@@ -146,8 +147,12 @@ ARISTOTLE_OPERATOR_API_KEY=... aristotle run -- <your agent command>
   Envelope, or a single Warrant. The gate refuses to issue against a revoked
   key/envelope (`AUTHORITY_REVOKED`), and verifiers reject any Warrant or Evidence
   Bundle bound to a revoked id (`REVOKED`). File-backed, honored live.
-- **API key** — when `ARISTOTLE_OPERATOR_API_KEY` (or `--api-key`) is set, `/v1`
-  routes require `Authorization: Bearer <key>` or `x-api-key`. `/health` stays open.
+- **Operator access control (RBAC)** — authenticate `/v1` with an API key,
+  role-scoped `--operator` tokens, or OIDC (`--oidc-config`). Roles
+  `viewer < operator < admin` are enforced per route; the operator identity is
+  attributed in the signed ledger. Admin-only kill switch / revocation are exposed
+  at `POST /v1/execution-control/admin/{kill,revoke}`. See
+  [ACCESS_CONTROL.md](ACCESS_CONTROL.md). `/health` stays open.
 - **Request limits** — request bodies over 1 MB are rejected (`413`).
 - **Metrics** — `GET /v1/execution-control/metrics` reports decision counts, a
   reason-code histogram, ledger size, and integrity.
