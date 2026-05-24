@@ -183,6 +183,9 @@ export interface Warrant {
   expires_at: string;
   single_use: true;
   consumed: boolean;
+  /** Per-issuance random nonce, signed into the Warrant material; lets a verifier
+   *  detect replay of the Warrant artifact itself (independent of action content). */
+  nonce?: string;
   issuer: string;
   /** Base64 Ed25519 signature over the canonical Warrant material. */
   signature: string;
@@ -198,6 +201,9 @@ export interface WarrantVerification {
   reason?:
     | "WARRANT_CONSUMED"
     | "WARRANT_EXPIRED"
+    | "WARRANT_NOT_YET_VALID"
+    | "WARRANT_LIFETIME_EXCEEDED"
+    | "WARRANT_REPLAYED"
     | "ACTION_HASH_MISMATCH"
     | "DECISION_NOT_ALLOWED"
     | "SIGNATURE_MISMATCH"
@@ -205,11 +211,24 @@ export interface WarrantVerification {
     | "REVOKED";
 }
 
+/** A seen-nonce set for detecting Warrant-artifact replay (e.g. a Set or a store). */
+export interface NonceSeenSet {
+  has(nonce: string): boolean;
+}
+
 export interface WarrantVerifyOptions {
   /** When set, the Warrant's signing key id must appear in this allowlist. */
   trustedKeyIds?: string[];
   /** When set, the Warrant is rejected if its key/envelope/id is revoked. */
   revocations?: RevocationList;
+  /** Trusted-time hardening: reject a Warrant whose issued_at is more than this many
+   *  ms in the future relative to `now` (defends against a forward-skewed issuer). Default 60000. */
+  maxClockSkewMs?: number;
+  /** Verifier-policy ceiling: reject a Warrant whose lifetime (expires_at − issued_at)
+   *  exceeds this many ms, regardless of what the issuer signed. Unset = no ceiling. */
+  maxLifetimeMs?: number;
+  /** When provided, reject a Warrant whose nonce has already been seen (artifact replay). */
+  seenNonces?: NonceSeenSet;
 }
 
 /** The authenticated operator/principal attributed to a ledger record. */
@@ -544,6 +563,9 @@ function warrantMaterial(fields: {
   issuer: string;
   subject: string;
   ward_id: string;
+  /** Optional: dropped from the canonical material when undefined, so Warrants minted
+   *  before nonces existed still verify byte-identically. */
+  nonce?: string;
 }): string {
   return stableStringify({ ...fields, decision: "ALLOW", single_use: true });
 }
@@ -561,6 +583,7 @@ export function issueWarrant(
   if (decision.decision !== "ALLOW") return undefined;
   const ttl = Number.isFinite(ttlSeconds) && ttlSeconds > 0 ? ttlSeconds : DEFAULT_WARRANT_TTL_SECONDS;
   const expires_at = new Date(Date.parse(now) + ttl * 1000).toISOString();
+  const nonce = randomUUID();
   const material = warrantMaterial({
     action_type: action.action_type,
     authority_envelope_id: envelope.envelope_id,
@@ -569,7 +592,8 @@ export function issueWarrant(
     issued_at: now,
     issuer: envelope.issuer,
     subject: action.subject,
-    ward_id: action.ward_id
+    ward_id: action.ward_id,
+    nonce
   });
   const signature = signer.sign(material);
   return {
@@ -584,6 +608,7 @@ export function issueWarrant(
     expires_at,
     single_use: true,
     consumed: false,
+    nonce,
     issuer: envelope.issuer,
     signature,
     signature_algorithm: signer.algorithm,
@@ -610,7 +635,19 @@ export class AristotleWarrant {
 export function verifyWarrant(warrant: Warrant, canonicalActionHash: string, now = new Date().toISOString(), options: WarrantVerifyOptions = {}): WarrantVerification {
   if (warrant.decision !== "ALLOW") return { ok: false, reason: "DECISION_NOT_ALLOWED" };
   if (warrant.consumed) return { ok: false, reason: "WARRANT_CONSUMED" };
-  if (Date.parse(warrant.expires_at) <= Date.parse(now)) return { ok: false, reason: "WARRANT_EXPIRED" };
+  const nowMs = Date.parse(now);
+  const issuedMs = Date.parse(warrant.issued_at);
+  // Trusted-time hardening. expires_at/issued_at are signed, so they cannot be
+  // tampered without the key — but a verifier with a skewed clock, or a forward-
+  // skewed issuer, still needs guarding, and a verifier should enforce its own
+  // lifetime ceiling regardless of what the issuer signed.
+  if (Date.parse(warrant.expires_at) <= nowMs) return { ok: false, reason: "WARRANT_EXPIRED" };
+  const skew = options.maxClockSkewMs ?? 60_000;
+  if (Number.isFinite(issuedMs) && issuedMs - nowMs > skew) return { ok: false, reason: "WARRANT_NOT_YET_VALID" };
+  if (options.maxLifetimeMs !== undefined && Number.isFinite(issuedMs) && Date.parse(warrant.expires_at) - issuedMs > options.maxLifetimeMs) {
+    return { ok: false, reason: "WARRANT_LIFETIME_EXCEEDED" };
+  }
+  if (options.seenNonces && warrant.nonce && options.seenNonces.has(warrant.nonce)) return { ok: false, reason: "WARRANT_REPLAYED" };
   if (warrant.canonical_action_hash !== canonicalActionHash) return { ok: false, reason: "ACTION_HASH_MISMATCH" };
   if (options.trustedKeyIds && !options.trustedKeyIds.includes(warrant.signing_key_id)) {
     return { ok: false, reason: "UNTRUSTED_SIGNING_KEY" };
@@ -630,7 +667,8 @@ export function verifyWarrant(warrant: Warrant, canonicalActionHash: string, now
     issued_at: warrant.issued_at,
     issuer: warrant.issuer,
     subject: warrant.subject,
-    ward_id: warrant.ward_id
+    ward_id: warrant.ward_id,
+    nonce: warrant.nonce
   });
   if (warrant.signature_algorithm !== "ed25519" || !verifyEd25519(warrant.signing_public_key, material, warrant.signature)) {
     return { ok: false, reason: "SIGNATURE_MISMATCH" };
