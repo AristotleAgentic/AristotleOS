@@ -129,7 +129,7 @@ jobs:
         run: corepack pnpm -F @aristotle/console-ui test:e2e
 
   dependency-audit:
-    name: dependency audit (prod)
+    name: dependency audit (prod, blocking)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -146,8 +146,8 @@ jobs:
       - name: Install dependencies
         run: corepack pnpm install --frozen-lockfile
 
-      - name: Audit production dependencies
-        # Informational: surfaces newly disclosed CVEs without blocking merges.
-        # Review findings against sbom.json and the threat model.
-        run: corepack pnpm audit --prod
-        continue-on-error: true
+      - name: Audit production dependencies (gate)
+        # Blocking gate: any prod-dependency advisory at or above the threshold
+        # (high+critical) fails the build unless triaged in .audit-allowlist.json
+        # with a reason and an expiry. Expired exceptions are themselves failures.
+        run: corepack pnpm audit:ci

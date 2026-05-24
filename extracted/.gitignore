@@ -13,6 +13,9 @@ backups/
 .aristotle/
 .tmp/
 reports/
+# Supply-chain build outputs (generated in CI; attested, not committed).
+.artifacts/
+sbom.json
 playwright-report/
 test-results/
 .playwright/

@@ -1,7 +1,7 @@
 {
   "name": "aristotle-autonomous-governance-os",
   "private": true,
-  "version": "0.1.10",
+  "version": "0.1.11",
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.32.1",
   "engines": {
@@ -54,7 +54,7 @@
     "stack:verify": "npm run stack:smoke && npm run validate:core && npm run validate:chain",
     "lint": "echo 'lint not yet configured'",
     "typecheck": "tsc --noEmit -p shared/governance-core/tsconfig.json && tsc --noEmit -p shared/trial-engine/tsconfig.json && tsc --noEmit -p shared/execution-control-runtime/tsconfig.json && tsc --noEmit -p adapters/http-gateway/tsconfig.json && tsc --noEmit -p apps/aristotle-cli/tsconfig.json && tsc --noEmit -p apps/console-ui/tsconfig.json && tsc --noEmit -p packages/os-sdk/tsconfig.json",
-    "test": "npm run typecheck && npm run test:governance && npm run test:execution-control && npm run test:gate-property && npm run test:warrant-time && npm run test:ward-marshal && npm run test:ward-marshal-adapters && npm run test:marshal-behavior && npm run test:marshal-collectors && npm run test:credential-minter && npm run test:attestation && npm run test:crypto-posture && npm run test:edge-containment && npm run test:cert-auth && npm run test:classification && npm run test:sandbox && npm run test:shadow && npm run test:builder && npm run test:reconcile && npm run test:conflict-inbox && npm run test:trace && npm run test:cli && npm run test:api && npm run test:chain && npm run test:adapters && npm run test:signers && npm run test:sdk && npm run test:ui-boundary",
+    "test": "npm run typecheck && npm run test:governance && npm run test:execution-control && npm run test:gate-property && npm run test:warrant-time && npm run test:ward-marshal && npm run test:ward-marshal-adapters && npm run test:marshal-behavior && npm run test:marshal-collectors && npm run test:credential-minter && npm run test:attestation && npm run test:crypto-posture && npm run test:edge-containment && npm run test:cert-auth && npm run test:classification && npm run test:sandbox && npm run test:shadow && npm run test:builder && npm run test:reconcile && npm run test:conflict-inbox && npm run test:trace && npm run test:cli && npm run test:api && npm run test:chain && npm run test:adapters && npm run test:signers && npm run test:sdk && npm run test:ui-boundary && npm run test:audit",
     "test:governance": "tsx shared/trial-engine/src/index.test.ts",
     "test:execution-control": "tsx shared/execution-control-runtime/src/index.test.ts",
     "test:gate-property": "tsx shared/execution-control-runtime/src/gate.property.test.ts",
@@ -89,6 +89,8 @@
     "bench:execution-control": "tsx shared/execution-control-runtime/benchmark.mts",
     "soak:execution-control": "node --expose-gc --import tsx shared/execution-control-runtime/soak.mts",
     "sbom": "node scripts/generate-sbom.mjs",
+    "audit:ci": "node scripts/audit-deps.mjs",
+    "test:audit": "node --test scripts/audit-deps.test.mjs",
     "package:cli:check": "node scripts/check-cli-package.mjs",
     "clean-room": "node scripts/clean-room-scan.mjs",
     "helm:validate": "node scripts/validate-helm.mjs"

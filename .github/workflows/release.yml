@@ -1,0 +1,88 @@
+name: Release provenance
+
+# Supply-chain provenance for AristotleOS releases (A4).
+#
+# On a version tag, this builds and packs the @aristotle/os-cli tarball, generates
+# a CycloneDX SBOM, and produces two cryptographic, OIDC-signed attestations stored
+# in GitHub's attestation API:
+#   1. SLSA build provenance for the tarball (how/where it was built).
+#   2. An SBOM attestation binding the dependency manifest to that exact tarball.
+#
+# Consumers verify with:  gh attestation verify <tarball> --repo <owner>/<repo>
+#
+# The workspace lives under extracted/ in this repository. `defaults.run` sets the
+# working directory for shell steps; `uses:` action inputs are relative to the repo
+# root, so attestation subject/sbom paths are prefixed with extracted/.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write        # OIDC token used to sign the attestations
+  attestations: write    # write to the GitHub attestation store
+
+defaults:
+  run:
+    working-directory: extracted
+
+jobs:
+  provenance:
+    name: build · pack · sbom · attest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Dependency audit (gate)
+        run: corepack pnpm audit:ci
+
+      - name: Build CLI
+        run: corepack pnpm -F @aristotle/os-cli build
+
+      - name: Pack CLI tarball
+        id: pack
+        # Build already ran above; pack with --ignore-scripts so the prepack build
+        # does not run twice or contaminate stdout. Emit the tarball path.
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/extracted/.artifacts"
+          cd apps/aristotle-cli
+          file=$(npm pack --ignore-scripts --pack-destination "$GITHUB_WORKSPACE/extracted/.artifacts" | tail -n 1)
+          echo "tarball=extracted/.artifacts/${file}" >> "$GITHUB_OUTPUT"
+          echo "Packed ${file}"
+
+      - name: Generate SBOM (CycloneDX)
+        run: corepack pnpm sbom
+
+      - name: Attest build provenance (SLSA)
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: ${{ steps.pack.outputs.tarball }}
+
+      - name: Attest SBOM
+        uses: actions/attest-sbom@v1
+        with:
+          subject-path: ${{ steps.pack.outputs.tarball }}
+          sbom-path: extracted/sbom.json
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aristotle-os-cli-${{ github.ref_name }}
+          path: |
+            extracted/.artifacts/*.tgz
+            extracted/sbom.json
+          if-no-files-found: error
