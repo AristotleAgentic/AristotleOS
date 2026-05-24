@@ -44,18 +44,20 @@
     "enterprise:chain-keys": "node scripts/generate-chain-keypair.mjs",
     "stack:verify": "npm run stack:smoke && npm run validate:core && npm run validate:chain",
     "lint": "echo 'lint not yet configured'",
-    "test": "npm run test:governance && npm run test:execution-control && npm run test:cli && npm run test:api && npm run test:chain",
+    "test": "npm run test:governance && npm run test:execution-control && npm run test:cli && npm run test:api && npm run test:chain && npm run test:adapters",
     "test:governance": "tsx shared/trial-engine/src/index.test.ts",
     "test:execution-control": "tsx shared/execution-control-runtime/src/index.test.ts",
     "test:cli": "npm run build -w @aristotle/trial-engine && npm run build -w @aristotle/execution-control-runtime && tsx apps/aristotle-cli/src/index.test.ts",
     "test:api": "tsx adapters/http-gateway/src/trial-api.contract.test.ts",
+    "test:adapters": "tsx examples/framework-adapters/govern.test.ts",
     "test:playground": "npm run test:governance",
     "validate:core": "node scripts/validate-core.mjs",
     "validate:chain": "node scripts/validate-chain.mjs",
     "test:chain": "tsx shared/governance-core/src/test/run.test.ts && tsx services/governance-kernel/src/governance-chain.test.ts && tsx services/agent-os/src/governance-chain-client.test.ts && tsx adapters/http-gateway/src/governance-chain-proxy.test.ts",
     "benchmark:runtime": "tsx scripts/benchmark-runtime.ts",
     "bench:execution-control": "tsx shared/execution-control-runtime/benchmark.mts",
-    "sbom": "node scripts/generate-sbom.mjs"
+    "sbom": "node scripts/generate-sbom.mjs",
+    "package:cli:check": "node scripts/check-cli-package.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.0.1",

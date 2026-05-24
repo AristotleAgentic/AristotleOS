@@ -57,6 +57,29 @@ jobs:
       - name: Generate SBOM (smoke)
         run: corepack pnpm sbom
 
+  cli-package:
+    name: CLI package (pack + packed pilot smoke)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Validate @aristotle/os-cli is publish-ready
+        # Packs the CLI, asserts tarball contents, installs it into a throwaway
+        # project, and runs `aristotle pilot` from the installed package.
+        run: corepack pnpm package:cli:check
+
   dependency-audit:
     name: dependency audit (prod)
     runs-on: ubuntu-latest

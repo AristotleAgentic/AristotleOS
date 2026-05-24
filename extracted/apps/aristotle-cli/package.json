@@ -7,6 +7,10 @@
     "aristotle": "dist/index.js"
   },
   "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist",
     "README.md"
