@@ -162,6 +162,35 @@ test("physical invariant violation produces REFUSE", () => {
   assert.equal(decision.physical_invariant_result?.ok, false);
 });
 
+test("degraded mode: a safety-critical Ward fails closed when the ledger is unavailable", () => {
+  const safetyWard = { ...ward, criticality: "safety_critical" as const };
+  const decision = evaluateCommitGate({ ward: safetyWard, authorityEnvelope: envelope, action, now, degradedConditions: ["ledger_unavailable"] });
+  assert.equal(decision.decision, "REFUSE");
+  assert.deepEqual(decision.reason_codes, ["DEGRADED_MODE"]);
+});
+
+test("degraded mode: a routine Ward escalates infra loss instead of hard-blocking", () => {
+  const routineWard = { ...ward, criticality: "routine" as const };
+  const decision = evaluateCommitGate({ ward: routineWard, authorityEnvelope: envelope, action, now, degradedConditions: ["ledger_unavailable"] });
+  assert.equal(decision.decision, "ESCALATE");
+  assert.deepEqual(decision.reason_codes, ["DEGRADED_MODE"]);
+});
+
+test("degraded mode: a best-effort Ward proceeds (allow_degraded) under a soft timeout", () => {
+  const beWard = { ...ward, criticality: "best_effort" as const };
+  const decision = evaluateCommitGate({ ward: beWard, authorityEnvelope: envelope, action, now, degradedConditions: ["dependency_timeout"] });
+  assert.equal(decision.decision, "ALLOW"); // allow_degraded falls through to normal evaluation
+  assert.deepEqual(decision.reason_codes, ["ALLOWED"]);
+});
+
+test("degraded mode: no conditions leaves the decision unchanged; unlabeled Ward defaults closed", () => {
+  assert.equal(evaluateCommitGate({ ward, authorityEnvelope: envelope, action, now, degradedConditions: [] }).decision, "ALLOW");
+  // Unlabeled ward defaults to mission_critical → refuses on ledger loss.
+  const d = evaluateCommitGate({ ward, authorityEnvelope: envelope, action, now, degradedConditions: ["ledger_unavailable"] });
+  assert.equal(d.decision, "REFUSE");
+  assert.deepEqual(d.reason_codes, ["DEGRADED_MODE"]);
+});
+
 test("Warrant cannot be consumed twice", () => {
   const decision = evaluateCommitGate({ ward, authorityEnvelope: envelope, action, now });
   const warrant = issueWarrant(decision, action, envelope, now);
@@ -1406,6 +1435,29 @@ test("conflict inbox: ingest, list, resolve over the durable store, role-gated",
     for (const p of ["/v1/execution-control/conflicts", "/v1/execution-control/conflicts/ingest", "/v1/execution-control/conflicts/resolve"]) {
       assert.ok(spec.paths[p], `spec advertises ${p}`);
     }
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test("evaluate endpoint honors degraded_conditions against the Ward criticality", async () => {
+  const file = ledgerPath();
+  const safetyWard = { ...ward, criticality: "safety_critical" as const };
+  const { server } = createExecutionControlRuntimeServer({ ward: safetyWard, authorityEnvelope: envelope, ledgerPath: file, now });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const base = serverBase(server);
+    const post = (body: unknown) => fetch(`${base}/v1/execution-control/evaluate`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+
+    // Healthy: the action is allowed and a Warrant issues.
+    const healthy = await post({ action }).then((r) => r.json());
+    assert.equal(healthy.decision, "ALLOW");
+
+    // Degraded: ledger unavailable + safety-critical ⇒ fail closed, no Warrant.
+    const degraded = await post({ action: { ...action, action_id: "act-degraded" }, degraded_conditions: ["ledger_unavailable"] }).then((r) => r.json());
+    assert.equal(degraded.decision, "REFUSE");
+    assert.deepEqual(degraded.reason_codes, ["DEGRADED_MODE"]);
+    assert.equal(degraded.warrant, undefined);
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }

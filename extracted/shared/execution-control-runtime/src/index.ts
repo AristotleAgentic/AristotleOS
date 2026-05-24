@@ -41,6 +41,7 @@ import { ConflictInboxStore } from "./conflict-inbox.js";
 import { type AgentObservation, type AgentRegistry, runWardMarshalCensus } from "./ward-marshal.js";
 import { type BehaviorAnalysisConfig, type BehaviorEvent, analyzeAgentBehavior } from "./marshal-behavior.js";
 import { type Classification, enforceClassification } from "./classification.js";
+import { type DegradationCondition, type WardCriticality, resolveFailMode } from "./fail-mode.js";
 
 export * from "./proxy.js";
 export * from "./mcp.js";
@@ -68,6 +69,7 @@ export * from "./attestation.js";
 export * from "./crypto-posture.js";
 export * from "./edge-containment.js";
 export * from "./classification.js";
+export * from "./fail-mode.js";
 
 export {
   type AristotleSigner,
@@ -100,6 +102,7 @@ export type ExecutionControlReasonCode =
   | "REPLAY_DETECTED"
   | "AUTHORITY_REVOKED"
   | "CLASSIFICATION_VIOLATION"
+  | "DEGRADED_MODE"
   | "ALLOWED";
 
 export interface WardManifest {
@@ -114,6 +117,8 @@ export interface WardManifest {
   metadata?: Record<string, JsonValue>;
   /** MLS clearance ceiling for this Ward; actions whose data label it cannot dominate are refused. */
   classification?: Classification;
+  /** Criticality tier driving the degraded-mode fail policy (default mission_critical). */
+  criticality?: WardCriticality;
 }
 
 export interface AuthorityEnvelope {
@@ -175,6 +180,8 @@ export interface CommitGateInput {
   action: CanonicalActionInput;
   runtimeRegister?: RuntimeRegister;
   now?: string;
+  /** Active infrastructure-degradation signals; the Ward's criticality decides the fail action. */
+  degradedConditions?: DegradationCondition[];
 }
 
 export interface CommitGateDecision {
@@ -512,6 +519,15 @@ export function evaluateCommitGate(input: CommitGateInput): CommitGateDecision {
 
   if (!ward) return refuse("REFUSE", ["WARD_NOT_FOUND"], canonical, runtime_register_snapshot);
   if (!ward.permitted_subjects.includes(input.action.subject)) return refuse("REFUSE", ["SUBJECT_NOT_IN_WARD"], canonical, runtime_register_snapshot, ward);
+  // Degraded-mode fail policy: when the boundary signals infrastructure degradation
+  // (ledger unavailable, control-plane stale, quorum lost, dependency timeout), the
+  // Ward's criticality decides the fail action. Safety-critical fails closed; lower
+  // criticalities may escalate or proceed degraded (allow_degraded falls through).
+  if (input.degradedConditions?.length) {
+    const failMode = resolveFailMode(ward.criticality, input.degradedConditions);
+    if (failMode.action === "refuse") return refuse("REFUSE", ["DEGRADED_MODE"], canonical, runtime_register_snapshot, ward, envelope ?? undefined);
+    if (failMode.action === "escalate") return refuse("ESCALATE", ["DEGRADED_MODE"], canonical, runtime_register_snapshot, ward, envelope ?? undefined);
+  }
   if (!envelope) return refuse("REFUSE", ["ACTION_NOT_ALLOWED"], canonical, runtime_register_snapshot, ward);
   if (envelope.ward_id !== ward.ward_id || envelope.subject !== input.action.subject) {
     return refuse("REFUSE", ["ACTION_NOT_ALLOWED"], canonical, runtime_register_snapshot, ward, envelope);
@@ -1773,6 +1789,7 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           authorityEnvelope: options.authorityEnvelope,
           action,
           runtimeRegister: body.runtime_register as RuntimeRegister | undefined,
+          degradedConditions: Array.isArray(body.degraded_conditions) ? (body.degraded_conditions as DegradationCondition[]) : undefined,
           ledgerPath: options.ledgerPath,
           now: typeof body.now === "string" ? body.now : options.now,
           signer: options.signer,
