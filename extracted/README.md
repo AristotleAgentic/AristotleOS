@@ -81,7 +81,7 @@ The adoption doctrine is simple: authority before consequence, warrant before ex
 
 ## Ward Marshal
 
-Ward Marshal adds rogue-agent discovery and warrant-backed interdiction to AristotleOS. It builds a deterministic Agent Census from observed runtime signals, risk-scores undeclared autonomous execution, and routes quarantine, credential revocation, tool disablement, scale-down, or termination through the same Ward, Authority Envelope, Commit Gate, Warrant, and GEL path as any other consequential action.
+Ward Marshal adds rogue-agent discovery and warrant-backed interdiction to AristotleOS. It builds a deterministic Agent Census from observed runtime signals, risk-scores undeclared autonomous execution, and routes quarantine, credential revocation, tool disablement, scale-down, or termination through the same Ward, Authority Envelope, Commit Gate, Warrant, and GEL path as any other consequential action. The first real adapters execute Kubernetes workload scale-down, Kubernetes endpoint quarantine via NetworkPolicy, and AristotleOS credential revocation after Warrant verification.
 
 Run the sample:
 

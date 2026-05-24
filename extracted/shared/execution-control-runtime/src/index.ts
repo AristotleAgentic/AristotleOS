@@ -40,6 +40,7 @@ export * from "./proxy.js";
 export * from "./mcp.js";
 export * from "./playground.js";
 export * from "./revocation.js";
+export * from "./credential-revocation.js";
 export * from "./validation.js";
 export * from "./sqlite-ledger.js";
 export * from "./postgres-ledger.js";
@@ -52,6 +53,7 @@ export * from "./shadow.js";
 export * from "./builder.js";
 export * from "./reconcile.js";
 export * from "./ward-marshal.js";
+export * from "./ward-marshal-adapters.js";
 
 export {
   type AristotleSigner,

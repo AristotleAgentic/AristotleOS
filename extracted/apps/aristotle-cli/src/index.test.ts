@@ -234,6 +234,34 @@ test("cli ward-marshal scans and governs an interdiction", async () => {
     assert.match(interdict.stdout, /decision=ALLOW/);
     assert.match(interdict.stdout, /warrant_id=wrn-/);
     assert.match(interdict.stdout, /ledger_verification=ok/);
+
+    const execute = await capture([
+      "ward-marshal",
+      "interdict",
+      "--report",
+      ".tmp/ward-marshal-report.json",
+      "--ward",
+      "ward_marshal/ward.enterprise_autonomy.yaml",
+      "--envelope",
+      "ward_marshal/authority_envelope.ward_marshal.yaml",
+      "--ledger",
+      ".tmp/ward-marshal-execute.gel.jsonl",
+      "--kind",
+      "revoke_credentials",
+      "--execute",
+      "--credential-revocations",
+      ".tmp/credential-revocations.json",
+      "--operator-ticket",
+      "SEC-1042",
+      "--interdiction-authority",
+      "soc-commander",
+      "--now",
+      "2026-05-24T12:06:00.000Z"
+    ], dir);
+    assert.equal(execute.code, 0, execute.stderr);
+    assert.match(execute.stdout, /executed=yes/);
+    assert.match(execute.stdout, /receipt_id=wmr-/);
+    assert.equal(existsSync(path.join(dir, ".tmp", "credential-revocations.json")), true);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

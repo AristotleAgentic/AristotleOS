@@ -12,6 +12,7 @@ import {
   type OperatorCredential,
   type OperatorRole,
   type RevocationKind,
+  type JsonValue,
   AsyncLedgerStore,
   CredentialBroker,
   PostgresLedgerBackend,
@@ -25,6 +26,11 @@ import {
   type WardMarshalInterdictionKind,
   buildWardMarshalInterdictionAction,
   explainWardMarshalFinding,
+  CredentialRevocationAdapter,
+  EndpointQuarantineAdapter,
+  KubernetesScaleDownAdapter,
+  type WardMarshalAdapter,
+  type WardMarshalAdapterKind,
   compileGovernanceManifest,
   ContainerSandboxProvider,
   createEd25519Signer,
@@ -47,6 +53,7 @@ import {
   profileShadowMode,
   reconcileEdgeRecords,
   runWardMarshalCensus,
+  executeWardMarshalInterdiction,
   loadEvidenceBundle,
   loadAuthorityEnvelope,
   loadCanonicalAction,
@@ -208,6 +215,16 @@ const optionValues = (args: string[], name: string): string[] => {
   const values: string[] = [];
   for (let i = 0; i < args.length; i++) if (args[i] === name && args[i + 1] !== undefined) values.push(args[i + 1]);
   return values;
+};
+
+const selectorFromArgs = (args: string[]): Record<string, string> => {
+  const entries: Record<string, string> = {};
+  for (const item of optionValues(args, "--selector")) {
+    const index = item.indexOf("=");
+    if (index <= 0) throw new Error("--selector must be key=value");
+    entries[item.slice(0, index)] = item.slice(index + 1);
+  }
+  return entries;
 };
 
 // Parse a role-scoped operator token spec: role:token[:subject[:label]]
@@ -428,6 +445,16 @@ const buildAsyncLedger = async (args: string[]): Promise<AsyncLedgerStore | unde
   return new AsyncLedgerStore(backend);
 };
 
+const buildWardMarshalAdapter = (args: string[], cwd: string, kind: WardMarshalAdapterKind): WardMarshalAdapter => {
+  const kubectlPath = optionValue(args, "--kubectl") ?? "kubectl";
+  const kubeContext = optionValue(args, "--kube-context");
+  if (kind === "kubernetes-scale-down") return new KubernetesScaleDownAdapter({ kubectlPath, kubeContext });
+  if (kind === "endpoint-quarantine") return new EndpointQuarantineAdapter({ kubectlPath, kubeContext });
+  return new CredentialRevocationAdapter({
+    revocationFile: path.resolve(cwd, optionValue(args, "--credential-revocations") ?? ".aristotle/credential-revocations.json")
+  });
+};
+
 export const ARISTOTLE_CLI_VERSION = "0.1.1";
 
 export async function runCli(argv: string[], cwd = process.cwd(), out: Writer = process.stdout.write.bind(process.stdout), err: Writer = process.stderr.write.bind(process.stderr)) {
@@ -465,7 +492,7 @@ Commands:
   governance explain              Show what a policy permits/refuses/escalates for sample actions
   reconcile                       Reconcile disconnected-edge decisions against current policy
   ward-marshal scan               Discover, inventory, and risk-score autonomous agents
-  ward-marshal interdict          Submit a warrant-backed containment action to the Commit Gate
+  ward-marshal interdict          Submit/evaluate a containment action; add --execute to run the adapter after Warrant verification
   ward-marshal demo               Run the sample census and governed interdiction path
   execution-control dev           Start the sample execution-control runtime on localhost
   execution-control serve         Run the AristotleOS execution boundary
@@ -1185,31 +1212,71 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
         reason: optionValue(rest, "--reason") ?? `Ward Marshal ${kind} for ${finding.subject}`,
         target: optionValue(rest, "--target")
       });
+      const k8sNamespace = optionValue(rest, "--k8s-namespace");
+      const k8sKind = optionValue(rest, "--k8s-kind");
+      const k8sName = optionValue(rest, "--k8s-name");
+      if (k8sNamespace || k8sKind || k8sName) {
+        if (!k8sNamespace || !k8sKind || !k8sName) throw new Error("--k8s-namespace, --k8s-kind, and --k8s-name must be provided together");
+        action.params.kubernetes = { namespace: k8sNamespace, kind: k8sKind, name: k8sName };
+      }
+      const selector = selectorFromArgs(rest);
+      const quarantineNamespace = optionValue(rest, "--quarantine-namespace");
+      if (quarantineNamespace || Object.keys(selector).length) {
+        if (!quarantineNamespace) throw new Error("--quarantine-namespace is required with --selector");
+        const quarantine: Record<string, JsonValue> = {
+          namespace: quarantineNamespace,
+          pod_selector: selector
+        };
+        const policyName = optionValue(rest, "--policy-name");
+        if (policyName) quarantine.policy_name = policyName;
+        action.params.endpoint_quarantine = quarantine;
+      }
       const registers: Record<string, string> = {};
       const operatorTicket = optionValue(rest, "--operator-ticket");
       const interdictionAuthority = optionValue(rest, "--interdiction-authority");
       if (operatorTicket) registers.operator_ticket = operatorTicket;
       if (interdictionAuthority) registers.interdiction_authority = interdictionAuthority;
-      const result = evaluateExecutionControl({
-        ward,
-        authorityEnvelope,
-        action,
-        runtimeRegister: {
-          policy_version: ward.policy_version,
-          registers
-        },
-        ledgerPath,
-        now: optionValue(rest, "--now"),
-        signer: resolveSigner(rest, cwd, err),
-        replayProtection: !rest.includes("--no-replay-protection")
-      });
+      const runtimeRegister = { policy_version: ward.policy_version, registers };
+      const signer = resolveSigner(rest, cwd, err);
+      const execute = rest.includes("--execute");
+      const defaultAdapter: WardMarshalAdapterKind =
+        kind === "revoke_credentials" ? "credential-revocation" :
+          (kind === "quarantine" || kind === "disable_tool_access") ? "endpoint-quarantine" :
+            "kubernetes-scale-down";
+      const adapterKind = (optionValue(rest, "--adapter") ?? defaultAdapter) as WardMarshalAdapterKind;
+      const result = execute
+        ? await executeWardMarshalInterdiction({
+            ward,
+            authorityEnvelope,
+            action,
+            adapter: buildWardMarshalAdapter(rest, cwd, adapterKind),
+            ledgerPath,
+            runtimeRegister,
+            now: optionValue(rest, "--now"),
+            signer,
+            replayProtection: !rest.includes("--no-replay-protection")
+          })
+        : evaluateExecutionControl({
+            ward,
+            authorityEnvelope,
+            action,
+            runtimeRegister,
+            ledgerPath,
+            now: optionValue(rest, "--now"),
+            signer,
+            replayProtection: !rest.includes("--no-replay-protection")
+          });
       if (json) {
         printJson(out, { finding, action, result }, true);
       } else {
-        out(`Ward Marshal interdiction — ${kind}\n`);
+        out(`Ward Marshal interdiction — ${kind}${execute ? ` via ${adapterKind}` : " (evaluate only)"}\n`);
         out(`target=${finding.subject} finding=${finding.finding_id} risk=${finding.risk_band}/${finding.risk_score}\n`);
-        out(`decision=${result.decision}\nreason_codes=${result.reason_codes.join(",")}\nwarrant_id=${result.warrant?.warrant_id ?? "none"}\ngel_record_hash=${result.gel_record.record_hash}\nledger_verification=${result.ledger_verification.ok ? "ok" : `failed:${result.ledger_verification.failure}`}\n`);
+        out(`decision=${result.decision}\nreason_codes=${result.reason_codes.join(",")}\nwarrant_id=${result.warrant?.warrant_id ?? "none"}\ngel_record_hash=${result.gel_record.record_hash}\n`);
+        if (!("executed" in result)) out(`ledger_verification=${result.ledger_verification.ok ? "ok" : `failed:${result.ledger_verification.failure}`}\n`);
+        if ("executed" in result) out(`executed=${result.executed ? "yes" : "no"}\nreceipt_id=${result.receipt?.receipt_id ?? "none"}\nadapter_status=${result.receipt?.status ?? "none"}\n`);
+        if ("error" in result && result.error) out(`error=${result.error}\n`);
       }
+      if ("executed" in result) return result.decision === "ALLOW" && result.executed ? 0 : result.decision === "ESCALATE" ? 2 : 1;
       return result.decision === "ALLOW" && result.ledger_verification.ok ? 0 : result.decision === "ESCALATE" ? 2 : 1;
     }
 
@@ -1227,6 +1294,10 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
         "examples/ward_marshal/authority_envelope.ward_marshal.yaml",
         "--ledger",
         ".tmp/ward-marshal.gel.jsonl",
+        "--execute",
+        "--credential-revocations",
+        ".tmp/ward-marshal-credential-revocations.json",
+        "--no-replay-protection",
         "--kind",
         optionValue(rest, "--kind") ?? "revoke_credentials",
         "--operator-ticket",

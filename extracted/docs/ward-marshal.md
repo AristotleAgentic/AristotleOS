@@ -36,6 +36,9 @@ Run a governed interdiction demo:
 npm run ward-marshal:demo
 ```
 
+The demo executes the credential-revocation adapter after `ALLOW` and writes a
+file-backed revocation list to `.tmp/ward-marshal-credential-revocations.json`.
+
 Submit an explicit interdiction:
 
 ```bash
@@ -51,6 +54,71 @@ npm run aristotle -- ward-marshal interdict \
 ```
 
 If required runtime registers are missing, the action escalates. If the Authority Envelope does not delegate the requested containment class, the action is refused and no Warrant is issued.
+
+## Real Adapters
+
+Ward Marshal ships with three execution adapters. They never run from discovery
+alone. The path is always: Commit Gate `ALLOW` -> verify Warrant -> execute
+adapter -> signed adapter receipt.
+
+### Kubernetes scale-down
+
+Scales a Deployment, StatefulSet, or ReplicaSet to zero replicas with `kubectl`.
+
+```bash
+npm run aristotle -- ward-marshal interdict \
+  --observations examples/ward_marshal/observations.enterprise.json \
+  --registry examples/ward_marshal/agent-registry.json \
+  --ward examples/ward_marshal/ward.enterprise_autonomy.yaml \
+  --envelope examples/ward_marshal/authority_envelope.ward_marshal.yaml \
+  --kind scale_to_zero \
+  --execute \
+  --adapter kubernetes-scale-down \
+  --k8s-namespace payments \
+  --k8s-kind deployment \
+  --k8s-name shadow-agent \
+  --operator-ticket SEC-1042 \
+  --interdiction-authority soc-commander
+```
+
+### Credential revocation
+
+Writes revoked credential references to an AristotleOS credential revocation
+list. The credential broker refuses to inject any rule whose `credential_ref`
+appears in that list.
+
+```bash
+npm run aristotle -- ward-marshal interdict \
+  --observations examples/ward_marshal/observations.enterprise.json \
+  --registry examples/ward_marshal/agent-registry.json \
+  --kind revoke_credentials \
+  --execute \
+  --credential-revocations .aristotle/credential-revocations.json \
+  --operator-ticket SEC-1042 \
+  --interdiction-authority soc-commander
+```
+
+### Endpoint quarantine
+
+Applies a Kubernetes `NetworkPolicy` with empty ingress and egress rules to
+isolate pods matching the provided selector.
+
+```bash
+npm run aristotle -- ward-marshal interdict \
+  --observations examples/ward_marshal/observations.enterprise.json \
+  --registry examples/ward_marshal/agent-registry.json \
+  --kind quarantine \
+  --execute \
+  --adapter endpoint-quarantine \
+  --quarantine-namespace payments \
+  --selector app=shadow-agent \
+  --selector aristotleos.io/agent=rogue \
+  --operator-ticket SEC-1042 \
+  --interdiction-authority soc-commander
+```
+
+For Kubernetes adapters, pass `--kube-context <context>` or `--kubectl <path>`
+when the operator needs an explicit cluster context or kubectl binary.
 
 ## Clean-Room Note
 

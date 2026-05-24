@@ -17,6 +17,7 @@ import {
   evaluateExecutionControlAsync,
   verifyWarrant
 } from "./index.js";
+import { type CredentialRevocationList, credentialRevocationReason } from "./credential-revocation.js";
 
 /**
  * Credential brokering + governed action proxy.
@@ -39,6 +40,8 @@ export interface CredentialRule {
   value_env?: string;
   /** Optional scheme prefix, e.g. "Bearer". */
   scheme?: string;
+  /** Stable credential reference used for revocation checks and audit surfaces. */
+  credential_ref?: string;
 }
 
 export interface CredentialBrokerConfig {
@@ -48,11 +51,12 @@ export interface CredentialBrokerConfig {
 export class CredentialBroker {
   constructor(
     private readonly rules: CredentialRule[],
-    private readonly env: Record<string, string | undefined> = process.env
+    private readonly env: Record<string, string | undefined> = process.env,
+    private readonly credentialRevocations?: CredentialRevocationList
   ) {}
 
-  static fromConfig(config: CredentialBrokerConfig, env: Record<string, string | undefined> = process.env): CredentialBroker {
-    return new CredentialBroker(config.rules ?? [], env);
+  static fromConfig(config: CredentialBrokerConfig, env: Record<string, string | undefined> = process.env, credentialRevocations?: CredentialRevocationList): CredentialBroker {
+    return new CredentialBroker(config.rules ?? [], env, credentialRevocations);
   }
 
   private matches(rule: CredentialRule, action: CanonicalActionInput): boolean {
@@ -71,6 +75,9 @@ export class CredentialBroker {
     const headers: Record<string, string> = {};
     for (const rule of this.rules) {
       if (!this.matches(rule, action)) continue;
+      if (rule.credential_ref && credentialRevocationReason(this.credentialRevocations, rule.credential_ref)) {
+        throw new Error(`credential broker: credential "${rule.credential_ref}" is revoked`);
+      }
       const raw = rule.value ?? (rule.value_env ? this.env[rule.value_env] : undefined);
       if (raw === undefined || raw === "") {
         throw new Error(`credential broker: missing secret for header "${rule.header}"${rule.value_env ? ` (env ${rule.value_env})` : ""}`);
