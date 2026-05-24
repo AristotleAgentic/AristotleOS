@@ -1,6 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { type GelRecordLike, decisionToUi, mapGelToLedger, mapMetricsToSnapshot } from "./boundary.js";
+import {
+  type GelRecordLike,
+  type MarshalReportLike,
+  type ShadowReportLike,
+  buildRepresentativeActions,
+  decisionToUi,
+  mapCensusReport,
+  mapGelToLedger,
+  mapMetricsToSnapshot,
+  mapShadowReport
+} from "./boundary.js";
 
 test("decisionToUi maps gate decisions to the console vocabulary", () => {
   assert.equal(decisionToUi("ALLOW"), "allow");
@@ -45,4 +55,77 @@ test("mapGelToLedger maps signed records into ledger rows", () => {
   assert.equal(rows[0].anchored, true);
   assert.equal(rows[1].decision, "refuse");
   assert.equal(rows[1].anchored, false); // no warrant
+});
+
+test("buildRepresentativeActions derives one probe per allowed and denied action", () => {
+  const actions = buildRepresentativeActions(
+    { ward_id: "w1", subject: "agent:a", allowed_actions: ["drone.takeoff", "drone.scan_area"], denied_actions: ["drone.disable_geofence"], boundary_id: "grid-a" },
+    "2026-05-24T00:00:00.000Z"
+  );
+  assert.equal(actions.length, 3);
+  assert.equal(actions[0].action.action_type, "drone.takeoff");
+  assert.equal(actions[0].action.ward_id, "w1");
+  assert.equal(actions[0].action.subject, "agent:a");
+  assert.deepEqual(actions[0].action.params, { boundary_id: "grid-a" });
+  assert.equal(actions[2].action.action_type, "drone.disable_geofence");
+});
+
+test("mapShadowReport maps a live ShadowReport into the console profile summary", () => {
+  const report: ShadowReportLike = {
+    ward_id: "ward-payments",
+    authority_envelope_id: "ae-refund-114",
+    count: 5,
+    decisions: { ALLOW: 3, REFUSE: 1, ESCALATE: 1 },
+    rollout: { ready: false, allow_rate: 0.6 },
+    findings: {
+      missing_runtime_registers: [{ action_id: "shadow-001", registers: ["telemetry.gps_lock"] }],
+      physical_near_misses: [{ action_id: "shadow-002", detail: "altitude within 2m of ceiling" }],
+      revoked_authority: [{ action_id: "shadow-003", reason: "AUTHORITY_REVOKED" }]
+    }
+  };
+  const summary = mapShadowReport(report);
+  assert.equal(summary.wardId, "ward-payments");
+  assert.equal(summary.envelopeId, "ae-refund-114");
+  assert.equal(summary.evaluatedActions, 5);
+  assert.equal(summary.wouldAllow, 3);
+  assert.equal(summary.wouldRefuse, 1);
+  assert.equal(summary.wouldEscalate, 1);
+  assert.equal(summary.rolloutReady, false);
+  assert.equal(summary.allowRate, 0.6);
+  assert.equal(summary.findings.length, 3);
+  assert.deepEqual(summary.findings.map((f) => f.kind).sort(), ["missing-register", "near-miss", "revoked-authority"]);
+});
+
+test("mapCensusReport maps live census findings into the console finding shape", () => {
+  const report: MarshalReportLike = {
+    findings: [
+      {
+        finding_id: "f1",
+        agent_id: "a1",
+        subject: "agent:shadow-refund-runner",
+        ward_id: "ward-payments",
+        status: "rogue",
+        risk_score: 95,
+        risk_band: "critical",
+        owner: undefined,
+        observed_locations: ["workstation/finance-17"],
+        observed_tools: ["stripe.refunds.write"],
+        credential_refs: ["vault:stripe-prod"],
+        last_seen: "2026-05-24T00:00:00.000Z",
+        signals: [{ code: "UNREGISTERED_AGENT", weight: 30, detail: "no registry entry" }],
+        recommended_disposition: "revoke_credentials",
+        evidence_hash: "deadbeef"
+      }
+    ]
+  };
+  const rows = mapCensusReport(report);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].id, "f1");
+  assert.equal(rows[0].subject, "agent:shadow-refund-runner");
+  assert.equal(rows[0].status, "rogue");
+  assert.equal(rows[0].riskScore, 95);
+  assert.equal(rows[0].riskBand, "critical");
+  assert.equal(rows[0].owner, "unknown"); // undefined owner defaults
+  assert.equal(rows[0].recommendedDisposition, "revoke_credentials");
+  assert.equal(rows[0].evidenceHash, "deadbeef");
 });

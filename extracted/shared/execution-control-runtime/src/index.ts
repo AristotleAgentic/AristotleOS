@@ -35,6 +35,10 @@ import {
 } from "./trace.js";
 import { RuntimeMetrics } from "./metrics.js";
 import { type GovernanceDraft, compileGovernanceManifest, diffGovernanceManifests, explainPolicy } from "./builder.js";
+import { type ShadowAction, profileShadowMode } from "./shadow.js";
+import { type EdgeRecord, reconcileEdgeRecords } from "./reconcile.js";
+import { type AgentObservation, type AgentRegistry, runWardMarshalCensus } from "./ward-marshal.js";
+import { type BehaviorAnalysisConfig, type BehaviorEvent, analyzeAgentBehavior } from "./marshal-behavior.js";
 import { type Classification, enforceClassification } from "./classification.js";
 
 export * from "./proxy.js";
@@ -1457,6 +1461,48 @@ export function executionControlOpenApiSpec() {
           responses: { "200": { description: "Revocation recorded" }, "400": { description: "Invalid revocation" }, "401": { description: "Unauthenticated" }, "403": { description: "Requires admin role / auth not configured" }, "409": { description: "Revocation list not configured" } }
         }
       },
+      "/v1/execution-control/governance/compile": {
+        post: {
+          summary: "Compile a Ward + Authority Envelope into a content-addressed governance manifest (operator role)",
+          responses: { "200": { description: "Compiled manifest with hash" }, "403": { description: "Requires operator role" } }
+        }
+      },
+      "/v1/execution-control/governance/diff": {
+        post: {
+          summary: "Diff two governance manifests and flag weakening changes that require review (operator role)",
+          responses: { "200": { description: "Structured diff" }, "403": { description: "Requires operator role" } }
+        }
+      },
+      "/v1/execution-control/governance/explain": {
+        post: {
+          summary: "Explain how sample actions resolve against a policy through the real Commit Gate (operator role)",
+          responses: { "200": { description: "Per-sample decisions" }, "403": { description: "Requires operator role" } }
+        }
+      },
+      "/v1/execution-control/shadow": {
+        post: {
+          summary: "Observe-only profiling of proposed actions; never mutates the live system (operator role)",
+          responses: { "200": { description: "Shadow report with would-decisions and rollout readiness" }, "403": { description: "Requires operator role" } }
+        }
+      },
+      "/v1/execution-control/reconcile": {
+        post: {
+          summary: "Reconcile offline edge decisions against current and execution-time policy (operator role)",
+          responses: { "200": { description: "Reconciliation report with conflicts and resolution state" }, "403": { description: "Requires operator role" } }
+        }
+      },
+      "/v1/execution-control/marshal/census": {
+        post: {
+          summary: "Ward Marshal census: risk-score observed agents against the approved registry (operator role)",
+          responses: { "200": { description: "Census report with rogue/governed findings" }, "403": { description: "Requires operator role" } }
+        }
+      },
+      "/v1/execution-control/marshal/behavior": {
+        post: {
+          summary: "Ward Marshal behavioral analysis over a governance event stream (operator role)",
+          responses: { "200": { description: "Behavior report with detector findings" }, "403": { description: "Requires operator role" } }
+        }
+      },
       "/openapi.json": {
         get: {
           summary: "OpenAPI contract for the Ward/Warrant execution-control runtime",
@@ -1572,7 +1618,11 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
       pathname === "/v1/execution-control/proxy" ||
       pathname === "/v1/execution-control/governance/compile" ||
       pathname === "/v1/execution-control/governance/diff" ||
-      pathname === "/v1/execution-control/governance/explain"
+      pathname === "/v1/execution-control/governance/explain" ||
+      pathname === "/v1/execution-control/shadow" ||
+      pathname === "/v1/execution-control/reconcile" ||
+      pathname === "/v1/execution-control/marshal/census" ||
+      pathname === "/v1/execution-control/marshal/behavior"
     )) return "operator";
     return "admin";
   };
@@ -1855,6 +1905,60 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
         const explanation = explainPolicy({ ward, authorityEnvelope, sampleActions, runtimeRegister: body.runtime_register as RuntimeRegister | undefined, now: typeof body.now === "string" ? body.now : options.now });
         logDecision({ event: "governance_explain", request_id: requestId(req), actor: principal ?? null, samples: explanation.samples.length });
         sendJson(res, 200, explanation);
+        return;
+      }
+
+      // Shadow Mode: observe-only profiling of a batch of proposed actions against the
+      // configured (or supplied) Ward/Authority. The live system is untouched.
+      if (req.method === "POST" && url.pathname === "/v1/execution-control/shadow") {
+        const body = await readJsonBody(req);
+        const report = profileShadowMode({
+          ward: (body.ward ?? options.ward) as WardManifest,
+          authorityEnvelope: (body.authority_envelope ?? body.authorityEnvelope ?? options.authorityEnvelope) as AuthorityEnvelope,
+          actions: Array.isArray(body.actions) ? (body.actions as ShadowAction[]) : [],
+          signer: options.signer,
+          now: typeof body.now === "string" ? body.now : options.now,
+          revocationListPath: options.revocationListPath
+        });
+        logDecision({ event: "shadow_profile", request_id: requestId(req), actor: principal ?? null, evaluated: report.count, rollout_ready: report.rollout.ready });
+        sendJson(res, 200, report);
+        return;
+      }
+
+      // Edge reconciliation: classify offline edge decisions vs current + execution-time policy.
+      if (req.method === "POST" && url.pathname === "/v1/execution-control/reconcile") {
+        const body = await readJsonBody(req);
+        const report = reconcileEdgeRecords({
+          records: Array.isArray(body.records) ? (body.records as EdgeRecord[]) : [],
+          ward: (body.ward ?? options.ward) as WardManifest,
+          authorityEnvelope: (body.authority_envelope ?? body.authorityEnvelope ?? options.authorityEnvelope) as AuthorityEnvelope,
+          now: typeof body.now === "string" ? body.now : options.now
+        });
+        logDecision({ event: "reconcile", request_id: requestId(req), actor: principal ?? null, items: report.count, conflicts: report.conflicts });
+        sendJson(res, 200, report);
+        return;
+      }
+
+      // Ward Marshal census: risk-score observed agents against the approved registry.
+      if (req.method === "POST" && url.pathname === "/v1/execution-control/marshal/census") {
+        const body = await readJsonBody(req);
+        const report = runWardMarshalCensus({
+          observations: Array.isArray(body.observations) ? (body.observations as AgentObservation[]) : [],
+          registry: body.registry as AgentRegistry | undefined,
+          generatedAt: typeof body.now === "string" ? body.now : options.now
+        });
+        logDecision({ event: "marshal_census", request_id: requestId(req), actor: principal ?? null, observed: report.summary.observed, rogue: report.summary.rogue });
+        sendJson(res, 200, report);
+        return;
+      }
+
+      // Ward Marshal behavioral analysis over a governance event stream.
+      if (req.method === "POST" && url.pathname === "/v1/execution-control/marshal/behavior") {
+        const body = await readJsonBody(req);
+        const events = Array.isArray(body.events) ? (body.events as BehaviorEvent[]) : [];
+        const report = analyzeAgentBehavior(events, { ...(body.config as BehaviorAnalysisConfig | undefined), now: typeof body.now === "string" ? body.now : options.now });
+        logDecision({ event: "marshal_behavior", request_id: requestId(req), actor: principal ?? null, findings: report.summary.findings, high_or_critical: report.summary.high_or_critical });
+        sendJson(res, 200, report);
         return;
       }
 

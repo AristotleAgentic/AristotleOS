@@ -1273,3 +1273,82 @@ test("governance builder endpoints compile/diff/explain over the real backend, r
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });
+
+test("shadow/reconcile/marshal endpoints run the real engines over the boundary, role-gated", async () => {
+  const file = ledgerPath();
+  const { server } = createExecutionControlRuntimeServer({ ward, authorityEnvelope: envelope, ledgerPath: file, now, operators });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const base = serverBase(server);
+    const post = (path: string, body: unknown, token: string) =>
+      fetch(`${base}${path}`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+
+    // Shadow Mode — observe-only profiling against the configured Ward/Authority.
+    const deniedAction = { ...action, action_id: "act-shadow-deny", action_type: "drone.disable_geofence" };
+    const shadowed = await post("/v1/execution-control/shadow", { actions: [{ action }, { action: deniedAction }], now }, "tok-operator");
+    assert.equal(shadowed.status, 200);
+    const shadow = await shadowed.json();
+    assert.equal(shadow.count, 2);
+    assert.equal(shadow.decisions.ALLOW, 1);
+    assert.equal(shadow.decisions.REFUSE, 1);
+    assert.equal(typeof shadow.rollout.ready, "boolean");
+
+    // Edge reconciliation — classify an offline edge decision vs current policy.
+    const reconciled = await post(
+      "/v1/execution-control/reconcile",
+      { records: [{ action: deniedAction, edge_decision: "ALLOW", edge_policy_version: "0.0.9" }], now },
+      "tok-operator"
+    );
+    assert.equal(reconciled.status, 200);
+    const reconcile = await reconciled.json();
+    assert.equal(reconcile.count, 1);
+    assert.equal(reconcile.conflicts, 1);
+    assert.equal(reconcile.items[0].conflict_kind, "edge_more_permissive");
+
+    // Ward Marshal census — risk-score observed agents against the approved registry.
+    const census = await post(
+      "/v1/execution-control/marshal/census",
+      {
+        observations: [
+          { observation_id: "o1", source: "mcp", observed_at: now, location: "mcp/prod", service_account: "cluster-admin-agent", tool_targets: ["shell.exec", "firewall.rules.write"], credential_refs: ["kubeconfig:prod-admin"] }
+        ],
+        registry: { registry_version: "t1", agents: [] },
+        now
+      },
+      "tok-operator"
+    );
+    assert.equal(census.status, 200);
+    const censusReport = await census.json();
+    assert.equal(censusReport.summary.observed, 1);
+    assert.ok(censusReport.summary.rogue >= 1);
+
+    // Ward Marshal behavior — denial-burst detection over an event stream.
+    const events = Array.from({ length: 6 }, (_, i) => ({
+      event_id: `e${i}`,
+      subject: "agent:probe",
+      decision: "REFUSE",
+      reason_codes: ["ACTION_DENIED"],
+      occurred_at: new Date(Date.parse(now) + i * 10_000).toISOString()
+    }));
+    const behavior = await post(
+      "/v1/execution-control/marshal/behavior",
+      { events, config: { denialBurstThreshold: 5, windowMs: 3_600_000 }, now: new Date(Date.parse(now) + 100_000).toISOString() },
+      "tok-operator"
+    );
+    assert.equal(behavior.status, 200);
+    const behaviorReport = await behavior.json();
+    assert.ok(behaviorReport.summary.findings >= 1);
+
+    // The OpenAPI contract advertises the operator engines.
+    const spec = await fetch(`${base}/openapi.json`).then((r) => r.json());
+    for (const p of ["/v1/execution-control/shadow", "/v1/execution-control/reconcile", "/v1/execution-control/marshal/census", "/v1/execution-control/marshal/behavior"]) {
+      assert.ok(spec.paths[p], `spec advertises ${p}`);
+    }
+
+    // Role-gated: a viewer cannot run these operator engines.
+    const forbidden2 = await post("/v1/execution-control/shadow", { actions: [{ action }], now }, "tok-viewer");
+    assert.equal(forbidden2.status, 403);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});

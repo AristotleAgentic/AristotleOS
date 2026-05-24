@@ -66,10 +66,13 @@ export function WardMarshalConsole() {
   const [selectedId, setSelectedId] = React.useState(WARD_MARSHAL_FINDINGS[0]?.id ?? "");
   const toast = useCommandStore((s) => s.toast);
   const exportEvidence = useCommandStore((s) => s.exportEvidence);
-  const finding = WARD_MARSHAL_FINDINGS.find((item) => item.id === selectedId) ?? WARD_MARSHAL_FINDINGS[0];
-  const rogue = WARD_MARSHAL_FINDINGS.filter((item) => item.status === "rogue").length;
-  const governed = WARD_MARSHAL_FINDINGS.filter((item) => item.status === "governed").length;
-  const high = WARD_MARSHAL_FINDINGS.filter((item) => item.riskBand === "high" || item.riskBand === "critical").length;
+  // Live census findings when the boundary is reachable; curated sample otherwise.
+  const liveFindings = useCommandStore((s) => s.marshalFindings);
+  const findings = liveFindings ?? WARD_MARSHAL_FINDINGS;
+  const finding = findings.find((item) => item.id === selectedId) ?? findings[0];
+  const rogue = findings.filter((item) => item.status === "rogue").length;
+  const governed = findings.filter((item) => item.status === "governed").length;
+  const high = findings.filter((item) => item.riskBand === "high" || item.riskBand === "critical").length;
 
   const requestInterdiction = (kind: string) => {
     toast(`Ward Marshal ${kind} requested. Commit Gate will require authority registers, Warrant, and GEL evidence.`, kind === "terminate execution" ? "red" : "amber");
@@ -80,12 +83,12 @@ export function WardMarshalConsole() {
       <div className="ac-stack">
         <Panel title="Agent Census" icon={<Search size={15} />} right={<Badge tone={rogue ? "red" : "green"}>{rogue} rogue</Badge>}>
           <div className="ac-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 12 }}>
-            <Metric label="Observed" value={WARD_MARSHAL_FINDINGS.length} tone="cyan" />
+            <Metric label="Observed" value={findings.length} tone="cyan" />
             <Metric label="Governed" value={governed} tone="green" />
             <Metric label="High/Critical" value={high} tone={high ? "red" : "green"} />
           </div>
           <div className="ac-stack" style={{ gap: 8 }}>
-            {WARD_MARSHAL_FINDINGS.map((item) => (
+            {findings.map((item) => (
               <FindingCard key={item.id} finding={item} selected={item.id === finding.id} onSelect={() => setSelectedId(item.id)} />
             ))}
           </div>

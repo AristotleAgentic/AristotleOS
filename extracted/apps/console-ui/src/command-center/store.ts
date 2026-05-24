@@ -5,12 +5,15 @@ import type {
   LedgerRecord,
   OperationalMode,
   Posture,
-  SystemSnapshot
+  ShadowProfileSummary,
+  SystemSnapshot,
+  WardMarshalFinding
 } from "./types.js";
 import {
   AGENTS,
   ENVELOPES,
   INITIAL_REQUESTS,
+  MARSHAL_CENSUS_SEED,
   WARDS,
   buildLedger,
   makeCommitRequest,
@@ -18,7 +21,7 @@ import {
   shortHash
 } from "./mockData.js";
 import { gatewayContract, postOperator, probeGateway } from "./service.js";
-import { boundaryCompile, fetchLiveState } from "./boundary.js";
+import { boundaryCompile, fetchLiveState, runLiveMarshalCensus, runLiveShadowProfile } from "./boundary.js";
 
 export type SectionId =
   | "overview"
@@ -77,6 +80,10 @@ interface CommandState {
   ledger: LedgerRecord[];
   pipeline: GatePipelineSample[];
 
+  // Live engine results (null ⇒ console renders curated sample data instead).
+  shadowProfile: ShadowProfileSummary | null;
+  marshalFindings: WardMarshalFinding[] | null;
+
   section: SectionId;
   selectedRequestId: string | null;
   selectedLedgerSeq: number | null;
@@ -110,6 +117,8 @@ interface CommandState {
   exportEvidence: () => void;
   escalate: () => void;
   compileGovernance: () => Promise<void>;
+  runShadowProfile: () => Promise<void>;
+  runMarshalCensus: () => Promise<void>;
 }
 
 let toastSeq = 0;
@@ -119,6 +128,8 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   requests: INITIAL_REQUESTS,
   ledger: buildLedger(28),
   pipeline: seedPipeline(60),
+  shadowProfile: null,
+  marshalFindings: null,
 
   section: "overview",
   selectedRequestId: INITIAL_REQUESTS[0]?.id ?? null,
@@ -189,6 +200,10 @@ export const useCommandStore = create<CommandState>((set, get) => ({
         ledger: live.ledger.length ? live.ledger : s.ledger
       }));
       get().toast("Live boundary connected — metrics and ledger are real.", "green");
+      // Boundary is up: profile Shadow Mode and run the Ward Marshal census
+      // against the real engines so those consoles render live results too.
+      void get().runShadowProfile();
+      void get().runMarshalCensus();
       return;
     }
     const partial = await probeGateway();
@@ -259,6 +274,34 @@ export const useCommandStore = create<CommandState>((set, get) => ({
     } else {
       get().toast(`Boundary rejected the compile (HTTP ${result.status}).`, "red");
     }
+  },
+
+  // Shadow Mode: profile a representative batch derived from the live Authority
+  // Envelope through the real Commit Gate (POST /v1/execution-control/shadow).
+  // On success the console shows the engine's would-decisions; otherwise it keeps
+  // the labeled sample profile.
+  runShadowProfile: async () => {
+    const profile = await runLiveShadowProfile(new Date().toISOString());
+    if (!profile) {
+      get().toast("Boundary offline — Shadow Mode is showing a sample profile. Run `aristotle execution-control serve` to profile live.", "amber");
+      return;
+    }
+    set({ shadowProfile: profile });
+    get().toast(`Shadow profile computed live — ${profile.evaluatedActions} actions, ${Math.round(profile.allowRate * 100)}% would-allow.`, "green");
+  },
+
+  // Ward Marshal: score the representative discovery seed through the real census
+  // engine (POST /v1/execution-control/marshal/census). On success the console
+  // shows engine-computed findings; otherwise it keeps the labeled sample census.
+  runMarshalCensus: async () => {
+    const findings = await runLiveMarshalCensus(MARSHAL_CENSUS_SEED);
+    if (!findings) {
+      get().toast("Boundary offline — Ward Marshal is showing a sample census. Run `aristotle execution-control serve` to score live.", "amber");
+      return;
+    }
+    set({ marshalFindings: findings });
+    const rogue = findings.filter((f) => f.status === "rogue").length;
+    get().toast(`Ward Marshal census computed live — ${findings.length} agents, ${rogue} rogue.`, rogue ? "red" : "green");
   }
 }));
 

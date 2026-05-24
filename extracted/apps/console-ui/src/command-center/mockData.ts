@@ -168,6 +168,29 @@ export const WARD_MARSHAL_FINDINGS: WardMarshalFinding[] = [
   }
 ];
 
+/**
+ * Representative discovery seed for the Ward Marshal census. When the live
+ * boundary is reachable, these observations are scored by the *real* census
+ * engine (POST /v1/execution-control/marshal/census) and the console renders the
+ * engine's findings — proving the risk scoring is server-computed, not hardcoded.
+ * Mirrors WARD_MARSHAL_FINDINGS so the layout is identical whether live or sample.
+ */
+export const MARSHAL_CENSUS_SEED = {
+  registry: {
+    registry_version: "console-seed.1",
+    agents: [
+      { agent_id: "agent-release-planner", subject: "agent:k8s-release-planner", ward_id: "ward-cyber", owner: "platform", approved_tools: ["kubernetes.plan", "incident.ticket.create"], credential_refs: ["spiffe://enterprise/platform/release-planner"], status: "shadow" },
+      { agent_id: "agent-payments-remediation", subject: "agent:payments-remediation", ward_id: "ward-payments", owner: "finance-automation", approved_tools: ["stripe.refunds.write", "crm.customer.update"], credential_refs: ["spiffe://enterprise/payments/remediation"], status: "approved" }
+    ]
+  },
+  observations: [
+    { observation_id: "obs-refund", source: "developer-workstation", observed_at: new Date(Date.now() - 4 * 60_000).toISOString(), location: "workstation/finance-17/process/4421", process_name: "langgraph-worker", command_line: "node refund-workflow.js --agent", outbound_hosts: ["api.openai.com", "crm.internal"], llm_endpoints: ["https://api.openai.com/v1/responses"], tool_targets: ["stripe.refunds.write", "crm.customer.update", "secrets.vault.read"], credential_refs: ["oauth:finance-user", "vault:stripe-prod"], ward_id: "ward-payments", labels: { subject: "agent:shadow-refund-runner" } },
+    { observation_id: "obs-prod-shell", source: "mcp", observed_at: new Date(Date.now() - 90_000).toISOString(), location: "mcp/server/prod-shell", process_name: "mcp-tool-server", service_account: "cluster-admin-agent", ward_id: "ward-cyber", tool_targets: ["shell.exec", "kubectl.production.deploy", "firewall.rules.write"], credential_refs: ["kubeconfig:prod-admin"] },
+    { observation_id: "obs-release-planner", source: "kubernetes", observed_at: new Date(Date.now() - 11 * 60_000).toISOString(), location: "cluster/staging/ns/release/deploy/planner", declared_agent_id: "agent-release-planner", owner: "platform", ward_id: "ward-cyber", llm_endpoints: ["https://api.openai.com/v1/responses"], tool_targets: ["kubernetes.plan", "incident.ticket.create"], credential_refs: ["spiffe://enterprise/platform/release-planner"], labels: { subject: "agent:k8s-release-planner" } },
+    { observation_id: "obs-payments-remediation", source: "kubernetes", observed_at: new Date(Date.now() - 40_000).toISOString(), location: "cluster/prod/ns/payments/deploy/remediation-agent", declared_agent_id: "agent-payments-remediation", owner: "finance-automation", ward_id: "ward-payments", llm_endpoints: ["https://api.openai.com/v1/responses"], tool_targets: ["stripe.refunds.write", "crm.customer.update"], credential_refs: ["spiffe://enterprise/payments/remediation"], labels: { subject: "agent:payments-remediation" } }
+  ]
+};
+
 const registersFor = (gps = true): RuntimeRegister[] => [
   { name: "telemetry.gps_lock", value: gps ? "true" : "missing", ok: gps },
   { name: "registers.battery_pct", value: "87", ok: true },

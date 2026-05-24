@@ -11,10 +11,11 @@ function findingTone(kind: string) {
 }
 
 export function ShadowModeConsole() {
-  const setMode = useCommandStore((s) => s.setMode);
   const toast = useCommandStore((s) => s.toast);
-  const total = Math.max(1, SHADOW_PROFILE.evaluatedActions);
-  const allowPct = Math.round(SHADOW_PROFILE.allowRate * 100);
+  const liveProfile = useCommandStore((s) => s.shadowProfile);
+  const runShadowProfile = useCommandStore((s) => s.runShadowProfile);
+  const profile = liveProfile ?? SHADOW_PROFILE;
+  const allowPct = Math.round(profile.allowRate * 100);
 
   return (
     <div className="ac-grid" style={{ gridTemplateColumns: "1fr", gap: 14 }}>
@@ -29,34 +30,34 @@ export function ShadowModeConsole() {
             </p>
           </div>
           <div className="ac-adoption-kpis">
-            <Metric label="Would allow" value={SHADOW_PROFILE.wouldAllow} tone="green" />
-            <Metric label="Would refuse" value={SHADOW_PROFILE.wouldRefuse} tone="red" />
-            <Metric label="Would escalate" value={SHADOW_PROFILE.wouldEscalate} tone="amber" />
+            <Metric label="Would allow" value={profile.wouldAllow} tone="green" />
+            <Metric label="Would refuse" value={profile.wouldRefuse} tone="red" />
+            <Metric label="Would escalate" value={profile.wouldEscalate} tone="amber" />
           </div>
         </div>
       </Panel>
 
       <div className="ac-grid" style={{ gridTemplateColumns: "minmax(0, 0.75fr) minmax(0, 1.25fr)", alignItems: "start" }}>
-        <Panel title="Rollout Readiness" icon={<Gauge size={15} />} right={<Badge tone={SHADOW_PROFILE.rolloutReady ? "green" : "amber"}>{SHADOW_PROFILE.rolloutReady ? "ready" : "not ready"}</Badge>}>
-          <Metric label="Actions evaluated" value={SHADOW_PROFILE.evaluatedActions} tone="cyan" />
+        <Panel title="Rollout Readiness" icon={<Gauge size={15} />} right={<Badge tone={profile.rolloutReady ? "green" : "amber"}>{profile.rolloutReady ? "ready" : "not ready"}</Badge>}>
+          <Metric label="Actions evaluated" value={profile.evaluatedActions} tone="cyan" />
           <div className="ac-divider" />
           <Metric label="Allow rate" value={`${allowPct}%`} tone={allowPct > 80 ? "green" : "amber"} />
           <div className="ac-bar" style={{ marginTop: 10 }}><span style={{ width: `${allowPct}%`, background: "var(--ac-cyan)" }} /></div>
           <div className="ac-divider" />
           <div className="ac-detail-grid" style={{ gridTemplateColumns: "120px 1fr" }}>
-            <dt>Ward</dt><dd className="mono">{SHADOW_PROFILE.wardId}</dd>
-            <dt>Envelope</dt><dd className="mono">{SHADOW_PROFILE.envelopeId}</dd>
+            <dt>Ward</dt><dd className="mono">{profile.wardId}</dd>
+            <dt>Envelope</dt><dd className="mono">{profile.envelopeId}</dd>
             <dt>Evidence</dt><dd>Ephemeral signed GEL chain · replayable traces</dd>
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-            <button className="ac-btn is-primary" onClick={() => setMode("simulation")}><PlayCircle size={13} /> Run profile</button>
+            <button className="ac-btn is-primary" onClick={() => void runShadowProfile()}><PlayCircle size={13} /> Run profile</button>
             <button className="ac-btn" onClick={() => toast("Shadow report exported for promotion review.", "green")}><FileCheck2 size={13} /> Export report</button>
           </div>
         </Panel>
 
-        <Panel title="Findings" icon={<AlertTriangle size={15} />} right={<Badge tone="amber">{SHADOW_PROFILE.findings.length} blockers</Badge>}>
+        <Panel title="Findings" icon={<AlertTriangle size={15} />} right={<Badge tone="amber">{profile.findings.length} blockers</Badge>}>
           <div className="ac-grid" style={{ gap: 10 }}>
-            {SHADOW_PROFILE.findings.map((finding) => (
+            {profile.findings.map((finding) => (
               <div key={`${finding.kind}-${finding.actionId}`} className="ac-warning-row">
                 <Activity size={15} />
                 <div>

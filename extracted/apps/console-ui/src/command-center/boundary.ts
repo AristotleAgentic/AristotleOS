@@ -1,4 +1,4 @@
-import type { CommitDecision, LedgerRecord, SystemSnapshot } from "./types.js";
+import type { CommitDecision, LedgerRecord, ShadowProfileSummary, SystemSnapshot, WardMarshalFinding } from "./types.js";
 
 /**
  * Live client for the AristotleOS execution-control boundary.
@@ -148,4 +148,170 @@ export interface EvaluateBody {
 
 export async function boundaryEvaluate(body: EvaluateBody): Promise<PostResult<{ decision: string; reason_codes: string[]; warrant?: { warrant_id: string }; gel_record?: { record_id: string } }>> {
   return postJson("/v1/execution-control/evaluate", body);
+}
+
+// --- Shadow Mode (observe-only profiling) -----------------------------------
+
+export interface BoundaryContext {
+  ward_id: string;
+  subject: string;
+  allowed_actions: string[];
+  denied_actions: string[];
+  boundary_id: string;
+  signing_key_id?: string;
+}
+
+/** The configured Ward + Authority the boundary is enforcing, for profiling. */
+export async function boundaryContext(signal?: AbortSignal): Promise<BoundaryContext | null> {
+  return getJson<BoundaryContext>("/v1/execution-control/context", signal);
+}
+
+interface ProfileAction {
+  action: Record<string, unknown>;
+}
+
+/**
+ * Pure: build a representative action batch from the live Authority Envelope.
+ * One action per allowed and per denied action type — a genuine, deterministic
+ * probe of the configured policy (not synthetic UI numbers). Telemetry/params are
+ * populated so allowed paths can clear runtime-register and boundary checks.
+ */
+export function buildRepresentativeActions(context: BoundaryContext, now: string): ProfileAction[] {
+  const base = (type: string, idx: number) => ({
+    action: {
+      action_id: `shadow-${idx.toString().padStart(3, "0")}`,
+      ward_id: context.ward_id,
+      subject: context.subject,
+      action_type: type,
+      target: `${context.ward_id}/probe-${idx}`,
+      params: context.boundary_id ? { boundary_id: context.boundary_id } : {},
+      requested_at: now,
+      request_id: `shadow-req-${idx}`,
+      telemetry: { gps_lock: true }
+    }
+  });
+  let idx = 0;
+  return [
+    ...(context.allowed_actions ?? []).map((type) => base(type, idx++)),
+    ...(context.denied_actions ?? []).map((type) => base(type, idx++))
+  ];
+}
+
+export interface ShadowReportLike {
+  ward_id: string;
+  authority_envelope_id: string;
+  count: number;
+  decisions: Record<string, number>;
+  rollout: { ready: boolean; allow_rate: number };
+  findings: {
+    missing_runtime_registers?: Array<{ action_id: string; registers: string[] }>;
+    revoked_authority?: Array<{ action_id: string; reason: string }>;
+    physical_near_misses?: Array<{ action_id: string; detail: string }>;
+  };
+}
+
+/** Pure: map a live ShadowReport into the console's profile summary shape. */
+export function mapShadowReport(report: ShadowReportLike): ShadowProfileSummary {
+  const decisions = report.decisions ?? {};
+  const f = report.findings ?? {};
+  const findings: ShadowProfileSummary["findings"] = [
+    ...(f.missing_runtime_registers ?? []).map((x) => ({ kind: "missing-register" as const, actionId: x.action_id, detail: `Missing runtime registers: ${x.registers.join(", ")}` })),
+    ...(f.physical_near_misses ?? []).map((x) => ({ kind: "near-miss" as const, actionId: x.action_id, detail: x.detail })),
+    ...(f.revoked_authority ?? []).map((x) => ({ kind: "revoked-authority" as const, actionId: x.action_id, detail: `Authority issue: ${x.reason}` }))
+  ];
+  return {
+    wardId: report.ward_id,
+    envelopeId: report.authority_envelope_id,
+    evaluatedActions: report.count ?? 0,
+    wouldAllow: decisions.ALLOW ?? 0,
+    wouldRefuse: decisions.REFUSE ?? 0,
+    wouldEscalate: decisions.ESCALATE ?? 0,
+    rolloutReady: Boolean(report.rollout?.ready),
+    allowRate: report.rollout?.allow_rate ?? 0,
+    findings
+  };
+}
+
+export async function boundaryShadow(body: { actions: ProfileAction[]; now?: string }): Promise<PostResult<ShadowReportLike>> {
+  return postJson("/v1/execution-control/shadow", body);
+}
+
+/**
+ * Run a real Shadow profile against the live boundary: read the configured
+ * authority, profile a representative batch through the real Commit Gate, map the
+ * report. Returns null when the boundary is unreachable (caller keeps sample data).
+ */
+export async function runLiveShadowProfile(now: string): Promise<ShadowProfileSummary | null> {
+  const context = await boundaryContext();
+  if (!context) return null;
+  const actions = buildRepresentativeActions(context, now);
+  if (actions.length === 0) return null;
+  const result = await boundaryShadow({ actions, now });
+  if (!result.reachable || !result.ok || !result.data) return null;
+  return mapShadowReport(result.data);
+}
+
+// --- Ward Marshal census ----------------------------------------------------
+
+export interface MarshalFindingLike {
+  finding_id: string;
+  agent_id: string;
+  subject: string;
+  ward_id?: string;
+  status: WardMarshalFinding["status"];
+  risk_score: number;
+  risk_band: WardMarshalFinding["riskBand"];
+  owner?: string;
+  observed_locations: string[];
+  observed_tools: string[];
+  credential_refs: string[];
+  last_seen: string;
+  signals: Array<{ code: string; weight: number; detail: string }>;
+  recommended_disposition: WardMarshalFinding["recommendedDisposition"];
+  evidence_hash: string;
+}
+
+export interface MarshalReportLike {
+  findings: MarshalFindingLike[];
+}
+
+/** Pure: map live census findings into the console's finding shape. */
+export function mapCensusReport(report: MarshalReportLike): WardMarshalFinding[] {
+  return (report.findings ?? []).map((finding) => ({
+    id: finding.finding_id,
+    subject: finding.subject,
+    wardId: finding.ward_id ?? "—",
+    status: finding.status,
+    riskScore: finding.risk_score,
+    riskBand: finding.risk_band,
+    owner: finding.owner ?? "unknown",
+    observedLocations: finding.observed_locations ?? [],
+    observedTools: finding.observed_tools ?? [],
+    credentialRefs: finding.credential_refs ?? [],
+    signals: finding.signals ?? [],
+    recommendedDisposition: finding.recommended_disposition,
+    evidenceHash: finding.evidence_hash,
+    lastSeen: finding.last_seen
+  }));
+}
+
+export interface MarshalCensusBody {
+  observations: unknown[];
+  registry?: { registry_version: string; agents: unknown[] };
+  now?: string;
+}
+
+export async function boundaryMarshalCensus(body: MarshalCensusBody): Promise<PostResult<MarshalReportLike>> {
+  return postJson("/v1/execution-control/marshal/census", body);
+}
+
+/**
+ * Run a real Ward Marshal census against the live boundary over a representative
+ * observation seed, returning the engine-scored findings. Returns null when the
+ * boundary is unreachable (caller keeps sample findings).
+ */
+export async function runLiveMarshalCensus(body: MarshalCensusBody): Promise<WardMarshalFinding[] | null> {
+  const result = await boundaryMarshalCensus(body);
+  if (!result.reachable || !result.ok || !result.data) return null;
+  return mapCensusReport(result.data);
 }
