@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import EnterpriseOperatorConsole from "./EnterpriseOperatorConsole.js";
+import CommandCenter from "./command-center/CommandCenter.js";
 import PublicTrialApp from "./PublicTrialApp.js";
 import WardChainComparison from "./WardChainComparison.js";
 import "./canvas.css";
@@ -59,41 +59,41 @@ function Root() {
   });
 
   return (
-    <>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: "#05070d" }}>
       <nav
         style={{
-          position: "sticky",
-          top: 0,
+          flexShrink: 0,
           zIndex: 50,
           display: "flex",
           alignItems: "center",
           gap: 12,
-          padding: "10px 20px",
-          background: "rgba(2, 6, 23, 0.88)",
-          backdropFilter: "blur(8px)",
+          padding: "8px 16px",
+          background: "rgba(2, 6, 23, 0.92)",
           borderBottom: "1px solid rgba(148, 163, 184, 0.18)",
           overflowX: "auto"
         }}
       >
         <span style={{ fontWeight: 700, letterSpacing: 0.5, color: "#e2e8f0", marginRight: 8 }}>AristotleOS</span>
+        <button style={tab("console")} onClick={() => select("console")} aria-pressed={view === "console"}>
+          Command Center
+        </button>
         <button style={tab("landing")} onClick={() => select("landing")} aria-pressed={view === "landing"}>
           Public Trial
         </button>
         <button style={tab("try")} onClick={() => select("try")} aria-pressed={view === "try"}>
           Try
         </button>
-        <button style={tab("console")} onClick={() => select("console")} aria-pressed={view === "console"}>
-          Operator Console
-        </button>
         <button style={tab("comparison")} onClick={() => select("comparison")} aria-pressed={view === "comparison"}>
           Ward Chain compare
         </button>
       </nav>
-      {view === "landing" ? <PublicTrialApp initialView="landing" /> : null}
-      {view === "try" ? <PublicTrialApp initialView="playground" /> : null}
-      {view === "console" ? <EnterpriseOperatorConsole /> : null}
-      {view === "comparison" ? <WardChainComparison /> : null}
-    </>
+      <div style={{ flex: 1, minHeight: 0, overflow: view === "console" ? "hidden" : "auto" }}>
+        {view === "landing" ? <PublicTrialApp initialView="landing" /> : null}
+        {view === "try" ? <PublicTrialApp initialView="playground" /> : null}
+        {view === "console" ? <CommandCenter /> : null}
+        {view === "comparison" ? <WardChainComparison /> : null}
+      </div>
+    </div>
   );
 }
 

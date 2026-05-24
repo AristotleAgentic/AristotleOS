@@ -11,14 +11,16 @@
     "serve": "node server.mjs"
   },
   "dependencies": {
+    "@aristotle/shared-schemas": "workspace:*",
+    "@aristotle/shared-types": "workspace:*",
+    "@aristotle/trial-engine": "workspace:*",
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "lucide-react": "^1.16.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@aristotle/trial-engine": "workspace:*",
-    "@aristotle/shared-types": "workspace:*",
-    "@aristotle/shared-schemas": "workspace:*",
-    "express": "^4.21.1",
-    "cors": "^2.8.5",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "zustand": "^5.0.13"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",
