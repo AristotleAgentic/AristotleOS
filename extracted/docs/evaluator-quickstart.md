@@ -7,13 +7,24 @@ cluster. Everything here runs **air-gapped**; no network calls.
 Prereqs: Node ≥ 22.5, pnpm (this is a pnpm workspace; `npm install` is intentionally
 blocked — see the guard message). `corepack enable && corepack pnpm install`.
 
+## 0. The narrated walkthrough (one command)
+```bash
+corepack pnpm demo:evaluator
+```
+A narrated, self-verifying tour of the whole doctrine over the real code paths, with
+no services and no network: it admits a governed action (Warrant + signed evidence),
+refuses what it must (denied / out-of-envelope / unsafe / replay), fails closed for a
+safety-critical Ward under degradation, exports an offline Evidence Bundle, then
+**tampers with the evidence and shows verification fail**. Prints PASS/FAIL per step
+and exits non-zero if any governance invariant does not hold (so it runs in CI too,
+as `pnpm test:demo`). Start here — it's the fastest end-to-end "is it real" signal.
+
 ## 1. One-command self-check of the whole boundary
 ```bash
 npm run aristotle -- pilot
 ```
 Runs the full gate end-to-end (canonicalize → Commit Gate → Warrant → signed GEL →
-evidence verify) and prints PASS/FAIL per boundary check. This is the fastest "is it
-real" signal.
+evidence verify) and prints PASS/FAIL per boundary check.
 
 ## 2. Watch it ALLOW, then REFUSE
 ```bash

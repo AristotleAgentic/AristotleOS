@@ -57,6 +57,9 @@ jobs:
       - name: Boundary self-check
         run: node apps/aristotle-cli/dist/index.js pilot
 
+      - name: Evaluator demo (self-verifying end-to-end walkthrough)
+        run: corepack pnpm demo:evaluator
+
       - name: Generate SBOM (smoke)
         run: corepack pnpm sbom
 
