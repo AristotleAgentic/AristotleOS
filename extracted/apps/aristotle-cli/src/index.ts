@@ -17,6 +17,7 @@ import {
   addRevocation,
   type SandboxExecutionReceipt,
   type SandboxPolicy,
+  type ShadowAction,
   createEd25519Signer,
   createExecutionControlMcpServer,
   createExecutionControlRuntimeServer,
@@ -27,6 +28,7 @@ import {
   governSandboxExecution,
   LedgerStore,
   LocalProcessSandboxProvider,
+  profileShadowMode,
   loadEvidenceBundle,
   loadAuthorityEnvelope,
   loadCanonicalAction,
@@ -423,6 +425,7 @@ Commands:
   deny <token>         Deny a deferred action and commit GEL evidence
   replay               Replay the payments scenario
   execution-control evaluate      Evaluate a Ward/Warrant governed action through AristotleOS
+  execution-control shadow        Observe-only rollout profiling (would-ALLOW/REFUSE/ESCALATE)
   execution-control dev           Start the sample execution-control runtime on localhost
   execution-control serve         Run the AristotleOS execution boundary
   execution-control submit        Submit an action JSON file to the execution boundary
@@ -996,6 +999,44 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
       if (json) printJson(out, verification, true);
       else out(`evidence_verification=${verification.ok ? "ok" : `failed:${verification.failures.join(";")}`}\nbundle_hash=${verification.bundle_hash ?? "none"}\nledger_records=${verification.ledger.count}\n`);
       return verification.ok ? 0 : 1;
+    }
+
+    if (command === "execution-control" && subcommand === "shadow") {
+      // Observe-only rollout profiling: run proposed actions through the real Commit
+      // Gate without touching the live ledger or weakening any policy.
+      const ward = loadWardManifest(path.resolve(cwd, requiredOption(rest, "--ward")));
+      const authorityEnvelope = loadAuthorityEnvelope(path.resolve(cwd, requiredOption(rest, "--envelope")));
+      const raw = JSON.parse(readFileSync(path.resolve(cwd, requiredOption(rest, "--actions")), "utf8")) as unknown;
+      const entries = Array.isArray(raw) ? raw : [raw];
+      const actions: ShadowAction[] = entries.map((entry) => {
+        const e = entry as Record<string, unknown>;
+        return "action" in e
+          ? { action: e.action as ShadowAction["action"], runtimeRegister: (e.runtime_register ?? e.runtimeRegister) as ShadowAction["runtimeRegister"] }
+          : { action: e as unknown as ShadowAction["action"] };
+      });
+      const report = profileShadowMode({
+        ward, authorityEnvelope, actions,
+        signer: resolveSigner(rest, cwd, err),
+        now: optionValue(rest, "--now"),
+        revocationListPath: optionValue(rest, "--revocations") ? path.resolve(cwd, optionValue(rest, "--revocations")!) : undefined
+      });
+
+      const outPath = optionValue(rest, "--out");
+      if (outPath) writeFileSync(path.resolve(cwd, outPath), `${JSON.stringify(report, null, 2)}\n`, "utf8");
+
+      if (json) { printJson(out, report, true); }
+      else {
+        out(`AristotleOS Shadow Mode — ${report.ward_id} / ${report.authority_envelope_id}\n`);
+        out(`Evaluated ${report.count} action(s): ALLOW ${report.decisions.ALLOW} · REFUSE ${report.decisions.REFUSE} · ESCALATE ${report.decisions.ESCALATE}\n`);
+        out(`Allow rate: ${(report.rollout.allow_rate * 100).toFixed(1)}%   Rollout: ${report.rollout.ready ? "READY" : "NOT READY"}\n`);
+        if (report.rollout.blockers.length) out(`Blockers: ${report.rollout.blockers.map((b) => `${b.reason_code}×${b.count}`).join(", ")}\n`);
+        for (const t of report.would_block) out(`  would REFUSE  ${t.action_id} (${t.action_type}) — ${t.reason_codes.join(", ")}\n`);
+        for (const t of report.would_escalate) out(`  would ESCALATE ${t.action_id} (${t.action_type}) — ${t.reason_codes.join(", ")}${t.missing_runtime_registers.length ? ` · missing ${t.missing_runtime_registers.join(",")}` : ""}\n`);
+        for (const n of report.findings.physical_near_misses) out(`  near-miss     ${n.action_id} — ${n.detail}\n`);
+        out(`Evidence: ${report.evidence.length} GEL-compatible record(s) (ephemeral, observe-only)${outPath ? ` · report → ${outPath}` : ""}\n`);
+      }
+      // Exit non-zero when not rollout-ready, so a promotion pipeline can gate on it.
+      return report.rollout.ready ? 0 : 1;
     }
 
     if (command === "explain" && subcommand === "--last-deny") {

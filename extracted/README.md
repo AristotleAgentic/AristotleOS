@@ -102,6 +102,12 @@ E2B/Daytona/Modal/Riza adapters use an injected-client pattern (no SDK
 dependency). `aristotle sandbox run|providers|receipt verify`. See
 [docs/sandboxes.md](docs/sandboxes.md).
 
+Shadow Mode: observe what the boundary *would* ALLOW/REFUSE/ESCALATE on real
+traffic — against an ephemeral ledger, never the live one, never weakening policy —
+to de-risk rollout before enforcing. `aristotle execution-control shadow ...`
+produces a GEL-compatible report with rollout readiness. See
+[docs/shadow-mode.md](docs/shadow-mode.md).
+
 Observability: pass W3C trace context (`traceparent`) into a governed action and
 it is stamped into the signed GEL record; inject an OpenTelemetry-shaped tracer for
 spans around each decision phase; scrape `/metrics` for decision/reason-code/

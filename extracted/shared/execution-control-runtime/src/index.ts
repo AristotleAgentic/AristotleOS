@@ -47,6 +47,7 @@ export * from "./auth.js";
 export * from "./trace.js";
 export * from "./metrics.js";
 export * from "./sandbox.js";
+export * from "./shadow.js";
 
 export {
   type AristotleSigner,
@@ -1230,7 +1231,7 @@ function parseScalar(value: string): JsonValue {
   return value.replace(/^["']|["']$/g, "");
 }
 
-function missingRuntimeRegisters(envelope: AuthorityEnvelope, action: CanonicalActionInput, runtimeRegister: RuntimeRegister): string[] {
+export function missingRuntimeRegisters(envelope: AuthorityEnvelope, action: CanonicalActionInput, runtimeRegister: RuntimeRegister): string[] {
   const required = envelope.constraints.required_runtime_registers;
   if (!Array.isArray(required)) return [];
   const combined = { ...runtimeRegister, telemetry: action.telemetry ?? {}, registers: runtimeRegister.registers ?? {} };
