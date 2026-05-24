@@ -10,7 +10,7 @@ item has a concrete command and a clear pass condition. CI enforces the starred
 - [ ] ★ **Typecheck** — `corepack pnpm -F @aristotle/execution-control-runtime build && corepack pnpm -F @aristotle/os-cli typecheck` → no errors
 - [ ] ★ **Tests** — `corepack pnpm test` → all suites pass (governance, execution-control, sandbox, trace, cli, api, chain, adapters)
 - [ ] ★ **Boundary self-check** — `node apps/aristotle-cli/dist/index.js pilot` → `PILOT READY`
-- [ ] **Benchmark** — `npm run bench:execution-control` → review p50/p95/p99, no regression
+- [ ] **Benchmark** — `npm run bench:execution-control` → review p50/p95/p99 (writes `reports/execution-control-benchmark.{json,md}`), no regression
 
 ## 2. Security & supply chain
 
@@ -39,7 +39,7 @@ item has a concrete command and a clear pass condition. CI enforces the starred
 ## 5. Deployment artifacts
 
 - [ ] **Docker images build** — `npm run pilot:images` (or `docker build -f manifests/docker/execution-control.Dockerfile .`)
-- [ ] **Helm template renders** — `helm template charts/aristotle-governance-os`
+- [ ] **Helm chart lints + renders** — `npm run helm:validate` (lint + template, default + kind-smoke)
 - [ ] **Kubernetes manifests valid** — `kubectl apply --dry-run=client -f manifests/k8s/` (or `npm run pilot:smoke:kind`)
 - [ ] **Production preflight** — `NODE_ENV=production aristotle preflight` → refuses ephemeral signing keys; durable key + auth configured
 

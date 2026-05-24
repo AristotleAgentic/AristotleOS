@@ -83,6 +83,24 @@ jobs:
         # project, and runs `aristotle pilot` from the installed package.
         run: corepack pnpm package:cli:check
 
+  helm-validate:
+    name: helm chart (lint + template)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate chart (lint + template, default + kind-smoke)
+        run: node scripts/validate-helm.mjs
+
   dependency-audit:
     name: dependency audit (prod)
     runs-on: ubuntu-latest

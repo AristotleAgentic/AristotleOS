@@ -3,9 +3,10 @@
  */
 import { performance } from "node:perf_hooks";
 import { generateKeyPairSync } from "node:crypto";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   InMemoryLedgerBackend,
   LedgerStore,
@@ -141,6 +142,35 @@ async function main() {
     );
   }
   console.log("");
+
+  writeReports(rows);
+}
+
+// Write machine-readable JSON + a Markdown operator report under reports/. The
+// directory is gitignored — numbers are machine-specific; commit only deliberately.
+function writeReports(rows: Row[]): void {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+  const dir = path.join(root, "reports");
+  mkdirSync(dir, { recursive: true });
+  const generated_at = new Date().toISOString();
+  const report = { benchmark: "execution-control", generated_at, node_version: process.version, platform: `${process.platform}/${process.arch}`, rows };
+  writeFileSync(path.join(dir, "execution-control-benchmark.json"), `${JSON.stringify(report, null, 2)}\n`, "utf8");
+
+  const md = [
+    "# AristotleOS execution-control benchmark",
+    "",
+    `- Generated: ${generated_at}`,
+    `- Node: ${process.version}  ·  Platform: ${process.platform}/${process.arch}`,
+    "",
+    "| Path | ops/sec | p50 ms | p95 ms | p99 ms |",
+    "|------|--------:|-------:|-------:|-------:|",
+    ...rows.map((r) => `| ${r.name} | ${Math.round(r.ops).toLocaleString()} | ${r.p50.toFixed(3)} | ${r.p95.toFixed(3)} | ${r.p99.toFixed(3)} |`),
+    "",
+    "> Numbers are machine-specific; treat as relative, not absolute SLAs.",
+    ""
+  ].join("\n");
+  writeFileSync(path.join(dir, "execution-control-benchmark.md"), md, "utf8");
+  console.log(`reports written → reports/execution-control-benchmark.{json,md}\n`);
 }
 
 void main();

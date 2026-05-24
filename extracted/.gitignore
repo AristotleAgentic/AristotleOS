@@ -8,3 +8,4 @@ services/*/data/
 backups/
 .aristotle/
 .tmp/
+reports/
