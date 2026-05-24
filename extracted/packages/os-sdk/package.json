@@ -1,6 +1,6 @@
 {
   "name": "@aristotle/os-sdk",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Typed TypeScript client for the AristotleOS execution-control boundary.",
   "private": true,
   "license": "UNLICENSED",
