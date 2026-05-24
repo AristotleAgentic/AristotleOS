@@ -66,6 +66,90 @@ test("cli execution-control evaluate runs Ward/Warrant action through AristotleO
   }
 });
 
+test("cli run governs a child agent process and writes a verifiable ledger", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    await capture(["init"], dir);
+    const run = await capture(["run", "--", "node", "aristotle/agent.mjs"], dir);
+    assert.equal(run.code, 0, run.stderr);
+    assert.match(run.stdout, /governing this session/);
+    assert.match(run.stdout, /Boundary: http:\/\/127\.0\.0\.1:\d+/);
+    assert.equal(existsSync(path.join(dir, ".aristotle", "gel.jsonl")), true);
+    const audit = await capture(["execution-control", "audit", "verify", "--ledger", ".aristotle/gel.jsonl"], dir);
+    assert.equal(audit.code, 0, audit.stderr);
+    assert.match(audit.stdout, /ledger_verification=ok/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("cli kill switch halts governed runs until released", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    await capture(["init"], dir);
+    const engage = await capture(["kill", "engage"], dir);
+    assert.equal(engage.code, 0);
+    assert.match(engage.stdout, /ENGAGED/);
+
+    const halted = await capture(["run", "--", "node", "aristotle/agent.mjs"], dir);
+    assert.notEqual(halted.code, 0); // agent was refused at the boundary
+
+    const release = await capture(["kill", "release"], dir);
+    assert.equal(release.code, 0);
+
+    const allowed = await capture(["run", "--", "node", "aristotle/agent.mjs"], dir);
+    assert.equal(allowed.code, 0, allowed.stderr);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("cli revoke halts a governed run until cleared", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    await capture(["init"], dir);
+    const revoke = await capture(["revoke", "envelope", "ae-local-dev-001"], dir);
+    assert.equal(revoke.code, 0);
+    assert.match(revoke.stdout, /revoked envelope/);
+
+    const halted = await capture(["run", "--", "node", "aristotle/agent.mjs"], dir);
+    assert.notEqual(halted.code, 0); // refused with AUTHORITY_REVOKED
+
+    const cleared = await capture(["revoke", "clear"], dir);
+    assert.equal(cleared.code, 0);
+
+    const allowed = await capture(["run", "--", "node", "aristotle/agent.mjs"], dir);
+    assert.equal(allowed.code, 0, allowed.stderr);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("cli pilot self-check passes every boundary check", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    const result = await capture(["pilot"], dir);
+    assert.equal(result.code, 0, result.stdout + result.stderr);
+    assert.match(result.stdout, /PILOT READY/);
+    assert.doesNotMatch(result.stdout, /FAIL/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("cli keys generate mints an Ed25519 warrant signing keypair", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    const result = await capture(["keys", "generate", "--out", "secrets"], dir);
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /key_id=ed25519:/);
+    assert.equal(existsSync(path.join(dir, "secrets", "warrant-ed25519-private.pem")), true);
+    assert.equal(existsSync(path.join(dir, "secrets", "warrant-ed25519-public.pem")), true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("cli plan and demo produce real governance output", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
   try {

@@ -2,6 +2,34 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { createHash } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import path from "node:path";
+import {
+  type AristotleSigner,
+  type SignatureAlgorithm,
+  getDefaultDevSigner,
+  resolveWarrantSigner,
+  verifyEd25519
+} from "./signing.js";
+import { type CredentialBroker, proxyGovernedAction } from "./proxy.js";
+import { PLAYGROUND_HTML } from "./playground.js";
+import { type RevocationList, loadRevocationList, revocationReason } from "./revocation.js";
+
+export * from "./proxy.js";
+export * from "./mcp.js";
+export * from "./playground.js";
+export * from "./revocation.js";
+
+export {
+  type AristotleSigner,
+  type SignatureAlgorithm,
+  createEd25519Signer,
+  createEphemeralDevSigner,
+  deriveKeyId,
+  getDefaultDevSigner,
+  loadWarrantSignerFromEnv,
+  requireProductionSigner,
+  resolveWarrantSigner,
+  verifyEd25519
+} from "./signing.js";
 
 export type ExecutionControlDecision = "ALLOW" | "REFUSE" | "ESCALATE";
 
@@ -15,6 +43,9 @@ export type ExecutionControlReasonCode =
   | "PHYSICAL_INVARIANT_FAILED"
   | "RUNTIME_STATE_MISSING"
   | "POLICY_VERSION_MISMATCH"
+  | "KILL_SWITCH_ENGAGED"
+  | "REPLAY_DETECTED"
+  | "AUTHORITY_REVOKED"
   | "ALLOWED";
 
 export interface WardManifest {
@@ -109,12 +140,32 @@ export interface Warrant {
   single_use: true;
   consumed: boolean;
   issuer: string;
+  /** Base64 Ed25519 signature over the canonical Warrant material. */
   signature: string;
+  signature_algorithm: SignatureAlgorithm;
+  /** Content-addressed id of the signing key (e.g. ed25519:...). */
+  signing_key_id: string;
+  /** SPKI PEM of the signing public key, embedded for offline verification. */
+  signing_public_key: string;
 }
 
 export interface WarrantVerification {
   ok: boolean;
-  reason?: "WARRANT_CONSUMED" | "WARRANT_EXPIRED" | "ACTION_HASH_MISMATCH" | "DECISION_NOT_ALLOWED" | "SIGNATURE_MISMATCH";
+  reason?:
+    | "WARRANT_CONSUMED"
+    | "WARRANT_EXPIRED"
+    | "ACTION_HASH_MISMATCH"
+    | "DECISION_NOT_ALLOWED"
+    | "SIGNATURE_MISMATCH"
+    | "UNTRUSTED_SIGNING_KEY"
+    | "REVOKED";
+}
+
+export interface WarrantVerifyOptions {
+  /** When set, the Warrant's signing key id must appear in this allowlist. */
+  trustedKeyIds?: string[];
+  /** When set, the Warrant is rejected if its key/envelope/id is revoked. */
+  revocations?: RevocationList;
 }
 
 export interface GelRecord {
@@ -132,10 +183,32 @@ export interface GelRecord {
   policy_version?: string;
   runtime_register_snapshot: RuntimeRegister;
   physical_invariant_result?: PhysicalInvariantResult;
+  /** Base64 Ed25519 signature over record_hash. Present when a signer is configured. */
+  signature?: string;
+  signature_algorithm?: SignatureAlgorithm;
+  signing_key_id?: string;
+  signing_public_key?: string;
 }
+
+/** Fields excluded from the hash-chain material (the hash + the signature over it). */
+const GEL_NON_MATERIAL_FIELDS = [
+  "record_hash",
+  "signature",
+  "signature_algorithm",
+  "signing_key_id",
+  "signing_public_key"
+] as const;
 
 export interface EvaluateExecutionControlInput extends CommitGateInput {
   ledgerPath: string;
+  /** Signer for the issued Warrant. Defaults to a process-stable dev key. */
+  signer?: AristotleSigner;
+  /** When this file exists, the gate refuses every action (sovereign halt). */
+  killSwitchPath?: string;
+  /** When true, a previously-admitted identical action is refused as a replay. */
+  replayProtection?: boolean;
+  /** Path to a revocation list file; revoked keys/envelopes are refused at the gate. */
+  revocationListPath?: string;
 }
 
 export interface EvaluateExecutionControlResult {
@@ -145,6 +218,15 @@ export interface EvaluateExecutionControlResult {
   warrant?: Warrant;
   gel_record: GelRecord;
   ledger_verification: { ok: boolean; count: number; failure?: string };
+}
+
+export interface EvidenceBundleSignature {
+  algorithm: SignatureAlgorithm;
+  key_id: string;
+  /** SPKI PEM of the attesting key, embedded for offline verification. */
+  public_key: string;
+  /** Base64 Ed25519 signature over hashes.bundle_hash. */
+  value: string;
 }
 
 export interface EvidenceBundle {
@@ -162,6 +244,8 @@ export interface EvidenceBundle {
     ledger_tip_hash: string;
     bundle_hash: string;
   };
+  /** Present when the bundle was exported with a configured signer. */
+  bundle_signature?: EvidenceBundleSignature;
   verification: EvidenceBundleVerification;
 }
 
@@ -171,6 +255,7 @@ export interface EvidenceBundleVerification {
   ledger: { ok: boolean; count: number; failure?: string };
   warrant?: WarrantVerification;
   bundle_hash?: string;
+  bundle_signature_ok?: boolean;
 }
 
 export interface ExportEvidenceBundleInput {
@@ -180,6 +265,15 @@ export interface ExportEvidenceBundleInput {
   recordId?: string;
   warrant?: Warrant;
   exportedAt?: string;
+  /** When provided, attaches a bundle-level Ed25519 attestation over bundle_hash. */
+  signer?: AristotleSigner;
+}
+
+export interface VerifyEvidenceBundleOptions {
+  /** When set, both the Warrant and bundle signatures must use a key id in this allowlist. */
+  trustedKeyIds?: string[];
+  /** When set, a bundle bound to a revoked key/envelope/warrant fails verification. */
+  revocations?: RevocationList;
 }
 
 export interface ExecutionControlRuntimeServerOptions {
@@ -187,6 +281,20 @@ export interface ExecutionControlRuntimeServerOptions {
   authorityEnvelope: AuthorityEnvelope;
   ledgerPath: string;
   now?: string;
+  /** Signer for issued Warrants. Defaults to a process-stable dev key. */
+  signer?: AristotleSigner;
+  /** When set, enables the credential-brokering proxy route. */
+  broker?: CredentialBroker;
+  /** When true, serves the no-install playground UI at GET / and /playground. */
+  servePlayground?: boolean;
+  /** When this file exists, the boundary refuses every action (sovereign halt). */
+  killSwitchPath?: string;
+  /** When true, identical previously-admitted actions are refused as replays. Defaults to true. */
+  replayProtection?: boolean;
+  /** When set, /v1 routes require this bearer token / x-api-key. */
+  apiKey?: string;
+  /** Path to a revocation list file; revoked keys/envelopes are refused at the gate. */
+  revocationListPath?: string;
 }
 
 export interface ExecutionControlRuntimeServer {
@@ -337,10 +445,31 @@ function refuse(
   };
 }
 
-export function issueWarrant(decision: CommitGateDecision, action: CanonicalActionInput, envelope: AuthorityEnvelope, now = new Date().toISOString()): Warrant | undefined {
+/** Canonical, deterministic message that an Ed25519 Warrant signature binds. */
+function warrantMaterial(fields: {
+  action_type: string;
+  authority_envelope_id: string;
+  canonical_action_hash: string;
+  expires_at: string;
+  issued_at: string;
+  issuer: string;
+  subject: string;
+  ward_id: string;
+}): string {
+  return stableStringify({ ...fields, decision: "ALLOW", single_use: true });
+}
+
+export function issueWarrant(
+  decision: CommitGateDecision,
+  action: CanonicalActionInput,
+  envelope: AuthorityEnvelope,
+  now = new Date().toISOString(),
+  signer: AristotleSigner = getDefaultDevSigner()
+): Warrant | undefined {
   if (decision.decision !== "ALLOW") return undefined;
   const expires_at = new Date(Date.parse(now) + 60_000).toISOString();
-  const material = {
+  const material = warrantMaterial({
+    action_type: action.action_type,
     authority_envelope_id: envelope.envelope_id,
     canonical_action_hash: decision.canonical_action_hash,
     expires_at,
@@ -348,10 +477,10 @@ export function issueWarrant(decision: CommitGateDecision, action: CanonicalActi
     issuer: envelope.issuer,
     subject: action.subject,
     ward_id: action.ward_id
-  };
-  const signature = `aristotle-execution-control-signature-${sha256(stableStringify(material))}`;
+  });
+  const signature = signer.sign(material);
   return {
-    warrant_id: `wrn-${sha256(stableStringify({ ...material, signature })).slice(0, 24)}`,
+    warrant_id: `wrn-${sha256(stableStringify({ material, signature, signing_key_id: signer.key_id })).slice(0, 24)}`,
     ward_id: action.ward_id,
     authority_envelope_id: envelope.envelope_id,
     canonical_action_hash: decision.canonical_action_hash,
@@ -363,31 +492,45 @@ export function issueWarrant(decision: CommitGateDecision, action: CanonicalActi
     single_use: true,
     consumed: false,
     issuer: envelope.issuer,
-    signature
+    signature,
+    signature_algorithm: signer.algorithm,
+    signing_key_id: signer.key_id,
+    signing_public_key: signer.public_key_pem
   };
 }
 
 export class AristotleWarrant {
   constructor(public readonly warrant: Warrant) {}
 
-  verify(canonicalActionHash: string, now = new Date().toISOString()): WarrantVerification {
-    return verifyWarrant(this.warrant, canonicalActionHash, now);
+  verify(canonicalActionHash: string, now = new Date().toISOString(), options: WarrantVerifyOptions = {}): WarrantVerification {
+    return verifyWarrant(this.warrant, canonicalActionHash, now, options);
   }
 
-  consume(canonicalActionHash: string, now = new Date().toISOString()): Warrant {
-    const verification = this.verify(canonicalActionHash, now);
+  consume(canonicalActionHash: string, now = new Date().toISOString(), options: WarrantVerifyOptions = {}): Warrant {
+    const verification = this.verify(canonicalActionHash, now, options);
     if (!verification.ok) throw new Error(verification.reason ?? "WARRANT_VERIFICATION_FAILED");
     this.warrant.consumed = true;
     return this.warrant;
   }
 }
 
-export function verifyWarrant(warrant: Warrant, canonicalActionHash: string, now = new Date().toISOString()): WarrantVerification {
+export function verifyWarrant(warrant: Warrant, canonicalActionHash: string, now = new Date().toISOString(), options: WarrantVerifyOptions = {}): WarrantVerification {
   if (warrant.decision !== "ALLOW") return { ok: false, reason: "DECISION_NOT_ALLOWED" };
   if (warrant.consumed) return { ok: false, reason: "WARRANT_CONSUMED" };
   if (Date.parse(warrant.expires_at) <= Date.parse(now)) return { ok: false, reason: "WARRANT_EXPIRED" };
   if (warrant.canonical_action_hash !== canonicalActionHash) return { ok: false, reason: "ACTION_HASH_MISMATCH" };
-  const material = {
+  if (options.trustedKeyIds && !options.trustedKeyIds.includes(warrant.signing_key_id)) {
+    return { ok: false, reason: "UNTRUSTED_SIGNING_KEY" };
+  }
+  if (options.revocations && revocationReason(options.revocations, {
+    signing_key_id: warrant.signing_key_id,
+    authority_envelope_id: warrant.authority_envelope_id,
+    warrant_id: warrant.warrant_id
+  })) {
+    return { ok: false, reason: "REVOKED" };
+  }
+  const material = warrantMaterial({
+    action_type: warrant.action_type,
     authority_envelope_id: warrant.authority_envelope_id,
     canonical_action_hash: warrant.canonical_action_hash,
     expires_at: warrant.expires_at,
@@ -395,14 +538,15 @@ export function verifyWarrant(warrant: Warrant, canonicalActionHash: string, now
     issuer: warrant.issuer,
     subject: warrant.subject,
     ward_id: warrant.ward_id
-  };
-  const expected = `aristotle-execution-control-signature-${sha256(stableStringify(material))}`;
-  if (warrant.signature !== expected) return { ok: false, reason: "SIGNATURE_MISMATCH" };
+  });
+  if (warrant.signature_algorithm !== "ed25519" || !verifyEd25519(warrant.signing_public_key, material, warrant.signature)) {
+    return { ok: false, reason: "SIGNATURE_MISMATCH" };
+  }
   return { ok: true };
 }
 
-export function consumeWarrant(warrant: Warrant, canonicalActionHash: string, now = new Date().toISOString()): Warrant {
-  return new AristotleWarrant(warrant).consume(canonicalActionHash, now);
+export function consumeWarrant(warrant: Warrant, canonicalActionHash: string, now = new Date().toISOString(), options: WarrantVerifyOptions = {}): Warrant {
+  return new AristotleWarrant(warrant).consume(canonicalActionHash, now, options);
 }
 
 export function appendGelRecord(input: {
@@ -412,6 +556,7 @@ export function appendGelRecord(input: {
   decision: CommitGateDecision;
   warrant?: Warrant;
   now?: string;
+  signer?: AristotleSigner;
 }): GelRecord {
   const chain = loadGelChain(input.ledgerPath);
   const previous_hash = chain.at(-1)?.record_hash ?? GENESIS_HASH;
@@ -432,7 +577,19 @@ export function appendGelRecord(input: {
     physical_invariant_result: input.decision.physical_invariant_result
   };
   const record_hash = sha256(stableStringify(base));
-  const record: GelRecord = { ...base, record_hash };
+  const signer = input.signer;
+  const record: GelRecord = {
+    ...base,
+    record_hash,
+    ...(signer
+      ? {
+          signature: signer.sign(record_hash),
+          signature_algorithm: signer.algorithm,
+          signing_key_id: signer.key_id,
+          signing_public_key: signer.public_key_pem
+        }
+      : {})
+  };
   mkdirSync(path.dirname(path.resolve(input.ledgerPath)), { recursive: true });
   appendFileSync(input.ledgerPath, `${stableStringify(record)}\n`, "utf8");
   return record;
@@ -453,9 +610,16 @@ export function verifyGelRecords(chain: GelRecord[]): { ok: boolean; count: numb
   let previous = GENESIS_HASH;
   for (const [index, record] of chain.entries()) {
     if (record.previous_hash !== previous) return { ok: false, count: chain.length, failure: `record ${index} previous_hash mismatch` };
-    const { record_hash: _recordHash, ...material } = record;
+    const material = Object.fromEntries(
+      Object.entries(record).filter(([key]) => !GEL_NON_MATERIAL_FIELDS.includes(key as (typeof GEL_NON_MATERIAL_FIELDS)[number]))
+    );
     const expected = sha256(stableStringify(material));
     if (record.record_hash !== expected) return { ok: false, count: chain.length, failure: `record ${index} hash mismatch` };
+    if (record.signature) {
+      if (record.signature_algorithm !== "ed25519" || !record.signing_public_key || !verifyEd25519(record.signing_public_key, record.record_hash, record.signature)) {
+        return { ok: false, count: chain.length, failure: `record ${index} signature invalid` };
+      }
+    }
     previous = record.record_hash;
   }
   return { ok: true, count: chain.length };
@@ -484,20 +648,24 @@ export function exportEvidenceBundle(input: ExportEvidenceBundleInput): Evidence
     ledger_tip_hash: ledger_chain.at(-1)?.record_hash ?? GENESIS_HASH,
     bundle_hash: ""
   };
-  const verification = verifyEvidenceBundle({ ...partial, hashes, verification: emptyEvidenceVerification() });
-  hashes.bundle_hash = verification.bundle_hash ?? sha256(stableStringify({ ...partial, hashes: { ...hashes, bundle_hash: undefined } }));
-  return {
-    ...partial,
-    hashes,
-    verification: verifyEvidenceBundle({ ...partial, hashes, verification: emptyEvidenceVerification() })
-  };
+  hashes.bundle_hash = evidenceBundleHash({ ...partial, hashes } as EvidenceBundle);
+  const bundle_signature: EvidenceBundleSignature | undefined = input.signer
+    ? {
+        algorithm: input.signer.algorithm,
+        key_id: input.signer.key_id,
+        public_key: input.signer.public_key_pem,
+        value: input.signer.sign(hashes.bundle_hash)
+      }
+    : undefined;
+  const draft: EvidenceBundle = { ...partial, hashes, bundle_signature, verification: emptyEvidenceVerification() };
+  return { ...draft, verification: verifyEvidenceBundle(draft) };
 }
 
 export function loadEvidenceBundle(file: string): EvidenceBundle {
   return JSON.parse(readFileSync(file, "utf8")) as EvidenceBundle;
 }
 
-export function verifyEvidenceBundle(bundle: EvidenceBundle): EvidenceBundleVerification {
+export function verifyEvidenceBundle(bundle: EvidenceBundle, options: VerifyEvidenceBundleOptions = {}): EvidenceBundleVerification {
   const failures: string[] = [];
   if (bundle.bundle_version !== "aristotle.execution-evidence.v1") failures.push("unsupported evidence bundle version");
 
@@ -526,7 +694,7 @@ export function verifyEvidenceBundle(bundle: EvidenceBundle): EvidenceBundleVeri
 
   let warrant: WarrantVerification | undefined;
   if (bundle.warrant) {
-    warrant = verifyWarrant(bundle.warrant, bundle.selected_record.canonical_action_hash, bundle.warrant.issued_at);
+    warrant = verifyWarrant(bundle.warrant, bundle.selected_record.canonical_action_hash, bundle.warrant.issued_at, { trustedKeyIds: options.trustedKeyIds, revocations: options.revocations });
     if (!warrant.ok) failures.push(`warrant verification failed: ${warrant.reason}`);
     if (bundle.selected_record.warrant_id && bundle.selected_record.warrant_id !== bundle.warrant.warrant_id) failures.push("selected record Warrant id does not match bundled Warrant");
   } else if (bundle.selected_record.warrant_id) {
@@ -536,12 +704,27 @@ export function verifyEvidenceBundle(bundle: EvidenceBundle): EvidenceBundleVeri
   const expectedBundleHash = evidenceBundleHash(bundle);
   if (bundle.hashes.bundle_hash && bundle.hashes.bundle_hash !== expectedBundleHash) failures.push("evidence bundle hash mismatch");
 
+  let bundle_signature_ok: boolean | undefined;
+  if (bundle.bundle_signature) {
+    const sig = bundle.bundle_signature;
+    if (options.trustedKeyIds && !options.trustedKeyIds.includes(sig.key_id)) {
+      bundle_signature_ok = false;
+      failures.push("bundle signature uses an untrusted signing key");
+    } else if (sig.algorithm !== "ed25519" || !verifyEd25519(sig.public_key, bundle.hashes.bundle_hash, sig.value)) {
+      bundle_signature_ok = false;
+      failures.push("bundle signature verification failed");
+    } else {
+      bundle_signature_ok = true;
+    }
+  }
+
   return {
     ok: failures.length === 0,
     failures,
     ledger,
     warrant,
-    bundle_hash: expectedBundleHash
+    bundle_hash: expectedBundleHash,
+    bundle_signature_ok
   };
 }
 
@@ -567,17 +750,45 @@ function emptyEvidenceVerification(): EvidenceBundleVerification {
   return { ok: false, failures: [], ledger: { ok: false, count: 0 } };
 }
 
+/** True when the same canonical action was already admitted (ALLOW) in this ledger. */
+export function hasPriorAdmission(ledgerPath: string, canonicalActionHash: string): boolean {
+  return loadGelChain(ledgerPath).some(
+    (record) => record.canonical_action_hash === canonicalActionHash && record.decision === "ALLOW"
+  );
+}
+
 export function evaluateExecutionControl(input: EvaluateExecutionControlInput): EvaluateExecutionControlResult {
   if (!input.ward) throw new Error("ward manifest is required for GEL recording");
-  const decision = evaluateCommitGate(input);
-  const warrant = input.authorityEnvelope ? issueWarrant(decision, input.action, input.authorityEnvelope, input.now) : undefined;
+  const signer = input.signer ?? getDefaultDevSigner();
+  const canonical = canonicalizeAction(input.action);
+  const runtimeSnapshot = stableNormalize(input.runtimeRegister ?? {}) as RuntimeRegister;
+
+  // Sovereign halt, revocation, and replay protection short-circuit the gate but
+  // are still recorded in the ledger so the attempt is auditable.
+  const revocations = input.revocationListPath ? loadRevocationList(input.revocationListPath) : undefined;
+  const revoked = revocations && revocationReason(revocations, {
+    signing_key_id: signer.key_id,
+    authority_envelope_id: input.authorityEnvelope?.envelope_id
+  });
+  let decision: CommitGateDecision;
+  if (input.killSwitchPath && existsSync(input.killSwitchPath)) {
+    decision = refuse("REFUSE", ["KILL_SWITCH_ENGAGED"], canonical, runtimeSnapshot, input.ward, input.authorityEnvelope ?? undefined);
+  } else if (revoked) {
+    decision = refuse("REFUSE", ["AUTHORITY_REVOKED"], canonical, runtimeSnapshot, input.ward, input.authorityEnvelope ?? undefined);
+  } else if (input.replayProtection && hasPriorAdmission(input.ledgerPath, canonical.canonical_action_hash)) {
+    decision = refuse("REFUSE", ["REPLAY_DETECTED"], canonical, runtimeSnapshot, input.ward, input.authorityEnvelope ?? undefined);
+  } else {
+    decision = evaluateCommitGate(input);
+  }
+  const warrant = decision.decision === "ALLOW" && input.authorityEnvelope ? issueWarrant(decision, input.action, input.authorityEnvelope, input.now, signer) : undefined;
   const gel_record = appendGelRecord({
     ledgerPath: input.ledgerPath,
     ward: input.ward,
     action: input.action,
     decision,
     warrant,
-    now: input.now
+    now: input.now,
+    signer
   });
   return {
     decision: decision.decision,
@@ -775,10 +986,31 @@ export function executionControlOpenApiSpec() {
           }
         }
       },
+      "/v1/execution-control/proxy": {
+        post: {
+          summary: "Evaluate a governed action and forward it downstream only on ALLOW (credentials brokered server-side)",
+          requestBody: {
+            required: true,
+            content: { "application/json": { schema: { $ref: "#/components/schemas/EvaluateRequest" } } }
+          },
+          responses: {
+            "200": { description: "ALLOW and forwarded; downstream response included" },
+            "202": { description: "ESCALATE; not forwarded" },
+            "409": { description: "REFUSE; not forwarded" },
+            "502": { description: "ALLOW but downstream forwarding failed" }
+          }
+        }
+      },
       "/v1/execution-control/audit/tail": {
         get: {
           summary: "Return recent Governance Evidence Ledger records",
           responses: { "200": { description: "Recent GEL records" } }
+        }
+      },
+      "/v1/execution-control/metrics": {
+        get: {
+          summary: "Decision counts, reason-code histogram, ledger size and integrity",
+          responses: { "200": { description: "Runtime metrics" } }
         }
       },
       "/v1/execution-control/audit/verify": {
@@ -827,22 +1059,62 @@ export function executionControlOpenApiSpec() {
 }
 
 export function createExecutionControlRuntimeServer(options: ExecutionControlRuntimeServerOptions): ExecutionControlRuntimeServer {
+  const replayProtection = options.replayProtection !== false;
+  const authorized = (req: IncomingMessage): boolean => {
+    if (!options.apiKey) return true;
+    const header = req.headers["authorization"];
+    const bearer = typeof header === "string" && header.startsWith("Bearer ") ? header.slice(7) : undefined;
+    const apiKeyHeader = req.headers["x-api-key"];
+    const provided = bearer ?? (typeof apiKeyHeader === "string" ? apiKeyHeader : undefined);
+    return provided === options.apiKey;
+  };
+
   const server = createServer(async (req, res) => {
     try {
       const url = new URL(req.url ?? "/", "http://127.0.0.1");
+
+      // Health and the OpenAPI contract stay open for liveness/discovery. When an
+      // API key is configured (and the demo playground is not being served), the
+      // /v1 routes require it.
+      if (options.apiKey && !options.servePlayground && url.pathname.startsWith("/v1/execution-control/") && !authorized(req)) {
+        sendJson(res, 401, { error: "unauthorized" });
+        return;
+      }
+
       if (req.method === "GET" && url.pathname === "/health") {
         sendJson(res, 200, {
           ok: true,
           runtime: "aristotle-ward-warrant-execution-control",
           doctrine: "Governance must bind at the execution boundary before irreversible state mutation or external action occurs.",
           ward_id: options.ward.ward_id,
-          authority_envelope_id: options.authorityEnvelope.envelope_id
+          authority_envelope_id: options.authorityEnvelope.envelope_id,
+          kill_switch_engaged: !!(options.killSwitchPath && existsSync(options.killSwitchPath)),
+          replay_protection: replayProtection,
+          auth_required: !!options.apiKey
         });
         return;
       }
 
       if (req.method === "GET" && url.pathname === "/openapi.json") {
         sendJson(res, 200, executionControlOpenApiSpec());
+        return;
+      }
+
+      if (req.method === "GET" && url.pathname === "/v1/execution-control/context") {
+        sendJson(res, 200, {
+          ward_id: options.ward.ward_id,
+          subject: options.authorityEnvelope.subject,
+          allowed_actions: options.authorityEnvelope.allowed_actions,
+          denied_actions: options.authorityEnvelope.denied_actions,
+          boundary_id: options.ward.physical_bounds?.permitted_boundary_id ?? "",
+          signing_key_id: options.signer?.key_id ?? "ephemeral-dev"
+        });
+        return;
+      }
+
+      if (options.servePlayground && req.method === "GET" && (url.pathname === "/" || url.pathname === "/playground")) {
+        res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+        res.end(PLAYGROUND_HTML);
         return;
       }
 
@@ -855,9 +1127,33 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           action,
           runtimeRegister: body.runtime_register as RuntimeRegister | undefined,
           ledgerPath: options.ledgerPath,
-          now: typeof body.now === "string" ? body.now : options.now
+          now: typeof body.now === "string" ? body.now : options.now,
+          signer: options.signer,
+          killSwitchPath: options.killSwitchPath,
+          replayProtection,
+          revocationListPath: options.revocationListPath
         });
         sendJson(res, result.decision === "ALLOW" ? 200 : result.decision === "ESCALATE" ? 202 : 409, result);
+        return;
+      }
+
+      if (req.method === "POST" && url.pathname === "/v1/execution-control/proxy") {
+        const body = await readJsonBody(req);
+        const action = (body.action ?? body) as CanonicalActionInput;
+        const result = await proxyGovernedAction({
+          ward: options.ward,
+          authorityEnvelope: options.authorityEnvelope,
+          action,
+          ledgerPath: options.ledgerPath,
+          signer: options.signer,
+          broker: options.broker,
+          now: typeof body.now === "string" ? body.now : options.now,
+          killSwitchPath: options.killSwitchPath,
+          replayProtection,
+          revocationListPath: options.revocationListPath
+        });
+        const status = result.decision === "ALLOW" ? (result.forwarded ? 200 : 502) : result.decision === "ESCALATE" ? 202 : 409;
+        sendJson(res, status, result);
         return;
       }
 
@@ -872,17 +1168,49 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
         return;
       }
 
+      if (req.method === "GET" && url.pathname === "/v1/execution-control/metrics") {
+        const chain = loadGelChain(options.ledgerPath);
+        const decisions: Record<string, number> = { ALLOW: 0, REFUSE: 0, ESCALATE: 0 };
+        const reasonCodes: Record<string, number> = {};
+        for (const record of chain) {
+          decisions[record.decision] = (decisions[record.decision] ?? 0) + 1;
+          for (const code of record.reason_codes) reasonCodes[code] = (reasonCodes[code] ?? 0) + 1;
+        }
+        sendJson(res, 200, {
+          total_records: chain.length,
+          decisions,
+          reason_codes: reasonCodes,
+          ledger_ok: verifyGelChain(options.ledgerPath).ok,
+          signing_key_id: options.signer?.key_id ?? "ephemeral-dev",
+          kill_switch_engaged: !!(options.killSwitchPath && existsSync(options.killSwitchPath)),
+          replay_protection: replayProtection
+        });
+        return;
+      }
+
       sendJson(res, 404, { error: "not_found" });
     } catch (error) {
-      sendJson(res, 400, { error: "execution_control_runtime_error", message: error instanceof Error ? error.message : String(error) });
+      const statusCode = (error as { statusCode?: unknown })?.statusCode;
+      const status = typeof statusCode === "number" ? statusCode : 400;
+      sendJson(res, status, { error: "execution_control_runtime_error", message: error instanceof Error ? error.message : String(error) });
     }
   });
   return { server };
 }
 
+const MAX_REQUEST_BODY_BYTES = 1_000_000;
+
 async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
-  for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  let total = 0;
+  for await (const chunk of req) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    total += buffer.length;
+    if (total > MAX_REQUEST_BODY_BYTES) {
+      throw Object.assign(new Error(`request body exceeds ${MAX_REQUEST_BODY_BYTES} bytes`), { statusCode: 413 });
+    }
+    chunks.push(buffer);
+  }
   const text = Buffer.concat(chunks).toString("utf8").trim();
   return text ? JSON.parse(text) as Record<string, unknown> : {};
 }

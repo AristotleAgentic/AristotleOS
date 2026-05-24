@@ -6,38 +6,46 @@ AristotleOS is runtime governance for autonomous execution: authority resolution
 
 ## Try AristotleOS
 
-Run the public playground locally:
+Install the CLI and run a governed agent in about five minutes:
 
 ```bash
-corepack pnpm install
-npm run aristotle:demo
+npm install -g @aristotle/os-cli      # or: npx @aristotle/os-cli pilot
+aristotle pilot                       # self-check the full boundary (PASS/FAIL)
+aristotle init                        # scaffold a governed project
+aristotle keys generate               # durable Ed25519 signing key
+aristotle run -- node aristotle/agent.mjs   # run an agent behind the boundary
 ```
 
-Open:
+`aristotle run` boots the execution-control boundary, injects `ARISTOTLE_ENDPOINT`
+into your agent, and governs every consequential action: the Commit Gate returns
+`ALLOW` / `REFUSE` / `ESCALATE`, issues a single-use **Ed25519-signed Warrant** on
+`ALLOW`, and records a tamper-evident Governance Evidence Ledger entry.
 
-```text
-http://127.0.0.1:4173/try
-```
-
-The first scenario is a payments remediation agent attempting an $8,000 refund. AristotleOS resolves the Ward, checks the Authority Envelope, evaluates the Commit Gate, defers for approval, issues a one-time warrant only after approval, and commits the GEL record.
-
-CLI path:
+No-install browser playground:
 
 ```bash
-npm run aristotle -- init my-governed-agent
-cd my-governed-agent
-npm --prefix .. run aristotle -- check
-npm --prefix .. run aristotle -- plan
-npm --prefix .. run aristotle -- demo payments
+aristotle playground                  # http://127.0.0.1:4178
+```
+
+Expose the boundary to MCP-capable agent runtimes:
+
+```bash
+aristotle mcp                         # JSON-RPC over stdio
 ```
 
 Docs:
-- [Quickstart](docs/quickstart.md)
-- [CLI](docs/cli.md)
-- [Playground](docs/playground.md)
-- [Framework adapters](docs/framework-adapters.md)
-- [Deployment](docs/deployment.md)
-- [Pilot install](docs/pilot-install.md)
+- [Getting started](docs/getting-started.md)
+- [Execution-control runtime](docs/execution-control-runtime.md)
+- [Architecture](docs/architecture.md)
+- [Deployment runbook](docs/deployment-runbook.md)
+
+The service-backed console demo (payments remediation, operator approval, warrant
+issuance) is also available:
+
+```bash
+corepack pnpm install
+npm run aristotle:demo                 # http://127.0.0.1:4173/try
+```
 - [Ward/Warrant Execution-Control Path](docs/execution-control-runtime.md)
 
 Pilot Kubernetes smoke:

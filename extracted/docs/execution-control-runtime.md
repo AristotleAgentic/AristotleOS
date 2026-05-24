@@ -6,6 +6,18 @@ The AristotleOS doctrine remains unchanged:
 
 > Governance must bind at the execution boundary before irreversible state mutation or external action occurs.
 
+## Quickstart
+
+```bash
+npx @aristotle/os-cli pilot          # self-check the whole boundary
+aristotle init                       # scaffold a governed project
+aristotle keys generate              # durable Ed25519 signing key
+aristotle run -- node aristotle/agent.mjs   # run an agent behind the boundary
+aristotle playground                 # no-install browser playground
+```
+
+See [getting-started.md](getting-started.md) for the full path.
+
 ## What It Does
 
 This runtime path takes a proposed governed action, canonicalizes it into deterministic JSON, evaluates it through the Commit Gate, issues a single-use Warrant only on `ALLOW`, and appends a hash-linked Governance Evidence Ledger record for every decision.
@@ -16,8 +28,8 @@ The module uses AristotleOS-native names, schemas, examples, and tests:
 - Authority Envelope establishes scoped delegated authority inside the Ward.
 - Canonical Governed Action gives the Commit Gate stable decision material.
 - Commit Gate returns `ALLOW`, `ESCALATE`, or `REFUSE` with reason codes.
-- Warrant proves admissibility at the moment of consequence.
-- GEL preserves the decision context as a tamper-evident execution lineage.
+- Warrant proves admissibility at the moment of consequence. Warrants are signed with a real **Ed25519** key (not a recomputable hash), carry their `key_id` and public key, and can be verified offline and pinned to a trusted key.
+- GEL preserves the decision context as a tamper-evident execution lineage. Each record is hash-chained and Ed25519-signed.
 - PIG blocks physical invariant violations before execution.
 
 ## Runtime Package
@@ -43,6 +55,10 @@ Core exports:
 - `submitGovernedAction`
 - `exportEvidenceBundle`
 - `verifyEvidenceBundle`
+- `createEd25519Signer` / `loadWarrantSignerFromEnv` / `verifyEd25519`
+- `CredentialBroker` / `proxyGovernedAction`
+- `createExecutionControlMcpServer`
+- `loadRevocationList` / `addRevocation` / `revocationReason`
 
 ## Demo
 
@@ -192,3 +208,113 @@ The execution-control tests prove:
 - GEL verification fails after tampering
 - Evidence Bundle exports Ward, Authority Envelope, Warrant, and GEL
 - Evidence Bundle verification fails after selected record tampering
+- Warrant carries a real Ed25519 signature (not a recomputable hash)
+- forged or tampered Warrant signatures fail verification
+- Warrant verification can pin a trusted signing key id
+- GEL records are Ed25519-signed and verification fails on signature tampering
+- Evidence Bundle carries a verifiable bundle-level signature
+- credential broker injects only matched secrets and never leaks values
+- proxy forwards an approved action with brokered credentials and refuses denied actions
+- kill switch refuses every action while engaged (and audits the attempt)
+- replay protection refuses an identical previously-admitted action
+- server enforces an API key on `/v1` routes, leaves `/health` open, and serves metrics
+- the gate refuses a revoked Authority Envelope (`AUTHORITY_REVOKED`)
+- `verifyWarrant` rejects a Warrant signed by a revoked key (`REVOKED`)
+- Evidence Bundle verification fails against a revocation list
+
+## Real signing and keys
+
+Warrants, GEL records, and Evidence Bundles are signed with Ed25519. Generate a
+durable keypair and point the runtime at it:
+
+```bash
+aristotle keys generate
+export ARISTOTLE_WARRANT_SIGNING_PRIVATE_KEY_PATH=secrets/warrant-ed25519-private.pem
+export ARISTOTLE_WARRANT_SIGNING_PUBLIC_KEY_PATH=secrets/warrant-ed25519-public.pem
+```
+
+Without a configured key, a process-stable **ephemeral dev key** signs Warrants.
+It is genuinely Ed25519-signed (unforgeable without the in-process key) but is
+discarded on exit and **refused under `NODE_ENV=production`**. Verifiers can pin a
+trusted `key_id` via `trustedKeyIds`.
+
+## Run an agent behind the boundary
+
+```bash
+aristotle run -- <your agent command>
+```
+
+`run` auto-discovers the Ward/Envelope (flags, `aristotle.json`, or conventional
+paths), boots the boundary on a local port, injects `ARISTOTLE_ENDPOINT`, and
+runs your agent as a governed child process, tearing the boundary down when the
+agent exits.
+
+## Credential brokering and the action proxy
+
+The boundary can hold downstream secrets so the agent never sees them. Define
+broker rules (`aristotle.broker.json`, or the `broker` field of `aristotle.json`):
+
+```json
+{ "rules": [
+  { "action_type": "http.post", "target_prefix": "https://api.stripe.com",
+    "header": "Authorization", "value_env": "STRIPE_API_KEY", "scheme": "Bearer" }
+] }
+```
+
+Agents POST actions to `/v1/execution-control/proxy`. On `ALLOW` (with a verified
+Warrant) the broker injects the credential and the proxy forwards the call,
+returning the downstream response. The raw secret is never returned and never
+written to the ledger.
+
+## MCP server
+
+```bash
+aristotle mcp
+```
+
+Serves the boundary to MCP-capable agent runtimes over stdio (newline-delimited
+JSON-RPC, no external SDK). Tools: `aristotle_evaluate_action`,
+`aristotle_proxy_action`, `aristotle_audit_verify`.
+
+## Playground
+
+```bash
+aristotle playground   # http://127.0.0.1:4178
+```
+
+A no-install browser page, served by the live boundary, for editing a Canonical
+Governed Action and watching the decision, Warrant, and GEL record in real time.
+
+## One-command pilot
+
+```bash
+aristotle pilot
+```
+
+A dependency-free self-check of the full boundary (ALLOW / REFUSE / ESCALATE,
+signed Warrant, key pinning, Evidence Bundle, GEL chain). Prints a PASS/FAIL
+report and exits non-zero on any failure.
+
+## Production hardening
+
+- **Kill switch (sovereign halt)** — `aristotle kill engage` / `release`. While
+  engaged, the gate refuses every action with `KILL_SWITCH_ENGAGED`; the attempt
+  is still recorded in the ledger. The runtime checks a sentinel file
+  (`killSwitchPath`, default `.aristotle/KILL_SWITCH`) on every request, so an
+  operator can halt a running boundary without restarting it.
+- **Replay protection** — an identical, previously-admitted Canonical Governed
+  Action is refused with `REPLAY_DETECTED`, enforcing the single-use guarantee at
+  the boundary. On by default; disable with `--no-replay-protection`.
+- **Revocation** — `aristotle revoke key|envelope|warrant <id>` writes a
+  file-backed revocation list the boundary re-reads per request. A revoked signing
+  key or Authority Envelope is refused at the gate (`AUTHORITY_REVOKED`); a Warrant
+  or Evidence Bundle bound to a revoked key/envelope/warrant fails verification
+  (`REVOKED`). Verify offline against a list with
+  `aristotle execution-control evidence verify --bundle b.json --revocations r.json`.
+- **API key auth** — set `ARISTOTLE_OPERATOR_API_KEY` (or `--api-key`) to require
+  `Authorization: Bearer <key>` / `x-api-key` on `/v1` routes. `/health` and
+  `/openapi.json` stay open for probes and discovery.
+- **Request limits** — request bodies over 1 MB are rejected with `413`.
+- **Metrics** — `GET /v1/execution-control/metrics` returns decision counts, a
+  reason-code histogram, ledger size, signing key id, kill-switch state, and
+  ledger integrity.

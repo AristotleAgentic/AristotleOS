@@ -1,19 +1,50 @@
 {
   "name": "@aristotle/os-cli",
   "version": "0.1.0",
+  "description": "AristotleOS CLI — run AI agents behind a governed execution-control boundary with signed, single-use Warrants and a tamper-evident evidence ledger.",
   "type": "module",
   "bin": {
     "aristotle": "dist/index.js"
   },
   "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsx src/index.ts",
-    "test": "tsx src/index.test.ts"
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
   },
-  "dependencies": {
-    "@aristotle/execution-control-runtime": "workspace:*",
-    "@aristotle/trial-engine": "workspace:*"
+  "keywords": [
+    "ai",
+    "agents",
+    "governance",
+    "authorization",
+    "execution-control",
+    "policy",
+    "audit",
+    "cli"
+  ],
+  "homepage": "https://github.com/AristotleAgentic/AristotleOS#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AristotleAgentic/AristotleOS.git",
+    "directory": "apps/aristotle-cli"
+  },
+  "bugs": {
+    "url": "https://github.com/AristotleAgentic/AristotleOS/issues"
+  },
+  "license": "UNLICENSED",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "tsx src/index.ts",
+    "test": "tsx src/index.test.ts",
+    "prepack": "node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0"
   }
 }
