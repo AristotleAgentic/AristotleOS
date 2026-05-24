@@ -1,10 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { generateKeyPairSync } from "node:crypto";
 import {
   type CredentialRevocationList,
+  createEd25519CredentialMinter,
+  createEd25519Signer,
   createHmacCredentialMinter,
+  verifyEd25519MintedCredential,
   verifyMintedCredential
 } from "./index.js";
+
+function ed25519Signer() {
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  return createEd25519Signer({ privateKeyPem: privateKey.export({ type: "pkcs8", format: "pem" }).toString(), publicKeyPem: publicKey.export({ type: "spki", format: "pem" }).toString() });
+}
 
 const SECRET = "a-server-side-minter-secret-32-bytes!!";
 const NOW = "2026-05-24T12:00:00.000Z";
@@ -63,6 +72,28 @@ test("a revoked credential_ref is refused (closes the loop with Ward Marshal rev
   const verified = verifyMintedCredential(cred.token, { secret: SECRET, now: NOW, revocations });
   assert.equal(verified.ok, false);
   if (!verified.ok) assert.match(verified.reason, /revoked/);
+});
+
+test("Ed25519 minter produces a non-repudiable credential verifiable with only the public key", () => {
+  const signer = ed25519Signer();
+  const minter = createEd25519CredentialMinter(signer);
+  const cred = minter.mint({ subject: "agent:analyst", scope: ["warehouse:read"], audience: "warehouse", ttlSeconds: 300, warrantId: "wr-1", now: NOW });
+
+  assert.equal(cred.algorithm, "ed25519");
+  assert.equal(cred.signing_key_id, signer.key_id);
+  assert.equal(cred.signing_public_key, signer.public_key_pem);
+
+  // verifiable offline with only the public key
+  const verified = verifyEd25519MintedCredential(cred.token, { publicKeyPem: signer.public_key_pem, now: NOW, audience: "warehouse" });
+  assert.equal(verified.ok, true);
+  if (verified.ok) assert.equal(verified.claims.subject, "agent:analyst");
+
+  // a different key does not verify it (non-repudiation)
+  assert.equal(verifyEd25519MintedCredential(cred.token, { publicKeyPem: ed25519Signer().public_key_pem, now: NOW }).ok, false);
+  // expiry + revocation still enforced
+  assert.equal(verifyEd25519MintedCredential(cred.token, { publicKeyPem: signer.public_key_pem, now: "2026-05-24T13:00:00.000Z" }).ok, false);
+  const revocations: CredentialRevocationList = { revoked_credentials: [{ credential_ref: cred.credential_ref, revoked_at: NOW, reason: "interdiction", source: "ward-marshal" }] };
+  assert.equal(verifyEd25519MintedCredential(cred.token, { publicKeyPem: signer.public_key_pem, now: NOW, revocations }).ok, false);
 });
 
 test("minter rejects weak secrets, empty scope, and non-positive TTL", () => {

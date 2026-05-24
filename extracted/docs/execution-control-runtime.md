@@ -291,11 +291,18 @@ const cred = minter.mint({ subject, scope: ["warehouse:read"], audience: "wareho
 const check = verifyMintedCredential(cred.token, { secret, audience: "warehouse", revocations });
 ```
 
-`verifyMintedCredential` checks the HMAC (timing-safe), expiry, audience, **and the
-Ward Marshal credential-revocation list** — so a credential revoked during
-interdiction stops verifying immediately. The built-in minter is HMAC-SHA256
-(deterministic, offline-verifiable); implement `CredentialMinter` with an injected
-client for cloud STS / Vault dynamic secrets (no SDK dependency).
+Verification checks the signature, expiry, audience, **and the Ward Marshal
+credential-revocation list** — so a credential revoked during interdiction stops
+verifying immediately. Two built-in minters:
+
+- **`createEd25519CredentialMinter(signer)`** — **non-repudiable**, offline-verifiable
+  with only the public key (`verifyEd25519MintedCredential`); preferred across trust
+  domains. Reuses any `AristotleSigner` (file/env/managed store/HSM-backed).
+- **`createHmacCredentialMinter({ secret })`** — symmetric, verifier must hold the
+  same secret (`verifyMintedCredential`); fine within a single trust domain / dev.
+
+Implement `CredentialMinter` with an injected client for cloud STS / Vault dynamic
+secrets (no SDK dependency).
 
 ## MCP server
 

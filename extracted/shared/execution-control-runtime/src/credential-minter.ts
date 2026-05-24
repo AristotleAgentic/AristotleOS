@@ -1,9 +1,11 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import {
+  type AristotleSigner,
   type CredentialRevocationList,
   credentialRevocationReason,
   sha256,
-  stableStringify
+  stableStringify,
+  verifyEd25519
 } from "./index.js";
 
 /**
@@ -45,8 +47,10 @@ export interface MintedCredential {
   warrant_id: string;
   issued_at: string;
   expires_at: string;
-  algorithm: "hmac-sha256";
+  algorithm: "hmac-sha256" | "ed25519";
   signing_key_id?: string;
+  /** SPKI PEM of the signing public key (Ed25519 minter) for offline verification. */
+  signing_public_key?: string;
 }
 
 export interface CredentialMinter {
@@ -85,16 +89,39 @@ export function createHmacCredentialMinter(options: HmacMinterOptions): Credenti
   return {
     algorithm: "hmac-sha256",
     mint(request: MintRequest): MintedCredential {
-      if (request.ttlSeconds <= 0) throw new Error("ttlSeconds must be positive");
-      if (!request.scope.length) throw new Error("a minted credential must carry at least one scope");
-      const issuedAt = request.now ?? new Date().toISOString();
-      const expiresAt = new Date(Date.parse(issuedAt) + request.ttlSeconds * 1000).toISOString();
-      const scope = [...request.scope].sort();
-      const credential_ref = `cred-${sha256(stableStringify({ subject: request.subject, scope, audience: request.audience, warrant_id: request.warrantId, issued_at: issuedAt })).slice(0, 24)}`;
-      const claims: TokenClaims = { credential_ref, subject: request.subject, scope, audience: request.audience, warrant_id: request.warrantId, issued_at: issuedAt, expires_at: expiresAt };
-      const payload = b64url(stableStringify(claims));
-      const token = `${payload}.${hmac(secret, payload)}`;
-      return { credential_ref, token, subject: request.subject, scope, audience: request.audience, warrant_id: request.warrantId, issued_at: issuedAt, expires_at: expiresAt, algorithm: "hmac-sha256", signing_key_id: options.signingKeyId };
+      const { payload, base } = buildCredentialClaims(request);
+      return { ...base, token: `${payload}.${hmac(secret, payload)}`, algorithm: "hmac-sha256", signing_key_id: options.signingKeyId };
+    }
+  };
+}
+
+type CredentialBase = Omit<MintedCredential, "token" | "algorithm" | "signing_key_id" | "signing_public_key">;
+
+function buildCredentialClaims(request: MintRequest): { payload: string; claims: TokenClaims; base: CredentialBase } {
+  if (request.ttlSeconds <= 0) throw new Error("ttlSeconds must be positive");
+  if (!request.scope.length) throw new Error("a minted credential must carry at least one scope");
+  const issuedAt = request.now ?? new Date().toISOString();
+  const expiresAt = new Date(Date.parse(issuedAt) + request.ttlSeconds * 1000).toISOString();
+  const scope = [...request.scope].sort();
+  const credential_ref = `cred-${sha256(stableStringify({ subject: request.subject, scope, audience: request.audience, warrant_id: request.warrantId, issued_at: issuedAt })).slice(0, 24)}`;
+  const claims: TokenClaims = { credential_ref, subject: request.subject, scope, audience: request.audience, warrant_id: request.warrantId, issued_at: issuedAt, expires_at: expiresAt };
+  const payload = b64url(stableStringify(claims));
+  return { payload, claims, base: { credential_ref, subject: request.subject, scope, audience: request.audience, warrant_id: request.warrantId, issued_at: issuedAt, expires_at: expiresAt } };
+}
+
+/**
+ * An asymmetric (Ed25519) credential minter — **non-repudiable**, consistent with
+ * the rest of the evidence spine, and offline-verifiable with only the public key.
+ * Preferred over the HMAC minter for anything beyond a single trust domain (the
+ * HMAC minter requires the verifier to hold the same secret). Pass an AristotleSigner
+ * (file, env, managed secret store, or — once available — an HSM-backed signer).
+ */
+export function createEd25519CredentialMinter(signer: AristotleSigner): CredentialMinter {
+  return {
+    algorithm: "ed25519",
+    mint(request: MintRequest): MintedCredential {
+      const { payload, base } = buildCredentialClaims(request);
+      return { ...base, token: `${payload}.${signer.sign(payload)}`, algorithm: "ed25519", signing_key_id: signer.key_id, signing_public_key: signer.public_key_pem };
     }
   };
 }
@@ -112,7 +139,14 @@ export type MintedCredentialVerification =
   | { ok: true; claims: TokenClaims }
   | { ok: false; reason: string };
 
-/** Verify a minted credential: signature (timing-safe), expiry, audience, revocation. */
+export interface VerifyEd25519CredentialOptions {
+  publicKeyPem: string;
+  now?: string;
+  audience?: string;
+  revocations?: CredentialRevocationList;
+}
+
+/** Verify an HMAC-minted credential: signature (timing-safe), expiry, audience, revocation. */
 export function verifyMintedCredential(token: string, options: VerifyMintedCredentialOptions): MintedCredentialVerification {
   const secret = typeof options.secret === "string" ? Buffer.from(options.secret, "utf8") : options.secret;
   const parts = token.split(".");
@@ -122,19 +156,29 @@ export function verifyMintedCredential(token: string, options: VerifyMintedCrede
   const sigBuf = Buffer.from(signature);
   const expBuf = Buffer.from(expected);
   if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) return { ok: false, reason: "signature mismatch" };
+  return checkCredentialClaims(payload, options);
+}
 
+/** Verify an Ed25519-minted credential with only the public key (offline, non-repudiable). */
+export function verifyEd25519MintedCredential(token: string, options: VerifyEd25519CredentialOptions): MintedCredentialVerification {
+  const parts = token.split(".");
+  if (parts.length !== 2) return { ok: false, reason: "malformed credential" };
+  const [payload, signature] = parts;
+  if (!verifyEd25519(options.publicKeyPem, payload, signature)) return { ok: false, reason: "signature mismatch" };
+  return checkCredentialClaims(payload, options);
+}
+
+function checkCredentialClaims(payload: string, options: { now?: string; audience?: string; revocations?: CredentialRevocationList }): MintedCredentialVerification {
   let claims: TokenClaims;
   try {
     claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as TokenClaims;
   } catch {
     return { ok: false, reason: "unparseable credential claims" };
   }
-
   const now = options.now ? Date.parse(options.now) : Date.now();
   if (now >= Date.parse(claims.expires_at)) return { ok: false, reason: "credential expired" };
   if (options.audience !== undefined && claims.audience !== options.audience) return { ok: false, reason: "audience mismatch" };
   const revoked = credentialRevocationReason(options.revocations, claims.credential_ref);
   if (revoked) return { ok: false, reason: `credential revoked: ${revoked.reason}` };
-
   return { ok: true, claims };
 }
