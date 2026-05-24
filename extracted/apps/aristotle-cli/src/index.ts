@@ -15,10 +15,14 @@ import {
   CredentialBroker,
   PostgresLedgerBackend,
   addRevocation,
+  type EdgeRecord,
   type SandboxExecutionReceipt,
   type SandboxPolicy,
   type ShadowAction,
+  compileGovernanceManifest,
   createEd25519Signer,
+  diffGovernanceManifests,
+  explainPolicy,
   createExecutionControlMcpServer,
   createExecutionControlRuntimeServer,
   deriveKeyId,
@@ -29,6 +33,7 @@ import {
   LedgerStore,
   LocalProcessSandboxProvider,
   profileShadowMode,
+  reconcileEdgeRecords,
   loadEvidenceBundle,
   loadAuthorityEnvelope,
   loadCanonicalAction,
@@ -426,6 +431,10 @@ Commands:
   replay               Replay the payments scenario
   execution-control evaluate      Evaluate a Ward/Warrant governed action through AristotleOS
   execution-control shadow        Observe-only rollout profiling (would-ALLOW/REFUSE/ESCALATE)
+  governance compile              Validate + hash a Ward/Envelope into a governance manifest
+  governance diff                 Diff two policies; flags changes that weaken authority
+  governance explain              Show what a policy permits/refuses/escalates for sample actions
+  reconcile                       Reconcile disconnected-edge decisions against current policy
   execution-control dev           Start the sample execution-control runtime on localhost
   execution-control serve         Run the AristotleOS execution boundary
   execution-control submit        Submit an action JSON file to the execution boundary
@@ -1037,6 +1046,77 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
       }
       // Exit non-zero when not rollout-ready, so a promotion pipeline can gate on it.
       return report.rollout.ready ? 0 : 1;
+    }
+
+    if (command === "governance" && subcommand === "compile") {
+      const ward = loadWardManifest(path.resolve(cwd, requiredOption(rest, "--ward")));
+      const authorityEnvelope = loadAuthorityEnvelope(path.resolve(cwd, requiredOption(rest, "--envelope")));
+      const manifest = compileGovernanceManifest({ ward, authorityEnvelope, now: optionValue(rest, "--now") });
+      const outPath = optionValue(rest, "--out");
+      if (outPath) writeFileSync(path.resolve(cwd, outPath), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+      if (json) { printJson(out, manifest, true); }
+      else {
+        out(`governance manifest — ${manifest.ward.ward_id} / ${manifest.authority_envelope.envelope_id}\n`);
+        out(`validation: ${manifest.validation.ok ? "ok" : "FAILED"}\n`);
+        for (const e of manifest.validation.errors) out(`  - ${e}\n`);
+        out(`ward_hash=${manifest.hashes.ward_hash.slice(0, 16)}…  envelope_hash=${manifest.hashes.authority_envelope_hash.slice(0, 16)}…\n`);
+        out(`manifest_hash=${manifest.hashes.manifest_hash}\n${outPath ? `written → ${outPath}\n` : ""}`);
+      }
+      return manifest.validation.ok ? 0 : 1;
+    }
+
+    if (command === "governance" && subcommand === "diff") {
+      const before = { ward: loadWardManifest(path.resolve(cwd, requiredOption(rest, "--ward"))), authorityEnvelope: loadAuthorityEnvelope(path.resolve(cwd, requiredOption(rest, "--envelope"))) };
+      const after = { ward: loadWardManifest(path.resolve(cwd, requiredOption(rest, "--against-ward"))), authorityEnvelope: loadAuthorityEnvelope(path.resolve(cwd, requiredOption(rest, "--against-envelope"))) };
+      const diff = diffGovernanceManifests(before, after);
+      const weakenings = diff.filter((d) => d.weakening);
+      if (json) { printJson(out, { diff, weakening_count: weakenings.length }, true); }
+      else {
+        out(`governance diff — ${diff.length} change(s), ${weakenings.length} weaken authority\n`);
+        for (const d of diff) out(`  ${d.weakening ? "⚠ WEAKENS" : "·       "} ${d.path}  (${d.note})\n`);
+      }
+      // Exit non-zero when authority is weakened, so a review gate can require sign-off.
+      return weakenings.length === 0 ? 0 : 1;
+    }
+
+    if (command === "governance" && subcommand === "explain") {
+      const ward = loadWardManifest(path.resolve(cwd, requiredOption(rest, "--ward")));
+      const authorityEnvelope = loadAuthorityEnvelope(path.resolve(cwd, requiredOption(rest, "--envelope")));
+      const actionsOpt = optionValue(rest, "--actions");
+      const sampleActions = actionsOpt ? (() => { const raw = JSON.parse(readFileSync(path.resolve(cwd, actionsOpt), "utf8")); return Array.isArray(raw) ? raw : [raw]; })() : [];
+      const explanation = explainPolicy({ ward, authorityEnvelope, sampleActions, now: optionValue(rest, "--now") });
+      if (json) { printJson(out, explanation, true); }
+      else {
+        out(`policy — ${explanation.ward_id} / ${explanation.authority_envelope_id}\n`);
+        out(`allows: ${explanation.allowed_actions.join(", ") || "(none)"}\n`);
+        out(`denies: ${explanation.denied_actions.join(", ") || "(none)"}\n`);
+        for (const s of explanation.samples) out(`  ${s.decision.padEnd(8)} ${s.action_type} — ${s.reason_codes.join(", ")}\n`);
+      }
+      return 0;
+    }
+
+    if (command === "reconcile") {
+      // No subcommand: options begin right after the command name.
+      const rargs = argv.slice(1);
+      const ward = loadWardManifest(path.resolve(cwd, requiredOption(rargs, "--ward")));
+      const authorityEnvelope = loadAuthorityEnvelope(path.resolve(cwd, requiredOption(rargs, "--envelope")));
+      const records = JSON.parse(readFileSync(path.resolve(cwd, requiredOption(rargs, "--records")), "utf8")) as EdgeRecord[];
+      const report = reconcileEdgeRecords({ records, ward, authorityEnvelope, now: optionValue(rargs, "--now") });
+      const outPath = optionValue(rargs, "--out");
+      if (outPath) writeFileSync(path.resolve(cwd, outPath), `${JSON.stringify(report, null, 2)}\n`, "utf8");
+      if (json) { printJson(out, report, true); }
+      else {
+        out(`edge reconciliation — ${report.ward_id} / ${report.authority_envelope_id}\n`);
+        out(`${report.count} record(s): ${report.agreements} agree, ${report.conflicts} conflict\n`);
+        for (const i of report.items.filter((x) => !x.agrees)) {
+          out(`  CONFLICT ${i.action_id} (${i.action_type}) — edge ${i.edge_decision} vs current ${i.current_decision} [${i.conflict_kind}]`);
+          if (i.replay.against_execution_time) out(` · exec-time ${i.replay.against_execution_time.decision}`);
+          out(`\n`);
+        }
+        out(`${outPath ? `report → ${outPath}\n` : ""}`);
+      }
+      // Exit non-zero when unresolved conflicts exist.
+      return report.conflicts === 0 ? 0 : 1;
     }
 
     if (command === "explain" && subcommand === "--last-deny") {

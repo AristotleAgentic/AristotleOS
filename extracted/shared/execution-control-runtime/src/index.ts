@@ -48,6 +48,8 @@ export * from "./trace.js";
 export * from "./metrics.js";
 export * from "./sandbox.js";
 export * from "./shadow.js";
+export * from "./builder.js";
+export * from "./reconcile.js";
 
 export {
   type AristotleSigner,
