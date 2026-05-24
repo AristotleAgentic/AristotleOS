@@ -3,7 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import React from "react";
 import { useCommandStore } from "./store.js";
 import type { CommitDecision, CommitRequest } from "./types.js";
-import { Badge, Panel, StatusDot, cx, decisionTone, relTime, riskTone } from "./primitives.js";
+import { Badge, EmptyState, Panel, StatusDot, cx, decisionTone, relTime, riskTone } from "./primitives.js";
 
 const DECISION_ICON: Record<CommitDecision, LucideIcon> = {
   allow: CheckCircle2,
@@ -64,7 +64,13 @@ export function CommitGateConsole({ rows }: { rows?: number }) {
             </div>
           </div>
         ))}
-        {list.length === 0 && <div className="ac-empty">No commit requests in this window.</div>}
+        {list.length === 0 && (
+          <EmptyState
+            icon={<GitCommitHorizontal size={22} />}
+            title="No commit requests yet"
+            hint="Governed actions appear here the moment an agent asks the Commit Gate for a decision. Nothing has been requested in this window."
+          />
+        )}
       </div>
     </Panel>
   );

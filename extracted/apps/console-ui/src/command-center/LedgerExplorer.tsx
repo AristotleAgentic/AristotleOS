@@ -1,7 +1,7 @@
 import { Anchor, Boxes, Link2, ShieldCheck } from "lucide-react";
 import React from "react";
 import { useCommandStore } from "./store.js";
-import { Badge, DetailGrid, Panel, cx, clock, decisionTone, truncHash } from "./primitives.js";
+import { Badge, DetailGrid, EmptyState, Panel, cx, clock, decisionTone, truncHash } from "./primitives.js";
 
 export function LedgerExplorer() {
   const ledger = useCommandStore((s) => s.ledger);
@@ -18,6 +18,13 @@ export function LedgerExplorer() {
         flush
       >
         <div className="ac-scroll-y" style={{ maxHeight: "calc(100vh - 230px)" }}>
+          {ledger.length === 0 ? (
+            <EmptyState
+              icon={<Boxes size={22} />}
+              title="No ledger records yet"
+              hint="Every Commit Gate decision is appended here as a hash-linked, signed record. The chain is empty until the first governed action is evaluated."
+            />
+          ) : (
           <table className="ac-table">
             <thead>
               <tr>
@@ -38,6 +45,7 @@ export function LedgerExplorer() {
               ))}
             </tbody>
           </table>
+          )}
         </div>
       </Panel>
 

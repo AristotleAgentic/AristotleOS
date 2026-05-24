@@ -1,5 +1,5 @@
 import React from "react";
-import { X } from "lucide-react";
+import { Inbox, RotateCcw, TriangleAlert, X } from "lucide-react";
 import type { CommitDecision, NodeState, RiskLevel } from "./types.js";
 
 export type Tone = "green" | "amber" | "red" | "cyan" | "violet" | "slate";
@@ -249,4 +249,63 @@ export function ConfirmAction({
       </div>
     </div>
   );
+}
+
+/* ---------- empty / error states ---------- */
+export function EmptyState({ icon, title, hint }: { icon?: React.ReactNode; title: string; hint?: string }) {
+  return (
+    <div className="ac-state">
+      <span className="ac-state-icon">{icon ?? <Inbox size={22} />}</span>
+      <span className="ac-state-title">{title}</span>
+      {hint && <span className="ac-state-hint">{hint}</span>}
+    </div>
+  );
+}
+
+export function ErrorState({ title, detail, onRetry }: { title: string; detail?: string; onRetry?: () => void }) {
+  return (
+    <div className="ac-state is-error">
+      <span className="ac-state-icon"><TriangleAlert size={22} /></span>
+      <span className="ac-state-title">{title}</span>
+      {detail && <span className="ac-state-hint">{detail}</span>}
+      {onRetry && (
+        <button className="ac-btn" style={{ marginTop: 12 }} onClick={onRetry}>
+          <RotateCcw size={13} /> Try again
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Catches render errors in a section so a single broken panel shows a clear,
+ * recoverable message instead of blanking the whole console. Resets when the
+ * active section changes.
+ */
+export class SectionErrorBoundary extends React.Component<
+  { children: React.ReactNode; section?: string },
+  { error: Error | null }
+> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error): { error: Error } {
+    return { error };
+  }
+
+  componentDidUpdate(prev: { section?: string }): void {
+    if (prev.section !== this.props.section && this.state.error) this.setState({ error: null });
+  }
+
+  render(): React.ReactNode {
+    if (this.state.error) {
+      return (
+        <ErrorState
+          title="This view hit an unexpected error"
+          detail={`${this.state.error.message}. The governance boundary is unaffected — this is a console rendering issue.`}
+          onRetry={() => this.setState({ error: null })}
+        />
+      );
+    }
+    return this.props.children;
+  }
 }

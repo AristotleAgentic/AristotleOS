@@ -25,7 +25,7 @@ import { ReplayTimeMachine } from "./ReplayTimeMachine.js";
 import { SimulationPanel } from "./SimulationPanel.js";
 import { WardBrowser } from "./WardBrowser.js";
 import { WarrantLifecycle } from "./WarrantLifecycle.js";
-import { Drawer, cx } from "./primitives.js";
+import { Drawer, SectionErrorBoundary, cx } from "./primitives.js";
 import { useCommandStore, type SectionId } from "./store.js";
 
 const NAV: Array<{ id: SectionId; label: string; icon: LucideIcon }> = [
@@ -153,7 +153,9 @@ export default function CommandCenter() {
             <h1 className="ac-section-title">{meta.title}</h1>
             <span className="ac-section-sub">{meta.sub}</span>
           </div>
-          <SectionBody section={section} />
+          <SectionErrorBoundary section={section}>
+            <SectionBody section={section} />
+          </SectionErrorBoundary>
         </main>
       </div>
 
