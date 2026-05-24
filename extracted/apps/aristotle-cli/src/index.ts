@@ -420,7 +420,8 @@ Keep the private key secret. The public key and key_id can be shared so others c
         warrantTtlSeconds,
         rateLimitPerMinute,
         logFormat,
-        ledger
+        ledger,
+        auditSink: optionValue(runArgs, "--audit-sink") ?? process.env.ARISTOTLE_AUDIT_SINK
       });
       await new Promise<void>((resolve) => server.listen(config.port, "127.0.0.1", resolve));
       const address = server.address();
@@ -747,7 +748,8 @@ evidence_bundle=${evidenceOut ?? "not requested"}
         warrantTtlSeconds,
         rateLimitPerMinute,
         logFormat,
-        ledger
+        ledger,
+        auditSink: optionValue(rest, "--audit-sink") ?? process.env.ARISTOTLE_AUDIT_SINK
       });
       await new Promise<void>((resolve) => server.listen(port, "127.0.0.1", resolve));
       out(`AristotleOS execution-control runtime listening on http://127.0.0.1:${port}
@@ -758,10 +760,18 @@ Credential broker: ${broker ? "enabled" : "none"}
 Replay protection: ${replayProtection ? "on" : "off"}   Auth: ${apiKey ? "required" : "open"}
 Evaluate: POST http://127.0.0.1:${port}/v1/execution-control/evaluate
 Proxy: POST http://127.0.0.1:${port}/v1/execution-control/proxy
-Metrics: GET http://127.0.0.1:${port}/v1/execution-control/metrics
+Metrics: GET http://127.0.0.1:${port}/metrics
 Audit: GET http://127.0.0.1:${port}/v1/execution-control/audit/verify
 `);
-      await new Promise<void>(() => undefined);
+      // Graceful shutdown for container lifecycles (k8s sends SIGTERM).
+      await new Promise<void>((resolve) => {
+        const shutdown = () => {
+          err("shutting down execution-control runtime...\n");
+          server.close(() => { ledger?.close(); resolve(); });
+        };
+        process.on("SIGINT", shutdown);
+        process.on("SIGTERM", shutdown);
+      });
       return 0;
     }
 

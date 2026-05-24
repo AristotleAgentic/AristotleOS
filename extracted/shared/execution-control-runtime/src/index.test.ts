@@ -18,6 +18,7 @@ import {
   executionControlOpenApiSpec,
   createExecutionControlRuntimeServer,
   consumeWarrant,
+  deliverAuditEvent,
   evaluateCommitGate,
   evaluateExecutionControl,
   exportEvidenceBundle,
@@ -638,6 +639,59 @@ test("server enforces replay protection across requests via the shared ledger in
     assert.equal(second.status, 409);
     const body = await second.json();
     assert.deepEqual(body.reason_codes, ["REPLAY_DETECTED"]);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test("deliverAuditEvent posts the signed record to the sink", async () => {
+  let received: { decision?: string; record?: { record_hash?: string } } = {};
+  const sink = createServer((req, res) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (c) => chunks.push(Buffer.from(c)));
+    req.on("end", () => { received = JSON.parse(Buffer.concat(chunks).toString("utf8")); res.writeHead(200); res.end("ok"); });
+  });
+  await new Promise<void>((resolve) => sink.listen(0, "127.0.0.1", resolve));
+  const port = (sink.address() as { port: number }).port;
+  try {
+    const file = ledgerPath();
+    const result = evaluateExecutionControl({ ward, authorityEnvelope: envelope, action, ledgerPath: file, now });
+    const delivery = await deliverAuditEvent(`http://127.0.0.1:${port}/ingest`, {
+      event: "evaluate", ts: now, ward_id: ward.ward_id, subject: action.subject, action_type: action.action_type,
+      decision: result.decision, reason_codes: result.reason_codes, warrant_id: result.warrant?.warrant_id,
+      signing_key_id: result.warrant?.signing_key_id, record: result.gel_record
+    });
+    assert.equal(delivery.ok, true);
+    assert.equal(received.decision, "ALLOW");
+    assert.equal(received.record?.record_hash, result.gel_record.record_hash);
+  } finally {
+    await new Promise<void>((resolve, reject) => sink.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test("deliverAuditEvent reports failure when the sink is unreachable", async () => {
+  const delivery = await deliverAuditEvent("http://127.0.0.1:1/ingest", {
+    event: "evaluate", ts: now, ward_id: ward.ward_id, subject: action.subject, action_type: action.action_type,
+    decision: "ALLOW", reason_codes: ["ALLOWED"], record: { record_hash: "x" } as never
+  });
+  assert.equal(delivery.ok, false);
+  assert.ok(delivery.error);
+});
+
+test("server exposes Prometheus metrics", async () => {
+  const file = ledgerPath();
+  const { server } = createExecutionControlRuntimeServer({ ward, authorityEnvelope: envelope, ledgerPath: file, now });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const address = server.address();
+    const base = `http://127.0.0.1:${address && typeof address === "object" ? address.port : 0}`;
+    await fetch(`${base}/v1/execution-control/evaluate`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action }) });
+    const res = await fetch(`${base}/metrics`);
+    assert.match(res.headers.get("content-type") ?? "", /text\/plain/);
+    const body = await res.text();
+    assert.match(body, /aristotle_decisions_total\{decision="ALLOW"\} 1/);
+    assert.match(body, /aristotle_ledger_records 1/);
+    assert.match(body, /aristotle_ledger_ok 1/);
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }

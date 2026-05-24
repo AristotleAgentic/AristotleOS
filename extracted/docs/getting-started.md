@@ -165,8 +165,14 @@ ARISTOTLE_OPERATOR_API_KEY=... aristotle run -- <your agent command>
   restart-durable ledger (built on Node's `node:sqlite`, no extra dependency).
   The default file (JSONL) and in-memory backends also ship; the `LedgerBackend`
   interface lets a Postgres adapter drop in for multi-node HA.
-- **Container** — run the boundary as a sidecar with
-  `manifests/docker/execution-control.Dockerfile`. See [SECURITY.md](../SECURITY.md)
+- **Audit sink (SIEM)** — `--audit-sink <url>` forwards each decision's signed GEL
+  record to your SIEM / log pipeline (best-effort, off the hot path).
+- **Prometheus** — `GET /metrics` exposes decision counters and ledger size in
+  Prometheus exposition format for Grafana.
+- **Graceful shutdown** — `serve` handles SIGTERM/SIGINT (clean container lifecycle).
+- **Container & Kubernetes** — `manifests/docker/execution-control.Dockerfile`
+  (non-root) and `manifests/k8s/execution-control.yaml` (Deployment, Service,
+  ConfigMap, PVC, probes, restricted securityContext). See [SECURITY.md](../SECURITY.md)
   for the threat model and known limitations.
 
 ### Portable evidence

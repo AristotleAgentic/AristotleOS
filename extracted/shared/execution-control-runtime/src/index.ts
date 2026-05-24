@@ -13,6 +13,7 @@ import { type CredentialBroker, proxyGovernedAction } from "./proxy.js";
 import { PLAYGROUND_HTML } from "./playground.js";
 import { type RevocationList, loadRevocationList, revocationReason } from "./revocation.js";
 import { assertValidAuthorityEnvelope, assertValidWardManifest } from "./validation.js";
+import { type AuditEvent, deliverAuditEvent } from "./audit-sink.js";
 
 export * from "./proxy.js";
 export * from "./mcp.js";
@@ -20,6 +21,7 @@ export * from "./playground.js";
 export * from "./revocation.js";
 export * from "./validation.js";
 export * from "./sqlite-ledger.js";
+export * from "./audit-sink.js";
 
 export {
   type AristotleSigner,
@@ -310,6 +312,8 @@ export interface ExecutionControlRuntimeServerOptions {
   logFormat?: "json";
   /** Pre-built ledger store (e.g. a SQLite-backed one). Defaults to a file store at ledgerPath. */
   ledger?: LedgerStore;
+  /** When set, each decision's signed GEL record is forwarded to this URL (best-effort). */
+  auditSink?: string;
 }
 
 export interface ExecutionControlRuntimeServer {
@@ -1261,6 +1265,28 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
     if (options.logFormat === "json") process.stderr.write(`${JSON.stringify({ ts: new Date().toISOString(), ...entry })}\n`);
   };
   const requestId = (req: IncomingMessage): string => (typeof req.headers["x-request-id"] === "string" ? req.headers["x-request-id"] : randomUUID());
+  const forwardAudit = (
+    event: "evaluate" | "proxy",
+    action: CanonicalActionInput,
+    result: { decision: ExecutionControlDecision; reason_codes: ExecutionControlReasonCode[]; warrant?: Warrant; gel_record: GelRecord }
+  ): void => {
+    if (!options.auditSink) return;
+    const payload: AuditEvent = {
+      event,
+      ts: new Date().toISOString(),
+      ward_id: options.ward.ward_id,
+      subject: action.subject,
+      action_type: action.action_type,
+      decision: result.decision,
+      reason_codes: result.reason_codes,
+      warrant_id: result.warrant?.warrant_id,
+      signing_key_id: result.warrant?.signing_key_id,
+      record: result.gel_record
+    };
+    void deliverAuditEvent(options.auditSink, payload).then((delivery) => {
+      if (!delivery.ok) logDecision({ event: "audit_sink_error", sink: options.auditSink, status: delivery.status, error: delivery.error });
+    });
+  };
   const apiKeyBuffer = options.apiKey ? Buffer.from(options.apiKey) : undefined;
   const authorized = (req: IncomingMessage): boolean => {
     if (!apiKeyBuffer) return true;
@@ -1302,6 +1328,28 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
 
       if (req.method === "GET" && url.pathname === "/openapi.json") {
         sendJson(res, 200, executionControlOpenApiSpec());
+        return;
+      }
+
+      if (req.method === "GET" && url.pathname === "/metrics") {
+        const chain = ledger.records();
+        const counts: Record<string, number> = { ALLOW: 0, REFUSE: 0, ESCALATE: 0 };
+        for (const record of chain) counts[record.decision] = (counts[record.decision] ?? 0) + 1;
+        const lines = [
+          "# HELP aristotle_decisions_total Governance decisions by outcome",
+          "# TYPE aristotle_decisions_total counter",
+          `aristotle_decisions_total{decision="ALLOW"} ${counts.ALLOW}`,
+          `aristotle_decisions_total{decision="REFUSE"} ${counts.REFUSE}`,
+          `aristotle_decisions_total{decision="ESCALATE"} ${counts.ESCALATE}`,
+          "# HELP aristotle_ledger_records Total Governance Evidence Ledger records",
+          "# TYPE aristotle_ledger_records gauge",
+          `aristotle_ledger_records ${chain.length}`,
+          "# HELP aristotle_ledger_ok GEL chain integrity (1 ok, 0 broken)",
+          "# TYPE aristotle_ledger_ok gauge",
+          `aristotle_ledger_ok ${ledger.verification().ok ? 1 : 0}`
+        ];
+        res.writeHead(200, { "content-type": "text/plain; version=0.0.4; charset=utf-8" });
+        res.end(`${lines.join("\n")}\n`);
         return;
       }
 
@@ -1356,6 +1404,7 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           signing_key_id: result.warrant?.signing_key_id ?? null,
           latency_ms: Date.now() - startedAt
         });
+        forwardAudit("evaluate", action, result);
         sendJson(res, result.decision === "ALLOW" ? 200 : result.decision === "ESCALATE" ? 202 : 409, result);
         return;
       }
@@ -1395,6 +1444,7 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           status,
           latency_ms: Date.now() - startedAt
         });
+        forwardAudit("proxy", action, result);
         sendJson(res, status, result);
         return;
       }

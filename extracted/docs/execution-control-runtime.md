@@ -346,3 +346,11 @@ Two more operational controls for production:
   bucket; requests over budget receive `429`.
 - **Structured logging** — `--log-format json` emits one JSON decision line per
   request (request id, decision, reason codes, signing key id, latency) to stderr.
+- **Audit sink** — `--audit-sink <url>` forwards each decision's signed GEL record
+  to a SIEM / log pipeline, best-effort and off the hot path (`deliverAuditEvent`).
+- **Prometheus** — `GET /metrics` returns decision counters, ledger size, and
+  integrity in Prometheus exposition format.
+- **Graceful shutdown** — `serve` closes the server and ledger on SIGTERM/SIGINT.
+- **Kubernetes** — `manifests/k8s/execution-control.yaml` deploys the boundary
+  (Deployment + Service + ConfigMap + PVC, non-root restricted securityContext,
+  durable SQLite ledger, probes on `/health`).
