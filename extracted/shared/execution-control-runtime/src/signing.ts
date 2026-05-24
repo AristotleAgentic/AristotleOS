@@ -138,6 +138,47 @@ export function requireProductionSigner(signer: AristotleSigner): AristotleSigne
   return signer;
 }
 
+// ---------------------------------------------------------------------------
+// Managed key custody: load the signing key from a secrets manager / KMS
+// ---------------------------------------------------------------------------
+
+/**
+ * An async source of signing key material (e.g. a secrets manager such as AWS
+ * Secrets Manager / GCP Secret Manager / HashiCorp Vault, or a KMS envelope
+ * decrypt). The private key PEM is materialized into memory once at startup and
+ * then signing is in-process — so the key is protected *at rest* (encrypted,
+ * IAM-gated, audited) rather than sitting as a plaintext file on the host.
+ *
+ * Note: this does NOT keep the private key inside an HSM during signing. For keys
+ * that must never leave a hardware boundary, an asynchronous signing path is
+ * required (the AristotleSigner.sign() contract is synchronous) — that is
+ * explicit roadmap, documented in docs/key-management.md, not implemented here.
+ */
+export interface KeyMaterialProvider {
+  /** Fetch the Ed25519 private key as PKCS8 PEM. */
+  getPrivateKeyPem(): Promise<string>;
+  /** Optionally fetch the SPKI public key PEM; derived from the private key when omitted. */
+  getPublicKeyPem?(): Promise<string | undefined>;
+  /** Stable key id for attribution; derived from the public key when omitted. */
+  keyId?: string;
+}
+
+/**
+ * Build a signer from an injected key-material provider. The key is resolved once
+ * (await at startup) and signing is then synchronous and in-process, satisfying
+ * the AristotleSigner contract. Use this to move warrant/evidence signing keys off
+ * the local filesystem and into a managed secret store. AristotleOS imports no
+ * cloud SDK — you inject the fetch (see examples/signers/).
+ */
+export async function createSignerFromKeyProvider(provider: KeyMaterialProvider): Promise<AristotleSigner> {
+  const privateKeyPem = await provider.getPrivateKeyPem();
+  if (!privateKeyPem || !privateKeyPem.includes("PRIVATE KEY")) {
+    throw new Error("key-material provider returned an empty or non-PEM private key");
+  }
+  const publicKeyPem = provider.getPublicKeyPem ? await provider.getPublicKeyPem() : undefined;
+  return createEd25519Signer({ privateKeyPem, publicKeyPem, keyId: provider.keyId });
+}
+
 export function verifyEd25519(publicKeyPem: string, message: string, signatureBase64: string): boolean {
   try {
     return cryptoVerify(null, Buffer.from(message, "utf8"), createPublicKey(publicKeyPem), Buffer.from(signatureBase64, "base64"));

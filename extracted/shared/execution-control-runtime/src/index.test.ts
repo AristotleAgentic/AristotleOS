@@ -16,6 +16,7 @@ import {
   canonicalizeAction,
   createEd25519Signer,
   createEphemeralDevSigner,
+  createSignerFromKeyProvider,
   deriveKeyId,
   executionControlOpenApiSpec,
   createExecutionControlRuntimeServer,
@@ -233,6 +234,35 @@ test("configured signer is non-ephemeral and verifiable against its embedded key
 
 test("ephemeral dev signer is flagged ephemeral", () => {
   assert.equal(createEphemeralDevSigner().ephemeral, true);
+});
+
+test("createSignerFromKeyProvider loads the key from a managed provider and signs", async () => {
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const privateKeyPem = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+  const publicKeyPem = publicKey.export({ type: "spki", format: "pem" }).toString();
+
+  // a stand-in for a secrets manager / KMS-decrypt fetch
+  let fetches = 0;
+  const signer = await createSignerFromKeyProvider({
+    keyId: "ed25519:managed-test",
+    getPrivateKeyPem: async () => { fetches += 1; return privateKeyPem; },
+    getPublicKeyPem: async () => publicKeyPem
+  });
+
+  assert.equal(fetches, 1, "key is resolved once at startup");
+  assert.equal(signer.ephemeral, false);
+  assert.equal(signer.key_id, "ed25519:managed-test");
+  const message = "warrant-canonical-material";
+  // signing is synchronous after the async load, and verifies against the embedded key
+  assert.equal(verifyEd25519(signer.public_key_pem, message, signer.sign(message)), true);
+  assert.equal(signer.sign(message), signer.sign(message), "signing does not re-fetch the key");
+  assert.equal(fetches, 1);
+
+  // an empty/non-PEM secret fails closed rather than producing a broken signer
+  await assert.rejects(
+    createSignerFromKeyProvider({ getPrivateKeyPem: async () => "" }),
+    /non-PEM private key/
+  );
 });
 
 test("GEL chain verifies after normal append", () => {

@@ -53,9 +53,11 @@ export * from "./reconcile.js";
 
 export {
   type AristotleSigner,
+  type KeyMaterialProvider,
   type SignatureAlgorithm,
   createEd25519Signer,
   createEphemeralDevSigner,
+  createSignerFromKeyProvider,
   deriveKeyId,
   getDefaultDevSigner,
   loadWarrantSignerFromEnv,
