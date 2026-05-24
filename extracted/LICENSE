@@ -1,0 +1,22 @@
+AristotleOS — Proprietary Software License
+Copyright (c) 2026 AristotleAgentic. All rights reserved.
+
+This software, including its source code, documentation, configuration, and all
+associated materials (the "Software"), is proprietary and confidential.
+
+No license or right is granted to any person or entity to use, copy, modify,
+merge, publish, distribute, sublicense, or sell any portion of the Software,
+except under a separate written agreement signed by the copyright holder.
+Unauthorized use, reproduction, or distribution of the Software, in whole or in
+part, is prohibited.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Note: AristotleOS bundles third-party open-source dependencies, each governed by
+its own license; see those packages and `sbom.json` for their terms. This license
+applies to AristotleOS-original material only.

@@ -92,6 +92,6 @@ finish();
 function finish() {
   rmSync(packDir, { recursive: true, force: true });
   const failed = checks.filter((c) => !c.ok);
-  console.log(`\n${failed.length ? `FAIL — ${failed.length} check(s) failed` : "OK — @aristotle/os-cli is publish-ready"}`);
+  console.log(`\n${failed.length ? `FAIL — ${failed.length} check(s) failed` : "OK — @aristotle/os-cli packs, installs, and self-checks cleanly"}`);
   process.exit(failed.length ? 1 : 0);
 }
