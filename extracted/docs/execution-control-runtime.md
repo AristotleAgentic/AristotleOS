@@ -345,7 +345,10 @@ state in a shared database, so multiple boundary instances refuse replays
 consistently. Enable with `--ledger-backend postgres --postgres-url <conn>` (the
 `pg` driver is lazy-loaded; `npm install pg`). It implements an `AsyncLedgerBackend`
 and runs through `evaluateExecutionControlAsync` — purely additive to the sync
-path. (Tested against real PostgreSQL via PGlite.)
+path. Appends are **serialized via an advisory-locked transaction**
+(`appendChained`), so the hash chain stays correct under active-active
+multi-writer deployment. (Tested against real PostgreSQL via PGlite, including the
+serialized append path.)
 
 Two more operational controls for production:
 

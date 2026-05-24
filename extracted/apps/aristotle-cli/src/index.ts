@@ -276,8 +276,13 @@ const buildLedger = (args: string[], cwd: string, ledgerPath: string): LedgerSto
   return new LedgerStore(new SqliteLedgerBackend(dbPath));
 };
 
+interface PgClientLike {
+  query(text: string, params?: unknown[]): Promise<{ rows: Array<Record<string, unknown>> }>;
+  release(): void;
+}
 interface PgPoolLike {
   query(text: string, params?: unknown[]): Promise<{ rows: Array<Record<string, unknown>> }>;
+  connect(): Promise<PgClientLike>;
   end(): Promise<void>;
 }
 
@@ -295,7 +300,24 @@ const buildAsyncLedger = async (args: string[]): Promise<AsyncLedgerStore | unde
   }
   const pool = new pg.Pool({ connectionString: url });
   const backend = await PostgresLedgerBackend.create(
-    { query: (text, params) => pool.query(text, params) },
+    {
+      query: (text, params) => pool.query(text, params),
+      // Serialized append path for active-active multi-writer chain integrity.
+      transaction: async (fn) => {
+        const client = await pool.connect();
+        try {
+          await client.query("BEGIN");
+          const result = await fn({ query: (text, params) => client.query(text, params) });
+          await client.query("COMMIT");
+          return result;
+        } catch (error) {
+          await client.query("ROLLBACK").catch(() => undefined);
+          throw error;
+        } finally {
+          client.release();
+        }
+      }
+    },
     { onClose: () => pool.end() }
   );
   return new AsyncLedgerStore(backend);

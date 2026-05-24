@@ -13,9 +13,21 @@ import { type AsyncLedgerBackend, type GelRecord, GENESIS_HASH, verifyGelRecords
  * integrity, serialize appends (single writer / leader). Replay protection,
  * the security-critical shared state, is always read from the database.
  */
-export interface Queryable {
+export interface QueryRunner {
   query(text: string, params?: unknown[]): Promise<{ rows: Array<Record<string, unknown>> }>;
 }
+
+export interface Queryable extends QueryRunner {
+  /**
+   * Run `fn` inside a single-connection transaction, when the driver supports it.
+   * Enables serialized, chain-correct appends for active-active multi-writer
+   * deployments. When absent, the backend falls back to single-writer linkage.
+   */
+  transaction?<T>(fn: (tx: QueryRunner) => Promise<T>): Promise<T>;
+}
+
+/** Stable 64-bit-ish advisory lock key for serializing ledger appends. */
+const APPEND_LOCK_KEY = 0x4f534147; // "OSAG"
 
 const DDL_TABLE = `CREATE TABLE IF NOT EXISTS gel_records (
   seq bigserial PRIMARY KEY,
@@ -75,13 +87,35 @@ export class PostgresLedgerBackend implements AsyncLedgerBackend {
     return this._ok ? { ok: true, count: this._count } : { ok: false, count: this._count, failure: this._failure };
   }
 
-  async persist(record: GelRecord): Promise<void> {
-    await this.db.query(
-      "INSERT INTO gel_records (record_hash, previous_hash, canonical_action_hash, decision, json) VALUES ($1, $2, $3, $4, $5)",
-      [record.record_hash, record.previous_hash, record.canonical_action_hash, record.decision, JSON.stringify(record)]
-    );
+  async appendChained(build: (previousHash: string) => GelRecord): Promise<GelRecord> {
+    const insert = async (tx: QueryRunner, record: GelRecord) => {
+      await tx.query(
+        "INSERT INTO gel_records (record_hash, previous_hash, canonical_action_hash, decision, json) VALUES ($1, $2, $3, $4, $5)",
+        [record.record_hash, record.previous_hash, record.canonical_action_hash, record.decision, JSON.stringify(record)]
+      );
+    };
+
+    let record: GelRecord;
+    if (this.db.transaction) {
+      // Serialized path: lock, read the authoritative tip from the DB, build, insert.
+      // Concurrent appenders across nodes block on the advisory lock, so the chain
+      // never forks.
+      record = await this.db.transaction(async (tx) => {
+        await tx.query("SELECT pg_advisory_xact_lock($1)", [APPEND_LOCK_KEY]);
+        const tipRow = await tx.query("SELECT record_hash FROM gel_records ORDER BY seq DESC LIMIT 1");
+        const previousHash = (tipRow.rows[0]?.record_hash as string | undefined) ?? GENESIS_HASH;
+        const built = build(previousHash);
+        await insert(tx, built);
+        return built;
+      });
+    } else {
+      // Single-writer fallback: link to the in-memory tip.
+      record = build(this._tip);
+      await insert(this.db, record);
+    }
     this._tip = record.record_hash;
     this._count += 1;
+    return record;
   }
 
   async records(): Promise<GelRecord[]> {

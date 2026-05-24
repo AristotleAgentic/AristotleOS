@@ -780,7 +780,12 @@ export interface AsyncLedgerBackend {
   count: number;
   hasAdmitted(canonicalActionHash: string): Promise<boolean>;
   verification(): { ok: boolean; count: number; failure?: string };
-  persist(record: GelRecord): Promise<void>;
+  /**
+   * Append the next record. The backend supplies the authoritative previous hash
+   * to `build` (under a serializing lock for multi-writer backends), so the chain
+   * stays correct even with concurrent appenders. Returns the persisted record.
+   */
+  appendChained(build: (previousHash: string) => GelRecord): Promise<GelRecord>;
   records(): Promise<GelRecord[]>;
   tail(limit: number): Promise<GelRecord[]>;
   close?(): Promise<void>;
@@ -798,9 +803,7 @@ export class AsyncLedgerStore {
   tail(limit: number): Promise<GelRecord[]> { return this.backend.tail(limit); }
 
   async append(input: Omit<BuildGelRecordInput, "previous_hash">): Promise<GelRecord> {
-    const record = buildGelRecord({ previous_hash: this.backend.tipHash, ...input });
-    await this.backend.persist(record);
-    return record;
+    return this.backend.appendChained((previousHash) => buildGelRecord({ previous_hash: previousHash, ...input }));
   }
 
   async close(): Promise<void> {

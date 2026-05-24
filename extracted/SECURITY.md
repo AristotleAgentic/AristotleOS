@@ -65,9 +65,11 @@ guarantees:
 - **High availability.** The boundary persists evidence to a durable, ACID ledger:
   single-node SQLite (`--ledger-backend sqlite`) or **Postgres**
   (`--ledger-backend postgres`), which keeps replay state in a shared database so
-  multiple boundary instances refuse replays consistently. There is no built-in
-  leader election; for active-active chain integrity, serialize appends (single
-  writer / leader). Front the boundary with your own load balancing.
+  multiple boundary instances refuse replays consistently. Multi-writer appends are
+  **serialized via an advisory-locked transaction**, so the hash chain stays correct
+  under active-active deployment. Front the boundary with your own load balancing.
+  (Throughput under heavy multi-writer contention is bounded by the serialized
+  append; partition this by ward if needed.)
 - **No third-party security audit yet.** The cryptography uses Node's standard
   `node:crypto` Ed25519 primitives, but the system has not undergone an external
   penetration test or formal review.

@@ -39,6 +39,7 @@ import {
   verifyEd25519,
   verifyEvidenceBundle,
   verifyGelChain,
+  verifyGelRecords,
   verifyWarrant
 } from "./index.js";
 
@@ -604,11 +605,16 @@ test("evaluateExecutionControl enforces replay over a durable SQLite store", () 
 
 test("PostgresLedgerBackend (pglite): durable, ACID, with replay shared across instances", async () => {
   const db = await PGlite.create();
-  const queryable = {
+  const runner = (q: { query: (t: string, p?: never) => Promise<{ rows: unknown[] }> }) => ({
     query: async (text: string, params?: unknown[]) => {
-      const result = await db.query(text, params as never);
+      const result = await q.query(text, params as never);
       return { rows: result.rows as Array<Record<string, unknown>> };
     }
+  });
+  const queryable = {
+    ...runner(db),
+    transaction: <T,>(fn: (tx: { query: (t: string, p?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }> }) => Promise<T>) =>
+      db.transaction((tx) => fn(runner(tx)))
   };
 
   const store = new AsyncLedgerStore(await PostgresLedgerBackend.create(queryable));
@@ -629,6 +635,21 @@ test("PostgresLedgerBackend (pglite): durable, ACID, with replay shared across i
   assert.equal((await store2.records()).length, 2);
   assert.equal(store2.verification().ok, true);
   assert.equal((await store2.records())[0].record_hash, first.gel_record.record_hash);
+
+  // Serialized (transaction-locked) appends keep the hash chain valid.
+  for (let i = 0; i < 5; i++) {
+    await evaluateExecutionControlAsync({
+      ward,
+      authorityEnvelope: envelope,
+      action: { ...action, action_id: `act-seq-${i}`, request_id: `req-seq-${i}` },
+      ledgerPath: "unused",
+      now,
+      ledger: store,
+      replayProtection: false
+    });
+  }
+  const chain = await store.records();
+  assert.equal(verifyGelRecords(chain).ok, true, "serialized append chain must verify");
 
   await db.close();
 });
