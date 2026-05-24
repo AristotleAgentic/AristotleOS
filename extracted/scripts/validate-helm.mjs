@@ -26,7 +26,8 @@ const checks = [
   ["template (kind-smoke values)", `template aristotle ${chart} -f ${chart}/values-kind-smoke.yaml`],
   ["template (local profile)", `template aristotle ${chart} -f ${chart}/values-local.yaml`],
   ["template (staging profile)", `template aristotle ${chart} -f ${chart}/values-staging.yaml`],
-  ["template (pilot profile)", `template aristotle ${chart} -f ${chart}/values-pilot.yaml`]
+  ["template (pilot profile)", `template aristotle ${chart} -f ${chart}/values-pilot.yaml`],
+  ["template (pilot + hardened overlay)", `template aristotle ${chart} -f ${chart}/values-pilot.yaml -f ${chart}/values-hardened.yaml`]
 ];
 
 console.log("AristotleOS Helm chart validation\n");

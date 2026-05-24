@@ -1,0 +1,37 @@
+# Hardened reference overlay for AristotleOS.
+#
+# Apply ON TOP OF an environment profile (it only sets security-relevant knobs):
+#
+#   helm template aristotle charts/aristotle-governance-os \
+#     -f charts/aristotle-governance-os/values-pilot.yaml \
+#     -f charts/aristotle-governance-os/values-hardened.yaml
+#
+# See docs/secure-deployment.md for the full reference (mTLS, secrets, rotation).
+
+podSecurity:
+  enforceRestricted: true
+  readOnlyRootFilesystem: true     # read-only rootfs + writable emptyDir /tmp
+
+networkPolicy:
+  enabled: true                    # default-deny + scoped allows between components
+
+# Fail closed: production posture, no insecure boot, session + role enforcement on.
+runtimeConfig:
+  NODE_ENV: "production"
+  ALLOW_INSECURE_PRODUCTION_BOOT: "false"
+  OPERATOR_SESSION_ENFORCEMENT: "true"
+  OPERATOR_ROLE_ENFORCEMENT: "true"
+  GOVERNANCE_CHAIN_MODE: "enforce"
+
+# Workload identity for mTLS between components (requires the SPIFFE CSI driver /
+# SPIRE in the cluster). Leave disabled and rely on a service mesh if you prefer —
+# see values-spiffe.example.yaml and docs/secure-deployment.md.
+identity:
+  spiffe:
+    enabled: true
+
+# Signing keys and operator credentials come from this pre-provisioned Secret
+# (ideally synced from a managed secret store via External Secrets Operator — see
+# docs/key-management.md). Never bake keys into the image or values.
+secrets:
+  existingSecret: aristotle-runtime-secrets

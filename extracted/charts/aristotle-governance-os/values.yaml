@@ -99,6 +99,11 @@ ingress:
 
 podSecurity:
   enforceRestricted: true
+  # Recommended hardening: mount the container root filesystem read-only and give
+  # each pod a writable emptyDir at /tmp. Off by default to stay non-breaking on
+  # arbitrary clusters; enable via values-hardened.yaml (state still persists to
+  # the mounted PV at /var/lib/aristotle).
+  readOnlyRootFilesystem: false
 
 services:
   http-gateway:

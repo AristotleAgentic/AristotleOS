@@ -57,9 +57,12 @@ spec:
 {{ toYaml $svc.resources | indent 12 }}
           securityContext:
             allowPrivilegeEscalation: false
+{{- if $.Values.podSecurity.readOnlyRootFilesystem }}
+            readOnlyRootFilesystem: true
+{{- end }}
             capabilities:
               drop: ["ALL"]
-{{- if or (and $svc.persistentVolume $svc.persistentVolume.enabled) $.Values.identity.spiffe.enabled }}
+{{- if or (and $svc.persistentVolume $svc.persistentVolume.enabled) $.Values.identity.spiffe.enabled $.Values.podSecurity.readOnlyRootFilesystem }}
           volumeMounts:
 {{- if and $svc.persistentVolume $svc.persistentVolume.enabled }}
             - name: data
@@ -70,8 +73,12 @@ spec:
               mountPath: {{ $.Values.identity.spiffe.socketMountPath | quote }}
               readOnly: true
 {{- end }}
+{{- if $.Values.podSecurity.readOnlyRootFilesystem }}
+            - name: tmp
+              mountPath: /tmp
 {{- end }}
-{{- if or (and $svc.persistentVolume $svc.persistentVolume.enabled) $.Values.identity.spiffe.enabled }}
+{{- end }}
+{{- if or (and $svc.persistentVolume $svc.persistentVolume.enabled) $.Values.identity.spiffe.enabled $.Values.podSecurity.readOnlyRootFilesystem }}
       volumes:
 {{- if and $svc.persistentVolume $svc.persistentVolume.enabled }}
         - name: data
@@ -83,6 +90,10 @@ spec:
           csi:
             driver: {{ $.Values.identity.spiffe.csiDriver | quote }}
             readOnly: true
+{{- end }}
+{{- if $.Values.podSecurity.readOnlyRootFilesystem }}
+        - name: tmp
+          emptyDir: {}
 {{- end }}
 {{- end }}
       securityContext:
