@@ -65,6 +65,10 @@
     "@types/cors": "^2.8.17"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": ["esbuild"],
+    "overrides": {
+      "path-to-regexp@<0.1.13": "0.1.13",
+      "qs@>=6.11.1 <=6.15.1": "^6.15.2"
+    }
   }
 }
