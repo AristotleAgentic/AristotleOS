@@ -55,6 +55,30 @@ npm run aristotle -- ward-marshal interdict \
 
 If required runtime registers are missing, the action escalates. If the Authority Envelope does not delegate the requested containment class, the action is refused and no Warrant is issued.
 
+## Discovery collectors (ingestion)
+
+The census needs to be fed. Collectors turn live environment signals into the
+`AgentObservation` stream, using the same **injected-client** pattern as the
+interdiction adapters — pure parsers (tested without a live cluster) plus a thin
+collector that runs an injected command. AristotleOS imports no cloud/k8s SDK, and
+the collector runs **inside your environment** so no telemetry leaves it.
+
+- `kubernetesCollector` — `kubectl get pods` → observations, reading `aristotle.io/*`
+  labels/annotations (agent-id, ward, tools, credentials) plus structural facts
+  (namespace, image, service account, phase).
+- `normalizeObservations` — map any feed (CI, SaaS, host, network) into observations
+  via a field mapping.
+- `collectObservations` — run many collectors, merge + dedupe deterministically.
+
+```bash
+npm run aristotle -- ward-marshal discover --kubernetes --out .tmp/observations.json
+npm run aristotle -- ward-marshal scan --observations .tmp/observations.json
+```
+
+Honest scope: shipping collectors to every cluster/host/SaaS/network tap is
+operational work; what ships here is the real parsing + the explicit ingestion
+boundary, not a turnkey fleet of sensors.
+
 ## Behavioral analysis
 
 Census answers *which agents exist*. Behavioral analysis answers *what they are doing

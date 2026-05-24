@@ -29,7 +29,9 @@ import {
   analyzeAgentBehavior,
   behaviorEventsFromGel,
   buildWardMarshalInterdictionAction,
+  collectObservations,
   explainWardMarshalFinding,
+  kubernetesCollector,
   loadGelChain,
   CredentialRevocationAdapter,
   EndpointQuarantineAdapter,
@@ -496,6 +498,7 @@ Commands:
   governance diff                 Diff two policies; flags changes that weaken authority
   governance explain              Show what a policy permits/refuses/escalates for sample actions
   reconcile                       Reconcile disconnected-edge decisions against current policy
+  ward-marshal discover           Collect agent observations from live sources (--kubernetes [--kube-context] [--namespace ...]); --out <file>
   ward-marshal scan               Discover, inventory, and risk-score autonomous agents
   ward-marshal behavior           Detect denial bursts, rate spikes, first-seen, off-hours, fan-out, and
                                   cross-agent sequence chains over --events <json> and/or --ledger <gel.jsonl>
@@ -1185,6 +1188,32 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
         out(`report_hash=${report.report_hash}${outPath ? `\nwritten → ${outPath}` : ""}\n`);
       }
       return report.summary.rogue || report.summary.orphaned ? 2 : 0;
+    }
+
+    if (command === "ward-marshal" && subcommand === "discover") {
+      const collectors = [];
+      if (rest.includes("--kubernetes")) {
+        collectors.push(kubernetesCollector({
+          kubectlPath: optionValue(rest, "--kubectl"),
+          kubeContext: optionValue(rest, "--kube-context"),
+          namespaces: optionValues(rest, "--namespace"),
+          now: optionValue(rest, "--now")
+        }));
+      }
+      if (collectors.length === 0) throw new Error("ward-marshal discover requires a source (e.g. --kubernetes)");
+      const observations = await collectObservations(collectors);
+      const outPath = optionValue(rest, "--out");
+      if (outPath) writeJson(path.resolve(cwd, outPath), observations);
+      if (json) {
+        printJson(out, observations, true);
+      } else {
+        out(`Ward Marshal discovery — ${observations.length} agent surface(s)\n`);
+        for (const observation of observations) {
+          out(`  ${observation.source.padEnd(12)} ${observation.location}${observation.declared_agent_id ? ` (agent:${observation.declared_agent_id})` : " (undeclared)"}\n`);
+        }
+        out(outPath ? `written → ${outPath}\n` : "Pipe into `ward-marshal scan --observations <file>` to risk-score.\n");
+      }
+      return 0;
     }
 
     if (command === "ward-marshal" && subcommand === "behavior") {
