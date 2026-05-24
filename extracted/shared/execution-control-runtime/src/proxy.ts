@@ -1,5 +1,6 @@
 import {
   type AristotleSigner,
+  type AsyncLedgerStore,
   type AuthorityEnvelope,
   type CanonicalActionInput,
   type ExecutionControlDecision,
@@ -10,6 +11,7 @@ import {
   type WardManifest,
   type Warrant,
   evaluateExecutionControl,
+  evaluateExecutionControlAsync,
   verifyWarrant
 } from "./index.js";
 
@@ -124,6 +126,7 @@ export interface ProxyGovernedActionInput {
   replayProtection?: boolean;
   revocationListPath?: string;
   ledger?: LedgerStore;
+  asyncLedger?: AsyncLedgerStore;
   warrantTtlSeconds?: number;
   /** Injected for testing; defaults to global fetch. */
   fetchImpl?: typeof fetch;
@@ -148,7 +151,7 @@ export interface ProxyGovernedActionResult {
  * the moment of forwarding and never exposed to the caller.
  */
 export async function proxyGovernedAction(input: ProxyGovernedActionInput): Promise<ProxyGovernedActionResult> {
-  const evaluation = evaluateExecutionControl({
+  const evaluateParams = {
     ward: input.ward,
     authorityEnvelope: input.authorityEnvelope,
     action: input.action,
@@ -158,9 +161,11 @@ export async function proxyGovernedAction(input: ProxyGovernedActionInput): Prom
     killSwitchPath: input.killSwitchPath,
     replayProtection: input.replayProtection,
     revocationListPath: input.revocationListPath,
-    ledger: input.ledger,
     warrantTtlSeconds: input.warrantTtlSeconds
-  });
+  };
+  const evaluation = input.asyncLedger
+    ? await evaluateExecutionControlAsync({ ...evaluateParams, ledger: input.asyncLedger })
+    : evaluateExecutionControl({ ...evaluateParams, ledger: input.ledger });
 
   const base = {
     decision: evaluation.decision,

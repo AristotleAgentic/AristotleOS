@@ -62,12 +62,12 @@ Ed25519, but discarded on exit). Under `NODE_ENV=production` the boundary
 These are deliberately documented; they bound what the current version
 guarantees:
 
-- **High availability is operator-provided.** The boundary persists evidence to a
-  durable, ACID ledger (`--ledger-backend sqlite`) or an append-only JSONL file.
-  For multi-node HA with shared replay state, implement the `LedgerBackend`
-  interface against a networked database (e.g. Postgres) and front the boundary
-  with your own replication strategy. There is no built-in clustering or
-  distributed consensus.
+- **High availability.** The boundary persists evidence to a durable, ACID ledger:
+  single-node SQLite (`--ledger-backend sqlite`) or **Postgres**
+  (`--ledger-backend postgres`), which keeps replay state in a shared database so
+  multiple boundary instances refuse replays consistently. There is no built-in
+  leader election; for active-active chain integrity, serialize appends (single
+  writer / leader). Front the boundary with your own load balancing.
 - **No third-party security audit yet.** The cryptography uses Node's standard
   `node:crypto` Ed25519 primitives, but the system has not undergone an external
   penetration test or formal review.

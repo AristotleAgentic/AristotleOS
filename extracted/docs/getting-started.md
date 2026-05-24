@@ -161,10 +161,11 @@ ARISTOTLE_OPERATOR_API_KEY=... aristotle run -- <your agent command>
   enforces a per-subject token bucket; over-budget requests get `429`.
 - **Structured logging** — `--log-format json` emits a JSON decision line per
   request (request id, decision, reason codes, key id, latency) to stderr for SIEM/ops.
-- **Durable ledger** — run with `--ledger-backend sqlite` for an ACID, indexed,
-  restart-durable ledger (built on Node's `node:sqlite`, no extra dependency).
-  The default file (JSONL) and in-memory backends also ship; the `LedgerBackend`
-  interface lets a Postgres adapter drop in for multi-node HA.
+- **Durable ledger** — `--ledger-backend sqlite` gives an ACID, indexed,
+  restart-durable ledger (Node's `node:sqlite`, no extra dependency). For
+  **multi-node high availability**, `--ledger-backend postgres --postgres-url <conn>`
+  (needs `npm install pg`) keeps **replay state shared across instances** via the
+  database. The default file (JSONL) and in-memory backends also ship.
 - **Audit sink (SIEM)** — `--audit-sink <url>` forwards each decision's signed GEL
   record to your SIEM / log pipeline (best-effort, off the hot path).
 - **Prometheus** — `GET /metrics` exposes decision counters and ledger size in

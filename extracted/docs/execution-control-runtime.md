@@ -60,6 +60,7 @@ Core exports:
 - `createExecutionControlMcpServer`
 - `loadRevocationList` / `addRevocation` / `revocationReason`
 - `LedgerStore` / `LedgerBackend` / `FileLedgerBackend` / `InMemoryLedgerBackend` / `SqliteLedgerBackend`
+- `AsyncLedgerStore` / `AsyncLedgerBackend` / `PostgresLedgerBackend` / `evaluateExecutionControlAsync`
 - `SubjectRateLimiter`
 
 ## Demo
@@ -337,8 +338,14 @@ The index sits behind a `LedgerBackend` interface. Three backends ship in-box:
 `SqliteLedgerBackend` — an ACID, indexed, restart-durable store built on Node's
 built-in `node:sqlite` (no extra dependency, no native build). Replay lookups use
 a SQL index (bounded memory) and records survive restarts. Enable it with
-`aristotle run --ledger-backend sqlite`. A Postgres adapter implementing the same
-contract is the path to multi-node high availability with shared replay state.
+`aristotle run --ledger-backend sqlite`.
+
+For **multi-node high availability**, `PostgresLedgerBackend` (async) keeps replay
+state in a shared database, so multiple boundary instances refuse replays
+consistently. Enable with `--ledger-backend postgres --postgres-url <conn>` (the
+`pg` driver is lazy-loaded; `npm install pg`). It implements an `AsyncLedgerBackend`
+and runs through `evaluateExecutionControlAsync` — purely additive to the sync
+path. (Tested against real PostgreSQL via PGlite.)
 
 Two more operational controls for production:
 

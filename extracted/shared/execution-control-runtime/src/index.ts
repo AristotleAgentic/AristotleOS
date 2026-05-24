@@ -21,6 +21,7 @@ export * from "./playground.js";
 export * from "./revocation.js";
 export * from "./validation.js";
 export * from "./sqlite-ledger.js";
+export * from "./postgres-ledger.js";
 export * from "./audit-sink.js";
 
 export {
@@ -312,6 +313,8 @@ export interface ExecutionControlRuntimeServerOptions {
   logFormat?: "json";
   /** Pre-built ledger store (e.g. a SQLite-backed one). Defaults to a file store at ledgerPath. */
   ledger?: LedgerStore;
+  /** Pre-built async ledger store (e.g. Postgres-backed) for the async evaluate path. */
+  asyncLedger?: AsyncLedgerStore;
   /** When set, each decision's signed GEL record is forwarded to this URL (best-effort). */
   auditSink?: string;
 }
@@ -766,6 +769,45 @@ export class LedgerStore {
   }
 }
 
+/**
+ * Async ledger backend for durable, network-backed stores (e.g. Postgres). Reads
+ * that gate decisions (tip, count, verification) are kept cheap, while replay
+ * lookups and writes are async and hit the shared store — so replay state is
+ * shared across boundary instances (the basis for horizontal availability).
+ */
+export interface AsyncLedgerBackend {
+  tipHash: string;
+  count: number;
+  hasAdmitted(canonicalActionHash: string): Promise<boolean>;
+  verification(): { ok: boolean; count: number; failure?: string };
+  persist(record: GelRecord): Promise<void>;
+  records(): Promise<GelRecord[]>;
+  tail(limit: number): Promise<GelRecord[]>;
+  close?(): Promise<void>;
+}
+
+/** Async facade over an AsyncLedgerBackend, mirroring LedgerStore for the async path. */
+export class AsyncLedgerStore {
+  constructor(private readonly backend: AsyncLedgerBackend) {}
+
+  get count(): number { return this.backend.count; }
+  get tipHash(): string { return this.backend.tipHash; }
+  hasPriorAdmission(canonicalActionHash: string): Promise<boolean> { return this.backend.hasAdmitted(canonicalActionHash); }
+  verification(): { ok: boolean; count: number; failure?: string } { return this.backend.verification(); }
+  records(): Promise<GelRecord[]> { return this.backend.records(); }
+  tail(limit: number): Promise<GelRecord[]> { return this.backend.tail(limit); }
+
+  async append(input: Omit<BuildGelRecordInput, "previous_hash">): Promise<GelRecord> {
+    const record = buildGelRecord({ previous_hash: this.backend.tipHash, ...input });
+    await this.backend.persist(record);
+    return record;
+  }
+
+  async close(): Promise<void> {
+    await this.backend.close?.();
+  }
+}
+
 /** Token-bucket rate limiter keyed by subject. capacity = burst, refillPerSec = sustained rate. */
 export class SubjectRateLimiter {
   private readonly buckets = new Map<string, { tokens: number; updated: number }>();
@@ -950,33 +992,49 @@ export function hasPriorAdmission(ledgerPath: string, canonicalActionHash: strin
   );
 }
 
-export function evaluateExecutionControl(input: EvaluateExecutionControlInput): EvaluateExecutionControlResult {
-  if (!input.ward) throw new Error("ward manifest is required for GEL recording");
-  const signer = input.signer ?? getDefaultDevSigner();
-  const canonical = canonicalizeAction(input.action);
-  const runtimeSnapshot = stableNormalize(input.runtimeRegister ?? {}) as RuntimeRegister;
-
-  // Sovereign halt, revocation, and replay protection short-circuit the gate but
-  // are still recorded in the ledger so the attempt is auditable.
+/**
+ * Shared, pure decision core for both the sync and async evaluate paths. Applies
+ * sovereign halt, revocation, replay, and the Commit Gate, then issues a Warrant
+ * on ALLOW. I/O (replay lookup, ledger append) is performed by the caller.
+ */
+function decideAndWarrant(
+  input: Omit<EvaluateExecutionControlInput, "ledger">,
+  signer: AristotleSigner,
+  canonical: CanonicalAction,
+  runtimeSnapshot: RuntimeRegister,
+  replaySeen: boolean
+): { decision: CommitGateDecision; warrant?: Warrant } {
+  const ward = input.ward ?? undefined;
   const revocations = input.revocationListPath ? loadRevocationList(input.revocationListPath) : undefined;
   const revoked = revocations && revocationReason(revocations, {
     signing_key_id: signer.key_id,
     authority_envelope_id: input.authorityEnvelope?.envelope_id
   });
-  const replaySeen = input.replayProtection
-    ? (input.ledger ? input.ledger.hasPriorAdmission(canonical.canonical_action_hash) : hasPriorAdmission(input.ledgerPath, canonical.canonical_action_hash))
-    : false;
   let decision: CommitGateDecision;
   if (input.killSwitchPath && existsSync(input.killSwitchPath)) {
-    decision = refuse("REFUSE", ["KILL_SWITCH_ENGAGED"], canonical, runtimeSnapshot, input.ward, input.authorityEnvelope ?? undefined);
+    decision = refuse("REFUSE", ["KILL_SWITCH_ENGAGED"], canonical, runtimeSnapshot, ward, input.authorityEnvelope ?? undefined);
   } else if (revoked) {
-    decision = refuse("REFUSE", ["AUTHORITY_REVOKED"], canonical, runtimeSnapshot, input.ward, input.authorityEnvelope ?? undefined);
+    decision = refuse("REFUSE", ["AUTHORITY_REVOKED"], canonical, runtimeSnapshot, ward, input.authorityEnvelope ?? undefined);
   } else if (replaySeen) {
-    decision = refuse("REFUSE", ["REPLAY_DETECTED"], canonical, runtimeSnapshot, input.ward, input.authorityEnvelope ?? undefined);
+    decision = refuse("REFUSE", ["REPLAY_DETECTED"], canonical, runtimeSnapshot, ward, input.authorityEnvelope ?? undefined);
   } else {
     decision = evaluateCommitGate(input);
   }
-  const warrant = decision.decision === "ALLOW" && input.authorityEnvelope ? issueWarrant(decision, input.action, input.authorityEnvelope, input.now, signer, input.warrantTtlSeconds) : undefined;
+  const warrant = decision.decision === "ALLOW" && input.authorityEnvelope
+    ? issueWarrant(decision, input.action, input.authorityEnvelope, input.now, signer, input.warrantTtlSeconds)
+    : undefined;
+  return { decision, warrant };
+}
+
+export function evaluateExecutionControl(input: EvaluateExecutionControlInput): EvaluateExecutionControlResult {
+  if (!input.ward) throw new Error("ward manifest is required for GEL recording");
+  const signer = input.signer ?? getDefaultDevSigner();
+  const canonical = canonicalizeAction(input.action);
+  const runtimeSnapshot = stableNormalize(input.runtimeRegister ?? {}) as RuntimeRegister;
+  const replaySeen = input.replayProtection
+    ? (input.ledger ? input.ledger.hasPriorAdmission(canonical.canonical_action_hash) : hasPriorAdmission(input.ledgerPath, canonical.canonical_action_hash))
+    : false;
+  const { decision, warrant } = decideAndWarrant(input, signer, canonical, runtimeSnapshot, replaySeen);
   const gel_record = input.ledger
     ? input.ledger.append({ ward: input.ward, action: input.action, decision, warrant, now: input.now, signer })
     : appendGelRecord({ ledgerPath: input.ledgerPath, ward: input.ward, action: input.action, decision, warrant, now: input.now, signer });
@@ -987,6 +1045,34 @@ export function evaluateExecutionControl(input: EvaluateExecutionControlInput): 
     warrant,
     gel_record,
     ledger_verification: input.ledger ? input.ledger.verification() : verifyGelChain(input.ledgerPath)
+  };
+}
+
+/**
+ * Async evaluate path for durable, network-backed ledgers (e.g. Postgres). Shares
+ * the exact decision logic with the sync path; only the replay lookup and the
+ * ledger append are awaited. Replay state lives in the backing store, so it is
+ * shared across boundary instances.
+ */
+export interface EvaluateExecutionControlAsyncInput extends Omit<EvaluateExecutionControlInput, "ledger"> {
+  ledger: AsyncLedgerStore;
+}
+
+export async function evaluateExecutionControlAsync(input: EvaluateExecutionControlAsyncInput): Promise<EvaluateExecutionControlResult> {
+  if (!input.ward) throw new Error("ward manifest is required for GEL recording");
+  const signer = input.signer ?? getDefaultDevSigner();
+  const canonical = canonicalizeAction(input.action);
+  const runtimeSnapshot = stableNormalize(input.runtimeRegister ?? {}) as RuntimeRegister;
+  const replaySeen = input.replayProtection ? await input.ledger.hasPriorAdmission(canonical.canonical_action_hash) : false;
+  const { decision, warrant } = decideAndWarrant(input, signer, canonical, runtimeSnapshot, replaySeen);
+  const gel_record = await input.ledger.append({ ward: input.ward, action: input.action, decision, warrant, now: input.now, signer });
+  return {
+    decision: decision.decision,
+    reason_codes: decision.reason_codes,
+    canonical_action_hash: decision.canonical_action_hash,
+    warrant,
+    gel_record,
+    ledger_verification: input.ledger.verification()
   };
 }
 
@@ -1255,9 +1341,14 @@ export function executionControlOpenApiSpec() {
 export function createExecutionControlRuntimeServer(options: ExecutionControlRuntimeServerOptions): ExecutionControlRuntimeServer {
   const replayProtection = options.replayProtection !== false;
   // One ledger store for the whole server lifetime keeps append and replay checks
-  // off the per-request full-scan path. Defaults to the file store; a durable
-  // store (e.g. SQLite) can be supplied via options.ledger.
-  const ledger = options.ledger ?? new LedgerStore(options.ledgerPath);
+  // off the per-request full-scan path. A durable store (SQLite via options.ledger,
+  // or Postgres via options.asyncLedger) can be supplied; otherwise a file store
+  // is created from ledgerPath.
+  const asyncLedger = options.asyncLedger;
+  const ledger = asyncLedger ? undefined : (options.ledger ?? new LedgerStore(options.ledgerPath));
+  const readRecords = (): Promise<GelRecord[]> => asyncLedger ? asyncLedger.records() : Promise.resolve(ledger!.records());
+  const readTail = (limit: number): Promise<GelRecord[]> => asyncLedger ? asyncLedger.tail(limit) : Promise.resolve(ledger!.tail(limit));
+  const readVerification = (): { ok: boolean; count: number; failure?: string } => asyncLedger ? asyncLedger.verification() : ledger!.verification();
   const rateLimiter = options.rateLimitPerMinute && options.rateLimitPerMinute > 0
     ? SubjectRateLimiter.perMinute(options.rateLimitPerMinute)
     : undefined;
@@ -1332,7 +1423,7 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
       }
 
       if (req.method === "GET" && url.pathname === "/metrics") {
-        const chain = ledger.records();
+        const chain = await readRecords();
         const counts: Record<string, number> = { ALLOW: 0, REFUSE: 0, ESCALATE: 0 };
         for (const record of chain) counts[record.decision] = (counts[record.decision] ?? 0) + 1;
         const lines = [
@@ -1346,7 +1437,7 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           `aristotle_ledger_records ${chain.length}`,
           "# HELP aristotle_ledger_ok GEL chain integrity (1 ok, 0 broken)",
           "# TYPE aristotle_ledger_ok gauge",
-          `aristotle_ledger_ok ${ledger.verification().ok ? 1 : 0}`
+          `aristotle_ledger_ok ${readVerification().ok ? 1 : 0}`
         ];
         res.writeHead(200, { "content-type": "text/plain; version=0.0.4; charset=utf-8" });
         res.end(`${lines.join("\n")}\n`);
@@ -1379,7 +1470,7 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           sendJson(res, 429, { error: "rate_limited", subject: action.subject });
           return;
         }
-        const result = evaluateExecutionControl({
+        const evaluateParams = {
           ward: options.ward,
           authorityEnvelope: options.authorityEnvelope,
           action,
@@ -1390,9 +1481,11 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           killSwitchPath: options.killSwitchPath,
           replayProtection,
           revocationListPath: options.revocationListPath,
-          warrantTtlSeconds: options.warrantTtlSeconds,
-          ledger
-        });
+          warrantTtlSeconds: options.warrantTtlSeconds
+        };
+        const result = asyncLedger
+          ? await evaluateExecutionControlAsync({ ...evaluateParams, ledger: asyncLedger })
+          : evaluateExecutionControl({ ...evaluateParams, ledger });
         logDecision({
           event: "evaluate",
           request_id: requestId(req),
@@ -1429,7 +1522,8 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           replayProtection,
           revocationListPath: options.revocationListPath,
           warrantTtlSeconds: options.warrantTtlSeconds,
-          ledger
+          ledger,
+          asyncLedger
         });
         const status = result.decision === "ALLOW" ? (result.forwarded ? 200 : 502) : result.decision === "ESCALATE" ? 202 : 409;
         logDecision({
@@ -1451,17 +1545,17 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
 
       if (req.method === "GET" && url.pathname === "/v1/execution-control/audit/tail") {
         const limit = Number(url.searchParams.get("limit") ?? "20");
-        sendJson(res, 200, { items: ledger.tail(limit) });
+        sendJson(res, 200, { items: await readTail(limit) });
         return;
       }
 
       if (req.method === "GET" && url.pathname === "/v1/execution-control/audit/verify") {
-        sendJson(res, 200, verifyGelRecords(ledger.records()));
+        sendJson(res, 200, verifyGelRecords(await readRecords()));
         return;
       }
 
       if (req.method === "GET" && url.pathname === "/v1/execution-control/metrics") {
-        const chain = ledger.records();
+        const chain = await readRecords();
         const decisions: Record<string, number> = { ALLOW: 0, REFUSE: 0, ESCALATE: 0 };
         const reasonCodes: Record<string, number> = {};
         for (const record of chain) {
@@ -1472,7 +1566,7 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           total_records: chain.length,
           decisions,
           reason_codes: reasonCodes,
-          ledger_ok: ledger.verification().ok,
+          ledger_ok: readVerification().ok,
           signing_key_id: options.signer?.key_id ?? "ephemeral-dev",
           kill_switch_engaged: !!(options.killSwitchPath && existsSync(options.killSwitchPath)),
           replay_protection: replayProtection

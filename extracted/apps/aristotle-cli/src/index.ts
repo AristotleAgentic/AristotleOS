@@ -2,12 +2,15 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { generateKeyPairSync } from "node:crypto";
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   type AristotleSigner,
   type RevocationKind,
+  AsyncLedgerStore,
   CredentialBroker,
+  PostgresLedgerBackend,
   addRevocation,
   createEd25519Signer,
   createExecutionControlMcpServer,
@@ -273,6 +276,31 @@ const buildLedger = (args: string[], cwd: string, ledgerPath: string): LedgerSto
   return new LedgerStore(new SqliteLedgerBackend(dbPath));
 };
 
+interface PgPoolLike {
+  query(text: string, params?: unknown[]): Promise<{ rows: Array<Record<string, unknown>> }>;
+  end(): Promise<void>;
+}
+
+// Build a Postgres-backed async ledger when --ledger-backend postgres is set.
+// The 'pg' driver is loaded lazily so it is only required for this backend.
+const buildAsyncLedger = async (args: string[]): Promise<AsyncLedgerStore | undefined> => {
+  if (optionValue(args, "--ledger-backend") !== "postgres") return undefined;
+  const url = optionValue(args, "--postgres-url") ?? process.env.ARISTOTLE_POSTGRES_URL ?? process.env.DATABASE_URL;
+  if (!url) throw new Error("postgres backend requires --postgres-url or ARISTOTLE_POSTGRES_URL");
+  let pg: { Pool: new (config: { connectionString: string }) => PgPoolLike };
+  try {
+    pg = createRequire(import.meta.url)("pg") as typeof pg;
+  } catch {
+    throw new Error("the 'pg' driver is not installed for the postgres ledger backend. Run: npm install pg");
+  }
+  const pool = new pg.Pool({ connectionString: url });
+  const backend = await PostgresLedgerBackend.create(
+    { query: (text, params) => pool.query(text, params) },
+    { onClose: () => pool.end() }
+  );
+  return new AsyncLedgerStore(backend);
+};
+
 export const ARISTOTLE_CLI_VERSION = "0.1.0";
 
 export async function runCli(argv: string[], cwd = process.cwd(), out: Writer = process.stdout.write.bind(process.stdout), err: Writer = process.stderr.write.bind(process.stderr)) {
@@ -407,6 +435,7 @@ Keep the private key secret. The public key and key_id can be shared so others c
       const rateLimitPerMinute = Number(optionValue(runArgs, "--rate-limit") ?? process.env.ARISTOTLE_RATE_LIMIT_PER_MINUTE ?? "0") || undefined;
       const logFormat = optionValue(runArgs, "--log-format") === "json" ? ("json" as const) : undefined;
       const ledger = buildLedger(runArgs, cwd, config.ledgerPath);
+      const asyncLedger = await buildAsyncLedger(runArgs);
       const { server } = createExecutionControlRuntimeServer({
         ward,
         authorityEnvelope,
@@ -421,6 +450,7 @@ Keep the private key secret. The public key and key_id can be shared so others c
         rateLimitPerMinute,
         logFormat,
         ledger,
+        asyncLedger,
         auditSink: optionValue(runArgs, "--audit-sink") ?? process.env.ARISTOTLE_AUDIT_SINK
       });
       await new Promise<void>((resolve) => server.listen(config.port, "127.0.0.1", resolve));
@@ -479,6 +509,7 @@ Or wrap it directly:
       process.off("SIGTERM", onSigterm);
       await new Promise<void>((resolve) => server.close(() => resolve()));
       ledger?.close();
+      await asyncLedger?.close();
       out(`AristotleOS boundary stopped. Audit ledger: ${config.ledgerPath}\n`);
       return code;
     }
@@ -734,6 +765,7 @@ evidence_bundle=${evidenceOut ?? "not requested"}
       const rateLimitPerMinute = Number(optionValue(rest, "--rate-limit") ?? process.env.ARISTOTLE_RATE_LIMIT_PER_MINUTE ?? "0") || undefined;
       const logFormat = optionValue(rest, "--log-format") === "json" ? ("json" as const) : undefined;
       const ledger = buildLedger(rest, cwd, path.resolve(cwd, ledgerPath));
+      const asyncLedger = await buildAsyncLedger(rest);
       const { server } = createExecutionControlRuntimeServer({
         ward,
         authorityEnvelope,
@@ -749,6 +781,7 @@ evidence_bundle=${evidenceOut ?? "not requested"}
         rateLimitPerMinute,
         logFormat,
         ledger,
+        asyncLedger,
         auditSink: optionValue(rest, "--audit-sink") ?? process.env.ARISTOTLE_AUDIT_SINK
       });
       await new Promise<void>((resolve) => server.listen(port, "127.0.0.1", resolve));
@@ -758,6 +791,7 @@ Authority Envelope: ${authorityEnvelope.envelope_id}
 Signing key: ${signer.key_id}${signer.ephemeral ? " (ephemeral dev key)" : ""}
 Credential broker: ${broker ? "enabled" : "none"}
 Replay protection: ${replayProtection ? "on" : "off"}   Auth: ${apiKey ? "required" : "open"}
+Ledger: ${asyncLedger ? "postgres" : ledger ? "sqlite" : "file"}
 Evaluate: POST http://127.0.0.1:${port}/v1/execution-control/evaluate
 Proxy: POST http://127.0.0.1:${port}/v1/execution-control/proxy
 Metrics: GET http://127.0.0.1:${port}/metrics
@@ -767,7 +801,11 @@ Audit: GET http://127.0.0.1:${port}/v1/execution-control/audit/verify
       await new Promise<void>((resolve) => {
         const shutdown = () => {
           err("shutting down execution-control runtime...\n");
-          server.close(() => { ledger?.close(); resolve(); });
+          server.close(async () => {
+            ledger?.close();
+            await asyncLedger?.close();
+            resolve();
+          });
         };
         process.on("SIGINT", shutdown);
         process.on("SIGTERM", shutdown);

@@ -5,6 +5,8 @@ import { generateKeyPairSync } from "node:crypto";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { PGlite } from "@electric-sql/pglite";
+import { AsyncLedgerStore, PostgresLedgerBackend, evaluateExecutionControlAsync } from "./index.js";
 import {
   type AuthorityEnvelope,
   type CanonicalActionInput,
@@ -598,6 +600,37 @@ test("evaluateExecutionControl enforces replay over a durable SQLite store", () 
   const second = evaluateExecutionControl({ ward, authorityEnvelope: envelope, action, ledgerPath: "unused", now, ledger, replayProtection: true });
   assert.equal(second.decision, "REFUSE");
   assert.deepEqual(second.reason_codes, ["REPLAY_DETECTED"]);
+});
+
+test("PostgresLedgerBackend (pglite): durable, ACID, with replay shared across instances", async () => {
+  const db = await PGlite.create();
+  const queryable = {
+    query: async (text: string, params?: unknown[]) => {
+      const result = await db.query(text, params as never);
+      return { rows: result.rows as Array<Record<string, unknown>> };
+    }
+  };
+
+  const store = new AsyncLedgerStore(await PostgresLedgerBackend.create(queryable));
+  const first = await evaluateExecutionControlAsync({ ward, authorityEnvelope: envelope, action, ledgerPath: "unused", now, ledger: store, replayProtection: true });
+  assert.equal(first.decision, "ALLOW");
+  assert.ok(first.warrant);
+
+  // Replay refused via the shared database.
+  const second = await evaluateExecutionControlAsync({ ward, authorityEnvelope: envelope, action, ledgerPath: "unused", now, ledger: store, replayProtection: true });
+  assert.equal(second.decision, "REFUSE");
+  assert.deepEqual(second.reason_codes, ["REPLAY_DETECTED"]);
+
+  // A second boundary instance over the SAME database sees the prior admission —
+  // this is the shared replay state that makes horizontal availability possible.
+  const store2 = new AsyncLedgerStore(await PostgresLedgerBackend.create(queryable));
+  assert.equal(store2.count, 2);
+  assert.equal(await store2.hasPriorAdmission(first.canonical_action_hash), true);
+  assert.equal((await store2.records()).length, 2);
+  assert.equal(store2.verification().ok, true);
+  assert.equal((await store2.records())[0].record_hash, first.gel_record.record_hash);
+
+  await db.close();
 });
 
 test("SubjectRateLimiter enforces an independent per-subject budget", () => {
