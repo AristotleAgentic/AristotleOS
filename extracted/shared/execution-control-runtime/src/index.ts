@@ -56,6 +56,7 @@ export * from "./ward-marshal.js";
 export * from "./ward-marshal-adapters.js";
 export * from "./marshal-behavior.js";
 export * from "./marshal-collectors.js";
+export * from "./credential-minter.js";
 
 export {
   type AristotleSigner,

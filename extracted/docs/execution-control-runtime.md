@@ -277,6 +277,26 @@ Warrant) the broker injects the credential and the proxy forwards the call,
 returning the downstream response. The raw secret is never returned and never
 written to the ledger.
 
+### Short-lived credential minting
+
+Beyond brokering static secrets, AristotleOS can **mint** a short-lived, scoped,
+Warrant-bound credential at the call site, so an agent never holds a long-lived
+secret and a leaked token expires on its own:
+
+```ts
+const minter = createHmacCredentialMinter({ secret: process.env.MINT_SECRET! });
+// only after the gate returns ALLOW and the Warrant verifies:
+const cred = minter.mint({ subject, scope: ["warehouse:read"], audience: "warehouse", ttlSeconds: 300, warrantId });
+// the audience verifies it offline — signature, expiry, audience, and revocation:
+const check = verifyMintedCredential(cred.token, { secret, audience: "warehouse", revocations });
+```
+
+`verifyMintedCredential` checks the HMAC (timing-safe), expiry, audience, **and the
+Ward Marshal credential-revocation list** — so a credential revoked during
+interdiction stops verifying immediately. The built-in minter is HMAC-SHA256
+(deterministic, offline-verifiable); implement `CredentialMinter` with an injected
+client for cloud STS / Vault dynamic secrets (no SDK dependency).
+
 ## MCP server
 
 ```bash
