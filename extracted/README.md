@@ -94,6 +94,14 @@ npm run execution-control:evidence:verify
 
 The runtime also publishes `GET /openapi.json` so agent adapters can discover the execution-boundary contract.
 
+Sandboxed execution: `governSandboxExecution` runs a command in a sandbox **only
+after ALLOW + a verified Warrant**, sealing the result into a signed Execution
+Receipt hash-bound to the Warrant and GEL record. A built-in
+`LocalProcessSandboxProvider` (allowlist/timeout/output-cap/cwd/env) ships in-box;
+E2B/Daytona/Modal/Riza adapters use an injected-client pattern (no SDK
+dependency). `aristotle sandbox run|providers|receipt verify`. See
+[docs/sandboxes.md](docs/sandboxes.md).
+
 Operator access control at the boundary: authenticate `/v1` with an API key,
 role-scoped `--operator` tokens, or OIDC (`--oidc-config`); roles
 `viewer < operator < admin` are enforced per route, the operator identity is

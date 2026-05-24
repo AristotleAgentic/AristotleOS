@@ -36,6 +36,7 @@ export * from "./sqlite-ledger.js";
 export * from "./postgres-ledger.js";
 export * from "./audit-sink.js";
 export * from "./auth.js";
+export * from "./sandbox.js";
 
 export {
   type AristotleSigner,

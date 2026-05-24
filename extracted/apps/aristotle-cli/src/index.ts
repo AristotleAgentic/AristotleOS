@@ -15,6 +15,8 @@ import {
   CredentialBroker,
   PostgresLedgerBackend,
   addRevocation,
+  type SandboxExecutionReceipt,
+  type SandboxPolicy,
   createEd25519Signer,
   createExecutionControlMcpServer,
   createExecutionControlRuntimeServer,
@@ -22,7 +24,9 @@ import {
   evaluateExecutionControl,
   exportEvidenceBundle,
   getDefaultDevSigner,
+  governSandboxExecution,
   LedgerStore,
+  LocalProcessSandboxProvider,
   loadEvidenceBundle,
   loadAuthorityEnvelope,
   loadCanonicalAction,
@@ -35,6 +39,7 @@ import {
   submitGovernedAction,
   verifyEvidenceBundle,
   verifyGelChain,
+  verifySandboxReceipt,
   verifyWarrant,
   writeJson
 } from "@aristotle/execution-control-runtime";
@@ -427,6 +432,9 @@ Commands:
   keys generate        Generate an Ed25519 Warrant signing keypair
   kill engage|release  Engage/release the sovereign-halt kill switch
   revoke key|envelope|warrant <id>   Revoke a compromised trust root
+  sandbox providers    List sandbox execution providers
+  sandbox run          Evaluate an action, then run a command in a sandbox only on ALLOW
+  sandbox receipt verify   Verify a signed, Warrant-bound execution receipt
   pilot                One-command self-check of the full boundary
   preflight            Check production readiness (signing key, auth, config)
   demo payments        Run the flagship payments scenario
@@ -1018,6 +1026,73 @@ Next: aristotle approvals && aristotle approve ${evaluation.deferToken ?? "<toke
     if (command === "doctor") {
       out(`node=${process.version}\nworkspace=${cwd}\npolicy_file=${existsSync(governanceFile(cwd)) ? "present" : "missing"}\n`);
       return 0;
+    }
+
+    if (command === "sandbox" && subcommand === "providers") {
+      const providers = [
+        { name: "local-process", builtin: true, isolation: "process (allowlist/timeout/output-cap/cwd/env)", note: "development provider; not a kernel security boundary" },
+        { name: "e2b", builtin: false, isolation: "remote micro-VM", note: "wire via examples/sandboxes/e2b-provider.ts" },
+        { name: "daytona", builtin: false, isolation: "remote workspace", note: "wire via examples/sandboxes/daytona-provider.ts" },
+        { name: "modal", builtin: false, isolation: "remote container/job", note: "wire via examples/sandboxes/modal-provider.ts" },
+        { name: "riza", builtin: false, isolation: "hosted code interpreter", note: "wire via examples/sandboxes/riza-provider.ts" }
+      ];
+      if (json) { printJson(out, { providers }, true); return 0; }
+      out("AristotleOS sandbox providers\n\n");
+      for (const p of providers) out(`  ${p.builtin ? "*" : " "} ${p.name.padEnd(14)} ${p.isolation}\n      ${p.note}\n`);
+      out("\n  * built-in. See docs/sandboxes.md to wire optional providers.\n");
+      return 0;
+    }
+
+    if (command === "sandbox" && subcommand === "run") {
+      const ward = loadWardManifest(path.resolve(cwd, requiredOption(rest, "--ward")));
+      const authorityEnvelope = loadAuthorityEnvelope(path.resolve(cwd, requiredOption(rest, "--envelope")));
+      const action = loadCanonicalAction(path.resolve(cwd, requiredOption(rest, "--action")));
+      const binary = requiredOption(rest, "--cmd");
+      const args = optionValues(rest, "--arg");
+      const allowed = optionValues(rest, "--allow");
+      const signer = resolveSigner(rest, cwd, err);
+      const policy: SandboxPolicy = {
+        allowed_commands: allowed.length ? allowed : [binary],
+        timeout_ms: Number(optionValue(rest, "--timeout") ?? "30000"),
+        max_output_bytes: Number(optionValue(rest, "--max-output") ?? "1000000"),
+        allow_network: rest.includes("--allow-network")
+      };
+      const ledgerPath = optionValue(rest, "--ledger");
+      const result = await governSandboxExecution({
+        ward, authorityEnvelope, action,
+        provider: new LocalProcessSandboxProvider(), policy,
+        command: { command: binary, args, stdin: optionValue(rest, "--stdin") },
+        signer,
+        ledgerPath: ledgerPath ? path.resolve(cwd, ledgerPath) : undefined,
+        now: optionValue(rest, "--now")
+      });
+
+      const receiptOut = optionValue(rest, "--receipt-out");
+      if (receiptOut && result.receipt) writeFileSync(path.resolve(cwd, receiptOut), `${JSON.stringify(result.receipt, null, 2)}\n`, "utf8");
+
+      if (json) { printJson(out, result, true); }
+      else if (result.decision !== "ALLOW") {
+        out(`${result.decision} — not executed (${result.reason_codes.join(", ")})\nGEL record ${result.gel_record.record_id}\n`);
+      } else if (result.error) {
+        out(`ALLOW but blocked: ${result.error}\n`);
+      } else {
+        const r = result.receipt!;
+        out(`ALLOW — executed in sandbox (${result.evidence!.receipt.provider})\nWarrant ${result.warrant!.warrant_id}\nGEL record ${result.gel_record.record_id}\nReceipt ${r.receipt_id} status=${r.status} exit=${r.exit_code ?? "-"}${r.output_truncated ? " (output truncated)" : ""}\n`);
+        if (r.stdout) out(`--- stdout ---\n${r.stdout}\n`);
+        if (r.stderr) out(`--- stderr ---\n${r.stderr}\n`);
+      }
+      if (result.decision !== "ALLOW" || result.error) return 1;
+      return typeof result.receipt?.exit_code === "number" ? result.receipt.exit_code : (result.receipt?.status === "ok" ? 0 : 1);
+    }
+
+    if (command === "sandbox" && subcommand === "receipt" && rest[0] === "verify") {
+      const receipt = JSON.parse(readFileSync(path.resolve(cwd, requiredOption(rest, "--receipt")), "utf8")) as SandboxExecutionReceipt;
+      const warrantPath = optionValue(rest, "--warrant");
+      const warrant = warrantPath ? JSON.parse(readFileSync(path.resolve(cwd, warrantPath), "utf8")) : undefined;
+      const verification = verifySandboxReceipt(receipt, { warrant });
+      if (json) { printJson(out, verification, true); }
+      else out(verification.ok ? "receipt OK — integrity, signature, and Warrant binding verified\n" : `receipt FAILED:\n${verification.failures.map((f) => `  - ${f}`).join("\n")}\n`);
+      return verification.ok ? 0 : 1;
     }
 
     if (command === "pilot") {
