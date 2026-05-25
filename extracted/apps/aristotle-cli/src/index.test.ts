@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cpSync, existsSync, mkdtempSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { runCli } from "./index.js";
@@ -280,6 +280,18 @@ test("cli ward-marshal discover supports process/mcp sources and requires one", 
     const proc = await capture(["ward-marshal", "discover", "--process", "--host", "test-host", "--now", "2026-05-24T12:00:00.000Z"], dir);
     assert.equal(proc.code, 0, proc.stderr);
     assert.match(proc.stdout, /Ward Marshal discovery/);
+
+    // --from-file ingests an exported inventory via a field mapping.
+    writeFileSync(path.join(dir, "ci.json"), JSON.stringify({ results: [{ run: "run-9", repo: "acme/api", actor: "deploy-bot", tools: "gh.deploy" }] }));
+    const file = await capture([
+      "ward-marshal", "discover",
+      "--from-file", "ci.json", "--source", "ci",
+      "--map", "observation_id=run", "--map", "location=repo", "--map", "declared_agent_id=actor", "--map", "tool_targets=tools",
+      "--now", "2026-05-24T12:00:00.000Z"
+    ], dir);
+    assert.equal(file.code, 0, file.stderr);
+    assert.match(file.stdout, /acme\/api/);
+    assert.match(file.stdout, /deploy-bot/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import {
   type AgentObservation,
   type AgentObservationSource,
@@ -323,6 +324,51 @@ export function mcpCollector(options: McpCollectorOptions): AgentCollector {
       let doc: { servers?: McpServerEntry[] };
       try { doc = JSON.parse(result.stdout) as { servers?: McpServerEntry[] }; } catch { return []; }
       return parseMcpInventory(doc, now);
+    }
+  };
+}
+
+// --- File-fed collector (CI / SaaS / network / api-gateway exports) ---------
+
+/** Pull the observation record array out of common export shapes. Pure. */
+export function extractRecords(doc: unknown): Array<Record<string, JsonValue>> {
+  if (Array.isArray(doc)) return doc as Array<Record<string, JsonValue>>;
+  if (doc && typeof doc === "object") {
+    const obj = doc as Record<string, unknown>;
+    for (const key of ["records", "items", "results", "data"]) {
+      if (Array.isArray(obj[key])) return obj[key] as Array<Record<string, JsonValue>>;
+    }
+  }
+  return [];
+}
+
+export interface FileCollectorOptions {
+  /** Path to an exported inventory JSON (array, or { records|items|results|data: [...] }). */
+  path: string;
+  source: AgentObservationSource;
+  mapping: ObservationFieldMapping;
+  captureLabels?: boolean;
+  now?: string;
+  /** Injected reader for testability; defaults to fs.readFileSync. */
+  readFile?: (path: string) => string;
+}
+
+/**
+ * Collect observations from an exported inventory file. The live-command collectors
+ * (k8s/process/mcp) cover sources you can query; many sources (CI runs, SaaS
+ * automations, network/API-gateway logs) are more naturally *exported* — the
+ * operator dumps their tool's inventory to JSON and supplies a field mapping. This
+ * turns any such export into the observation stream without bespoke per-tool code.
+ */
+export function fileObservationCollector(options: FileCollectorOptions): AgentCollector {
+  const read = options.readFile ?? ((p: string) => readFileSync(p, "utf8"));
+  return {
+    source: options.source,
+    async collect() {
+      const now = options.now ?? new Date().toISOString();
+      let doc: unknown;
+      try { doc = JSON.parse(read(options.path)); } catch { return []; }
+      return normalizeObservations(extractRecords(doc), { source: options.source, mapping: options.mapping, captureLabels: options.captureLabels, now });
     }
   };
 }

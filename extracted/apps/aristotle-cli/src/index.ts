@@ -33,6 +33,7 @@ import {
   buildWardMarshalInterdictionAction,
   collectObservations,
   explainWardMarshalFinding,
+  fileObservationCollector,
   kubernetesCollector,
   mcpCollector,
   processCollector,
@@ -504,7 +505,7 @@ Commands:
   governance diff                 Diff two policies; flags changes that weaken authority
   governance explain              Show what a policy permits/refuses/escalates for sample actions
   reconcile                       Reconcile disconnected-edge decisions against current policy
-  ward-marshal discover           Collect agent observations from live sources: --kubernetes [--kube-context] [--namespace ...], --process [--host] [--ps], --mcp [--mcp-command] [--mcp-arg ...]; --out <file>
+  ward-marshal discover           Collect agent observations: --kubernetes, --process [--host], --mcp, or --from-file <f> --source <s> [--map field=key ...]; combine sources; --out <file>
   ward-marshal scan               Discover, inventory, and risk-score autonomous agents
   ward-marshal behavior           Detect denial bursts, rate spikes, first-seen, off-hours, fan-out, and
                                   cross-agent sequence chains over --events <json> and/or --ledger <gel.jsonl>
@@ -1221,7 +1222,25 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
           now: optionValue(rest, "--now")
         }));
       }
-      if (collectors.length === 0) throw new Error("ward-marshal discover requires a source (e.g. --kubernetes, --process, or --mcp)");
+      const fromFile = optionValue(rest, "--from-file");
+      if (fromFile) {
+        const source = optionValue(rest, "--source");
+        if (!source) throw new Error("--from-file requires --source <ci|saas-automation|network|api-gateway|edge-node|...>");
+        const mapping: Record<string, string> = {};
+        for (const pair of optionValues(rest, "--map")) {
+          const eq = pair.indexOf("=");
+          if (eq <= 0) throw new Error(`--map expects field=key (got "${pair}")`);
+          mapping[pair.slice(0, eq)] = pair.slice(eq + 1);
+        }
+        collectors.push(fileObservationCollector({
+          path: path.resolve(cwd, fromFile),
+          source: source as Parameters<typeof fileObservationCollector>[0]["source"],
+          mapping,
+          captureLabels: rest.includes("--capture-labels"),
+          now: optionValue(rest, "--now")
+        }));
+      }
+      if (collectors.length === 0) throw new Error("ward-marshal discover requires a source (e.g. --kubernetes, --process, --mcp, or --from-file)");
       const observations = await collectObservations(collectors);
       const outPath = optionValue(rest, "--out");
       if (outPath) writeJson(path.resolve(cwd, outPath), observations);

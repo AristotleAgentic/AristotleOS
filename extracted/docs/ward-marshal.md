@@ -74,8 +74,11 @@ the collector runs **inside your environment** so no telemetry leaves it.
 - `mcpCollector` / `parseMcpInventory` — MCP tool-server discovery: an inventory of
   servers → observations carrying the exposed tool surface, service account, and
   credentials (e.g. a `prod-shell` server with `shell.exec` + prod kubeconfig).
-- `normalizeObservations` — map any other feed (CI, SaaS, network) into observations
-  via a field mapping.
+- `fileObservationCollector` / `normalizeObservations` — for sources you *export*
+  rather than query (CI runs, SaaS automations, network / API-gateway logs): point at
+  an exported inventory JSON (array, or `{ records|items|results|data: [...] }`) and a
+  field mapping. One collector covers every export-shaped source; no bespoke per-tool
+  parser.
 - `collectObservations` — run many collectors, merge + dedupe deterministically.
 
 ```bash
@@ -84,6 +87,7 @@ npm run aristotle -- ward-marshal discover --kubernetes --process --mcp --out .t
 #   --kubernetes [--kube-context X] [--namespace ns ...]
 #   --process    [--host name] [--ps /path/to/ps]          (host / workstation / edge)
 #   --mcp        [--mcp-command cmd] [--mcp-arg a ...]      (MCP tool servers)
+#   --from-file f --source ci --map observation_id=run --map location=repo ...  (exports)
 npm run aristotle -- ward-marshal scan --observations .tmp/observations.json
 ```
 

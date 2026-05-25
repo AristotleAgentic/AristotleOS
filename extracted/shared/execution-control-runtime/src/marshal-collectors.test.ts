@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   type CommandRunner,
   collectObservations,
+  extractRecords,
+  fileObservationCollector,
   kubernetesCollector,
   looksLikeAgent,
   mcpCollector,
@@ -184,4 +186,40 @@ test("collectObservations merges host + mcp collectors into one deduped set", as
   ]);
   assert.equal(all.length, 2);
   assert.deepEqual(all.map((o) => o.source).sort(), ["developer-workstation", "mcp"]);
+});
+
+test("extractRecords pulls the array out of common export shapes", () => {
+  assert.equal(extractRecords([{ a: 1 }]).length, 1);
+  assert.equal(extractRecords({ records: [{ a: 1 }, { a: 2 }] }).length, 2);
+  assert.equal(extractRecords({ items: [{ a: 1 }] }).length, 1);
+  assert.equal(extractRecords({ results: [{ a: 1 }] }).length, 1);
+  assert.equal(extractRecords({ data: [{ a: 1 }] }).length, 1);
+  assert.deepEqual(extractRecords({ nope: 1 }), []);
+  assert.deepEqual(extractRecords(null), []);
+});
+
+test("fileObservationCollector reads an exported inventory via an injected reader", async () => {
+  const doc = JSON.stringify({ results: [
+    { run: "run-9", repo: "acme/api", actor: "deploy-bot", tools: "gh.deploy,npm.publish" }
+  ] });
+  const collector = fileObservationCollector({
+    path: "ci-runs.json",
+    source: "ci",
+    mapping: { observation_id: "run", location: "repo", declared_agent_id: "actor", tool_targets: "tools" },
+    now: NOW,
+    readFile: () => doc
+  });
+  const obs = await collector.collect();
+  assert.equal(collector.source, "ci");
+  assert.equal(obs.length, 1);
+  assert.equal(obs[0].location, "acme/api");
+  assert.equal(obs[0].declared_agent_id, "deploy-bot");
+  assert.deepEqual(obs[0].tool_targets, ["gh.deploy", "npm.publish"]);
+});
+
+test("fileObservationCollector fails soft on unreadable / invalid JSON", async () => {
+  const bad = fileObservationCollector({ path: "x", source: "saas-automation", mapping: {}, readFile: () => "not json" });
+  assert.deepEqual(await bad.collect(), []);
+  const throws = fileObservationCollector({ path: "x", source: "saas-automation", mapping: {}, readFile: () => { throw new Error("ENOENT"); } });
+  assert.deepEqual(await throws.collect(), []);
 });
