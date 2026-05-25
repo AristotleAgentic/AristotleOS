@@ -264,6 +264,95 @@ test("cli automotive commands expose vehicle templates, adapters, and evidence e
   }
 });
 
+test("cli grid commands expose utility templates, adapters, and evidence export", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    const examples = path.resolve(process.cwd(), "examples", "grid");
+    cpSync(examples, path.join(dir, "grid"), { recursive: true });
+
+    const templates = await capture(["grid", "templates"], dir);
+    assert.equal(templates.code, 0, templates.stderr);
+    assert.match(templates.stdout, /ward.transmission_ops.yaml/);
+    assert.match(templates.stdout, /scada_breaker_open.json/);
+
+    const adapters = await capture(["grid", "adapters"], dir);
+    assert.equal(adapters.code, 0, adapters.stderr);
+    assert.match(adapters.stdout, /iec61850/);
+    assert.match(adapters.stdout, /derms/);
+
+    const allowed = await capture([
+      "execution-control",
+      "evaluate",
+      "--ward",
+      "grid/ward.transmission_ops.yaml",
+      "--envelope",
+      "grid/authority_envelope.switching_operator.yaml",
+      "--action",
+      "grid/actions/scada_breaker_open.json",
+      "--ledger",
+      ".tmp/grid.gel.jsonl",
+      "--now",
+      "2026-05-25T15:00:00.000Z"
+    ], dir);
+    assert.equal(allowed.code, 0, allowed.stderr);
+    assert.match(allowed.stdout, /decision=ALLOW/);
+
+    const refused = await capture([
+      "execution-control",
+      "evaluate",
+      "--ward",
+      "grid/ward.transmission_ops.yaml",
+      "--envelope",
+      "grid/authority_envelope.switching_operator.yaml",
+      "--action",
+      "grid/actions/refuse_live_crew_clearance.json",
+      "--ledger",
+      ".tmp/grid-refuse.gel.jsonl",
+      "--now",
+      "2026-05-25T15:00:00.000Z"
+    ], dir);
+    assert.equal(refused.code, 0, refused.stderr);
+    assert.match(refused.stdout, /decision=REFUSE/);
+
+    const bundle = await capture([
+      "grid",
+      "evidence",
+      "export",
+      "--ward",
+      "grid/ward.transmission_ops.yaml",
+      "--envelope",
+      "grid/authority_envelope.switching_operator.yaml",
+      "--ledger",
+      ".tmp/grid-refuse.gel.jsonl",
+      "--out",
+      ".tmp/grid-evidence.json",
+      "--utility",
+      "utility-west",
+      "--control-center",
+      "west-cc",
+      "--scope",
+      "transmission-west",
+      "--asset",
+      "BRK-230-17",
+      "--switching-order",
+      "SWO-2026-0525-17",
+      "--operator",
+      "operator:grid-west",
+      "--topology",
+      "topo-west-2026-05-25",
+      "--voltage-class",
+      "230kV",
+      "--redact",
+      "facility_exact_address"
+    ], dir);
+    assert.equal(bundle.code, 0, bundle.stderr);
+    assert.match(bundle.stdout, /verification=ok/);
+    assert.equal(existsSync(path.join(dir, ".tmp", "grid-evidence.json")), true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("cli run governs a child agent process and writes a verifiable ledger", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
   try {

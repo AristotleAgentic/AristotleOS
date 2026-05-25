@@ -1,0 +1,52 @@
+ward_id: ward-grid-transmission-west
+name: Transmission Operations West
+sovereignty_context: utility-west-control-authority
+authority_domain: electric-grid-transmission-ops
+policy_version: 0.1.0
+evidence_ledger_path: .aristotle/grid-transmission-west.gel.jsonl
+permitted_subjects:
+  - agent:grid-ops-orchestrator
+  - agent:substation-edge-controller
+physical_bounds:
+  permitted_boundary_id: transmission-west
+  permitted_topology_model_id: topo-west-2026-05-25
+  permitted_voltage_classes:
+    - 230kV
+  permitted_asset_types:
+    - breaker
+    - feeder
+    - relay
+    - derms-resource
+  permitted_grid_states:
+    - normal
+    - storm-restoration
+    - maintenance
+  min_voltage_kv: 218
+  max_voltage_kv: 242
+  min_frequency_hz: 59.95
+  max_frequency_hz: 60.05
+  max_feeder_load_pct: 85
+  max_transformer_load_pct: 90
+  max_der_export_mw: 50
+  max_telemetry_age_ms: 5000
+  require_switching_order: true
+  require_clearance_released: true
+  require_protection_known: true
+  require_scada_fresh: true
+  require_manual_fallback_ready: true
+metadata:
+  grid_domain: transmission
+  evidence_profile:
+    - NERC_OPS
+    - LOCAL_SWITCHING_ORDER
+    - CIP_005
+    - CIP_010
+  protected_scope:
+    - switching
+    - relay-settings
+    - DERMS-dispatch
+criticality: safety_critical
+classification:
+  level: CUI
+  caveats:
+    - BES_OPS

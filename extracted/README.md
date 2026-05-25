@@ -43,6 +43,9 @@ Docs:
 - [Autonomous Vehicle Pilot Guide](docs/autonomous-vehicle-pilot-guide.md)
 - [Automotive execution-control path](docs/automotive.md)
 - [Automotive threat model addendum](docs/automotive-threat-model.md)
+- [Electric Utility Pilot Guide](docs/electric-utility-pilot-guide.md)
+- [Grid OT execution-control path](docs/grid.md)
+- [Grid threat model addendum](docs/grid-threat-model.md)
 - [Defense readiness roadmap](docs/defense-readiness.md)
 - [Crypto posture](docs/crypto-posture.md)
 - [Commercial adoption path](docs/commercial-adoption-path.md)
@@ -144,6 +147,26 @@ npm run aristotle -- execution-control evaluate \
 ```
 
 The Command Center includes a Fleet workflow from "create governed fleet mission" to "admitted execution" to "automotive Evidence Bundle export." See [docs/autonomous-vehicle-pilot-guide.md](docs/autonomous-vehicle-pilot-guide.md), [docs/automotive.md](docs/automotive.md), and [docs/vehicle-ward-templates.md](docs/vehicle-ward-templates.md).
+
+## Electric Utility Readiness
+
+AristotleOS now includes a power-grid pilot path for utility OT operations. SCADA/EMS/ADMS, IEC 61850, DNP3, Modbus, OPC UA, DERMS, relay-setting, firmware campaign, and historian surfaces become typed adapter boundaries. They execute only after Ward resolution, Authority Envelope validation, grid physical invariant checks, Commit Gate admission, Warrant verification, and GEL commit.
+
+Run the grid slice:
+
+```bash
+npm run test:grid
+npm run aristotle -- grid templates
+npm run aristotle -- grid adapters
+npm run aristotle -- execution-control evaluate \
+  --ward examples/grid/ward.transmission_ops.yaml \
+  --envelope examples/grid/authority_envelope.switching_operator.yaml \
+  --action examples/grid/actions/scada_breaker_open.json \
+  --ledger ./.tmp/grid.gel.jsonl \
+  --now 2026-05-25T15:00:00.000Z
+```
+
+The Command Center includes a Grid workflow from "create governed switching mission" to "admitted execution" to "grid Evidence Bundle export." See [docs/electric-utility-pilot-guide.md](docs/electric-utility-pilot-guide.md), [docs/grid.md](docs/grid.md), and [docs/grid-ward-templates.md](docs/grid-ward-templates.md).
 
 ## Ward/Warrant Execution-Control Path
 

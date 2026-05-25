@@ -414,6 +414,47 @@ export interface AutomotiveSafetyDrill {
   evidence: string;
 }
 
+export interface GridControlStep {
+  id: string;
+  label: string;
+  owner: string;
+  state: "complete" | "active" | "blocked" | "pending";
+  evidence: string;
+}
+
+export interface GridAdapterSurface {
+  id: string;
+  label: string;
+  standard: "IEC 61850" | "DNP3" | "Modbus" | "OPC UA" | "SCADA/EMS/ADMS" | "DERMS" | "Relay" | "Firmware" | "Historian";
+  actionTypes: string[];
+  requiredRegisters: string[];
+  boundary: string;
+  posture: Posture;
+}
+
+export interface GridEvidenceExport {
+  bundleVersion: string;
+  utilityId: string;
+  controlCenter: string;
+  assetId: string;
+  operationalScope: string;
+  topologyModel: string;
+  switchingOrder: string;
+  profiles: string[];
+  redactedFields: string[];
+  bundleHash: string;
+  verification: "ok" | "blocked";
+}
+
+export interface GridSafetyDrill {
+  id: string;
+  label: string;
+  invariant: string;
+  current: string;
+  posture: Posture;
+  evidence: string;
+}
+
 export interface WardMarshalFinding {
   id: string;
   subject: string;

@@ -107,4 +107,30 @@ aristotle automotive evidence export \
   --safety-case SC-AV-WEST-2026-001
 ```
 
+## Grid pilot commands
+
+- `aristotle grid templates`: list electric-utility Ward, Authority Envelope, APL, and sample action fixtures
+- `aristotle grid adapters`: list typed SCADA/EMS/ADMS, IEC 61850, DNP3, Modbus, OPC UA, DERMS, relay-setting, firmware-campaign, and historian boundaries
+- `aristotle grid evidence export`: export a Grid Evidence Bundle with utility, control center, topology model, switching order, work order, outage plan, redaction, GEL, and Warrant material
+
+Example:
+
+```bash
+aristotle grid evidence export \
+  --ward examples/grid/ward.transmission_ops.yaml \
+  --envelope examples/grid/authority_envelope.switching_operator.yaml \
+  --ledger ./.tmp/grid.gel.jsonl \
+  --out ./.tmp/grid-evidence.json \
+  --utility northstar-grid \
+  --control-center west-transmission-ops \
+  --scope west-500kv-corridor \
+  --asset breaker-BKR-4421 \
+  --operator operator:grid-switching-west \
+  --topology topo-west-2026.05.25 \
+  --voltage-class 500kV \
+  --switching-order SWO-2026-0525-17 \
+  --work-order WO-77102 \
+  --outage OUT-2026-05-25-A
+```
+
 The CLI is intentionally deterministic. It does not call an LLM in the enforcement path.

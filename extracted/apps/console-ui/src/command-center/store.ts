@@ -33,6 +33,7 @@ export type SectionId =
   | "approvals"
   | "noc"
   | "fleet"
+  | "grid"
   | "conflicts"
   | "adoption"
   | "failure"

@@ -23,6 +23,8 @@ import {
   type ShadowAction,
   type AutomotiveDomain,
   type AutomotiveEvidenceContext,
+  type GridDomain,
+  type GridEvidenceContext,
   type TelecomDomain,
   type TelecomEvidenceContext,
   type AgentObservation,
@@ -62,6 +64,7 @@ import {
   evaluateExecutionControl,
   exportAutomotiveEvidenceBundle,
   exportEvidenceBundle,
+  exportGridEvidenceBundle,
   exportTelecomEvidenceBundle,
   getDefaultDevSigner,
   governSandboxExecution,
@@ -74,6 +77,7 @@ import {
   ConflictInboxStore,
   ApprovalStore,
   AUTOMOTIVE_ADAPTER_CATALOG,
+  GRID_ADAPTER_CATALOG,
   TELECOM_ADAPTER_CATALOG,
   runWardMarshalCensus,
   runCarrierScaleBenchmark,
@@ -92,6 +96,7 @@ import {
   submitGovernedAction,
   verifyEvidenceBundle,
   verifyAutomotiveEvidenceBundle,
+  verifyGridEvidenceBundle,
   verifyGelChain,
   verifySandboxReceipt,
   verifyTelecomEvidenceBundle,
@@ -546,6 +551,9 @@ Commands:
   automotive templates              List vehicle Ward templates, policies, and sample actions
   automotive adapters               List typed ROS 2 / AUTOSAR / OTA / map / remote-assist surfaces
   automotive evidence export        Export an automotive Evidence Bundle
+  grid templates                    List utility Ward templates, policies, and sample actions
+  grid adapters                     List typed IEC 61850 / DNP3 / Modbus / SCADA / DERMS surfaces
+  grid evidence export              Export an electric utility Evidence Bundle
   keys generate        Generate an Ed25519 Warrant signing keypair
   kill engage|release  Engage/release the sovereign-halt kill switch
   revoke key|envelope|warrant <id>   Revoke a compromised trust root
@@ -1336,6 +1344,94 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
       }
 
       throw new Error("usage: aristotle automotive <templates|adapters|evidence export> ...");
+    }
+
+    if (command === "grid") {
+      if (subcommand === "templates") {
+        const base = "examples/grid";
+        const templates = [
+          `${base}/ward.transmission_ops.yaml`,
+          `${base}/authority_envelope.switching_operator.yaml`,
+          `${base}/policy/transmission_ops.apl`
+        ];
+        const actions = [
+          `${base}/actions/scada_breaker_open.json`,
+          `${base}/actions/derms_dispatch.json`,
+          `${base}/actions/relay_setting_update.json`,
+          `${base}/actions/refuse_live_crew_clearance.json`,
+          `${base}/actions/refuse_disable_protection.json`,
+          `${base}/actions/refuse_der_export_over_cap.json`
+        ];
+        if (json) printJson(out, { templates, actions }, true);
+        else {
+          out("AristotleOS electric utility pilot templates\n");
+          for (const file of [...templates, ...actions]) out(`  ${file}\n`);
+        }
+        return 0;
+      }
+
+      if (subcommand === "adapters") {
+        if (json) printJson(out, { adapters: GRID_ADAPTER_CATALOG }, true);
+        else {
+          out("Typed electric utility adapter surfaces\n");
+          for (const adapter of GRID_ADAPTER_CATALOG) {
+            out(`\n${adapter.kind} - ${adapter.label}\n`);
+            out(`  Boundary: ${adapter.consequenceBoundary}\n`);
+            out(`  Actions: ${adapter.actionExamples.join(", ")}\n`);
+            out(`  Registers: ${adapter.requiredRuntimeRegisters.join(", ")}\n`);
+          }
+        }
+        return 0;
+      }
+
+      if (subcommand === "evidence" && rest[0] === "export") {
+        const outPath = requiredOption(rest, "--out");
+        const warrantPath = optionValue(rest, "--warrant");
+        const profiles = optionValues(rest, "--profile");
+        const preChecks = optionValues(rest, "--pre-check").map((item) => {
+          const [name, raw = "true", detail] = item.split(":");
+          return { name, ok: raw !== "false" && raw !== "fail", ...(detail ? { detail } : {}) };
+        });
+        const postChecks = optionValues(rest, "--post-check").map((item) => {
+          const [name, raw = "true", detail] = item.split(":");
+          return { name, ok: raw !== "false" && raw !== "fail", ...(detail ? { detail } : {}) };
+        });
+        const grid: GridEvidenceContext = {
+          utility_id: requiredOption(rest, "--utility"),
+          control_center: requiredOption(rest, "--control-center"),
+          grid_domain: (optionValue(rest, "--domain") ?? "transmission") as GridDomain,
+          operational_scope: requiredOption(rest, "--scope"),
+          asset_id: requiredOption(rest, "--asset"),
+          switching_order_id: optionValue(rest, "--switching-order"),
+          work_order_id: optionValue(rest, "--work-order"),
+          outage_id: optionValue(rest, "--outage"),
+          operator_id: requiredOption(rest, "--operator"),
+          topology_model_id: requiredOption(rest, "--topology"),
+          voltage_class: requiredOption(rest, "--voltage-class"),
+          bes_impact: (optionValue(rest, "--bes-impact") ?? "medium") as GridEvidenceContext["bes_impact"],
+          cip_evidence_profile: (profiles.length ? profiles : ["CIP_002", "CIP_005", "CIP_010", "NERC_OPS", "LOCAL_SWITCHING_ORDER"]) as GridEvidenceContext["cip_evidence_profile"],
+          pre_checks: preChecks.length ? preChecks : [{ name: "switching precheck attached", ok: true }],
+          ...(postChecks.length ? { post_checks: postChecks } : {}),
+          redacted_fields: optionValues(rest, "--redact"),
+          retained_fields: optionValues(rest, "--retain")
+        };
+        const bundle = exportGridEvidenceBundle({
+          ledgerPath: path.resolve(cwd, requiredOption(rest, "--ledger")),
+          ward: loadWardManifest(path.resolve(cwd, requiredOption(rest, "--ward"))),
+          authorityEnvelope: loadAuthorityEnvelope(path.resolve(cwd, requiredOption(rest, "--envelope"))),
+          recordId: optionValue(rest, "--record-id"),
+          warrant: warrantPath ? JSON.parse(readFileSync(path.resolve(cwd, warrantPath), "utf8")) : undefined,
+          exportedAt: optionValue(rest, "--now"),
+          grid
+        });
+        writeJson(path.resolve(cwd, outPath), bundle);
+        const verification = verifyGridEvidenceBundle(bundle);
+        if (json) printJson(out, bundle, true);
+        else out(`grid_evidence_bundle=${outPath}\nbundle_hash=${bundle.hashes.grid_bundle_hash}\nverification=${verification.ok ? "ok" : `failed:${verification.failures.join(";")}`}\nasset=${grid.asset_id}\noperational_scope=${grid.operational_scope}\n`);
+        return verification.ok ? 0 : 1;
+      }
+
+      throw new Error("usage: aristotle grid <templates|adapters|evidence export> ...");
     }
 
     if (command === "execution-control" && subcommand === "shadow") {

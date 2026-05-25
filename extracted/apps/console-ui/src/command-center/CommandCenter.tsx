@@ -19,7 +19,8 @@ import {
   ShieldAlert,
   UserCheck,
   Workflow,
-  TriangleAlert
+  TriangleAlert,
+  Zap
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import React from "react";
@@ -31,6 +32,7 @@ import { CommitGateConsole } from "./CommitGateConsole.js";
 import { ConflictInboxConsole } from "./ConflictInboxConsole.js";
 import { FailureModeConsole } from "./FailureModeConsole.js";
 import { GovernanceBuilderConsole } from "./GovernanceBuilderConsole.js";
+import { GridControlConsole } from "./GridControlConsole.js";
 import { LedgerExplorer } from "./LedgerExplorer.js";
 import { MeshNodeDetail, MeshView } from "./MeshView.js";
 import { OperatorActionBar } from "./OperatorActionBar.js";
@@ -54,6 +56,7 @@ const NAV: Array<{ id: SectionId; label: string; icon: LucideIcon }> = [
   { id: "approvals", label: "Approvals", icon: UserCheck },
   { id: "noc", label: "NOC", icon: RadioTower },
   { id: "fleet", label: "Fleet", icon: Car },
+  { id: "grid", label: "Grid", icon: Zap },
   { id: "adoption", label: "Adopt", icon: ClipboardCheck },
   { id: "failure", label: "Failure", icon: ShieldAlert },
   { id: "marshal", label: "Marshal", icon: Crosshair },
@@ -75,6 +78,7 @@ const SECTION_META: Record<SectionId, { title: string; sub: string }> = {
   approvals: { title: "Dual-Control Approvals", sub: "M-of-N approval for the gravest actions — plural authority, fully evidenced" },
   noc: { title: "Telecom NOC Workflow", sub: "Govern autonomous network changes from mission to admitted execution to evidence export" },
   fleet: { title: "Autonomous Vehicle Fleet", sub: "Govern vehicle actions from mission to admitted execution to safety evidence export" },
+  grid: { title: "Electric Grid Control", sub: "Govern switching, DERMS, relay, and substation actions before field consequence" },
   adoption: { title: "Commercial Adoption Path", sub: "From sandbox to shadow to enforcement to evidence export" },
   failure: { title: "Failure Mode Console", sub: "Partitions, stale authority, witness disagreement, and replay divergence" },
   marshal: { title: "Ward Marshal", sub: "Rogue-agent census and warrant-backed interdiction" },
@@ -111,6 +115,8 @@ function SectionBody({ section }: { section: SectionId }) {
       return <TelecomNocConsole />;
     case "fleet":
       return <AutomotiveFleetConsole />;
+    case "grid":
+      return <GridControlConsole />;
     case "conflicts":
       return <ConflictInboxConsole />;
     case "adoption":

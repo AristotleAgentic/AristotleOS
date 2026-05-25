@@ -11,6 +11,10 @@ import type {
   CommitRequest,
   ConflictInboxItem,
   GatePipelineSample,
+  GridAdapterSurface,
+  GridControlStep,
+  GridEvidenceExport,
+  GridSafetyDrill,
   EvidenceBundleProfile,
   FailureModeDrill,
   GovernanceInvariant,
@@ -616,6 +620,96 @@ export const AUTOMOTIVE_SAFETY_DRILLS: AutomotiveSafetyDrill[] = [
   { id: "mrc", label: "Minimum-risk condition", invariant: "mrc_available == true", current: "available", posture: "green", evidence: "Remote-assist and fleet commands fail closed when MRC is unavailable." },
   { id: "perception", label: "Sensor confidence", invariant: "map/localization/perception >= thresholds", current: "above threshold", posture: "green", evidence: "Low-confidence actions are refused at the physical invariant gate." },
   { id: "ota", label: "OTA plural authority", invariant: "2-of-N approval before Warrant", current: "pending", posture: "amber", evidence: "OTA staging cannot mint a Warrant without dual-control approval." }
+];
+
+export const GRID_CONTROL_WORKFLOW: GridControlStep[] = [
+  { id: "grid-mission", label: "Create governed switching mission", owner: "Control center", state: "complete", evidence: "Ward ward-grid-transmission-west binds topology, voltage/frequency, clearance, protection, and fallback invariants." },
+  { id: "grid-context", label: "Bind grid runtime registers", owner: "Switching authority", state: "complete", evidence: "Asset, topology model, switching order, crew clearance, SCADA freshness, protection state, and operator identity attached." },
+  { id: "grid-shadow", label: "Profile in Shadow Mode", owner: "Reliability engineering", state: "complete", evidence: "Breaker open admits; live crew clearance, DER over-cap, and protection disable remain REFUSE." },
+  { id: "grid-approval", label: "Dual-control approval", owner: "Operations supervisor", state: "active", evidence: "Breaker close, relay setting, firmware campaign, and DER export cap require 2-of-N approval before Warrant issuance." },
+  { id: "grid-gate", label: "Grid Commit Gate", owner: "Governance kernel", state: "pending", evidence: "ALLOW mints a single-use Warrant scoped to the canonical grid action hash." },
+  { id: "grid-execute", label: "Execute utility adapter", owner: "OT boundary", state: "pending", evidence: "IEC 61850, DNP3, Modbus, OPC UA, SCADA, DERMS, and relay adapters execute only after Warrant verification." },
+  { id: "grid-export", label: "Export utility evidence", owner: "Reliability / compliance", state: "pending", evidence: "Grid Evidence Bundle includes switching order, asset, topology, GEL record, Warrant, and redaction manifest." }
+];
+
+export const GRID_ADAPTERS: GridAdapterSurface[] = [
+  {
+    id: "iec61850",
+    label: "IEC 61850",
+    standard: "IEC 61850",
+    actionTypes: ["iec61850.control.operate", "iec61850.dataset.update"],
+    requiredRegisters: ["asset_id", "switching_order_id", "protection_state_known"],
+    boundary: "Substation control operations are admitted only against Ward topology and protection state.",
+    posture: "amber"
+  },
+  {
+    id: "dnp3",
+    label: "DNP3",
+    standard: "DNP3",
+    actionTypes: ["dnp3.control.operate", "dnp3.analog-output.write"],
+    requiredRegisters: ["asset_id", "scada_fresh", "switching_order_id"],
+    boundary: "RTU operations require fresh telemetry and switching authority before output control.",
+    posture: "amber"
+  },
+  {
+    id: "modbus",
+    label: "Modbus",
+    standard: "Modbus",
+    actionTypes: ["modbus.register.write"],
+    requiredRegisters: ["asset_id", "manual_fallback_ready"],
+    boundary: "Register writes are governed as OT consequences, not generic data writes.",
+    posture: "red"
+  },
+  {
+    id: "scada",
+    label: "SCADA / EMS / ADMS",
+    standard: "SCADA/EMS/ADMS",
+    actionTypes: ["scada.breaker.open", "scada.breaker.close", "adms.switching-order.execute"],
+    requiredRegisters: ["switching_order_id", "crew_clearance_released", "scada_fresh"],
+    boundary: "Switching commands require topology, clearance, protection, and Warrant verification.",
+    posture: "green"
+  },
+  {
+    id: "derms",
+    label: "DERMS",
+    standard: "DERMS",
+    actionTypes: ["derms.dispatch.set", "derms.export-cap.set"],
+    requiredRegisters: ["der_export_mw", "grid_state", "topology_model_id"],
+    boundary: "Distributed-energy dispatch is capped by Ward export and topology invariants.",
+    posture: "green"
+  },
+  {
+    id: "relay",
+    label: "Relay Settings",
+    standard: "Relay",
+    actionTypes: ["relay.setting.update", "relay.group.activate"],
+    requiredRegisters: ["relay_setting_version", "protection_state_known", "switching_order_id"],
+    boundary: "Protection package changes require plural authority and evidence export.",
+    posture: "amber"
+  }
+];
+
+export const GRID_EVIDENCE_EXPORT: GridEvidenceExport = {
+  bundleVersion: "aristotle.grid-evidence.v1",
+  utilityId: "utility-west",
+  controlCenter: "west-cc",
+  assetId: "BRK-230-17",
+  operationalScope: "transmission-west",
+  topologyModel: "topo-west-2026-05-25",
+  switchingOrder: "SWO-2026-0525-17",
+  profiles: ["CIP_002", "CIP_005", "CIP_010", "NERC_OPS", "LOCAL_SWITCHING_ORDER"],
+  redactedFields: ["facility_exact_address", "operator_phone", "substation_gps"],
+  bundleHash: shortHash("grid-evidence-bundle-transmission-west", 24),
+  verification: "ok"
+};
+
+export const GRID_SAFETY_DRILLS: GridSafetyDrill[] = [
+  { id: "clearance", label: "Crew clearance", invariant: "crew_clearance_released == true", current: "released", posture: "green", evidence: "Breaker close refuses while a live clearance remains active." },
+  { id: "protection", label: "Protection interlock", invariant: "grid.disable_protection => REFUSE", current: "armed", posture: "green", evidence: "Protection disable is a hard physical invariant failure, even if mistakenly allowed." },
+  { id: "topology", label: "Topology model", invariant: "topology_model_id == topo-west-2026-05-25", current: "bound", posture: "green", evidence: "Actions outside the active topology model fail before Warrant issuance." },
+  { id: "telemetry", label: "SCADA freshness", invariant: "scada_fresh && telemetry_age_ms <= 5000", current: "1200 ms", posture: "green", evidence: "Stale telemetry blocks field commands at the Commit Gate." },
+  { id: "der", label: "DER export cap", invariant: "der_export_mw <= 50", current: "32 MW", posture: "green", evidence: "Over-cap DERMS dispatch returns PHYSICAL_INVARIANT_FAILED and no Warrant." },
+  { id: "relay", label: "Relay plural authority", invariant: "2-of-N approval before Warrant", current: "pending", posture: "amber", evidence: "Relay package updates cannot mint a Warrant without dual-control approval." }
 ];
 
 export const POLICY_HARNESS: PolicyHarnessCase[] = [

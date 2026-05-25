@@ -79,6 +79,7 @@ export * from "./budget.js";
 export * from "./dual-control.js";
 export * from "./telecom.js";
 export * from "./automotive.js";
+export * from "./grid.js";
 
 export {
   type AristotleSigner,
@@ -186,6 +187,23 @@ export interface PhysicalBounds {
   min_perception_confidence?: number;
   require_mrc_available?: boolean;
   permitted_drive_states?: string[];
+  min_voltage_kv?: number;
+  max_voltage_kv?: number;
+  min_frequency_hz?: number;
+  max_frequency_hz?: number;
+  max_feeder_load_pct?: number;
+  max_transformer_load_pct?: number;
+  max_der_export_mw?: number;
+  max_telemetry_age_ms?: number;
+  permitted_topology_model_id?: string;
+  permitted_voltage_classes?: string[];
+  permitted_asset_types?: string[];
+  permitted_grid_states?: string[];
+  require_switching_order?: boolean;
+  require_clearance_released?: boolean;
+  require_protection_known?: boolean;
+  require_scada_fresh?: boolean;
+  require_manual_fallback_ready?: boolean;
 }
 
 export interface PhysicalInvariantResult {
@@ -538,6 +556,9 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
   if (action.action_type === "vehicle.disable_safety_envelope" || action.action_type === "vehicle.override.mrc") {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard vehicle safety interlock violation` };
   }
+  if (action.action_type === "grid.disable_protection" || action.action_type === "relay.protection.disable") {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard grid protection interlock violation` };
+  }
   const altitude = numericParam(action, "altitude_m");
   if (bounds.max_altitude_m !== undefined && altitude !== undefined && altitude > bounds.max_altitude_m) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `altitude_m ${altitude} exceeds max_altitude_m ${bounds.max_altitude_m}` };
@@ -581,6 +602,67 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
   const driveState = stringParam(action, "drive_state");
   if (bounds.permitted_drive_states?.length && driveState && !bounds.permitted_drive_states.includes(driveState)) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `drive_state ${driveState} is outside permitted drive states` };
+  }
+  const voltage = numericParam(action, "voltage_kv");
+  if (bounds.min_voltage_kv !== undefined && voltage !== undefined && voltage < bounds.min_voltage_kv) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `voltage_kv ${voltage} below min_voltage_kv ${bounds.min_voltage_kv}` };
+  }
+  if (bounds.max_voltage_kv !== undefined && voltage !== undefined && voltage > bounds.max_voltage_kv) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `voltage_kv ${voltage} exceeds max_voltage_kv ${bounds.max_voltage_kv}` };
+  }
+  const frequency = numericParam(action, "frequency_hz");
+  if (bounds.min_frequency_hz !== undefined && frequency !== undefined && frequency < bounds.min_frequency_hz) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `frequency_hz ${frequency} below min_frequency_hz ${bounds.min_frequency_hz}` };
+  }
+  if (bounds.max_frequency_hz !== undefined && frequency !== undefined && frequency > bounds.max_frequency_hz) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `frequency_hz ${frequency} exceeds max_frequency_hz ${bounds.max_frequency_hz}` };
+  }
+  const feederLoad = numericParam(action, "feeder_load_pct");
+  if (bounds.max_feeder_load_pct !== undefined && feederLoad !== undefined && feederLoad > bounds.max_feeder_load_pct) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `feeder_load_pct ${feederLoad} exceeds max_feeder_load_pct ${bounds.max_feeder_load_pct}` };
+  }
+  const transformerLoad = numericParam(action, "transformer_load_pct");
+  if (bounds.max_transformer_load_pct !== undefined && transformerLoad !== undefined && transformerLoad > bounds.max_transformer_load_pct) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `transformer_load_pct ${transformerLoad} exceeds max_transformer_load_pct ${bounds.max_transformer_load_pct}` };
+  }
+  const derExport = numericParam(action, "der_export_mw");
+  if (bounds.max_der_export_mw !== undefined && derExport !== undefined && derExport > bounds.max_der_export_mw) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `der_export_mw ${derExport} exceeds max_der_export_mw ${bounds.max_der_export_mw}` };
+  }
+  const telemetryAge = numericParam(action, "telemetry_age_ms");
+  if (bounds.max_telemetry_age_ms !== undefined && telemetryAge !== undefined && telemetryAge > bounds.max_telemetry_age_ms) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `telemetry_age_ms ${telemetryAge} exceeds max_telemetry_age_ms ${bounds.max_telemetry_age_ms}` };
+  }
+  const topologyModel = stringParam(action, "topology_model_id");
+  if (bounds.permitted_topology_model_id && topologyModel && topologyModel !== bounds.permitted_topology_model_id) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `topology_model_id ${topologyModel} does not match ${bounds.permitted_topology_model_id}` };
+  }
+  const voltageClass = stringParam(action, "voltage_class");
+  if (bounds.permitted_voltage_classes?.length && voltageClass && !bounds.permitted_voltage_classes.includes(voltageClass)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `voltage_class ${voltageClass} is outside permitted voltage classes` };
+  }
+  const assetType = stringParam(action, "asset_type");
+  if (bounds.permitted_asset_types?.length && assetType && !bounds.permitted_asset_types.includes(assetType)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `asset_type ${assetType} is outside permitted asset types` };
+  }
+  const gridState = stringParam(action, "grid_state");
+  if (bounds.permitted_grid_states?.length && gridState && !bounds.permitted_grid_states.includes(gridState)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `grid_state ${gridState} is outside permitted grid states` };
+  }
+  if (bounds.require_switching_order && !stringParam(action, "switching_order_id")) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "switching_order_id is required for this grid Ward" };
+  }
+  if (bounds.require_clearance_released && booleanParam(action, "crew_clearance_released") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "crew clearance must be released before this grid action" };
+  }
+  if (bounds.require_protection_known && booleanParam(action, "protection_state_known") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "protection state must be known before this grid action" };
+  }
+  if (bounds.require_scada_fresh && booleanParam(action, "scada_fresh") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "fresh SCADA telemetry is required before this grid action" };
+  }
+  if (bounds.require_manual_fallback_ready && booleanParam(action, "manual_fallback_ready") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "manual fallback readiness is required before this grid action" };
   }
   return { ok: true, reason_codes: [], detail: "physical invariants satisfied" };
 }

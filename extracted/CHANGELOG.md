@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.30 - Electric-utility grid OT vertical
+- **Grid/utility pilot path**: typed adapters (SCADA/EMS/ADMS, IEC 61850, DNP3,
+  Modbus, OPC UA, DERMS, relay settings, firmware campaigns, historian writes)
+  -> Canonical Governed Actions; grid physical invariants enforced at the gate
+  (frequency, voltage, feeder/transformer loading, DER export caps, topology
+  model, voltage class, protection state, SCADA freshness, crew clearance, manual
+  fallback); grid Evidence Bundles; a Grid console workflow; `aristotle grid` CLI;
+  `examples/grid/` + docs (overview, threat model, pilot guide, ward templates).
+- **OT safety hardening**: protection-disable actions are refused by the Physical
+  Invariant Gater even when an envelope is misconfigured; relay-setting changes
+  require dual control and fail closed when approval state is unavailable.
+
 All notable changes to AristotleOS (the Ward/Warrant execution-control boundary,
 its operator console, SDK, and CLI). Dates are release tags on the
 `ward-warrant-execution-control` branch. The doctrine is unchanged throughout:

@@ -1,0 +1,50 @@
+envelope_id: ae-grid-switching-001
+ward_id: ward-grid-transmission-west
+subject: agent:grid-ops-orchestrator
+allowed_actions:
+  - scada.breaker.open
+  - scada.breaker.close
+  - adms.switching-order.execute
+  - derms.dispatch.set
+  - derms.export-cap.set
+  - relay.setting.update
+  - firmware.campaign.stage
+  - historian.record.write
+  - dnp3.control.operate
+  - iec61850.control.operate
+  - modbus.register.write
+  - opcua.node.write
+denied_actions:
+  - grid.disable_protection
+  - relay.protection.disable
+  - breaker.force_close_without_clearance
+  - load_shed.blackstart_override
+constraints:
+  required_runtime_registers:
+    - telemetry.asset_id
+    - telemetry.grid_boundary_id
+    - telemetry.topology_model_id
+    - telemetry.switching_order_id
+    - telemetry.crew_clearance_released
+    - telemetry.protection_state_known
+    - telemetry.scada_fresh
+    - telemetry.manual_fallback_ready
+    - telemetry.operator_id
+  permitted_boundary_id: transmission-west
+  dual_control:
+    actions:
+      - scada.breaker.close
+      - relay.setting.update
+      - firmware.campaign.stage
+      - derms.export-cap.set
+    required: 2
+    ttl_ms: 900000
+  budget:
+    maxCallsPerWindow: 400
+    windowMs: 3600000
+expires_at: 2026-12-31T23:59:59Z
+issuer: aristotle-grid-ops-root
+classification:
+  level: CUI
+  caveats:
+    - BES_OPS
