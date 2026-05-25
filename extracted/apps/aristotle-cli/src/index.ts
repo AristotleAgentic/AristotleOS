@@ -44,6 +44,7 @@ import {
   type WardMarshalAdapter,
   type WardMarshalAdapterKind,
   compileGovernanceManifest,
+  compilePolicy,
   ContainerSandboxProvider,
   createEd25519Signer,
   createJwksKeyStore,
@@ -505,6 +506,7 @@ Commands:
   governance compile              Validate + hash a Ward/Envelope into a governance manifest
   governance diff                 Diff two policies; flags changes that weaken authority
   governance explain              Show what a policy permits/refuses/escalates for sample actions
+  policy <compile|check>          Compile Aristotle Policy Language (.apl) to governance manifests; check validates only; --out <file>
   reconcile                       Reconcile disconnected-edge decisions against current policy
   conflicts <ingest|list|resolve> Durable Edge Conflict Inbox (--inbox <file>): ingest --records/--ward/--envelope; list; resolve --action-id --action <accept|reject|escalate|reconcile> [--reason]
   ward-marshal discover           Collect agent observations: --kubernetes, --process [--host], --mcp, or --from-file <f> --source <s> [--map field=key ...]; combine sources; --out <file>
@@ -1454,6 +1456,41 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
       }
       // Exit non-zero when unresolved conflicts exist.
       return report.conflicts === 0 ? 0 : 1;
+    }
+
+    if (command === "policy") {
+      const sub = argv[1];
+      const pargs = argv.slice(2);
+      const file = pargs.find((a) => !a.startsWith("--")) ?? optionValue(pargs, "--file");
+      if (!file || (sub !== "compile" && sub !== "check")) {
+        throw new Error("usage: aristotle policy <compile|check> <file.apl> [--out <file>]");
+      }
+      const source = readFileSync(path.resolve(cwd, file), "utf8");
+      const result = compilePolicy(source, { now: optionValue(pargs, "--now") });
+      if (!result.ok) {
+        for (const d of result.diagnostics) err(`${file}:${d.line}:${d.column} ${d.message}\n`);
+        return 1;
+      }
+      if (sub === "check") {
+        if (json) { printJson(out, { ok: true, wards: result.drafts.map((d) => d.ward.ward_id) }, true); }
+        else out(`ok — ${result.drafts.length} ward(s) compiled: ${result.drafts.map((d) => d.ward.ward_id).join(", ")}\n`);
+        return 0;
+      }
+      // compile: validate + hash each draft into a content-addressed manifest.
+      const manifests = result.drafts.map((d) => compileGovernanceManifest(d));
+      const allValid = manifests.every((m) => m.validation.ok);
+      const outPath = optionValue(pargs, "--out");
+      if (outPath) writeJson(path.resolve(cwd, outPath), manifests.length === 1 ? manifests[0] : manifests);
+      if (json) { printJson(out, manifests.length === 1 ? manifests[0] : manifests, true); }
+      else {
+        out(`compiled ${manifests.length} ward(s) from ${file}\n`);
+        for (const m of manifests) {
+          out(`  ${m.ward.ward_id} → manifest ${m.hashes.manifest_hash.slice(0, 12)} · ${m.authority_envelope.allowed_actions.length} allow / ${m.authority_envelope.denied_actions.length} deny · validation ${m.validation.ok ? "ok" : "FAILED"}\n`);
+          if (!m.validation.ok) for (const e of m.validation.errors) err(`    ! ${e}\n`);
+        }
+        out(`${outPath ? `manifest → ${outPath}\n` : ""}`);
+      }
+      return allValid ? 0 : 1;
     }
 
     if (command === "conflicts") {

@@ -297,6 +297,30 @@ test("cli ward-marshal discover supports process/mcp sources and requires one", 
   }
 });
 
+test("cli policy compiles APL to a governance manifest and reports diagnostics", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    writeFileSync(path.join(dir, "p.apl"), `ward "Range" {\n  id range\n  domain ops\n  subject agent:planner\n  allow drone.takeoff when telemetry.gps_lock\n  deny drone.leave_boundary\n  bound altitude_m <= 120\n}\n`);
+    const check = await capture(["policy", "check", "p.apl"], dir);
+    assert.equal(check.code, 0, check.stderr);
+    assert.match(check.stdout, /ok — 1 ward/);
+
+    const compile = await capture(["policy", "compile", "p.apl", "--out", ".tmp/manifest.json"], dir);
+    assert.equal(compile.code, 0, compile.stderr);
+    assert.match(compile.stdout, /range → manifest [a-f0-9]{12}/);
+    assert.match(compile.stdout, /validation ok/);
+    assert.equal(existsSync(path.join(dir, ".tmp", "manifest.json")), true);
+
+    // A syntax error exits non-zero with a file:line:column diagnostic.
+    writeFileSync(path.join(dir, "bad.apl"), `ward "x" {\n  subject agent:x\n  criticality ultra\n}\n`);
+    const bad = await capture(["policy", "check", "bad.apl"], dir);
+    assert.equal(bad.code, 1);
+    assert.match(bad.stderr, /bad\.apl:3:.*unknown criticality 'ultra'/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("cli conflicts ingest/list/resolve over a durable inbox", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
   try {

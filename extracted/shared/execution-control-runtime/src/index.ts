@@ -59,6 +59,7 @@ export * from "./metrics.js";
 export * from "./sandbox.js";
 export * from "./shadow.js";
 export * from "./builder.js";
+export * from "./policy-dsl.js";
 export * from "./reconcile.js";
 export * from "./conflict-inbox.js";
 export * from "./ward-marshal.js";
