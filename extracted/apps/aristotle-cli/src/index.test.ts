@@ -267,6 +267,24 @@ test("cli ward-marshal scans and governs an interdiction", async () => {
   }
 });
 
+test("cli ward-marshal discover supports process/mcp sources and requires one", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    // No source ⇒ a clear error naming the available sources.
+    const none = await capture(["ward-marshal", "discover"], dir);
+    assert.notEqual(none.code, 0);
+    assert.match(none.stderr + none.stdout, /requires a source/);
+
+    // --process runs the host collector via the OS `ps`; on a host without `ps`
+    // it fails soft to an empty set. Either way the command succeeds and reports.
+    const proc = await capture(["ward-marshal", "discover", "--process", "--host", "test-host", "--now", "2026-05-24T12:00:00.000Z"], dir);
+    assert.equal(proc.code, 0, proc.stderr);
+    assert.match(proc.stdout, /Ward Marshal discovery/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("cli plan and demo produce real governance output", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
   try {

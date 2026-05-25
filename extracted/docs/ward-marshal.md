@@ -79,7 +79,11 @@ the collector runs **inside your environment** so no telemetry leaves it.
 - `collectObservations` — run many collectors, merge + dedupe deterministically.
 
 ```bash
-npm run aristotle -- ward-marshal discover --kubernetes --out .tmp/observations.json
+# Discover from any combination of sources (merged + deduped):
+npm run aristotle -- ward-marshal discover --kubernetes --process --mcp --out .tmp/observations.json
+#   --kubernetes [--kube-context X] [--namespace ns ...]
+#   --process    [--host name] [--ps /path/to/ps]          (host / workstation / edge)
+#   --mcp        [--mcp-command cmd] [--mcp-arg a ...]      (MCP tool servers)
 npm run aristotle -- ward-marshal scan --observations .tmp/observations.json
 ```
 

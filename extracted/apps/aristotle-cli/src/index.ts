@@ -34,6 +34,8 @@ import {
   collectObservations,
   explainWardMarshalFinding,
   kubernetesCollector,
+  mcpCollector,
+  processCollector,
   loadGelChain,
   CredentialRevocationAdapter,
   EndpointQuarantineAdapter,
@@ -502,7 +504,7 @@ Commands:
   governance diff                 Diff two policies; flags changes that weaken authority
   governance explain              Show what a policy permits/refuses/escalates for sample actions
   reconcile                       Reconcile disconnected-edge decisions against current policy
-  ward-marshal discover           Collect agent observations from live sources (--kubernetes [--kube-context] [--namespace ...]); --out <file>
+  ward-marshal discover           Collect agent observations from live sources: --kubernetes [--kube-context] [--namespace ...], --process [--host] [--ps], --mcp [--mcp-command] [--mcp-arg ...]; --out <file>
   ward-marshal scan               Discover, inventory, and risk-score autonomous agents
   ward-marshal behavior           Detect denial bursts, rate spikes, first-seen, off-hours, fan-out, and
                                   cross-agent sequence chains over --events <json> and/or --ledger <gel.jsonl>
@@ -1204,7 +1206,22 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
           now: optionValue(rest, "--now")
         }));
       }
-      if (collectors.length === 0) throw new Error("ward-marshal discover requires a source (e.g. --kubernetes)");
+      if (rest.includes("--process")) {
+        collectors.push(processCollector({
+          psPath: optionValue(rest, "--ps"),
+          host: optionValue(rest, "--host"),
+          now: optionValue(rest, "--now")
+        }));
+      }
+      if (rest.includes("--mcp")) {
+        const mcpArgs = optionValues(rest, "--mcp-arg");
+        collectors.push(mcpCollector({
+          command: optionValue(rest, "--mcp-command"),
+          args: mcpArgs.length ? mcpArgs : undefined,
+          now: optionValue(rest, "--now")
+        }));
+      }
+      if (collectors.length === 0) throw new Error("ward-marshal discover requires a source (e.g. --kubernetes, --process, or --mcp)");
       const observations = await collectObservations(collectors);
       const outPath = optionValue(rest, "--out");
       if (outPath) writeJson(path.resolve(cwd, outPath), observations);
