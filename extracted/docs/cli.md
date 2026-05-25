@@ -133,4 +133,35 @@ aristotle grid evidence export \
   --outage OUT-2026-05-25-A
 ```
 
+## Rail pilot commands
+
+- `aristotle rail templates`: list railroad Ward, Authority Envelope, APL, and sample action fixtures
+- `aristotle rail adapters`: list typed Dispatch/CAD, PTC, wayside signal, switch, crossing, locomotive, crew, consist, maintenance-of-way, and yard boundaries
+- `aristotle rail evidence export`: export a Rail Evidence Bundle with railroad, territory, subdivision, milepost limits, train, locomotive, movement authority, dispatcher, consist, PTC, GEL, and Warrant material
+
+Example:
+
+```bash
+aristotle rail evidence export \
+  --ward examples/rail/ward.subdivision_west.yaml \
+  --envelope examples/rail/authority_envelope.dispatcher.yaml \
+  --ledger ./.tmp/rail.gel.jsonl \
+  --out ./.tmp/rail-evidence.json \
+  --railroad northstar-rail \
+  --ops-center west-dispatch \
+  --territory west-subdivision \
+  --subdivision "West Subdivision" \
+  --milepost-from 12.4 \
+  --milepost-to 18.9 \
+  --train NSR-4521 \
+  --symbol M-WEST-4521 \
+  --locomotive NSR-8842 \
+  --authority MA-2026-0525-019 \
+  --dispatcher dispatcher:west-desk-a \
+  --crew crew:4521 \
+  --consist sha256:consist-4521-a \
+  --route route-west-main-1 \
+  --track main-1
+```
+
 The CLI is intentionally deterministic. It does not call an LLM in the enforcement path.

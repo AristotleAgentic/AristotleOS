@@ -37,6 +37,7 @@ import { LedgerExplorer } from "./LedgerExplorer.js";
 import { MeshNodeDetail, MeshView } from "./MeshView.js";
 import { OperatorActionBar } from "./OperatorActionBar.js";
 import { PhysicalInvariantPanel } from "./PhysicalInvariantPanel.js";
+import { RailOpsConsole } from "./RailOpsConsole.js";
 import { ReplayTimeMachine } from "./ReplayTimeMachine.js";
 import { SimulationPanel } from "./SimulationPanel.js";
 import { ShadowModeConsole } from "./ShadowModeConsole.js";
@@ -57,6 +58,7 @@ const NAV: Array<{ id: SectionId; label: string; icon: LucideIcon }> = [
   { id: "noc", label: "NOC", icon: RadioTower },
   { id: "fleet", label: "Fleet", icon: Car },
   { id: "grid", label: "Grid", icon: Zap },
+  { id: "rail", label: "Rail", icon: Landmark },
   { id: "adoption", label: "Adopt", icon: ClipboardCheck },
   { id: "failure", label: "Failure", icon: ShieldAlert },
   { id: "marshal", label: "Marshal", icon: Crosshair },
@@ -79,6 +81,7 @@ const SECTION_META: Record<SectionId, { title: string; sub: string }> = {
   noc: { title: "Telecom NOC Workflow", sub: "Govern autonomous network changes from mission to admitted execution to evidence export" },
   fleet: { title: "Autonomous Vehicle Fleet", sub: "Govern vehicle actions from mission to admitted execution to safety evidence export" },
   grid: { title: "Electric Grid Control", sub: "Govern switching, DERMS, relay, and substation actions before field consequence" },
+  rail: { title: "Railroad Operations", sub: "Govern dispatch, PTC, wayside, switch, and movement authority before rail consequence" },
   adoption: { title: "Commercial Adoption Path", sub: "From sandbox to shadow to enforcement to evidence export" },
   failure: { title: "Failure Mode Console", sub: "Partitions, stale authority, witness disagreement, and replay divergence" },
   marshal: { title: "Ward Marshal", sub: "Rogue-agent census and warrant-backed interdiction" },
@@ -117,6 +120,8 @@ function SectionBody({ section }: { section: SectionId }) {
       return <AutomotiveFleetConsole />;
     case "grid":
       return <GridControlConsole />;
+    case "rail":
+      return <RailOpsConsole />;
     case "conflicts":
       return <ConflictInboxConsole />;
     case "adoption":

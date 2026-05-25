@@ -25,6 +25,8 @@ import {
   type AutomotiveEvidenceContext,
   type GridDomain,
   type GridEvidenceContext,
+  type RailDomain,
+  type RailEvidenceContext,
   type TelecomDomain,
   type TelecomEvidenceContext,
   type AgentObservation,
@@ -65,6 +67,7 @@ import {
   exportAutomotiveEvidenceBundle,
   exportEvidenceBundle,
   exportGridEvidenceBundle,
+  exportRailEvidenceBundle,
   exportTelecomEvidenceBundle,
   getDefaultDevSigner,
   governSandboxExecution,
@@ -78,6 +81,7 @@ import {
   ApprovalStore,
   AUTOMOTIVE_ADAPTER_CATALOG,
   GRID_ADAPTER_CATALOG,
+  RAIL_ADAPTER_CATALOG,
   TELECOM_ADAPTER_CATALOG,
   runWardMarshalCensus,
   runCarrierScaleBenchmark,
@@ -97,6 +101,7 @@ import {
   verifyEvidenceBundle,
   verifyAutomotiveEvidenceBundle,
   verifyGridEvidenceBundle,
+  verifyRailEvidenceBundle,
   verifyGelChain,
   verifySandboxReceipt,
   verifyTelecomEvidenceBundle,
@@ -554,6 +559,9 @@ Commands:
   grid templates                    List utility Ward templates, policies, and sample actions
   grid adapters                     List typed IEC 61850 / DNP3 / Modbus / SCADA / DERMS surfaces
   grid evidence export              Export an electric utility Evidence Bundle
+  rail templates                    List railroad Ward templates, policies, and sample actions
+  rail adapters                     List typed dispatch / PTC / wayside / crew / consist surfaces
+  rail evidence export              Export a railroad Evidence Bundle
   keys generate        Generate an Ed25519 Warrant signing keypair
   kill engage|release  Engage/release the sovereign-halt kill switch
   revoke key|envelope|warrant <id>   Revoke a compromised trust root
@@ -1432,6 +1440,103 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
       }
 
       throw new Error("usage: aristotle grid <templates|adapters|evidence export> ...");
+    }
+
+    if (command === "rail") {
+      if (subcommand === "templates") {
+        const base = "examples/rail";
+        const templates = [
+          `${base}/ward.subdivision_west.yaml`,
+          `${base}/authority_envelope.dispatcher.yaml`,
+          `${base}/policy/subdivision_west.apl`
+        ];
+        const actions = [
+          `${base}/actions/allow_movement_authority.json`,
+          `${base}/actions/refuse_conflicting_authority.json`,
+          `${base}/actions/refuse_misaligned_switch.json`,
+          `${base}/actions/escalate_missing_ptc_state.json`,
+          `${base}/actions/refuse_disable_ptc.json`
+        ];
+        if (json) printJson(out, { templates, actions }, true);
+        else {
+          out("AristotleOS railroad pilot templates\n");
+          for (const file of [...templates, ...actions]) out(`  ${file}\n`);
+        }
+        return 0;
+      }
+
+      if (subcommand === "adapters") {
+        if (json) printJson(out, { adapters: RAIL_ADAPTER_CATALOG }, true);
+        else {
+          out("Typed railroad adapter surfaces\n");
+          for (const adapter of RAIL_ADAPTER_CATALOG) {
+            out(`\n${adapter.kind} - ${adapter.label}\n`);
+            out(`  Boundary: ${adapter.consequenceBoundary}\n`);
+            out(`  Actions: ${adapter.actionExamples.join(", ")}\n`);
+            out(`  Registers: ${adapter.requiredRuntimeRegisters.join(", ")}\n`);
+          }
+        }
+        return 0;
+      }
+
+      if (subcommand === "evidence" && rest[0] === "export") {
+        const outPath = requiredOption(rest, "--out");
+        const warrantPath = optionValue(rest, "--warrant");
+        const profiles = optionValues(rest, "--profile");
+        const preChecks = optionValues(rest, "--pre-check").map((item) => {
+          const [name, raw = "true", detail] = item.split(":");
+          return { name, ok: raw !== "false" && raw !== "fail", ...(detail ? { detail } : {}) };
+        });
+        const postChecks = optionValues(rest, "--post-check").map((item) => {
+          const [name, raw = "true", detail] = item.split(":");
+          return { name, ok: raw !== "false" && raw !== "fail", ...(detail ? { detail } : {}) };
+        });
+        const rail: RailEvidenceContext = {
+          railroad_id: requiredOption(rest, "--railroad"),
+          operations_center: requiredOption(rest, "--ops-center"),
+          rail_domain: (optionValue(rest, "--domain") ?? "ptc-mainline") as RailDomain,
+          territory_id: requiredOption(rest, "--territory"),
+          subdivision: requiredOption(rest, "--subdivision"),
+          milepost_limits: {
+            from: Number(requiredOption(rest, "--milepost-from")),
+            to: Number(requiredOption(rest, "--milepost-to"))
+          },
+          train_id: requiredOption(rest, "--train"),
+          train_symbol: requiredOption(rest, "--symbol"),
+          locomotive_id: requiredOption(rest, "--locomotive"),
+          movement_authority_id: optionValue(rest, "--authority"),
+          dispatcher_id: requiredOption(rest, "--dispatcher"),
+          crew_id: optionValue(rest, "--crew"),
+          consist_hash: requiredOption(rest, "--consist"),
+          ptc_status: (optionValue(rest, "--ptc-status") ?? "active") as RailEvidenceContext["ptc_status"],
+          route_id: requiredOption(rest, "--route"),
+          track_id: requiredOption(rest, "--track"),
+          signal_system: optionValue(rest, "--signal-system"),
+          work_zone_id: optionValue(rest, "--work-zone"),
+          hazmat_profile: optionValues(rest, "--hazmat"),
+          standards_profile: (profiles.length ? profiles : ["FRA_PTC", "FRA_SIGNAL_TRAIN_CONTROL", "TSA_RAIL_CYBER", "DISPATCH_LOG", "EVENT_RECORDER", "LOCAL_OPERATING_RULE"]) as RailEvidenceContext["standards_profile"],
+          pre_checks: preChecks.length ? preChecks : [{ name: "PTC state attached", ok: true }],
+          ...(postChecks.length ? { post_checks: postChecks } : {}),
+          redacted_fields: optionValues(rest, "--redact"),
+          retained_fields: optionValues(rest, "--retain")
+        };
+        const bundle = exportRailEvidenceBundle({
+          ledgerPath: path.resolve(cwd, requiredOption(rest, "--ledger")),
+          ward: loadWardManifest(path.resolve(cwd, requiredOption(rest, "--ward"))),
+          authorityEnvelope: loadAuthorityEnvelope(path.resolve(cwd, requiredOption(rest, "--envelope"))),
+          recordId: optionValue(rest, "--record-id"),
+          warrant: warrantPath ? JSON.parse(readFileSync(path.resolve(cwd, warrantPath), "utf8")) : undefined,
+          exportedAt: optionValue(rest, "--now"),
+          rail
+        });
+        writeJson(path.resolve(cwd, outPath), bundle);
+        const verification = verifyRailEvidenceBundle(bundle);
+        if (json) printJson(out, bundle, true);
+        else out(`rail_evidence_bundle=${outPath}\nbundle_hash=${bundle.hashes.rail_bundle_hash}\nverification=${verification.ok ? "ok" : `failed:${verification.failures.join(";")}`}\ntrain=${rail.train_id}\nterritory=${rail.territory_id}\n`);
+        return verification.ok ? 0 : 1;
+      }
+
+      throw new Error("usage: aristotle rail <templates|adapters|evidence export> ...");
     }
 
     if (command === "execution-control" && subcommand === "shadow") {

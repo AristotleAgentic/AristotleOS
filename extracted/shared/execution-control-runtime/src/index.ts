@@ -80,6 +80,7 @@ export * from "./dual-control.js";
 export * from "./telecom.js";
 export * from "./automotive.js";
 export * from "./grid.js";
+export * from "./rail.js";
 
 export {
   type AristotleSigner,
@@ -204,6 +205,28 @@ export interface PhysicalBounds {
   require_protection_known?: boolean;
   require_scada_fresh?: boolean;
   require_manual_fallback_ready?: boolean;
+  permitted_territory_id?: string;
+  permitted_route_classes?: string[];
+  permitted_track_classes?: string[];
+  permitted_signal_aspects?: string[];
+  permitted_train_types?: string[];
+  permitted_operating_states?: string[];
+  max_authority_speed_mph?: number;
+  min_train_separation_m?: number;
+  max_train_length_ft?: number;
+  max_train_tonnage?: number;
+  max_ptc_telemetry_age_ms?: number;
+  require_ptc_active?: boolean;
+  require_switch_proven?: boolean;
+  require_signal_not_stop?: boolean;
+  require_work_zone_released?: boolean;
+  require_track_bulletin_ack?: boolean;
+  require_dispatcher_identity?: boolean;
+  require_brake_test_current?: boolean;
+  require_consist_verified?: boolean;
+  require_grade_crossing_protected?: boolean;
+  require_crew_acknowledged?: boolean;
+  require_no_conflicting_authority?: boolean;
 }
 
 export interface PhysicalInvariantResult {
@@ -559,6 +582,9 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
   if (action.action_type === "grid.disable_protection" || action.action_type === "relay.protection.disable") {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard grid protection interlock violation` };
   }
+  if (action.action_type === "rail.disable_ptc" || action.action_type === "ptc.override.enforcement" || action.action_type === "signal.force_clear" || action.action_type === "switch.force_unlock") {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard rail safety interlock violation` };
+  }
   const altitude = numericParam(action, "altitude_m");
   if (bounds.max_altitude_m !== undefined && altitude !== undefined && altitude > bounds.max_altitude_m) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `altitude_m ${altitude} exceeds max_altitude_m ${bounds.max_altitude_m}` };
@@ -663,6 +689,83 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
   }
   if (bounds.require_manual_fallback_ready && booleanParam(action, "manual_fallback_ready") !== true) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "manual fallback readiness is required before this grid action" };
+  }
+  const territory = stringParam(action, "territory_id");
+  if (bounds.permitted_territory_id && territory && territory !== bounds.permitted_territory_id) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `territory_id ${territory} does not match ${bounds.permitted_territory_id}` };
+  }
+  const routeClass = stringParam(action, "route_class");
+  if (bounds.permitted_route_classes?.length && routeClass && !bounds.permitted_route_classes.includes(routeClass)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `route_class ${routeClass} is outside permitted route classes` };
+  }
+  const trackClass = stringParam(action, "track_class");
+  if (bounds.permitted_track_classes?.length && trackClass && !bounds.permitted_track_classes.includes(trackClass)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `track_class ${trackClass} is outside permitted track classes` };
+  }
+  const signalAspect = stringParam(action, "signal_aspect");
+  if (bounds.permitted_signal_aspects?.length && signalAspect && !bounds.permitted_signal_aspects.includes(signalAspect)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `signal_aspect ${signalAspect} is outside permitted signal aspects` };
+  }
+  const trainType = stringParam(action, "train_type");
+  if (bounds.permitted_train_types?.length && trainType && !bounds.permitted_train_types.includes(trainType)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `train_type ${trainType} is outside permitted train types` };
+  }
+  const operatingState = stringParam(action, "operating_state");
+  if (bounds.permitted_operating_states?.length && operatingState && !bounds.permitted_operating_states.includes(operatingState)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `operating_state ${operatingState} is outside permitted operating states` };
+  }
+  const railSpeed = numericParam(action, "authority_speed_mph") ?? numericParam(action, "speed_mph") ?? numericParam(action, "max_speed_mph");
+  if (bounds.max_authority_speed_mph !== undefined && railSpeed !== undefined && railSpeed > bounds.max_authority_speed_mph) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `authority speed ${railSpeed} mph exceeds max_authority_speed_mph ${bounds.max_authority_speed_mph}` };
+  }
+  const separation = numericParam(action, "train_separation_m");
+  if (bounds.min_train_separation_m !== undefined && separation !== undefined && separation < bounds.min_train_separation_m) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `train_separation_m ${separation} below min_train_separation_m ${bounds.min_train_separation_m}` };
+  }
+  const trainLength = numericParam(action, "train_length_ft");
+  if (bounds.max_train_length_ft !== undefined && trainLength !== undefined && trainLength > bounds.max_train_length_ft) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `train_length_ft ${trainLength} exceeds max_train_length_ft ${bounds.max_train_length_ft}` };
+  }
+  const trainTonnage = numericParam(action, "train_tonnage");
+  if (bounds.max_train_tonnage !== undefined && trainTonnage !== undefined && trainTonnage > bounds.max_train_tonnage) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `train_tonnage ${trainTonnage} exceeds max_train_tonnage ${bounds.max_train_tonnage}` };
+  }
+  const ptcAge = numericParam(action, "ptc_telemetry_age_ms");
+  if (bounds.max_ptc_telemetry_age_ms !== undefined && ptcAge !== undefined && ptcAge > bounds.max_ptc_telemetry_age_ms) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `ptc_telemetry_age_ms ${ptcAge} exceeds max_ptc_telemetry_age_ms ${bounds.max_ptc_telemetry_age_ms}` };
+  }
+  if (bounds.require_ptc_active && booleanParam(action, "ptc_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "PTC must be active before this rail action" };
+  }
+  if (bounds.require_switch_proven && booleanParam(action, "switch_position_proven") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "switch position must be proven before this rail action" };
+  }
+  if (bounds.require_signal_not_stop && signalAspect === "stop") {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "signal aspect stop cannot admit this rail action" };
+  }
+  if (bounds.require_work_zone_released && booleanParam(action, "work_zone_released") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "work zone must be released before this rail action" };
+  }
+  if (bounds.require_track_bulletin_ack && booleanParam(action, "track_bulletin_ack") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "track bulletin must be acknowledged before this rail action" };
+  }
+  if (bounds.require_dispatcher_identity && !stringParam(action, "dispatcher_id")) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "dispatcher identity is required before this rail action" };
+  }
+  if (bounds.require_brake_test_current && booleanParam(action, "brake_test_current") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "brake test must be current before this rail action" };
+  }
+  if (bounds.require_consist_verified && !stringParam(action, "consist_hash")) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "verified consist hash is required before this rail action" };
+  }
+  if (bounds.require_grade_crossing_protected && booleanParam(action, "grade_crossing_protected") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "grade crossing protection must be proven before this rail action" };
+  }
+  if (bounds.require_crew_acknowledged && booleanParam(action, "crew_acknowledged") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "crew acknowledgement is required before this rail action" };
+  }
+  if (bounds.require_no_conflicting_authority && booleanParam(action, "conflicting_authority_present") === true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "conflicting movement authority is present" };
   }
   return { ok: true, reason_codes: [], detail: "physical invariants satisfied" };
 }

@@ -353,6 +353,109 @@ test("cli grid commands expose utility templates, adapters, and evidence export"
   }
 });
 
+test("cli rail commands expose railroad templates, adapters, and evidence export", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    const examples = path.resolve(process.cwd(), "examples", "rail");
+    cpSync(examples, path.join(dir, "rail"), { recursive: true });
+
+    const templates = await capture(["rail", "templates"], dir);
+    assert.equal(templates.code, 0, templates.stderr);
+    assert.match(templates.stdout, /ward.subdivision_west.yaml/);
+    assert.match(templates.stdout, /allow_movement_authority.json/);
+
+    const adapters = await capture(["rail", "adapters"], dir);
+    assert.equal(adapters.code, 0, adapters.stderr);
+    assert.match(adapters.stdout, /dispatch-cad/);
+    assert.match(adapters.stdout, /ptc-back-office/);
+
+    const allowed = await capture([
+      "execution-control",
+      "evaluate",
+      "--ward",
+      "rail/ward.subdivision_west.yaml",
+      "--envelope",
+      "rail/authority_envelope.dispatcher.yaml",
+      "--action",
+      "rail/actions/allow_movement_authority.json",
+      "--ledger",
+      ".tmp/rail.gel.jsonl",
+      "--now",
+      "2026-05-25T15:00:00.000Z"
+    ], dir);
+    assert.equal(allowed.code, 0, allowed.stderr);
+    assert.match(allowed.stdout, /decision=ALLOW/);
+
+    const refused = await capture([
+      "execution-control",
+      "evaluate",
+      "--ward",
+      "rail/ward.subdivision_west.yaml",
+      "--envelope",
+      "rail/authority_envelope.dispatcher.yaml",
+      "--action",
+      "rail/actions/refuse_conflicting_authority.json",
+      "--ledger",
+      ".tmp/rail-refuse.gel.jsonl",
+      "--now",
+      "2026-05-25T15:00:00.000Z"
+    ], dir);
+    assert.equal(refused.code, 0, refused.stderr);
+    assert.match(refused.stdout, /decision=REFUSE/);
+
+    const bundle = await capture([
+      "rail",
+      "evidence",
+      "export",
+      "--ward",
+      "rail/ward.subdivision_west.yaml",
+      "--envelope",
+      "rail/authority_envelope.dispatcher.yaml",
+      "--ledger",
+      ".tmp/rail-refuse.gel.jsonl",
+      "--out",
+      ".tmp/rail-evidence.json",
+      "--railroad",
+      "northstar-rail",
+      "--ops-center",
+      "west-dispatch",
+      "--territory",
+      "west-subdivision",
+      "--subdivision",
+      "West Subdivision",
+      "--milepost-from",
+      "12.4",
+      "--milepost-to",
+      "18.9",
+      "--train",
+      "NSR-4521",
+      "--symbol",
+      "M-WEST-4521",
+      "--locomotive",
+      "NSR-8842",
+      "--authority",
+      "MA-2026-0525-020",
+      "--dispatcher",
+      "dispatcher:west-desk-a",
+      "--crew",
+      "crew:4521",
+      "--consist",
+      "sha256:consist-4521-a",
+      "--route",
+      "route-west-main-1",
+      "--track",
+      "main-1",
+      "--redact",
+      "crew_phone"
+    ], dir);
+    assert.equal(bundle.code, 0, bundle.stderr);
+    assert.match(bundle.stdout, /verification=ok/);
+    assert.equal(existsSync(path.join(dir, ".tmp", "rail-evidence.json")), true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("cli run governs a child agent process and writes a verifiable ledger", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
   try {

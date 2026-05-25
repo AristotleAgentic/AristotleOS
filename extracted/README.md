@@ -46,6 +46,9 @@ Docs:
 - [Electric Utility Pilot Guide](docs/electric-utility-pilot-guide.md)
 - [Grid OT execution-control path](docs/grid.md)
 - [Grid threat model addendum](docs/grid-threat-model.md)
+- [Railroad Operator Pilot Guide](docs/railroad-operator-pilot-guide.md)
+- [Rail execution-control path](docs/rail.md)
+- [Rail threat model addendum](docs/rail-threat-model.md)
 - [Defense readiness roadmap](docs/defense-readiness.md)
 - [Crypto posture](docs/crypto-posture.md)
 - [Commercial adoption path](docs/commercial-adoption-path.md)
@@ -167,6 +170,26 @@ npm run aristotle -- execution-control evaluate \
 ```
 
 The Command Center includes a Grid workflow from "create governed switching mission" to "admitted execution" to "grid Evidence Bundle export." See [docs/electric-utility-pilot-guide.md](docs/electric-utility-pilot-guide.md), [docs/grid.md](docs/grid.md), and [docs/grid-ward-templates.md](docs/grid-ward-templates.md).
+
+## Railroad Readiness
+
+AristotleOS now includes a railroad pilot path for governed rail operations. Dispatch/CAD, PTC back office, wayside signal, switch machine, grade crossing, locomotive telemetry, crew management, consist/hazmat, maintenance-of-way, and yard automation surfaces become typed adapter boundaries. They execute only after Ward resolution, Authority Envelope validation, Rail Safety Invariant checks, Commit Gate admission, Warrant verification, and GEL commit.
+
+Run the rail slice:
+
+```bash
+npm run test:rail
+npm run aristotle -- rail templates
+npm run aristotle -- rail adapters
+npm run aristotle -- execution-control evaluate \
+  --ward examples/rail/ward.subdivision_west.yaml \
+  --envelope examples/rail/authority_envelope.dispatcher.yaml \
+  --action examples/rail/actions/allow_movement_authority.json \
+  --ledger ./.tmp/rail.gel.jsonl \
+  --now 2026-05-25T15:00:00.000Z
+```
+
+The Command Center includes a Rail workflow from "create governed movement mission" to "admitted execution" to "rail Evidence Bundle export." See [docs/railroad-operator-pilot-guide.md](docs/railroad-operator-pilot-guide.md), [docs/rail.md](docs/rail.md), and [docs/rail-ward-templates.md](docs/rail-ward-templates.md).
 
 ## Ward/Warrant Execution-Control Path
 

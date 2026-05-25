@@ -28,6 +28,10 @@ import type {
   PolicyPromotionStage,
   RuntimeRegister,
   RuntimeSlo,
+  RailAdapterSurface,
+  RailEvidenceExport,
+  RailOpsStep,
+  RailSafetyDrill,
   ShadowProfileSummary,
   TelecomAdapterSurface,
   TelecomEvidenceExport,
@@ -710,6 +714,98 @@ export const GRID_SAFETY_DRILLS: GridSafetyDrill[] = [
   { id: "telemetry", label: "SCADA freshness", invariant: "scada_fresh && telemetry_age_ms <= 5000", current: "1200 ms", posture: "green", evidence: "Stale telemetry blocks field commands at the Commit Gate." },
   { id: "der", label: "DER export cap", invariant: "der_export_mw <= 50", current: "32 MW", posture: "green", evidence: "Over-cap DERMS dispatch returns PHYSICAL_INVARIANT_FAILED and no Warrant." },
   { id: "relay", label: "Relay plural authority", invariant: "2-of-N approval before Warrant", current: "pending", posture: "amber", evidence: "Relay package updates cannot mint a Warrant without dual-control approval." }
+];
+
+export const RAIL_OPS_WORKFLOW: RailOpsStep[] = [
+  { id: "rail-mission", label: "Create governed movement mission", owner: "Rail operations center", state: "complete", evidence: "Ward ward-rail-subdivision-west binds territory, subdivision, PTC, signal, work-zone, train, and crew invariants." },
+  { id: "rail-context", label: "Bind rail runtime registers", owner: "Dispatcher desk", state: "complete", evidence: "Movement authority, dispatcher, train, consist, PTC state, signal aspect, switch proof, bulletin, crew acknowledgement, and crossing state attached." },
+  { id: "rail-shadow", label: "Profile dispatch path", owner: "Safety engineering", state: "complete", evidence: "Movement authority admits; conflicting authority, unproven switch, and PTC disable remain REFUSE." },
+  { id: "rail-approval", label: "Dual-control route approval", owner: "Chief dispatcher / signal supervisor", state: "active", evidence: "Route lineup, signal clear, switch align, PTC restriction, and hazmat routing require 2-of-N approval before Warrant issuance." },
+  { id: "rail-gate", label: "Rail Commit Gate", owner: "Governance kernel", state: "pending", evidence: "ALLOW mints a single-use Warrant scoped to the canonical rail action hash." },
+  { id: "rail-execute", label: "Execute rail adapter", owner: "Dispatch / PTC boundary", state: "pending", evidence: "CAD, PTC, wayside, switch, crew, consist, and yard adapters execute only after Warrant verification." },
+  { id: "rail-export", label: "Export rail evidence", owner: "Safety / regulatory", state: "pending", evidence: "Rail Evidence Bundle includes movement authority, train, consist, PTC state, GEL record, Warrant, and redaction manifest." }
+];
+
+export const RAIL_ADAPTERS: RailAdapterSurface[] = [
+  {
+    id: "dispatch-cad",
+    label: "Dispatch / CAD",
+    standard: "Dispatch/CAD",
+    actionTypes: ["rail.movement.authority.issue", "rail.route.lineup.authorize"],
+    requiredRegisters: ["territory_id", "dispatcher_id", "movement_authority_id", "ptc_active"],
+    boundary: "Movement authorities are admitted only against territory, train, signal, PTC, and conflict invariants.",
+    posture: "green"
+  },
+  {
+    id: "ptc-back-office",
+    label: "PTC Back Office",
+    standard: "PTC",
+    actionTypes: ["ptc.restriction.update", "ptc.authority.sync"],
+    requiredRegisters: ["ptc_active", "ptc_telemetry_age_ms", "host_railroad_id"],
+    boundary: "PTC authority material and restrictions are governed before synchronization to rail systems.",
+    posture: "green"
+  },
+  {
+    id: "wayside-signal",
+    label: "Wayside Signal",
+    standard: "Wayside",
+    actionTypes: ["signal.aspect.request", "signal.route.clear"],
+    requiredRegisters: ["signal_aspect", "switch_position_proven", "conflicting_authority_present"],
+    boundary: "Signal requests require switch proof, route authority, and no conflicting authority.",
+    posture: "amber"
+  },
+  {
+    id: "switch-machine",
+    label: "Switch Machine",
+    standard: "Switch",
+    actionTypes: ["switch.align.request", "switch.lock.release"],
+    requiredRegisters: ["switch_id", "switch_position_proven", "route_id"],
+    boundary: "Remote switch alignment cannot proceed without proven position and plural authority.",
+    posture: "amber"
+  },
+  {
+    id: "consist-hazmat",
+    label: "Consist / Hazmat",
+    standard: "Consist",
+    actionTypes: ["consist.route.validate", "hazmat.routing.authorize"],
+    requiredRegisters: ["consist_hash", "hazmat_classes", "route_class"],
+    boundary: "Hazmat and train make-up decisions preserve route authority and audit evidence.",
+    posture: "amber"
+  },
+  {
+    id: "mow",
+    label: "Maintenance-of-Way",
+    standard: "MOW",
+    actionTypes: ["mow.work-zone.release", "track.speed-restriction.update"],
+    requiredRegisters: ["work_zone_id", "work_zone_released", "track_bulletin_ack"],
+    boundary: "Work-zone release and speed restrictions are governed before dispatcher or onboard state changes.",
+    posture: "green"
+  }
+];
+
+export const RAIL_EVIDENCE_EXPORT: RailEvidenceExport = {
+  bundleVersion: "aristotle.rail-evidence.v1",
+  railroadId: "northstar-rail",
+  operationsCenter: "west-dispatch",
+  trainId: "NSR-4521",
+  trainSymbol: "M-WEST-4521",
+  locomotiveId: "NSR-8842",
+  territory: "west-subdivision",
+  subdivision: "West Subdivision",
+  movementAuthority: "MA-2026-0525-019",
+  profiles: ["FRA_PTC", "FRA_SIGNAL_TRAIN_CONTROL", "TSA_RAIL_CYBER", "DISPATCH_LOG", "EVENT_RECORDER"],
+  redactedFields: ["crew_phone", "facility_access_code", "exact_signal_house_location"],
+  bundleHash: shortHash("rail-evidence-bundle-west-subdivision", 24),
+  verification: "ok"
+};
+
+export const RAIL_SAFETY_DRILLS: RailSafetyDrill[] = [
+  { id: "ptc", label: "PTC active", invariant: "ptc_active && ptc_telemetry_age_ms <= 5000", current: "1100 ms", posture: "green", evidence: "Missing or stale PTC state escalates or refuses before movement authority is issued." },
+  { id: "conflict", label: "No conflicting authority", invariant: "conflicting_authority_present == false", current: "clear", posture: "green", evidence: "Conflicting movement authority returns PHYSICAL_INVARIANT_FAILED and no Warrant." },
+  { id: "switch", label: "Switch proven", invariant: "switch_position_proven == true", current: "normal/proven", posture: "green", evidence: "Unproven switch state blocks route lineups and switch alignments." },
+  { id: "work-zone", label: "Work-zone release", invariant: "work_zone_released && track_bulletin_ack", current: "released", posture: "green", evidence: "Active work zones or missing bulletin acknowledgement fail closed." },
+  { id: "crossing", label: "Crossing protection", invariant: "grade_crossing_protected == true", current: "protected", posture: "green", evidence: "Crossing protection must be proven before movement over protected limits." },
+  { id: "dual", label: "Route plural authority", invariant: "2-of-N approval before Warrant", current: "pending", posture: "amber", evidence: "Route clear, switch align, PTC restriction, and hazmat routing require dual control." }
 ];
 
 export const POLICY_HARNESS: PolicyHarnessCase[] = [

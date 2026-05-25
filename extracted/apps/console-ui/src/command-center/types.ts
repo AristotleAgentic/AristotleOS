@@ -455,6 +455,49 @@ export interface GridSafetyDrill {
   evidence: string;
 }
 
+export interface RailOpsStep {
+  id: string;
+  label: string;
+  owner: string;
+  state: "complete" | "active" | "blocked" | "pending";
+  evidence: string;
+}
+
+export interface RailAdapterSurface {
+  id: string;
+  label: string;
+  standard: "Dispatch/CAD" | "PTC" | "Wayside" | "Switch" | "Crossing" | "Locomotive" | "Crew" | "Consist" | "MOW" | "Yard";
+  actionTypes: string[];
+  requiredRegisters: string[];
+  boundary: string;
+  posture: Posture;
+}
+
+export interface RailEvidenceExport {
+  bundleVersion: string;
+  railroadId: string;
+  operationsCenter: string;
+  trainId: string;
+  trainSymbol: string;
+  locomotiveId: string;
+  territory: string;
+  subdivision: string;
+  movementAuthority: string;
+  profiles: string[];
+  redactedFields: string[];
+  bundleHash: string;
+  verification: "ok" | "blocked";
+}
+
+export interface RailSafetyDrill {
+  id: string;
+  label: string;
+  invariant: string;
+  current: string;
+  posture: Posture;
+  evidence: string;
+}
+
 export interface WardMarshalFinding {
   id: string;
   subject: string;

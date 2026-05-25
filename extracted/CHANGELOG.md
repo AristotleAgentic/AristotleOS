@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.1.31 - Railroad execution-control vertical
+- **Railroad pilot path**: typed adapters (Dispatch/CAD, PTC back office, wayside
+  signal, switch machine, grade crossing, locomotive telemetry, crew management,
+  consist/hazmat, maintenance-of-way, yard automation) -> Canonical Governed
+  Actions; rail physical invariants enforced at the gate (territory, movement
+  authority, PTC active/fresh, signal aspect, switch proof, train separation,
+  work-zone release, bulletin acknowledgement, consist hash, grade crossing
+  protection, no conflicting authority); Rail Evidence Bundles; a Rail Ops
+  console workflow; `aristotle rail` CLI; `examples/rail/` + docs (overview,
+  threat model, pilot guide, ward templates).
+- **Rail safety hardening**: PTC disable, enforcement override, signal force-clear,
+  and switch force-unlock are hard-refused even when an envelope is misconfigured;
+  route/signal/switch/PTC/hazmat actions require dual control and fail closed when
+  approval state is unavailable.
+
 ## v0.1.30 - Electric-utility grid OT vertical
 - **Grid/utility pilot path**: typed adapters (SCADA/EMS/ADMS, IEC 61850, DNP3,
   Modbus, OPC UA, DERMS, relay settings, firmware campaigns, historian writes)

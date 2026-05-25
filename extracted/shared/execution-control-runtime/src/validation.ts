@@ -63,20 +63,36 @@ export function validateWardManifest(value: unknown): ValidationResult {
         "max_feeder_load_pct",
         "max_transformer_load_pct",
         "max_der_export_mw",
-        "max_telemetry_age_ms"
+        "max_telemetry_age_ms",
+        "max_authority_speed_mph",
+        "min_train_separation_m",
+        "max_train_length_ft",
+        "max_train_tonnage",
+        "max_ptc_telemetry_age_ms"
       ]) {
         const v = value.physical_bounds[numKey];
         if (v !== undefined && (typeof v !== "number" || !Number.isFinite(v))) {
           issues.push({ path: `ward.physical_bounds.${numKey}`, message: "must be a finite number when present" });
         }
       }
-      for (const strKey of ["permitted_boundary_id", "permitted_odd_id", "permitted_topology_model_id"]) {
+      for (const strKey of ["permitted_boundary_id", "permitted_odd_id", "permitted_topology_model_id", "permitted_territory_id"]) {
         const v = value.physical_bounds[strKey];
         if (v !== undefined && (typeof v !== "string" || v.trim() === "")) {
           issues.push({ path: `ward.physical_bounds.${strKey}`, message: "must be a non-empty string when present" });
         }
       }
-      for (const arrKey of ["permitted_road_classes", "permitted_drive_states", "permitted_voltage_classes", "permitted_asset_types", "permitted_grid_states"]) {
+      for (const arrKey of [
+        "permitted_road_classes",
+        "permitted_drive_states",
+        "permitted_voltage_classes",
+        "permitted_asset_types",
+        "permitted_grid_states",
+        "permitted_route_classes",
+        "permitted_track_classes",
+        "permitted_signal_aspects",
+        "permitted_train_types",
+        "permitted_operating_states"
+      ]) {
         const v = value.physical_bounds[arrKey];
         if (v !== undefined && (!Array.isArray(v) || !v.every((item) => typeof item === "string" && item.trim() !== ""))) {
           issues.push({ path: `ward.physical_bounds.${arrKey}`, message: "must be an array of non-empty strings when present" });
@@ -88,7 +104,18 @@ export function validateWardManifest(value: unknown): ValidationResult {
         "require_clearance_released",
         "require_protection_known",
         "require_scada_fresh",
-        "require_manual_fallback_ready"
+        "require_manual_fallback_ready",
+        "require_ptc_active",
+        "require_switch_proven",
+        "require_signal_not_stop",
+        "require_work_zone_released",
+        "require_track_bulletin_ack",
+        "require_dispatcher_identity",
+        "require_brake_test_current",
+        "require_consist_verified",
+        "require_grade_crossing_protected",
+        "require_crew_acknowledged",
+        "require_no_conflicting_authority"
       ]) {
         const v = value.physical_bounds[boolKey];
         if (v !== undefined && typeof v !== "boolean") {

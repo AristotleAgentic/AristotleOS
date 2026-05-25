@@ -34,6 +34,7 @@ export type SectionId =
   | "noc"
   | "fleet"
   | "grid"
+  | "rail"
   | "conflicts"
   | "adoption"
   | "failure"
