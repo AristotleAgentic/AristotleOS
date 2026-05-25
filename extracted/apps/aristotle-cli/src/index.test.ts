@@ -297,6 +297,43 @@ test("cli ward-marshal discover supports process/mcp sources and requires one", 
   }
 });
 
+test("cli conflicts ingest/list/resolve over a durable inbox", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    const examples = path.resolve(process.cwd(), "examples", "execution_control");
+    cpSync(examples, path.join(dir, "execution_control"), { recursive: true });
+    // An edge that ALLOWED a now-denied action ⇒ an open conflict.
+    const records = [{
+      action: { action_id: "edge-1", ward_id: "montana-drone-test-range", subject: "agent:survey-planner", action_type: "drone.disable_geofence", target: "t", params: { boundary_id: "ranch-test-grid-a" }, requested_at: "2026-05-24T12:00:00.000Z", telemetry: { gps_lock: true } },
+      edge_decision: "ALLOW", occurred_at: "2026-05-24T12:00:00.000Z"
+    }];
+    writeFileSync(path.join(dir, "edge.json"), JSON.stringify(records));
+
+    const ingest = await capture(["conflicts", "ingest", "--inbox", ".tmp/inbox.json", "--records", "edge.json",
+      "--ward", "execution_control/ward.montana_drone_test_range.yaml",
+      "--envelope", "execution_control/authority_envelope.survey_planner.yaml",
+      "--now", "2026-05-24T12:00:00.000Z"], dir);
+    assert.equal(ingest.code, 0, ingest.stderr);
+    assert.match(ingest.stdout, /1 conflict/);
+
+    // list exits non-zero while a conflict is open.
+    const listOpen = await capture(["conflicts", "list", "--inbox", ".tmp/inbox.json"], dir);
+    assert.equal(listOpen.code, 1);
+    assert.match(listOpen.stdout, /CONFLICT/);
+
+    // resolve it, then list is clean (exit 0).
+    const resolve = await capture(["conflicts", "resolve", "--inbox", ".tmp/inbox.json", "--action-id", "edge-1", "--action", "reject", "--by", "alice@corp", "--reason", "edge exceeded authority"], dir);
+    assert.equal(resolve.code, 0, resolve.stderr);
+    assert.match(resolve.stdout, /rejected/);
+
+    const listClean = await capture(["conflicts", "list", "--inbox", ".tmp/inbox.json"], dir);
+    assert.equal(listClean.code, 0);
+    assert.match(listClean.stdout, /reject by alice@corp/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("cli plan and demo produce real governance output", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
   try {

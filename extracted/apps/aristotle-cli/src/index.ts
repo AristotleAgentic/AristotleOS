@@ -64,6 +64,7 @@ import {
   type SandboxProvider,
   profileShadowMode,
   reconcileEdgeRecords,
+  ConflictInboxStore,
   runWardMarshalCensus,
   executeWardMarshalInterdiction,
   loadEvidenceBundle,
@@ -505,6 +506,7 @@ Commands:
   governance diff                 Diff two policies; flags changes that weaken authority
   governance explain              Show what a policy permits/refuses/escalates for sample actions
   reconcile                       Reconcile disconnected-edge decisions against current policy
+  conflicts <ingest|list|resolve> Durable Edge Conflict Inbox (--inbox <file>): ingest --records/--ward/--envelope; list; resolve --action-id --action <accept|reject|escalate|reconcile> [--reason]
   ward-marshal discover           Collect agent observations: --kubernetes, --process [--host], --mcp, or --from-file <f> --source <s> [--map field=key ...]; combine sources; --out <file>
   ward-marshal scan               Discover, inventory, and risk-score autonomous agents
   ward-marshal behavior           Detect denial bursts, rate spikes, first-seen, off-hours, fan-out, and
@@ -1452,6 +1454,49 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
       }
       // Exit non-zero when unresolved conflicts exist.
       return report.conflicts === 0 ? 0 : 1;
+    }
+
+    if (command === "conflicts") {
+      const sub = argv[1];
+      const cargs = argv.slice(2);
+      const inboxPath = path.resolve(cwd, optionValue(cargs, "--inbox") ?? ".tmp/conflict-inbox.json");
+      const store = new ConflictInboxStore(inboxPath);
+
+      if (sub === "ingest") {
+        const ward = loadWardManifest(path.resolve(cwd, requiredOption(cargs, "--ward")));
+        const authorityEnvelope = loadAuthorityEnvelope(path.resolve(cwd, requiredOption(cargs, "--envelope")));
+        const records = JSON.parse(readFileSync(path.resolve(cwd, requiredOption(cargs, "--records")), "utf8")) as EdgeRecord[];
+        const report = store.ingest({ records, ward, authorityEnvelope, now: optionValue(cargs, "--now") });
+        const summary = store.summary();
+        if (json) { printJson(out, { report, summary }, true); }
+        else out(`ingested ${report.count} record(s) → inbox ${inboxPath}\n  ${summary.total} total · ${summary.open} open · ${summary.conflicts} conflict(s)\n`);
+        return 0;
+      }
+
+      if (sub === "list") {
+        const items = store.list();
+        const summary = store.summary();
+        if (json) { printJson(out, { items, summary }, true); }
+        else {
+          out(`Conflict Inbox — ${summary.total} item(s): ${summary.open} open, ${summary.by_status.reconciled} reconciled\n`);
+          for (const i of items) {
+            const tag = i.agrees ? "ok      " : "CONFLICT";
+            out(`  ${tag} ${i.status.padEnd(10)} ${i.action_id} (${i.action_type}) edge ${i.edge_decision} vs current ${i.current_decision}${i.conflict_kind ? ` [${i.conflict_kind}]` : ""}${i.resolved_by ? ` — ${i.resolution_action} by ${i.resolved_by}` : ""}\n`);
+          }
+        }
+        // Non-zero when items still need operator review (CI/ops gate).
+        return summary.open === 0 ? 0 : 1;
+      }
+
+      if (sub === "resolve") {
+        const action = requiredOption(cargs, "--action") as "accept" | "reject" | "escalate" | "reconcile";
+        const item = store.resolve(requiredOption(cargs, "--action-id"), action, optionValue(cargs, "--by") ?? "operator", optionValue(cargs, "--reason"), optionValue(cargs, "--now"));
+        if (json) { printJson(out, { item, summary: store.summary() }, true); }
+        else out(`resolved ${item.action_id} → ${item.status} (${item.resolution_action} by ${item.resolved_by})\n`);
+        return 0;
+      }
+
+      throw new Error("usage: aristotle conflicts <ingest|list|resolve> [--inbox <file>] ...");
     }
 
     if (command === "explain" && subcommand === "--last-deny") {
