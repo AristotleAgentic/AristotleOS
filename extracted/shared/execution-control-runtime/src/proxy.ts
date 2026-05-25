@@ -18,6 +18,7 @@ import {
   verifyWarrant
 } from "./index.js";
 import { type CredentialRevocationList, credentialRevocationReason } from "./credential-revocation.js";
+import { classifyEgressUrl } from "./egress-guard.js";
 
 /**
  * Credential brokering + governed action proxy.
@@ -146,6 +147,12 @@ export interface ProxyGovernedActionInput {
   tracer?: AristotleTracer;
   /** Injected for testing; defaults to global fetch. */
   fetchImpl?: typeof fetch;
+  /**
+   * When true, also refuse loopback / RFC1918 / unique-local / localhost targets.
+   * The cloud-metadata / link-local range, the unspecified address, and non-http(s)
+   * schemes are refused regardless of this flag.
+   */
+  blockPrivateEgress?: boolean;
 }
 
 export interface ProxyGovernedActionResult {
@@ -207,6 +214,13 @@ export async function proxyGovernedAction(input: ProxyGovernedActionInput): Prom
   const destination = resolveDestination(input.action);
   if ("error" in destination) {
     return { ...base, forwarded: false, injected_headers: [], error: destination.error };
+  }
+
+  // SSRF guard: refuse cloud-metadata / link-local / unspecified / non-http(s) targets
+  // (and private networks when opted in) before any credential is brokered or sent.
+  const egress = classifyEgressUrl(destination.url, { blockPrivateNetworks: input.blockPrivateEgress === true });
+  if (!egress.ok) {
+    return { ...base, forwarded: false, injected_headers: [], error: `egress blocked: ${egress.reason}` };
   }
 
   let injected: Record<string, string> = {};
