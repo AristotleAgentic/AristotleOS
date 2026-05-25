@@ -321,6 +321,19 @@ export interface ConflictInboxItem {
   operatorNextStep: string;
 }
 
+export interface ApprovalItem {
+  id: string;
+  actionType: string;
+  subject: string;
+  wardId: string;
+  required: number;
+  approvals: number;
+  status: "pending" | "approved" | "rejected" | "expired";
+  votes: Array<{ by: string; decision: "approve" | "reject"; reason?: string }>;
+  createdAt: string;
+  expiresAt?: string;
+}
+
 export interface WardMarshalFinding {
   id: string;
   subject: string;

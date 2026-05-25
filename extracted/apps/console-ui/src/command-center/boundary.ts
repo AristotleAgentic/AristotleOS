@@ -1,4 +1,4 @@
-import type { CommitDecision, ConflictInboxItem, LedgerRecord, ShadowProfileSummary, SystemSnapshot, WardMarshalFinding } from "./types.js";
+import type { ApprovalItem, CommitDecision, ConflictInboxItem, LedgerRecord, ShadowProfileSummary, SystemSnapshot, WardMarshalFinding } from "./types.js";
 
 /**
  * Live client for the AristotleOS execution-control boundary.
@@ -416,4 +416,53 @@ export async function runLiveConflicts(seed: ConflictIngestBody): Promise<Confli
   const list = await boundaryListConflicts();
   if (!list) return null;
   return mapConflictsToInbox(list.items);
+}
+
+// --- Dual-control approvals -------------------------------------------------
+
+export interface ApprovalRecordLike {
+  request_id: string;
+  action_type: string;
+  subject: string;
+  ward_id: string;
+  required: number;
+  status: ApprovalItem["status"];
+  votes?: Array<{ by: string; decision: "approve" | "reject"; reason?: string }>;
+  created_at: string;
+  expires_at?: string;
+}
+
+export interface ApprovalListLike {
+  items: ApprovalRecordLike[];
+}
+
+/** Pure: map dual-control approval records into the console's queue item shape. */
+export function mapApprovalsToUi(items: ApprovalRecordLike[]): ApprovalItem[] {
+  return (items ?? []).map((r) => ({
+    id: r.request_id,
+    actionType: r.action_type,
+    subject: r.subject,
+    wardId: r.ward_id,
+    required: r.required,
+    approvals: new Set((r.votes ?? []).filter((v) => v.decision === "approve").map((v) => v.by)).size,
+    status: r.status,
+    votes: r.votes ?? [],
+    createdAt: r.created_at,
+    ...(r.expires_at ? { expiresAt: r.expires_at } : {})
+  }));
+}
+
+export async function boundaryListApprovals(signal?: AbortSignal): Promise<ApprovalListLike | null> {
+  return getJson<ApprovalListLike>("/v1/execution-control/approvals", signal);
+}
+
+export async function boundaryDecideApproval(requestId: string, decision: "approve" | "reject", reason?: string): Promise<PostResult<unknown>> {
+  return postJson("/v1/execution-control/approvals/decide", { request_id: requestId, decision, reason });
+}
+
+/** List dual-control approvals from the live boundary; null when unreachable. */
+export async function runLiveApprovals(): Promise<ApprovalItem[] | null> {
+  const list = await boundaryListApprovals();
+  if (!list) return null;
+  return mapApprovalsToUi(list.items);
 }

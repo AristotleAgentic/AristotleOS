@@ -15,6 +15,7 @@ import {
   Radar,
   Siren,
   ShieldAlert,
+  UserCheck,
   Workflow,
   TriangleAlert
 } from "lucide-react";
@@ -34,6 +35,7 @@ import { PhysicalInvariantPanel } from "./PhysicalInvariantPanel.js";
 import { ReplayTimeMachine } from "./ReplayTimeMachine.js";
 import { SimulationPanel } from "./SimulationPanel.js";
 import { ShadowModeConsole } from "./ShadowModeConsole.js";
+import { ApprovalsConsole } from "./ApprovalsConsole.js";
 import { WardBrowser } from "./WardBrowser.js";
 import { WardMarshalConsole } from "./WardMarshalConsole.js";
 import { WarrantLifecycle } from "./WarrantLifecycle.js";
@@ -45,6 +47,7 @@ const NAV: Array<{ id: SectionId; label: string; icon: LucideIcon }> = [
   { id: "builder", label: "Builder", icon: Construction },
   { id: "shadow", label: "Shadow", icon: Radar },
   { id: "conflicts", label: "Conflicts", icon: Workflow },
+  { id: "approvals", label: "Approvals", icon: UserCheck },
   { id: "adoption", label: "Adopt", icon: ClipboardCheck },
   { id: "failure", label: "Failure", icon: ShieldAlert },
   { id: "marshal", label: "Marshal", icon: Crosshair },
@@ -63,6 +66,7 @@ const SECTION_META: Record<SectionId, { title: string; sub: string }> = {
   builder: { title: "Visual Governance Builder", sub: "Compile Ward and Authority artifacts without weakening governance silently" },
   shadow: { title: "Shadow Mode Profiling", sub: "Observe would-ALLOW / REFUSE / ESCALATE before live enforcement" },
   conflicts: { title: "Edge Conflict Inbox", sub: "Resolve disconnected edge reality against central governance" },
+  approvals: { title: "Dual-Control Approvals", sub: "M-of-N approval for the gravest actions — plural authority, fully evidenced" },
   adoption: { title: "Commercial Adoption Path", sub: "From sandbox to shadow to enforcement to evidence export" },
   failure: { title: "Failure Mode Console", sub: "Partitions, stale authority, witness disagreement, and replay divergence" },
   marshal: { title: "Ward Marshal", sub: "Rogue-agent census and warrant-backed interdiction" },
@@ -93,6 +97,8 @@ function SectionBody({ section }: { section: SectionId }) {
       return <GovernanceBuilderConsole />;
     case "shadow":
       return <ShadowModeConsole />;
+    case "approvals":
+      return <ApprovalsConsole />;
     case "conflicts":
       return <ConflictInboxConsole />;
     case "adoption":

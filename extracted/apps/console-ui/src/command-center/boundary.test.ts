@@ -1,12 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  type ApprovalRecordLike,
   type ConflictRecordLike,
   type GelRecordLike,
   type MarshalReportLike,
   type ShadowReportLike,
   buildRepresentativeActions,
   decisionToUi,
+  mapApprovalsToUi,
   mapCensusReport,
   mapConflictsToInbox,
   mapDegradationToSnapshot,
@@ -158,4 +160,18 @@ test("mapDegradationToSnapshot flags degraded state and carries conditions", () 
   assert.equal(degraded.degraded, true);
   assert.deepEqual(degraded.degradedConditions, ["ledger_unavailable"]);
   assert.equal(degraded.degradedFailAction, "refuse");
+});
+
+test("mapApprovalsToUi maps records and counts distinct approvers", () => {
+  const records: ApprovalRecordLike[] = [
+    { request_id: "apr-1", action_type: "host.isolate", subject: "agent:r", ward_id: "w", required: 2, status: "pending", votes: [{ by: "a", decision: "approve" }, { by: "a", decision: "approve" }], created_at: "2026-05-24T12:00:00.000Z" },
+    { request_id: "apr-2", action_type: "x", subject: "agent:s", ward_id: "w", required: 2, status: "approved", votes: [{ by: "a", decision: "approve" }, { by: "b", decision: "approve" }], created_at: "2026-05-24T12:01:00.000Z", expires_at: "2026-05-24T13:00:00.000Z" }
+  ];
+  const rows = mapApprovalsToUi(records);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].approvals, 1); // duplicate approver counted once
+  assert.equal(rows[0].required, 2);
+  assert.equal(rows[1].approvals, 2);
+  assert.equal(rows[1].status, "approved");
+  assert.equal(rows[1].expiresAt, "2026-05-24T13:00:00.000Z");
 });

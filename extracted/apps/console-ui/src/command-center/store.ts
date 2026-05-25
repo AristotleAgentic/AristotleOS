@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type {
+  ApprovalItem,
   CommitRequest,
   ConflictInboxItem,
   GatePipelineSample,
@@ -23,12 +24,13 @@ import {
   shortHash
 } from "./mockData.js";
 import { gatewayContract, postOperator, probeGateway } from "./service.js";
-import { boundaryCompile, boundaryListConflicts, boundaryResolveConflict, fetchLiveState, mapConflictsToInbox, runLiveConflicts, runLiveMarshalCensus, runLiveShadowProfile } from "./boundary.js";
+import { boundaryCompile, boundaryDecideApproval, boundaryListApprovals, boundaryListConflicts, boundaryResolveConflict, fetchLiveState, mapApprovalsToUi, mapConflictsToInbox, runLiveApprovals, runLiveConflicts, runLiveMarshalCensus, runLiveShadowProfile } from "./boundary.js";
 
 export type SectionId =
   | "overview"
   | "builder"
   | "shadow"
+  | "approvals"
   | "conflicts"
   | "adoption"
   | "failure"
@@ -86,6 +88,7 @@ interface CommandState {
   shadowProfile: ShadowProfileSummary | null;
   marshalFindings: WardMarshalFinding[] | null;
   conflicts: ConflictInboxItem[] | null;
+  approvals: ApprovalItem[] | null;
 
   section: SectionId;
   selectedRequestId: string | null;
@@ -124,6 +127,8 @@ interface CommandState {
   runMarshalCensus: () => Promise<void>;
   loadConflicts: () => Promise<void>;
   resolveConflict: (id: string, action: "accept" | "reject" | "escalate" | "reconcile", reason?: string) => Promise<void>;
+  loadApprovals: () => Promise<void>;
+  decideApproval: (id: string, decision: "approve" | "reject", reason?: string) => Promise<void>;
 }
 
 let toastSeq = 0;
@@ -136,6 +141,7 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   shadowProfile: null,
   marshalFindings: null,
   conflicts: null,
+  approvals: null,
 
   section: "overview",
   selectedRequestId: INITIAL_REQUESTS[0]?.id ?? null,
@@ -212,6 +218,7 @@ export const useCommandStore = create<CommandState>((set, get) => ({
       void get().runShadowProfile();
       void get().runMarshalCensus();
       void get().loadConflicts();
+      void get().loadApprovals();
       return;
     }
     const partial = await probeGateway();
@@ -344,6 +351,34 @@ export const useCommandStore = create<CommandState>((set, get) => ({
     if (list) set({ conflicts: mapConflictsToInbox(list.items) });
     const tone = action === "reject" ? "red" : action === "escalate" ? "amber" : "green";
     get().toast(`Conflict ${id} → ${action} recorded on the live boundary.`, tone);
+  },
+
+  // Dual-control approvals: list the live M-of-N queue (GET /approvals); fall back to
+  // the labeled sample queue when the boundary is offline.
+  loadApprovals: async () => {
+    const approvals = await runLiveApprovals();
+    if (!approvals) {
+      get().toast("Boundary offline — Approvals is showing a sample queue. Run `aristotle execution-control serve` to action live.", "amber");
+      return;
+    }
+    set({ approvals });
+  },
+
+  // Cast an attributed vote (POST /approvals/decide) then refresh the queue. The
+  // boundary records the operator + enforces separation of duties.
+  decideApproval: async (id, decision, reason) => {
+    const result = await boundaryDecideApproval(id, decision, reason);
+    if (!result.reachable) {
+      get().toast("Boundary offline — vote not recorded. Connect the boundary to approve live.", "amber");
+      return;
+    }
+    if (!result.ok) {
+      get().toast(`Boundary rejected the vote (HTTP ${result.status}).`, "red");
+      return;
+    }
+    const list = await boundaryListApprovals();
+    if (list) set({ approvals: mapApprovalsToUi(list.items) });
+    get().toast(`Approval ${id} → ${decision} recorded on the live boundary.`, decision === "reject" ? "red" : "green");
   }
 }));
 

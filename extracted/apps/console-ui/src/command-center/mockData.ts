@@ -1,6 +1,7 @@
 import type {
   Agent,
   AuthorityDomain,
+  ApprovalItem,
   AuthorityEnvelope,
   BuilderPreview,
   CommitRequest,
@@ -521,6 +522,42 @@ export const SHADOW_PROFILE: ShadowProfileSummary = {
     { kind: "revoked-authority", actionId: "shadow-119", detail: "stale envelope ae-refund-109 observed in replay batch." }
   ]
 };
+
+export const APPROVAL_QUEUE: ApprovalItem[] = [
+  {
+    id: "apr-7c1f9a2b3d4e5f60",
+    actionType: "host.isolate",
+    subject: "agent:incident-responder",
+    wardId: "ward-cyber",
+    required: 2,
+    approvals: 1,
+    status: "pending",
+    votes: [{ by: "alice@soc", decision: "approve", reason: "SEV-1 confirmed" }],
+    createdAt: new Date(Date.now() - 1000 * 60 * 6).toISOString()
+  },
+  {
+    id: "apr-3a8e2c7b9f10d246",
+    actionType: "firewall.purge_all",
+    subject: "agent:netops",
+    wardId: "ward-cyber",
+    required: 2,
+    approvals: 0,
+    status: "pending",
+    votes: [],
+    createdAt: new Date(Date.now() - 1000 * 60 * 2).toISOString()
+  },
+  {
+    id: "apr-bb44ee9911223344",
+    actionType: "payments.bulk_refund",
+    subject: "agent:finance-bot",
+    wardId: "ward-payments",
+    required: 2,
+    approvals: 2,
+    status: "approved",
+    votes: [{ by: "carol@fin", decision: "approve" }, { by: "dave@fin", decision: "approve" }],
+    createdAt: new Date(Date.now() - 1000 * 60 * 20).toISOString()
+  }
+];
 
 export const CONFLICT_INBOX: ConflictInboxItem[] = [
   {
