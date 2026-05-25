@@ -9,10 +9,13 @@
  * and every failure is reportable with the same `Violation` vocabulary.
  */
 import { violation } from "./errors.js";
+const FORBIDDEN_PATH_SEGMENTS = new Set(["__proto__", "prototype", "constructor"]);
 function getPath(record, path) {
     let cur = record;
     for (const part of path.split(".")) {
-        if (cur && typeof cur === "object" && part in cur) {
+        if (FORBIDDEN_PATH_SEGMENTS.has(part))
+            return undefined;
+        if (cur && typeof cur === "object" && Object.prototype.hasOwnProperty.call(cur, part)) {
             cur = cur[part];
         }
         else {
