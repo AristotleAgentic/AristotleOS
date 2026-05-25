@@ -6,6 +6,50 @@ its operator console, SDK, and CLI). Dates are release tags on the
 *authority before consequence · warrant before execution · evidence after every
 decision.*
 
+## v0.1.28 — Telecom pilot path (overview doc) + CHANGELOG refresh
+- `docs/telecom.md` overview for the telecom autonomous-network pilot; CHANGELOG
+  brought current through the dual-control + telecom work. Full gate green (37 suites).
+
+## (telecom) — Telecom autonomous-network pilot path
+- Typed carrier adapters (TM Forum Open API, NETCONF/YANG, gNMI/gNOI, O-RAN A1/R1)
+  → Canonical Governed Actions; NOC evidence bundles (ticket/operator/redactions);
+  carrier-scale benchmark, reconnect-storm reconciliation, and multi-region HA soak;
+  `aristotle telecom` CLI + `examples/telecom/` + `docs/telecom-threat-model.md`.
+
+## v0.1.27 — Approvals console
+- Operator UI for dual control: a live M-of-N approval queue (vote progress, voters,
+  approve/reject) reading `/approvals` with a sample fallback. Additive view.
+
+## v0.1.26 — Dual-control surface
+- APL `approve <a> requires N [within <dur>]`; `/approvals` + `/approvals/decide`
+  endpoints; `aristotle dual-control` CLI.
+
+## v0.1.25 — Dual control (M-of-N approval)
+- The gravest actions get no Warrant on their own ALLOW — they ESCALATE and require
+  N distinct approvers (never the requester) within a TTL. Pure state machine +
+  file/in-memory ApprovalStore with separation of duties; gate-wired.
+
+## v0.1.24 — Budget / quota governance
+- Authority Envelopes can cap cost and/or call count per rolling window; over-budget
+  actions are refused (`BUDGET_EXCEEDED`) and recorded. APL `budget` + governor.
+
+## v0.1.23 — Performance pass
+- Measured numbers published; cached public-key verification (helps batch chain/bundle
+  verify); honest positioning vs a compiled gate (no rewrite).
+
+## v0.1.22 — Cross-agent behavioral detection
+- coordinated_denial, peer_anomaly, privilege_escalation, new_capability,
+  credential_reuse — fleet-level signals routed into warrant-gated interdiction.
+
+## v0.1.21 — Aristotle Policy Language (APL)
+- Typed governance DSL compiling to the existing Ward/Authority manifests; `aristotle
+  policy compile|check`.
+
+## v0.1.15–v0.1.20 — Operator surface completeness
+- Degradation health endpoint + full SDK coverage (v0.1.15); console degradation badge
+  (v0.1.16); Ward Marshal host/process + MCP collectors (v0.1.17), discover CLI
+  sources (v0.1.18), generic file-fed collector (v0.1.19); Conflict Inbox CLI (v0.1.20).
+
 ## v0.1.20 — Conflict Inbox CLI
 - `aristotle conflicts ingest|list|resolve` over a durable file-backed inbox.
   `list` exits non-zero while a conflict is open (ops/CI gate); `resolve` applies
