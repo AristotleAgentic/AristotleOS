@@ -81,6 +81,7 @@ export * from "./telecom.js";
 export * from "./automotive.js";
 export * from "./grid.js";
 export * from "./rail.js";
+export * from "./pipeline.js";
 
 export {
   type AristotleSigner,
@@ -227,6 +228,23 @@ export interface PhysicalBounds {
   require_grade_crossing_protected?: boolean;
   require_crew_acknowledged?: boolean;
   require_no_conflicting_authority?: boolean;
+  // Pipeline (oil & gas / energy) bounds. asset types reuse permitted_asset_types and
+  // telemetry freshness reuses max_telemetry_age_ms.
+  permitted_segment_id?: string;
+  permitted_system_model_id?: string;
+  permitted_pipeline_states?: string[];
+  max_pressure_psig?: number;
+  min_pressure_psig?: number;
+  max_pressure_pct_maop?: number;
+  max_flow_bbl_per_day?: number;
+  max_flow_mmscfd?: number;
+  require_leak_detection_armed?: boolean;
+  require_overpressure_protection?: boolean;
+  require_esd_ready?: boolean;
+  require_segment_isolation_ready?: boolean;
+  require_pump_primed?: boolean;
+  require_pipeline_scada_fresh?: boolean;
+  require_operator_qualified?: boolean;
 }
 
 export interface PhysicalInvariantResult {
@@ -585,6 +603,19 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
   if (action.action_type === "rail.disable_ptc" || action.action_type === "ptc.override.enforcement" || action.action_type === "signal.force_clear" || action.action_type === "switch.force_unlock") {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard rail safety interlock violation` };
   }
+  if (
+    action.action_type === "pipeline.disable_leak_detection" ||
+    action.action_type === "leak_detection.disable" ||
+    action.action_type === "pipeline.disable_overpressure_protection" ||
+    action.action_type === "pressure.relief.disable" ||
+    action.action_type === "pipeline.disable_esd" ||
+    action.action_type === "esd.override" ||
+    action.action_type === "pipeline.isolation.bypass" ||
+    action.action_type === "pump.overpressure_override" ||
+    action.action_type === "compressor.safety_shutdown_disable"
+  ) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard pipeline safety interlock violation` };
+  }
   const altitude = numericParam(action, "altitude_m");
   if (bounds.max_altitude_m !== undefined && altitude !== undefined && altitude > bounds.max_altitude_m) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `altitude_m ${altitude} exceeds max_altitude_m ${bounds.max_altitude_m}` };
@@ -766,6 +797,61 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
   }
   if (bounds.require_no_conflicting_authority && booleanParam(action, "conflicting_authority_present") === true) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "conflicting movement authority is present" };
+  }
+  // -- pipeline (oil & gas / energy) invariants --------------------------------
+  const segmentId = stringParam(action, "segment_id");
+  if (bounds.permitted_segment_id && segmentId && segmentId !== bounds.permitted_segment_id) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `segment_id ${segmentId} does not match ${bounds.permitted_segment_id}` };
+  }
+  const systemModelId = stringParam(action, "system_model_id");
+  if (bounds.permitted_system_model_id && systemModelId && systemModelId !== bounds.permitted_system_model_id) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `system_model_id ${systemModelId} does not match ${bounds.permitted_system_model_id}` };
+  }
+  const pipelineState = stringParam(action, "pipeline_state");
+  if (bounds.permitted_pipeline_states?.length && pipelineState && !bounds.permitted_pipeline_states.includes(pipelineState)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `pipeline_state ${pipelineState} is outside permitted pipeline states` };
+  }
+  const pressurePsig = numericParam(action, "pressure_psig");
+  const setpointPsig = numericParam(action, "setpoint_psig");
+  const effectivePressure = setpointPsig ?? pressurePsig;
+  if (bounds.max_pressure_psig !== undefined && effectivePressure !== undefined && effectivePressure > bounds.max_pressure_psig) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `pressure ${effectivePressure} psig exceeds max_pressure_psig ${bounds.max_pressure_psig} (MAOP)` };
+  }
+  if (bounds.min_pressure_psig !== undefined && pressurePsig !== undefined && pressurePsig < bounds.min_pressure_psig) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `pressure ${pressurePsig} psig below min_pressure_psig ${bounds.min_pressure_psig}` };
+  }
+  const pressurePctMaop = numericParam(action, "pressure_pct_maop");
+  if (bounds.max_pressure_pct_maop !== undefined && pressurePctMaop !== undefined && pressurePctMaop > bounds.max_pressure_pct_maop) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `pressure ${pressurePctMaop}% of MAOP exceeds max_pressure_pct_maop ${bounds.max_pressure_pct_maop}` };
+  }
+  const flowBpd = numericParam(action, "flow_bbl_per_day");
+  if (bounds.max_flow_bbl_per_day !== undefined && flowBpd !== undefined && flowBpd > bounds.max_flow_bbl_per_day) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `flow_bbl_per_day ${flowBpd} exceeds max_flow_bbl_per_day ${bounds.max_flow_bbl_per_day}` };
+  }
+  const flowMmscfd = numericParam(action, "flow_mmscfd");
+  if (bounds.max_flow_mmscfd !== undefined && flowMmscfd !== undefined && flowMmscfd > bounds.max_flow_mmscfd) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `flow_mmscfd ${flowMmscfd} exceeds max_flow_mmscfd ${bounds.max_flow_mmscfd}` };
+  }
+  if (bounds.require_leak_detection_armed && booleanParam(action, "leak_detection_armed") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "leak detection (CPM) must be armed before this pipeline action" };
+  }
+  if (bounds.require_overpressure_protection && booleanParam(action, "overpressure_protection_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "overpressure protection must be active before this pipeline action" };
+  }
+  if (bounds.require_esd_ready && booleanParam(action, "esd_ready") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "emergency shutdown (ESD) readiness is required before this pipeline action" };
+  }
+  if (bounds.require_segment_isolation_ready && booleanParam(action, "segment_isolation_ready") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "segment isolation readiness is required before this pipeline action" };
+  }
+  if (bounds.require_pump_primed && booleanParam(action, "pump_primed") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "pump priming is required before this pipeline action" };
+  }
+  if (bounds.require_pipeline_scada_fresh && booleanParam(action, "pipeline_scada_fresh") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "fresh SCADA telemetry (control room management) is required before this pipeline action" };
+  }
+  if (bounds.require_operator_qualified && booleanParam(action, "operator_qualified") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "operator qualification is required before this pipeline action" };
   }
   return { ok: true, reason_codes: [], detail: "physical invariants satisfied" };
 }

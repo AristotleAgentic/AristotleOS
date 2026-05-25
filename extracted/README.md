@@ -49,6 +49,9 @@ Docs:
 - [Railroad Operator Pilot Guide](docs/railroad-operator-pilot-guide.md)
 - [Rail execution-control path](docs/rail.md)
 - [Rail threat model addendum](docs/rail-threat-model.md)
+- [Pipeline execution-control path](docs/pipeline.md)
+- [Pipeline Ward templates](docs/pipeline-ward-templates.md)
+- [Pipeline threat model addendum](docs/pipeline-threat-model.md)
 - [Defense readiness roadmap](docs/defense-readiness.md)
 - [Crypto posture](docs/crypto-posture.md)
 - [Commercial adoption path](docs/commercial-adoption-path.md)
@@ -190,6 +193,35 @@ npm run aristotle -- execution-control evaluate \
 ```
 
 The Command Center includes a Rail workflow from "create governed movement mission" to "admitted execution" to "rail Evidence Bundle export." See [docs/railroad-operator-pilot-guide.md](docs/railroad-operator-pilot-guide.md), [docs/rail.md](docs/rail.md), and [docs/rail-ward-templates.md](docs/rail-ward-templates.md).
+
+## Pipeline Readiness
+
+AristotleOS includes a pipeline (oil & gas / energy) pilot path for governed pump,
+compressor, valve, pressure, leak-detection (CPM), and pig operations. SCADA / ICS
+protocol requests become typed adapter boundaries (`PIPELINE_ADAPTER_CATALOG`) and
+execute only after Ward resolution, Authority Envelope validation, Pipeline Safety
+Invariant checks (MAOP/pressure, flow, segment/state, CRM SCADA freshness, leak-detection
+armed, overpressure protection, ESD ready, segment isolation, pump primed, operator
+qualified), Commit Gate admission, Warrant verification, and GEL commit. It is built to
+meet and exceed 49 CFR 192/195, Control Room Management (192.631/195.446), Operator
+Qualification (192.801/195.501), and API 1164/1173/RP 1175.
+
+Run the pipeline slice:
+
+```bash
+npm run test:pipeline
+npm run aristotle -- execution-control evaluate \
+  --ward examples/pipeline/ward.transmission_segment.yaml \
+  --envelope examples/pipeline/authority_envelope.operations_center.yaml \
+  --action examples/pipeline/actions/pump_start.json \
+  --ledger ./.tmp/pipeline.gel.jsonl \
+  --now 2026-05-25T15:00:00.000Z
+```
+
+`refuse_overpressure.json` (pressure above MAOP) and `refuse_leak_detection_offline.json`
+(CPM offline) demonstrate fail-closed refusals. See [docs/pipeline.md](docs/pipeline.md),
+[docs/pipeline-ward-templates.md](docs/pipeline-ward-templates.md), and
+[docs/pipeline-threat-model.md](docs/pipeline-threat-model.md).
 
 ## Ward/Warrant Execution-Control Path
 

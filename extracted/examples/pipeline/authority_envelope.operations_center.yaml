@@ -1,0 +1,60 @@
+envelope_id: ae-pipeline-operations-001
+ward_id: ward-pipeline-transmission-segment-west
+subject: agent:pipeline-ops-orchestrator
+allowed_actions:
+  - scada.pump.start
+  - scada.pump.stop
+  - scada.compressor.start
+  - scada.compressor.stop
+  - valve.isolate.close
+  - valve.isolation.open
+  - pressure.setpoint.set
+  - pressure.relief.set
+  - leak_detection.threshold.set
+  - pig.launch.execute
+  - pig.receive.execute
+  - historian.record.write
+  - modbus.register.write
+  - dnp3.control.operate
+  - opcua.node.write
+denied_actions:
+  - pipeline.disable_leak_detection
+  - pipeline.disable_overpressure_protection
+  - pipeline.disable_esd
+  - pipeline.isolation.bypass
+  - pressure.relief.disable
+  - pump.overpressure_override
+  - compressor.safety_shutdown_disable
+constraints:
+  required_runtime_registers:
+    - telemetry.asset_id
+    - telemetry.segment_id
+    - telemetry.system_model_id
+    - telemetry.pressure_psig
+    - telemetry.maop_psig
+    - telemetry.leak_detection_armed
+    - telemetry.overpressure_protection_active
+    - telemetry.esd_ready
+    - telemetry.segment_isolation_ready
+    - telemetry.pump_primed
+    - telemetry.pipeline_scada_fresh
+    - telemetry.operator_qualified
+    - telemetry.operator_id
+  permitted_segment_id: segment-transmission-west
+  dual_control:
+    actions:
+      - valve.isolate.close
+      - pressure.relief.set
+      - scada.compressor.start
+      - pig.launch.execute
+    required: 2
+    ttl_ms: 600000
+  budget:
+    maxCallsPerWindow: 200
+    windowMs: 3600000
+expires_at: 2026-12-31T23:59:59Z
+issuer: aristotle-pipeline-ops-root
+classification:
+  level: CUI
+  caveats:
+    - PIPELINE_OPS

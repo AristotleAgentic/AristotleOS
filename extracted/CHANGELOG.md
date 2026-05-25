@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.1.32 - Pipeline (oil & gas / energy) execution-control vertical
+- **Pipeline pilot path**: typed adapters (SCADA pump-control, SCADA compressor,
+  valve-control, pressure-control, leak-detection/CPM, pig-launcher, Modbus, DNP3,
+  OPC-UA, historian) -> Canonical Governed Actions; pipeline physical invariants
+  enforced at the gate (segment/system-model/state, MAOP & %-of-MAOP pressure
+  ceiling, min pressure, liquid/gas flow caps, fresh SCADA / Control Room
+  Management, leak-detection armed, overpressure protection active, ESD ready,
+  segment isolation ready, pump primed, operator qualified) plus hard interlocks
+  (disable leak detection / overpressure protection / ESD, isolation bypass,
+  relief disable, overpressure override, compressor safety-shutdown disable);
+  signed Pipeline Evidence Bundles with a regulatory profile (PHMSA 192/195, CRM,
+  OQ, Integrity Management, API 1164/1173/RP 1175); `examples/pipeline/` ward,
+  envelope, policy, and allow/refuse actions runnable via `execution-control
+  evaluate`; docs (overview, ward templates, threat model). Designed to meet and
+  exceed 49 CFR 192/195, 192.631/195.446, 192.801/195.501, and the API standards.
+
 ## v0.1.31 - Railroad execution-control vertical
 - **Railroad pilot path**: typed adapters (Dispatch/CAD, PTC back office, wayside
   signal, switch machine, grade crossing, locomotive telemetry, crew management,
