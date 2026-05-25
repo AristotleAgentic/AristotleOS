@@ -1,0 +1,41 @@
+ward_id: ward-av-fleet-west
+name: Autonomous Vehicle Fleet West
+sovereignty_context: av-operator-western-us-safety-ops
+authority_domain: autonomous-vehicle-fleet
+policy_version: 0.1.0
+evidence_ledger_path: .aristotle/automotive-fleet-west.gel.jsonl
+permitted_subjects:
+  - agent:fleet-safety-operator
+  - agent:remote-assist-dispatcher
+physical_bounds:
+  permitted_boundary_id: sf-soma-odd
+  permitted_odd_id: sf-soma-daylight
+  permitted_road_classes:
+    - urban-arterial
+    - residential
+  max_speed_mps: 13.4
+  min_map_confidence: 0.97
+  min_localization_confidence: 0.98
+  min_perception_confidence: 0.95
+  require_mrc_available: true
+  permitted_drive_states:
+    - parked
+    - remote_assist
+    - low_speed_autonomy
+metadata:
+  automotive_domain: fleet-operations
+  standards_profile:
+    - ISO_26262
+    - ISO_21448
+    - ISO_21434
+    - UNECE_R155
+    - UNECE_R156
+  protected_scope:
+    - vehicle-motion
+    - ota-rollout
+    - remote-assist
+criticality: safety_critical
+classification:
+  level: CUI
+  caveats:
+    - VEHICLE_SAFETY

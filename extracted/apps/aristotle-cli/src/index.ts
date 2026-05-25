@@ -21,6 +21,8 @@ import {
   type SandboxExecutionReceipt,
   type SandboxPolicy,
   type ShadowAction,
+  type AutomotiveDomain,
+  type AutomotiveEvidenceContext,
   type TelecomDomain,
   type TelecomEvidenceContext,
   type AgentObservation,
@@ -58,6 +60,7 @@ import {
   createExecutionControlRuntimeServer,
   deriveKeyId,
   evaluateExecutionControl,
+  exportAutomotiveEvidenceBundle,
   exportEvidenceBundle,
   exportTelecomEvidenceBundle,
   getDefaultDevSigner,
@@ -70,6 +73,7 @@ import {
   reconcileEdgeRecords,
   ConflictInboxStore,
   ApprovalStore,
+  AUTOMOTIVE_ADAPTER_CATALOG,
   TELECOM_ADAPTER_CATALOG,
   runWardMarshalCensus,
   runCarrierScaleBenchmark,
@@ -87,6 +91,7 @@ import {
   SqliteLedgerBackend,
   submitGovernedAction,
   verifyEvidenceBundle,
+  verifyAutomotiveEvidenceBundle,
   verifyGelChain,
   verifySandboxReceipt,
   verifyTelecomEvidenceBundle,
@@ -538,6 +543,9 @@ Commands:
   telecom benchmark                 Run a carrier-scale Commit Gate benchmark
   telecom reconnect-storm           Simulate disconnected edge reconnect reconciliation
   telecom ha-soak                   Simulate multi-region GEL append/verify soak
+  automotive templates              List vehicle Ward templates, policies, and sample actions
+  automotive adapters               List typed ROS 2 / AUTOSAR / OTA / map / remote-assist surfaces
+  automotive evidence export        Export an automotive Evidence Bundle
   keys generate        Generate an Ed25519 Warrant signing keypair
   kill engage|release  Engage/release the sovereign-halt kill switch
   revoke key|envelope|warrant <id>   Revoke a compromised trust root
@@ -1240,6 +1248,94 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
       }
 
       throw new Error("usage: aristotle telecom <templates|adapters|evidence export|benchmark|reconnect-storm|ha-soak> ...");
+    }
+
+    if (command === "automotive") {
+      if (subcommand === "templates") {
+        const base = "examples/automotive";
+        const templates = [
+          `${base}/ward.fleet_region_west.yaml`,
+          `${base}/authority_envelope.fleet_safety_operator.yaml`,
+          `${base}/policy/fleet_region_west.apl`
+        ];
+        const actions = [
+          `${base}/actions/fleet_vehicle_hold.json`,
+          `${base}/actions/ota_campaign_canary.json`,
+          `${base}/actions/map_update_activate.json`,
+          `${base}/actions/remote_assist_pull_over.json`,
+          `${base}/actions/refuse_speed_envelope_violation.json`,
+          `${base}/actions/refuse_disable_safety_envelope.json`,
+          `${base}/actions/simulation_scenario_run.json`
+        ];
+        if (json) printJson(out, { templates, actions }, true);
+        else {
+          out("AristotleOS autonomous vehicle pilot templates\n");
+          for (const file of [...templates, ...actions]) out(`  ${file}\n`);
+        }
+        return 0;
+      }
+
+      if (subcommand === "adapters") {
+        if (json) printJson(out, { adapters: AUTOMOTIVE_ADAPTER_CATALOG }, true);
+        else {
+          out("Typed autonomous vehicle adapter surfaces\n");
+          for (const adapter of AUTOMOTIVE_ADAPTER_CATALOG) {
+            out(`\n${adapter.kind} - ${adapter.label}\n`);
+            out(`  Boundary: ${adapter.consequenceBoundary}\n`);
+            out(`  Actions: ${adapter.actionExamples.join(", ")}\n`);
+            out(`  Registers: ${adapter.requiredRuntimeRegisters.join(", ")}\n`);
+          }
+        }
+        return 0;
+      }
+
+      if (subcommand === "evidence" && rest[0] === "export") {
+        const outPath = requiredOption(rest, "--out");
+        const warrantPath = optionValue(rest, "--warrant");
+        const standards = optionValues(rest, "--standard");
+        const preChecks = optionValues(rest, "--pre-check").map((item) => {
+          const [name, raw = "true", detail] = item.split(":");
+          return { name, ok: raw !== "false" && raw !== "fail", ...(detail ? { detail } : {}) };
+        });
+        const postChecks = optionValues(rest, "--post-check").map((item) => {
+          const [name, raw = "true", detail] = item.split(":");
+          return { name, ok: raw !== "false" && raw !== "fail", ...(detail ? { detail } : {}) };
+        });
+        const automotive: AutomotiveEvidenceContext = {
+          fleet_id: requiredOption(rest, "--fleet"),
+          vehicle_id: requiredOption(rest, "--vehicle"),
+          safety_operator: requiredOption(rest, "--operator"),
+          automotive_domain: (optionValue(rest, "--domain") ?? "fleet-operations") as AutomotiveDomain,
+          operational_scope: requiredOption(rest, "--scope"),
+          odd_id: requiredOption(rest, "--odd"),
+          software_version: optionValue(rest, "--software"),
+          map_version: optionValue(rest, "--map"),
+          remote_assist_session_id: optionValue(rest, "--remote-assist-session"),
+          scenario_id: optionValue(rest, "--scenario"),
+          safety_case_id: requiredOption(rest, "--safety-case"),
+          pre_checks: preChecks.length ? preChecks : [{ name: "vehicle safety precheck attached", ok: true }],
+          ...(postChecks.length ? { post_checks: postChecks } : {}),
+          standards_profile: (standards.length ? standards : ["ISO_26262", "ISO_21448", "ISO_21434", "UNECE_R155", "UNECE_R156"]) as AutomotiveEvidenceContext["standards_profile"],
+          redacted_fields: optionValues(rest, "--redact"),
+          retained_fields: optionValues(rest, "--retain")
+        };
+        const bundle = exportAutomotiveEvidenceBundle({
+          ledgerPath: path.resolve(cwd, requiredOption(rest, "--ledger")),
+          ward: loadWardManifest(path.resolve(cwd, requiredOption(rest, "--ward"))),
+          authorityEnvelope: loadAuthorityEnvelope(path.resolve(cwd, requiredOption(rest, "--envelope"))),
+          recordId: optionValue(rest, "--record-id"),
+          warrant: warrantPath ? JSON.parse(readFileSync(path.resolve(cwd, warrantPath), "utf8")) : undefined,
+          exportedAt: optionValue(rest, "--now"),
+          automotive
+        });
+        writeJson(path.resolve(cwd, outPath), bundle);
+        const verification = verifyAutomotiveEvidenceBundle(bundle);
+        if (json) printJson(out, bundle, true);
+        else out(`automotive_evidence_bundle=${outPath}\nbundle_hash=${bundle.hashes.automotive_bundle_hash}\nverification=${verification.ok ? "ok" : `failed:${verification.failures.join(";")}`}\nvehicle=${automotive.vehicle_id}\noperational_scope=${automotive.operational_scope}\n`);
+        return verification.ok ? 0 : 1;
+      }
+
+      throw new Error("usage: aristotle automotive <templates|adapters|evidence export> ...");
     }
 
     if (command === "execution-control" && subcommand === "shadow") {

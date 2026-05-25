@@ -115,7 +115,9 @@ test("a rejection keeps a dual-control action escalated", () => {
   assert.equal(second.warrant, undefined);
 });
 
-test("without an approval store, dual control is not enforced (opt-in)", () => {
+test("without an approval store, dual control fails closed instead of silently bypassing plural authority", () => {
   const r = evaluateExecutionControl({ ward, authorityEnvelope: envelope, action: action("host.isolate", "h3"), ledgerPath: ledger(), now });
-  assert.equal(r.decision, "ALLOW");
+  assert.equal(r.decision, "ESCALATE");
+  assert.deepEqual(r.reason_codes, ["DUAL_CONTROL_STORE_MISSING"]);
+  assert.equal(r.warrant, undefined);
 });

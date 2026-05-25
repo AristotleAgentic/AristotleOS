@@ -78,6 +78,7 @@ export * from "./degradation.js";
 export * from "./budget.js";
 export * from "./dual-control.js";
 export * from "./telecom.js";
+export * from "./automotive.js";
 
 export {
   type AristotleSigner,
@@ -110,6 +111,7 @@ export type ExecutionControlReasonCode =
   | "REPLAY_DETECTED"
   | "BUDGET_EXCEEDED"
   | "DUAL_CONTROL_REQUIRED"
+  | "DUAL_CONTROL_STORE_MISSING"
   | "AUTHORITY_REVOKED"
   | "CLASSIFICATION_VIOLATION"
   | "DEGRADED_MODE"
@@ -176,6 +178,14 @@ export interface PhysicalBounds {
   max_altitude_m?: number;
   permitted_boundary_id?: string;
   battery_minimum_pct?: number;
+  max_speed_mps?: number;
+  permitted_odd_id?: string;
+  permitted_road_classes?: string[];
+  min_map_confidence?: number;
+  min_localization_confidence?: number;
+  min_perception_confidence?: number;
+  require_mrc_available?: boolean;
+  permitted_drive_states?: string[];
 }
 
 export interface PhysicalInvariantResult {
@@ -525,6 +535,9 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
   if (action.action_type === "drone.disable_geofence") {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "geofence disable is a hard physical interlock violation" };
   }
+  if (action.action_type === "vehicle.disable_safety_envelope" || action.action_type === "vehicle.override.mrc") {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard vehicle safety interlock violation` };
+  }
   const altitude = numericParam(action, "altitude_m");
   if (bounds.max_altitude_m !== undefined && altitude !== undefined && altitude > bounds.max_altitude_m) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `altitude_m ${altitude} exceeds max_altitude_m ${bounds.max_altitude_m}` };
@@ -536,6 +549,38 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
   const battery = numericParam(action, "battery_pct");
   if (bounds.battery_minimum_pct !== undefined && battery !== undefined && battery < bounds.battery_minimum_pct) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `battery_pct ${battery} below minimum ${bounds.battery_minimum_pct}` };
+  }
+  const speed = numericParam(action, "speed_mps");
+  if (bounds.max_speed_mps !== undefined && speed !== undefined && speed > bounds.max_speed_mps) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `speed_mps ${speed} exceeds max_speed_mps ${bounds.max_speed_mps}` };
+  }
+  const odd = stringParam(action, "odd_id");
+  if (bounds.permitted_odd_id && odd && odd !== bounds.permitted_odd_id) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `odd_id ${odd} does not match ${bounds.permitted_odd_id}` };
+  }
+  const roadClass = stringParam(action, "road_class");
+  if (bounds.permitted_road_classes?.length && roadClass && !bounds.permitted_road_classes.includes(roadClass)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `road_class ${roadClass} is outside permitted road classes` };
+  }
+  const mapConfidence = numericParam(action, "map_confidence");
+  if (bounds.min_map_confidence !== undefined && mapConfidence !== undefined && mapConfidence < bounds.min_map_confidence) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `map_confidence ${mapConfidence} below minimum ${bounds.min_map_confidence}` };
+  }
+  const localizationConfidence = numericParam(action, "localization_confidence");
+  if (bounds.min_localization_confidence !== undefined && localizationConfidence !== undefined && localizationConfidence < bounds.min_localization_confidence) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `localization_confidence ${localizationConfidence} below minimum ${bounds.min_localization_confidence}` };
+  }
+  const perceptionConfidence = numericParam(action, "perception_confidence");
+  if (bounds.min_perception_confidence !== undefined && perceptionConfidence !== undefined && perceptionConfidence < bounds.min_perception_confidence) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `perception_confidence ${perceptionConfidence} below minimum ${bounds.min_perception_confidence}` };
+  }
+  const mrcAvailable = booleanParam(action, "mrc_available");
+  if (bounds.require_mrc_available && mrcAvailable !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "minimum-risk-condition capability is required but unavailable" };
+  }
+  const driveState = stringParam(action, "drive_state");
+  if (bounds.permitted_drive_states?.length && driveState && !bounds.permitted_drive_states.includes(driveState)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `drive_state ${driveState} is outside permitted drive states` };
   }
   return { ok: true, reason_codes: [], detail: "physical invariants satisfied" };
 }
@@ -1193,7 +1238,8 @@ function decideAndWarrant(
   runtimeSnapshot: RuntimeRegister,
   replaySeen: boolean,
   budgetExceeded: { reason: string } | null = null,
-  dualControlPending = false
+  dualControlPending = false,
+  dualControlStoreMissing = false
 ): { decision: CommitGateDecision; warrant?: Warrant } {
   const ward = input.ward ?? undefined;
   const revocations = input.revocationListPath ? loadRevocationList(input.revocationListPath) : undefined;
@@ -1215,8 +1261,8 @@ function decideAndWarrant(
   }
   // Dual control gates the ALLOW→Warrant transition: an otherwise-permitted action
   // under M-of-N control escalates for plural approval instead of issuing a Warrant.
-  if (dualControlPending && decision.decision === "ALLOW") {
-    decision = refuse("ESCALATE", ["DUAL_CONTROL_REQUIRED"], canonical, runtimeSnapshot, ward, input.authorityEnvelope ?? undefined);
+  if ((dualControlPending || dualControlStoreMissing) && decision.decision === "ALLOW") {
+    decision = refuse("ESCALATE", [dualControlStoreMissing ? "DUAL_CONTROL_STORE_MISSING" : "DUAL_CONTROL_REQUIRED"], canonical, runtimeSnapshot, ward, input.authorityEnvelope ?? undefined);
   }
   const warrant = decision.decision === "ALLOW" && input.authorityEnvelope
     ? issueWarrant(decision, input.action, input.authorityEnvelope, input.now, signer, input.warrantTtlSeconds)
@@ -1242,13 +1288,13 @@ function recordBudget(input: Omit<EvaluateExecutionControlInput, "ledger">, budg
 }
 
 /** Resolve whether this action is under M-of-N dual control and already approved. */
-function evaluateDualControl(input: Omit<EvaluateExecutionControlInput, "ledger">, canonical: CanonicalAction): { required: number; ttlMs?: number; satisfied: boolean; now: string } | null {
-  if (!input.approvalStore) return null;
+function evaluateDualControl(input: Omit<EvaluateExecutionControlInput, "ledger">, canonical: CanonicalAction): { required: number; ttlMs?: number; satisfied: boolean; now: string; storeAvailable: boolean } | null {
   const policy = dualControlPolicyFrom((input.authorityEnvelope?.constraints as Record<string, unknown> | undefined)?.dual_control);
   if (!policy || !policy.actions.includes(input.action.action_type)) return null;
   const now = input.now ?? new Date().toISOString();
+  if (!input.approvalStore) return { required: policy.required, ttlMs: policy.ttlMs, satisfied: false, now, storeAvailable: false };
   const existing = input.approvalStore.getByHash(canonical.canonical_action_hash, now);
-  return { required: policy.required, ttlMs: policy.ttlMs, satisfied: existing?.status === "approved", now };
+  return { required: policy.required, ttlMs: policy.ttlMs, satisfied: existing?.status === "approved", now, storeAvailable: true };
 }
 
 /** When an action escalated for dual control, ensure a pending approval request exists. */
@@ -1279,7 +1325,7 @@ export function evaluateExecutionControl(input: EvaluateExecutionControlInput): 
       : false;
     const budget = evaluateBudget(input);
     const dual = evaluateDualControl(input, canonical);
-    const { decision, warrant } = traceSpan(tracer, "aristotle.commit_gate.decide", undefined, () => decideAndWarrant(input, signer, canonical, runtimeSnapshot, replaySeen, budget.exceeded, !!dual && !dual.satisfied));
+    const { decision, warrant } = traceSpan(tracer, "aristotle.commit_gate.decide", undefined, () => decideAndWarrant(input, signer, canonical, runtimeSnapshot, replaySeen, budget.exceeded, !!dual && !dual.satisfied, !!dual && !dual.storeAvailable));
     recordBudget(input, budget, decision.decision);
     if (dual) openDualControlRequest(input, canonical, dual, decision);
     const gel_record = traceSpan(tracer, "aristotle.gel.append", undefined, () => (input.ledger
@@ -1315,7 +1361,7 @@ export async function evaluateExecutionControlAsync(input: EvaluateExecutionCont
   const replaySeen = input.replayProtection ? await input.ledger.hasPriorAdmission(canonical.canonical_action_hash) : false;
   const budget = evaluateBudget(input);
   const dual = evaluateDualControl(input, canonical);
-  const { decision, warrant } = decideAndWarrant(input, signer, canonical, runtimeSnapshot, replaySeen, budget.exceeded, !!dual && !dual.satisfied);
+  const { decision, warrant } = decideAndWarrant(input, signer, canonical, runtimeSnapshot, replaySeen, budget.exceeded, !!dual && !dual.satisfied, !!dual && !dual.storeAvailable);
   recordBudget(input, budget, decision.decision);
   if (dual) openDualControlRequest(input, canonical, dual, decision);
   const gel_record = await input.ledger.append({ ward: input.ward, action: input.action, decision, warrant, now: input.now, signer, actor: input.actor, trace_context: input.trace_context });
@@ -1413,7 +1459,10 @@ function parseScalar(value: string): JsonValue {
 export function missingRuntimeRegisters(envelope: AuthorityEnvelope, action: CanonicalActionInput, runtimeRegister: RuntimeRegister): string[] {
   const required = envelope.constraints.required_runtime_registers;
   if (!Array.isArray(required)) return [];
-  const combined = { ...runtimeRegister, telemetry: action.telemetry ?? {}, registers: runtimeRegister.registers ?? {} };
+  const runtimeTelemetry = runtimeRegister.telemetry && typeof runtimeRegister.telemetry === "object" && !Array.isArray(runtimeRegister.telemetry)
+    ? runtimeRegister.telemetry as Record<string, JsonValue>
+    : {};
+  const combined = { ...runtimeRegister, telemetry: { ...runtimeTelemetry, ...(action.telemetry ?? {}) }, registers: runtimeRegister.registers ?? {} };
   return required.filter((item) => typeof item === "string" && getPath(combined, item) === undefined) as string[];
 }
 
@@ -1447,6 +1496,11 @@ function numericParam(action: CanonicalActionInput, key: string): number | undef
 function stringParam(action: CanonicalActionInput, key: string): string | undefined {
   const value = action.params[key];
   return typeof value === "string" ? value : undefined;
+}
+
+function booleanParam(action: CanonicalActionInput, key: string): boolean | undefined {
+  const value = action.params[key];
+  return typeof value === "boolean" ? value : undefined;
 }
 
 export function writeJson(file: string, value: unknown): void {

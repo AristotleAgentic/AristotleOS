@@ -6,6 +6,17 @@ its operator console, SDK, and CLI). Dates are release tags on the
 *authority before consequence · warrant before execution · evidence after every
 decision.*
 
+## v0.1.29 — Autonomous-vehicle fleet vertical + dual-control fail-closed
+- **Automotive/ADS pilot path**: typed adapters (ROS2/DDS, AUTOSAR Adaptive, OTA,
+  map update, remote assist, fleet mgmt, simulation) → Canonical Governed Actions;
+  vehicle-safety physical bounds enforced at the gate (`max_speed_mps`, ODD,
+  road classes, map/localization/perception confidence, MRC availability); vehicle
+  safety-evidence bundles; an AutomotiveFleet console; `aristotle automotive` CLI;
+  `examples/automotive/` + docs (overview, threat model, pilot guide, ward templates).
+- **Dual-control hardening**: a dual-controlled action with **no approval store
+  configured** now fails closed (`DUAL_CONTROL_STORE_MISSING`) instead of silently
+  bypassing plural authority. Full gate green; clean-room clean.
+
 ## v0.1.28 — Telecom pilot path (overview doc) + CHANGELOG refresh
 - `docs/telecom.md` overview for the telecom autonomous-network pilot; CHANGELOG
   brought current through the dual-control + telecom work. Full gate green (37 suites).

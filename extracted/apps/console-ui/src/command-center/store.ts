@@ -32,6 +32,7 @@ export type SectionId =
   | "shadow"
   | "approvals"
   | "noc"
+  | "fleet"
   | "conflicts"
   | "adoption"
   | "failure"

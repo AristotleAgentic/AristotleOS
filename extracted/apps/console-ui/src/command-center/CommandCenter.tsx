@@ -1,5 +1,6 @@
 import {
   Boxes,
+  Car,
   CheckCircle2,
   ClipboardCheck,
   Construction,
@@ -24,6 +25,7 @@ import type { LucideIcon } from "lucide-react";
 import React from "react";
 import "./theme.css";
 import { AdoptionPathConsole } from "./AdoptionPathConsole.js";
+import { AutomotiveFleetConsole } from "./AutomotiveFleetConsole.js";
 import { CommandHeader } from "./CommandHeader.js";
 import { CommitGateConsole } from "./CommitGateConsole.js";
 import { ConflictInboxConsole } from "./ConflictInboxConsole.js";
@@ -51,6 +53,7 @@ const NAV: Array<{ id: SectionId; label: string; icon: LucideIcon }> = [
   { id: "conflicts", label: "Conflicts", icon: Workflow },
   { id: "approvals", label: "Approvals", icon: UserCheck },
   { id: "noc", label: "NOC", icon: RadioTower },
+  { id: "fleet", label: "Fleet", icon: Car },
   { id: "adoption", label: "Adopt", icon: ClipboardCheck },
   { id: "failure", label: "Failure", icon: ShieldAlert },
   { id: "marshal", label: "Marshal", icon: Crosshair },
@@ -71,6 +74,7 @@ const SECTION_META: Record<SectionId, { title: string; sub: string }> = {
   conflicts: { title: "Edge Conflict Inbox", sub: "Resolve disconnected edge reality against central governance" },
   approvals: { title: "Dual-Control Approvals", sub: "M-of-N approval for the gravest actions — plural authority, fully evidenced" },
   noc: { title: "Telecom NOC Workflow", sub: "Govern autonomous network changes from mission to admitted execution to evidence export" },
+  fleet: { title: "Autonomous Vehicle Fleet", sub: "Govern vehicle actions from mission to admitted execution to safety evidence export" },
   adoption: { title: "Commercial Adoption Path", sub: "From sandbox to shadow to enforcement to evidence export" },
   failure: { title: "Failure Mode Console", sub: "Partitions, stale authority, witness disagreement, and replay divergence" },
   marshal: { title: "Ward Marshal", sub: "Rogue-agent census and warrant-backed interdiction" },
@@ -105,6 +109,8 @@ function SectionBody({ section }: { section: SectionId }) {
       return <ApprovalsConsole />;
     case "noc":
       return <TelecomNocConsole />;
+    case "fleet":
+      return <AutomotiveFleetConsole />;
     case "conflicts":
       return <ConflictInboxConsole />;
     case "adoption":

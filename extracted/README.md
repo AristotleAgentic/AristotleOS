@@ -40,6 +40,9 @@ Docs:
 - [Ward Marshal](docs/ward-marshal.md)
 - [Autonomous Network Pilot Guide](docs/autonomous-network-pilot-guide.md)
 - [Telecom threat model addendum](docs/telecom-threat-model.md)
+- [Autonomous Vehicle Pilot Guide](docs/autonomous-vehicle-pilot-guide.md)
+- [Automotive execution-control path](docs/automotive.md)
+- [Automotive threat model addendum](docs/automotive-threat-model.md)
 - [Defense readiness roadmap](docs/defense-readiness.md)
 - [Crypto posture](docs/crypto-posture.md)
 - [Commercial adoption path](docs/commercial-adoption-path.md)
@@ -121,6 +124,26 @@ npm run aristotle -- telecom benchmark \
 ```
 
 The Command Center includes a NOC workflow from "create governed network mission" to "admitted execution" to "telecom Evidence Bundle export." See [docs/autonomous-network-pilot-guide.md](docs/autonomous-network-pilot-guide.md) and [docs/telecom-threat-model.md](docs/telecom-threat-model.md).
+
+## Autonomous Vehicle Readiness
+
+AristotleOS now includes a fleet-safety pilot path for autonomous vehicle companies. ROS 2/DDS, AUTOSAR Adaptive, OTA campaign, HD map update, remote-assist, fleet-management, and simulation surfaces become typed adapter boundaries. They execute only after Ward resolution, Authority Envelope validation, Vehicle Safety Invariant checks, Commit Gate admission, Warrant verification, and GEL commit.
+
+Run the vehicle slice:
+
+```bash
+npm run test:automotive
+npm run aristotle -- automotive templates
+npm run aristotle -- automotive adapters
+npm run aristotle -- execution-control evaluate \
+  --ward examples/automotive/ward.fleet_region_west.yaml \
+  --envelope examples/automotive/authority_envelope.fleet_safety_operator.yaml \
+  --action examples/automotive/actions/fleet_vehicle_hold.json \
+  --ledger ./.tmp/automotive.gel.jsonl \
+  --now 2026-05-25T15:00:00.000Z
+```
+
+The Command Center includes a Fleet workflow from "create governed fleet mission" to "admitted execution" to "automotive Evidence Bundle export." See [docs/autonomous-vehicle-pilot-guide.md](docs/autonomous-vehicle-pilot-guide.md), [docs/automotive.md](docs/automotive.md), and [docs/vehicle-ward-templates.md](docs/vehicle-ward-templates.md).
 
 ## Ward/Warrant Execution-Control Path
 

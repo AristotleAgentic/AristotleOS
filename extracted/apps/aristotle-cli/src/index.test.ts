@@ -175,6 +175,95 @@ test("cli telecom commands expose CSP templates, evidence export, and scale dril
   }
 });
 
+test("cli automotive commands expose vehicle templates, adapters, and evidence export", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    const examples = path.resolve(process.cwd(), "examples", "automotive");
+    cpSync(examples, path.join(dir, "automotive"), { recursive: true });
+
+    const templates = await capture(["automotive", "templates"], dir);
+    assert.equal(templates.code, 0, templates.stderr);
+    assert.match(templates.stdout, /ward.fleet_region_west.yaml/);
+    assert.match(templates.stdout, /ota_campaign_canary.json/);
+
+    const adapters = await capture(["automotive", "adapters"], dir);
+    assert.equal(adapters.code, 0, adapters.stderr);
+    assert.match(adapters.stdout, /ros2-dds/);
+    assert.match(adapters.stdout, /ota-campaign/);
+
+    const allowed = await capture([
+      "execution-control",
+      "evaluate",
+      "--ward",
+      "automotive/ward.fleet_region_west.yaml",
+      "--envelope",
+      "automotive/authority_envelope.fleet_safety_operator.yaml",
+      "--action",
+      "automotive/actions/fleet_vehicle_hold.json",
+      "--ledger",
+      ".tmp/automotive.gel.jsonl",
+      "--now",
+      "2026-05-25T15:00:00.000Z"
+    ], dir);
+    assert.equal(allowed.code, 0, allowed.stderr);
+    assert.match(allowed.stdout, /decision=ALLOW/);
+
+    const refused = await capture([
+      "execution-control",
+      "evaluate",
+      "--ward",
+      "automotive/ward.fleet_region_west.yaml",
+      "--envelope",
+      "automotive/authority_envelope.fleet_safety_operator.yaml",
+      "--action",
+      "automotive/actions/refuse_speed_envelope_violation.json",
+      "--ledger",
+      ".tmp/automotive-refuse.gel.jsonl",
+      "--now",
+      "2026-05-25T15:00:00.000Z"
+    ], dir);
+    assert.equal(refused.code, 0, refused.stderr);
+    assert.match(refused.stdout, /decision=REFUSE/);
+
+    const bundle = await capture([
+      "automotive",
+      "evidence",
+      "export",
+      "--ward",
+      "automotive/ward.fleet_region_west.yaml",
+      "--envelope",
+      "automotive/authority_envelope.fleet_safety_operator.yaml",
+      "--ledger",
+      ".tmp/automotive-refuse.gel.jsonl",
+      "--out",
+      ".tmp/automotive-evidence.json",
+      "--fleet",
+      "fleet-west",
+      "--vehicle",
+      "AV-1042",
+      "--operator",
+      "operator:fleet-safety-west",
+      "--scope",
+      "sf-soma-odd",
+      "--odd",
+      "sf-soma-daylight",
+      "--software",
+      "AVOS-2026.05.25",
+      "--map",
+      "2026.05.25",
+      "--safety-case",
+      "SC-AV-WEST-2026-001",
+      "--redact",
+      "vin"
+    ], dir);
+    assert.equal(bundle.code, 0, bundle.stderr);
+    assert.match(bundle.stdout, /verification=ok/);
+    assert.equal(existsSync(path.join(dir, ".tmp", "automotive-evidence.json")), true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("cli run governs a child agent process and writes a verifiable ledger", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
   try {

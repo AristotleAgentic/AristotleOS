@@ -49,11 +49,34 @@ export function validateWardManifest(value: unknown): ValidationResult {
     if (!isRecord(value.physical_bounds)) {
       issues.push({ path: "ward.physical_bounds", message: "must be an object when present" });
     } else {
-      for (const numKey of ["max_altitude_m", "battery_minimum_pct"]) {
+      for (const numKey of [
+        "max_altitude_m",
+        "battery_minimum_pct",
+        "max_speed_mps",
+        "min_map_confidence",
+        "min_localization_confidence",
+        "min_perception_confidence"
+      ]) {
         const v = value.physical_bounds[numKey];
         if (v !== undefined && (typeof v !== "number" || !Number.isFinite(v))) {
           issues.push({ path: `ward.physical_bounds.${numKey}`, message: "must be a finite number when present" });
         }
+      }
+      for (const strKey of ["permitted_boundary_id", "permitted_odd_id"]) {
+        const v = value.physical_bounds[strKey];
+        if (v !== undefined && (typeof v !== "string" || v.trim() === "")) {
+          issues.push({ path: `ward.physical_bounds.${strKey}`, message: "must be a non-empty string when present" });
+        }
+      }
+      for (const arrKey of ["permitted_road_classes", "permitted_drive_states"]) {
+        const v = value.physical_bounds[arrKey];
+        if (v !== undefined && (!Array.isArray(v) || !v.every((item) => typeof item === "string" && item.trim() !== ""))) {
+          issues.push({ path: `ward.physical_bounds.${arrKey}`, message: "must be an array of non-empty strings when present" });
+        }
+      }
+      const mrc = value.physical_bounds.require_mrc_available;
+      if (mrc !== undefined && typeof mrc !== "boolean") {
+        issues.push({ path: "ward.physical_bounds.require_mrc_available", message: "must be a boolean when present" });
       }
     }
   }

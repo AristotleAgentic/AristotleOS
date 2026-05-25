@@ -1,5 +1,9 @@
 import type {
   Agent,
+  AutomotiveAdapterSurface,
+  AutomotiveEvidenceExport,
+  AutomotiveFleetStep,
+  AutomotiveSafetyDrill,
   AuthorityDomain,
   ApprovalItem,
   AuthorityEnvelope,
@@ -524,6 +528,94 @@ export const TELECOM_SCALE_DRILLS: TelecomScaleDrill[] = [
   { id: "storm", label: "Reconnect storm", command: "npm run soak:telecom", target: "edge records replayed", current: "conflicts classified", posture: "amber", evidence: "Disconnected edge decisions are re-evaluated and routed to Conflict Inbox." },
   { id: "ha", label: "Multi-region ledger soak", command: "npm run soak:telecom", target: "east/central/west", current: "hash chain verified", posture: "green", evidence: "Region-tagged decisions append to a verifiable GEL chain." },
   { id: "pilot", label: "CSP pilot export", command: "aristotle telecom evidence export", target: "audit-ready", current: "bundle verifies", posture: "green", evidence: "NOC, policy, authority, Warrant, and ledger material are sealed for audit." }
+];
+
+export const AUTOMOTIVE_FLEET_WORKFLOW: AutomotiveFleetStep[] = [
+  { id: "fleet-mission", label: "Create governed fleet mission", owner: "Fleet safety", state: "complete", evidence: "Ward ward-av-fleet-west binds ODD, speed, perception, localization, map, and MRC invariants." },
+  { id: "fleet-context", label: "Bind vehicle runtime registers", owner: "Safety case owner", state: "complete", evidence: "Vehicle, ODD, road class, software, map, localization, perception, and MRC snapshot attached." },
+  { id: "fleet-shadow", label: "Profile in Shadow Mode", owner: "Autonomy validation", state: "complete", evidence: "Vehicle hold admits; disable safety envelope and speed violations remain REFUSE." },
+  { id: "fleet-approval", label: "Dual-control approval", owner: "Fleet operations", state: "active", evidence: "OTA, map activation, and remote-assist commands require 2-of-N approval before Warrant issuance." },
+  { id: "fleet-gate", label: "Vehicle Commit Gate", owner: "Governance kernel", state: "pending", evidence: "ALLOW mints a single-use Warrant scoped to the canonical vehicle action hash." },
+  { id: "fleet-execute", label: "Execute adapter", owner: "Vehicle boundary", state: "pending", evidence: "ROS 2, AUTOSAR, OTA, map, fleet, and remote-assist adapters execute only after Warrant verification." },
+  { id: "fleet-export", label: "Export automotive evidence", owner: "Safety / compliance", state: "pending", evidence: "Automotive Evidence Bundle includes safety case, GEL record, Warrant, ODD, and redaction manifest." }
+];
+
+export const AUTOMOTIVE_ADAPTERS: AutomotiveAdapterSurface[] = [
+  {
+    id: "ros2-dds",
+    label: "ROS 2 / DDS",
+    standard: "ROS 2/DDS",
+    actionTypes: ["ros2.command.publish", "vehicle.behavior.request"],
+    requiredRegisters: ["vehicle_id", "odd_id", "mrc_available"],
+    boundary: "Command topics are canonicalized and warranted before the vehicle command bridge publishes.",
+    posture: "amber"
+  },
+  {
+    id: "autosar-adaptive",
+    label: "AUTOSAR Adaptive",
+    standard: "AUTOSAR",
+    actionTypes: ["autosar.service.invoke", "vehicle.diagnostics.request"],
+    requiredRegisters: ["drive_state", "safety_case_id", "vehicle_id"],
+    boundary: "Service invocations become governed actions before touching platform services.",
+    posture: "green"
+  },
+  {
+    id: "ota-campaign",
+    label: "OTA Campaign",
+    standard: "OTA",
+    actionTypes: ["ota.campaign.stage", "ota.campaign.activate", "ota.campaign.rollback"],
+    requiredRegisters: ["drive_state", "ota_image_digest", "vehicle_id"],
+    boundary: "Software rollout waves require plural authority and a vehicle-state snapshot.",
+    posture: "amber"
+  },
+  {
+    id: "map-update",
+    label: "HD Map Update",
+    standard: "Map",
+    actionTypes: ["map.update.activate", "map.update.rollback"],
+    requiredRegisters: ["map_version", "map_confidence", "odd_id"],
+    boundary: "Map activation is admitted only inside the declared ODD and evidence bundle.",
+    posture: "green"
+  },
+  {
+    id: "remote-assist",
+    label: "Remote Assist",
+    standard: "Remote Assist",
+    actionTypes: ["remote_assist.command", "fleet.vehicle.hold"],
+    requiredRegisters: ["remote_assist_session_id", "operator_id", "mrc_available"],
+    boundary: "Human-assisted commands require session identity, MRC availability, and dual control for consequential maneuvers.",
+    posture: "amber"
+  },
+  {
+    id: "simulation",
+    label: "Simulation / Replay",
+    standard: "Simulation",
+    actionTypes: ["simulation.scenario.run", "simulation.replay.verify"],
+    requiredRegisters: ["scenario_id", "safety_case_id"],
+    boundary: "Counterfactual replay and validation runs produce evidence against the same policy material.",
+    posture: "green"
+  }
+];
+
+export const AUTOMOTIVE_EVIDENCE_EXPORT: AutomotiveEvidenceExport = {
+  bundleVersion: "aristotle.automotive-evidence.v1",
+  fleetId: "fleet-west",
+  vehicleId: "AV-1042",
+  safetyOperator: "operator:fleet-safety-west",
+  operationalScope: "sf-soma-odd",
+  oddId: "sf-soma-daylight",
+  standardsProfile: ["ISO_26262", "ISO_21448", "ISO_21434", "UNECE_R155", "UNECE_R156"],
+  redactedFields: ["vin", "passenger_id", "precise_route"],
+  bundleHash: shortHash("automotive-evidence-bundle-fleet-west", 24),
+  verification: "ok"
+};
+
+export const AUTOMOTIVE_SAFETY_DRILLS: AutomotiveSafetyDrill[] = [
+  { id: "odd", label: "ODD boundary", invariant: "odd_id == sf-soma-daylight", current: "bound", posture: "green", evidence: "Actions outside the declared ODD fail before Warrant issuance." },
+  { id: "speed", label: "Speed envelope", invariant: "speed_mps <= 13.4", current: "8.1 m/s", posture: "green", evidence: "Over-speed requests return PHYSICAL_INVARIANT_FAILED and no Warrant." },
+  { id: "mrc", label: "Minimum-risk condition", invariant: "mrc_available == true", current: "available", posture: "green", evidence: "Remote-assist and fleet commands fail closed when MRC is unavailable." },
+  { id: "perception", label: "Sensor confidence", invariant: "map/localization/perception >= thresholds", current: "above threshold", posture: "green", evidence: "Low-confidence actions are refused at the physical invariant gate." },
+  { id: "ota", label: "OTA plural authority", invariant: "2-of-N approval before Warrant", current: "pending", posture: "amber", evidence: "OTA staging cannot mint a Warrant without dual-control approval." }
 ];
 
 export const POLICY_HARNESS: PolicyHarnessCase[] = [

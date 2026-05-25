@@ -83,4 +83,28 @@ aristotle telecom benchmark \
   --count 500
 ```
 
+## Automotive pilot commands
+
+- `aristotle automotive templates`: list vehicle Ward, Authority Envelope, APL, and sample action fixtures
+- `aristotle automotive adapters`: list typed ROS 2/DDS, AUTOSAR Adaptive, OTA, map, remote-assist, fleet, and simulation boundaries
+- `aristotle automotive evidence export`: export an Automotive Evidence Bundle with fleet, vehicle, ODD, safety-case, standards, redaction, GEL, and Warrant material
+
+Example:
+
+```bash
+aristotle automotive evidence export \
+  --ward examples/automotive/ward.fleet_region_west.yaml \
+  --envelope examples/automotive/authority_envelope.fleet_safety_operator.yaml \
+  --ledger ./.tmp/automotive.gel.jsonl \
+  --out ./.tmp/automotive-evidence.json \
+  --fleet fleet-west \
+  --vehicle AV-1042 \
+  --operator operator:fleet-safety-west \
+  --scope sf-soma-odd \
+  --odd sf-soma-daylight \
+  --software AVOS-2026.05.25 \
+  --map 2026.05.25 \
+  --safety-case SC-AV-WEST-2026-001
+```
+
 The CLI is intentionally deterministic. It does not call an LLM in the enforcement path.

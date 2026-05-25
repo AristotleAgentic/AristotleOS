@@ -1,0 +1,42 @@
+{
+  "action_id": "av-map-activate-001",
+  "ward_id": "ward-av-fleet-west",
+  "subject": "agent:fleet-safety-operator",
+  "action_type": "map.update.activate",
+  "target": "hd-map/sf-soma/2026.05.25",
+  "params": {
+    "adapter": "map-update",
+    "map_id": "sf-soma",
+    "map_version": "2026.05.25",
+    "operation": "activate",
+    "boundary_id": "sf-soma-odd",
+    "odd_id": "sf-soma-daylight",
+    "road_class": "residential",
+    "drive_state": "parked",
+    "speed_mps": 0,
+    "map_confidence": 0.996,
+    "localization_confidence": 0.992,
+    "perception_confidence": 0.979,
+    "mrc_available": true
+  },
+  "requested_at": "2026-05-25T15:00:00.000Z",
+  "request_id": "req-av-map-001",
+  "telemetry": {
+    "vehicle_id": "AV-1042",
+    "fleet_region": "west",
+    "odd_id": "sf-soma-daylight",
+    "road_class": "residential",
+    "drive_state": "parked",
+    "speed_mps": 0,
+    "map_confidence": 0.996,
+    "localization_confidence": 0.992,
+    "perception_confidence": 0.979,
+    "mrc_available": true,
+    "map_version": "2026.05.25",
+    "safety_case_id": "SC-AV-WEST-2026-001"
+  },
+  "classification": {
+    "level": "CUI",
+    "caveats": ["VEHICLE_SAFETY"]
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "action_id": "av-fleet-hold-001",
+  "ward_id": "ward-av-fleet-west",
+  "subject": "agent:fleet-safety-operator",
+  "action_type": "fleet.vehicle.hold",
+  "target": "fleet-west/vehicle/AV-1042",
+  "params": {
+    "adapter": "fleet-management",
+    "fleet_id": "fleet-west",
+    "vehicle_id": "AV-1042",
+    "operation": "hold",
+    "boundary_id": "sf-soma-odd",
+    "odd_id": "sf-soma-daylight",
+    "road_class": "urban-arterial",
+    "drive_state": "low_speed_autonomy",
+    "speed_mps": 8.1,
+    "map_confidence": 0.992,
+    "localization_confidence": 0.991,
+    "perception_confidence": 0.973,
+    "mrc_available": true
+  },
+  "requested_at": "2026-05-25T15:00:00.000Z",
+  "request_id": "req-av-hold-001",
+  "telemetry": {
+    "vehicle_id": "AV-1042",
+    "fleet_region": "west",
+    "odd_id": "sf-soma-daylight",
+    "road_class": "urban-arterial",
+    "drive_state": "low_speed_autonomy",
+    "speed_mps": 8.1,
+    "map_confidence": 0.992,
+    "localization_confidence": 0.991,
+    "perception_confidence": 0.973,
+    "mrc_available": true,
+    "safety_case_id": "SC-AV-WEST-2026-001"
+  },
+  "classification": {
+    "level": "CUI",
+    "caveats": ["VEHICLE_SAFETY"]
+  }
+}

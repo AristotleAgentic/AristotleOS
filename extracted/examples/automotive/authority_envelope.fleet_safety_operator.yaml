@@ -1,0 +1,41 @@
+envelope_id: ae-av-fleet-safety-001
+ward_id: ward-av-fleet-west
+subject: agent:fleet-safety-operator
+allowed_actions:
+  - fleet.vehicle.hold
+  - fleet.vehicle.return-to-base
+  - ota.campaign.stage
+  - map.update.activate
+  - remote_assist.command
+  - simulation.scenario.run
+denied_actions:
+  - vehicle.disable_safety_envelope
+  - vehicle.override.mrc
+  - vehicle.force_autonomy_outside_odd
+constraints:
+  required_runtime_registers:
+    - telemetry.vehicle_id
+    - telemetry.odd_id
+    - telemetry.drive_state
+    - telemetry.map_confidence
+    - telemetry.localization_confidence
+    - telemetry.perception_confidence
+    - telemetry.mrc_available
+    - telemetry.safety_case_id
+  permitted_boundary_id: sf-soma-odd
+  dual_control:
+    actions:
+      - ota.campaign.stage
+      - map.update.activate
+      - remote_assist.command
+    required: 2
+    ttl_ms: 900000
+  budget:
+    maxCallsPerWindow: 500
+    windowMs: 3600000
+expires_at: 2026-12-31T23:59:59Z
+issuer: aristotle-vehicle-safety-root
+classification:
+  level: CUI
+  caveats:
+    - VEHICLE_SAFETY

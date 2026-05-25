@@ -374,6 +374,46 @@ export interface TelecomScaleDrill {
   evidence: string;
 }
 
+export interface AutomotiveFleetStep {
+  id: string;
+  label: string;
+  owner: string;
+  state: "complete" | "active" | "blocked" | "pending";
+  evidence: string;
+}
+
+export interface AutomotiveAdapterSurface {
+  id: string;
+  label: string;
+  standard: "ROS 2/DDS" | "AUTOSAR" | "OTA" | "Map" | "Remote Assist" | "Fleet" | "Simulation";
+  actionTypes: string[];
+  requiredRegisters: string[];
+  boundary: string;
+  posture: Posture;
+}
+
+export interface AutomotiveEvidenceExport {
+  bundleVersion: string;
+  fleetId: string;
+  vehicleId: string;
+  safetyOperator: string;
+  operationalScope: string;
+  oddId: string;
+  standardsProfile: string[];
+  redactedFields: string[];
+  bundleHash: string;
+  verification: "ok" | "blocked";
+}
+
+export interface AutomotiveSafetyDrill {
+  id: string;
+  label: string;
+  invariant: string;
+  current: string;
+  posture: Posture;
+  evidence: string;
+}
+
 export interface WardMarshalFinding {
   id: string;
   subject: string;
