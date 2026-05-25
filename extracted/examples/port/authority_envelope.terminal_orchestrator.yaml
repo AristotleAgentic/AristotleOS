@@ -1,0 +1,65 @@
+envelope_id: ae-port-terminal-alpha-001
+ward_id: ward-port-terminal-alpha
+subject: agent:terminal-orchestrator
+allowed_actions:
+  - tos.container.release
+  - tos.yard-move.authorize
+  - edi.manifest.submit
+  - pcs.release-notice.publish
+  - customs.hold.release
+  - security.hold.release
+  - vts.berth.clearance
+  - ais.track.attest
+  - crane.move.request
+  - crane.job.assign
+  - gate.access.grant
+  - gate.appointment.update
+  - yard.move.authorize
+  - yard.route.assign
+  - reefer.setpoint.update
+  - reefer.alarm.ack
+  - weighbridge.vgm.verify
+  - shore-power.energize.request
+  - shore-power.isolate.request
+  - hazmat.route.authorize
+  - bunkering.operation.authorize
+denied_actions:
+  - port.disable_crane_interlock
+  - crane.override_exclusion_zone
+  - customs.force_release_hold
+  - gate.force_open
+  - shore-power.force_energize
+  - pnt.override_confidence
+constraints:
+  required_runtime_registers:
+    - telemetry.terminal_id
+    - telemetry.tos_transaction_id
+    - telemetry.customs_hold
+    - telemetry.security_hold
+    - telemetry.vgm_verified
+    - telemetry.pnt_confidence
+    - telemetry.ot_telemetry_age_ms
+    - telemetry.crane_exclusion_zone_clear
+    - telemetry.spreader_locked
+    - telemetry.berth_conflict_present
+    - telemetry.tide_window_open
+    - telemetry.vessel_clearance_granted
+    - telemetry.truck_appointment_valid
+    - telemetry.driver_identity_verified
+    - telemetry.manual_fallback_ready
+    - telemetry.operator_id
+  dual_control:
+    actions:
+      - customs.hold.release
+      - vts.berth.clearance
+      - crane.move.request
+      - shore-power.energize.request
+      - hazmat.route.authorize
+    required: 2
+    ttl_ms: 900000
+expires_at: 2026-12-31T23:59:59Z
+issuer: aristotle-port-root
+classification:
+  level: CUI
+  caveats:
+    - PORT_OPS

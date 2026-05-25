@@ -164,4 +164,68 @@ aristotle rail evidence export \
   --track main-1
 ```
 
+## Port pilot commands
+
+- `aristotle port templates`: list maritime port Ward, Authority Envelope, APL, and sample action fixtures
+- `aristotle port adapters`: list typed TOS, PCS/EDI, customs-hold, VTS/AIS/PNT, crane, gate, yard, reefer, weighbridge, shore-power, and hazmat boundaries
+- `aristotle port evidence export`: export a Port Evidence Bundle with terminal, berth, gate, container, vessel, cargo, GEL, and Warrant material
+
+Example:
+
+```bash
+aristotle port evidence export \
+  --ward examples/port/ward.container_terminal_alpha.yaml \
+  --envelope examples/port/authority_envelope.terminal_orchestrator.yaml \
+  --ledger ./.tmp/port.gel.jsonl \
+  --out ./.tmp/port-evidence.json \
+  --port port-of-aristotle \
+  --facility facility-alpha \
+  --terminal terminal-alpha \
+  --ops-center terminal-control-alpha \
+  --berth berth-7 \
+  --yard-block A12 \
+  --gate gate-3 \
+  --container MSCU1234567 \
+  --vessel IMO9876543 \
+  --voyage VOY-ALPHA-19 \
+  --release REL-2026-0525-001 \
+  --equipment ASC-12 \
+  --cargo-type reefer \
+  --hazmat none \
+  --reefer \
+  --weight-kg 22400
+```
+
+## Water pilot commands
+
+- `aristotle water templates`: list water utility Ward, Authority Envelope, APL, and sample action fixtures
+- `aristotle water adapters`: list typed SCADA, PLC/RTU, pump, valve, dosing, lab, historian, AMI, tank, lift-station, UV, and discharge boundaries
+- `aristotle water evidence export`: export a Water Evidence Bundle with utility, system, facility, process snapshot, work order, permit, GEL, and Warrant material
+
+Example:
+
+```bash
+aristotle water evidence export \
+  --ward examples/water/ward.drinking_water_plant.yaml \
+  --envelope examples/water/authority_envelope.water_operator.yaml \
+  --ledger ./.tmp/water.gel.jsonl \
+  --out ./.tmp/water-evidence.json \
+  --utility west-municipal-water \
+  --system west-water-system \
+  --facility west-treatment-plant \
+  --ops-center west-water-control \
+  --asset PUMP-WEST-2 \
+  --asset-type pump \
+  --process-area distribution \
+  --pressure-zone west-zone-a \
+  --work-order WO-WATER-0525-11 \
+  --permit NPDES-WEST-001 \
+  --chlorine 0.8 \
+  --ph 7.3 \
+  --turbidity 0.08 \
+  --pressure 62 \
+  --tank-level 66 \
+  --flow 12.4
+```
+
 The CLI is intentionally deterministic. It does not call an LLM in the enforcement path.

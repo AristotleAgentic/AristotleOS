@@ -25,10 +25,14 @@ import {
   type AutomotiveEvidenceContext,
   type GridDomain,
   type GridEvidenceContext,
+  type PortDomain,
+  type PortEvidenceContext,
   type RailDomain,
   type RailEvidenceContext,
   type TelecomDomain,
   type TelecomEvidenceContext,
+  type WaterDomain,
+  type WaterEvidenceContext,
   type AgentObservation,
   type AgentRegistry,
   type BehaviorEvent,
@@ -67,6 +71,8 @@ import {
   exportAutomotiveEvidenceBundle,
   exportEvidenceBundle,
   exportGridEvidenceBundle,
+  exportWaterEvidenceBundle,
+  exportPortEvidenceBundle,
   exportRailEvidenceBundle,
   exportTelecomEvidenceBundle,
   getDefaultDevSigner,
@@ -81,8 +87,10 @@ import {
   ApprovalStore,
   AUTOMOTIVE_ADAPTER_CATALOG,
   GRID_ADAPTER_CATALOG,
+  PORT_ADAPTER_CATALOG,
   RAIL_ADAPTER_CATALOG,
   TELECOM_ADAPTER_CATALOG,
+  WATER_ADAPTER_CATALOG,
   runWardMarshalCensus,
   runCarrierScaleBenchmark,
   runReconnectStormSimulation,
@@ -101,6 +109,8 @@ import {
   verifyEvidenceBundle,
   verifyAutomotiveEvidenceBundle,
   verifyGridEvidenceBundle,
+  verifyWaterEvidenceBundle,
+  verifyPortEvidenceBundle,
   verifyRailEvidenceBundle,
   verifyGelChain,
   verifySandboxReceipt,
@@ -562,6 +572,12 @@ Commands:
   rail templates                    List railroad Ward templates, policies, and sample actions
   rail adapters                     List typed dispatch / PTC / wayside / crew / consist surfaces
   rail evidence export              Export a railroad Evidence Bundle
+  port templates                    List port Ward templates, policies, and sample actions
+  port adapters                     List typed TOS / PCS / VTS / crane / gate / reefer surfaces
+  port evidence export              Export a maritime port Evidence Bundle
+  water templates                   List water utility Ward templates, policies, and sample actions
+  water adapters                    List typed SCADA / PLC / pump / valve / dosing / discharge surfaces
+  water evidence export             Export a water infrastructure Evidence Bundle
   keys generate        Generate an Ed25519 Warrant signing keypair
   kill engage|release  Engage/release the sovereign-halt kill switch
   revoke key|envelope|warrant <id>   Revoke a compromised trust root
@@ -1537,6 +1553,211 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
       }
 
       throw new Error("usage: aristotle rail <templates|adapters|evidence export> ...");
+    }
+
+    if (command === "port") {
+      if (subcommand === "templates") {
+        const base = "examples/port";
+        const templates = [
+          `${base}/ward.container_terminal_alpha.yaml`,
+          `${base}/authority_envelope.terminal_orchestrator.yaml`,
+          `${base}/policy/container_terminal_alpha.apl`
+        ];
+        const actions = [
+          `${base}/actions/allow_container_release.json`,
+          `${base}/actions/refuse_customs_hold_release.json`,
+          `${base}/actions/refuse_crane_exclusion_zone.json`,
+          `${base}/actions/escalate_missing_pnt_state.json`,
+          `${base}/actions/refuse_force_gate_open.json`
+        ];
+        if (json) printJson(out, { templates, actions }, true);
+        else {
+          out("AristotleOS port pilot templates\n");
+          for (const file of [...templates, ...actions]) out(`  ${file}\n`);
+        }
+        return 0;
+      }
+
+      if (subcommand === "adapters") {
+        if (json) printJson(out, { adapters: PORT_ADAPTER_CATALOG }, true);
+        else {
+          out("Typed maritime port adapter surfaces\n");
+          for (const adapter of PORT_ADAPTER_CATALOG) {
+            out(`\n${adapter.kind} - ${adapter.label}\n`);
+            out(`  Boundary: ${adapter.consequenceBoundary}\n`);
+            out(`  Actions: ${adapter.actionExamples.join(", ")}\n`);
+            out(`  Registers: ${adapter.requiredRuntimeRegisters.join(", ")}\n`);
+          }
+        }
+        return 0;
+      }
+
+      if (subcommand === "evidence" && rest[0] === "export") {
+        const outPath = requiredOption(rest, "--out");
+        const warrantPath = optionValue(rest, "--warrant");
+        const profiles = optionValues(rest, "--profile");
+        const preChecks = optionValues(rest, "--pre-check").map((item) => {
+          const [name, raw = "true", detail] = item.split(":");
+          return { name, ok: raw !== "false" && raw !== "fail", ...(detail ? { detail } : {}) };
+        });
+        const postChecks = optionValues(rest, "--post-check").map((item) => {
+          const [name, raw = "true", detail] = item.split(":");
+          return { name, ok: raw !== "false" && raw !== "fail", ...(detail ? { detail } : {}) };
+        });
+        const weight = optionValue(rest, "--weight-kg");
+        const port: PortEvidenceContext = {
+          port_id: requiredOption(rest, "--port"),
+          facility_id: requiredOption(rest, "--facility"),
+          terminal_id: requiredOption(rest, "--terminal"),
+          port_domain: (optionValue(rest, "--domain") ?? "container-terminal") as PortDomain,
+          operations_center: requiredOption(rest, "--ops-center"),
+          berth_id: optionValue(rest, "--berth"),
+          yard_block_id: optionValue(rest, "--yard-block"),
+          gate_id: optionValue(rest, "--gate"),
+          container_id: optionValue(rest, "--container"),
+          vessel_imo: optionValue(rest, "--vessel"),
+          voyage_id: optionValue(rest, "--voyage"),
+          booking_id: optionValue(rest, "--booking"),
+          bill_of_lading: optionValue(rest, "--bol"),
+          release_order_id: optionValue(rest, "--release"),
+          equipment_id: optionValue(rest, "--equipment"),
+          cargo_profile: {
+            cargo_type: optionValue(rest, "--cargo-type") ?? "container",
+            hazmat_class: optionValue(rest, "--hazmat"),
+            reefer: rest.includes("--reefer"),
+            ...(weight ? { container_weight_kg: Number(weight) } : {})
+          },
+          standards_profile: (profiles.length ? profiles : ["USCG_MTSA_CYBER", "IMO_MSC_FAL", "CISA_MTS_RESILIENCE", "ISPS", "NIST_CSF", "LOCAL_TERMINAL_RULE"]) as PortEvidenceContext["standards_profile"],
+          pre_checks: preChecks.length ? preChecks : [{ name: "customs/security holds evaluated", ok: true }],
+          ...(postChecks.length ? { post_checks: postChecks } : {}),
+          redacted_fields: optionValues(rest, "--redact"),
+          retained_fields: optionValues(rest, "--retain")
+        };
+        const bundle = exportPortEvidenceBundle({
+          ledgerPath: path.resolve(cwd, requiredOption(rest, "--ledger")),
+          ward: loadWardManifest(path.resolve(cwd, requiredOption(rest, "--ward"))),
+          authorityEnvelope: loadAuthorityEnvelope(path.resolve(cwd, requiredOption(rest, "--envelope"))),
+          recordId: optionValue(rest, "--record-id"),
+          warrant: warrantPath ? JSON.parse(readFileSync(path.resolve(cwd, warrantPath), "utf8")) : undefined,
+          exportedAt: optionValue(rest, "--now"),
+          port
+        });
+        writeJson(path.resolve(cwd, outPath), bundle);
+        const verification = verifyPortEvidenceBundle(bundle);
+        if (json) printJson(out, bundle, true);
+        else out(`port_evidence_bundle=${outPath}\nbundle_hash=${bundle.hashes.port_bundle_hash}\nverification=${verification.ok ? "ok" : `failed:${verification.failures.join(";")}`}\nport=${port.port_id}\nterminal=${port.terminal_id}\n` );
+        return verification.ok ? 0 : 1;
+      }
+
+      throw new Error("usage: aristotle port <templates|adapters|evidence export> ...");
+    }
+
+    if (command === "water") {
+      if (subcommand === "templates") {
+        const base = "examples/water";
+        const templates = [
+          `${base}/ward.drinking_water_plant.yaml`,
+          `${base}/authority_envelope.water_operator.yaml`,
+          `${base}/policy/drinking_water_plant.apl`
+        ];
+        const actions = [
+          `${base}/actions/allow_pump_speed_adjust.json`,
+          `${base}/actions/refuse_chlorine_overfeed.json`,
+          `${base}/actions/refuse_backflow_valve.json`,
+          `${base}/actions/escalate_missing_turbidity_state.json`,
+          `${base}/actions/refuse_disable_disinfection.json`
+        ];
+        if (json) printJson(out, { templates, actions }, true);
+        else {
+          out("AristotleOS water infrastructure pilot templates\n");
+          for (const file of [...templates, ...actions]) out(`  ${file}\n`);
+        }
+        return 0;
+      }
+
+      if (subcommand === "adapters") {
+        if (json) printJson(out, { adapters: WATER_ADAPTER_CATALOG }, true);
+        else {
+          out("Typed water and wastewater adapter surfaces\n");
+          for (const adapter of WATER_ADAPTER_CATALOG) {
+            out(`\n${adapter.kind} - ${adapter.label}\n`);
+            out(`  Boundary: ${adapter.consequenceBoundary}\n`);
+            out(`  Actions: ${adapter.actionExamples.join(", ")}\n`);
+            out(`  Registers: ${adapter.requiredRuntimeRegisters.join(", ")}\n`);
+          }
+        }
+        return 0;
+      }
+
+      if (subcommand === "evidence" && rest[0] === "export") {
+        const outPath = requiredOption(rest, "--out");
+        const warrantPath = optionValue(rest, "--warrant");
+        const profiles = optionValues(rest, "--profile");
+        const preChecks = optionValues(rest, "--pre-check").map((item) => {
+          const [name, raw = "true", detail] = item.split(":");
+          return { name, ok: raw !== "false" && raw !== "fail", ...(detail ? { detail } : {}) };
+        });
+        const postChecks = optionValues(rest, "--post-check").map((item) => {
+          const [name, raw = "true", detail] = item.split(":");
+          return { name, ok: raw !== "false" && raw !== "fail", ...(detail ? { detail } : {}) };
+        });
+        const numericOption = (name: string) => {
+          const value = optionValue(rest, name);
+          return value === undefined ? undefined : Number(value);
+        };
+        const processSnapshot: WaterEvidenceContext["process_snapshot"] = {};
+        const chlorine = numericOption("--chlorine");
+        const ph = numericOption("--ph");
+        const turbidity = numericOption("--turbidity");
+        const pressure = numericOption("--pressure");
+        const tankLevel = numericOption("--tank-level");
+        const flow = numericOption("--flow");
+        if (chlorine !== undefined) processSnapshot.chlorine_residual_mg_l = chlorine;
+        if (ph !== undefined) processSnapshot.ph = ph;
+        if (turbidity !== undefined) processSnapshot.turbidity_ntu = turbidity;
+        if (pressure !== undefined) processSnapshot.pressure_psi = pressure;
+        if (tankLevel !== undefined) processSnapshot.tank_level_pct = tankLevel;
+        if (flow !== undefined) processSnapshot.flow_mgd = flow;
+        const water: WaterEvidenceContext = {
+          utility_id: requiredOption(rest, "--utility"),
+          water_system_id: requiredOption(rest, "--system"),
+          facility_id: requiredOption(rest, "--facility"),
+          water_domain: (optionValue(rest, "--domain") ?? "drinking-water-treatment") as WaterDomain,
+          operations_center: requiredOption(rest, "--ops-center"),
+          asset_id: requiredOption(rest, "--asset"),
+          asset_type: requiredOption(rest, "--asset-type"),
+          process_area: requiredOption(rest, "--process-area"),
+          pressure_zone_id: optionValue(rest, "--pressure-zone"),
+          tank_id: optionValue(rest, "--tank"),
+          reservoir_id: optionValue(rest, "--reservoir"),
+          lift_station_id: optionValue(rest, "--lift-station"),
+          outfall_id: optionValue(rest, "--outfall"),
+          work_order_id: optionValue(rest, "--work-order"),
+          discharge_permit_id: optionValue(rest, "--permit"),
+          process_snapshot: processSnapshot,
+          standards_profile: (profiles.length ? profiles : ["EPA_WATER_CYBER", "CISA_WWS_CPG", "AWWA_CYBER", "AWIA_RRA", "NIST_CSF", "LOCAL_OPERATING_PROCEDURE"]) as WaterEvidenceContext["standards_profile"],
+          pre_checks: preChecks.length ? preChecks : [{ name: "SCADA state fresh and process telemetry attached", ok: true }],
+          ...(postChecks.length ? { post_checks: postChecks } : {}),
+          redacted_fields: optionValues(rest, "--redact"),
+          retained_fields: optionValues(rest, "--retain")
+        };
+        const bundle = exportWaterEvidenceBundle({
+          ledgerPath: path.resolve(cwd, requiredOption(rest, "--ledger")),
+          ward: loadWardManifest(path.resolve(cwd, requiredOption(rest, "--ward"))),
+          authorityEnvelope: loadAuthorityEnvelope(path.resolve(cwd, requiredOption(rest, "--envelope"))),
+          recordId: optionValue(rest, "--record-id"),
+          warrant: warrantPath ? JSON.parse(readFileSync(path.resolve(cwd, warrantPath), "utf8")) : undefined,
+          exportedAt: optionValue(rest, "--now"),
+          water
+        });
+        writeJson(path.resolve(cwd, outPath), bundle);
+        const verification = verifyWaterEvidenceBundle(bundle);
+        if (json) printJson(out, bundle, true);
+        else out(`water_evidence_bundle=${outPath}\nbundle_hash=${bundle.hashes.water_bundle_hash}\nverification=${verification.ok ? "ok" : `failed:${verification.failures.join(";")}`}\nutility=${water.utility_id}\nfacility=${water.facility_id}\n`);
+        return verification.ok ? 0 : 1;
+      }
+
+      throw new Error("usage: aristotle water <templates|adapters|evidence export> ...");
     }
 
     if (command === "execution-control" && subcommand === "shadow") {
