@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { cpSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { ApprovalStore } from "@aristotle/execution-control-runtime";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { runCli } from "./index.js";
@@ -353,6 +354,28 @@ test("cli conflicts ingest/list/resolve over a durable inbox", async () => {
     const listClean = await capture(["conflicts", "list", "--inbox", ".tmp/inbox.json"], dir);
     assert.equal(listClean.code, 0);
     assert.match(listClean.stdout, /reject by alice@corp/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("cli dual-control list/approve over an approval store", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    // Seed a pending request the way the gate would (required: 1 for a simple check).
+    new ApprovalStore(path.join(dir, "approvals.json")).request({ canonicalHash: "abc123def4567890", wardId: "w", subject: "agent:x", actionType: "host.isolate", required: 1, now: "2026-05-24T12:00:00.000Z" });
+
+    // list exits non-zero while an approval is pending.
+    const listPending = await capture(["dual-control", "list", "--store", "approvals.json"], dir);
+    assert.equal(listPending.code, 1, listPending.stdout + listPending.stderr);
+    assert.match(listPending.stdout, /pending/);
+
+    const approve = await capture(["dual-control", "approve", "--store", "approvals.json", "--request-id", "apr-abc123def4567890", "--by", "alice@corp", "--reason", "ok"], dir);
+    assert.equal(approve.code, 0, approve.stderr);
+    assert.match(approve.stdout, /approved/);
+
+    const listClean = await capture(["dual-control", "list", "--store", "approvals.json"], dir);
+    assert.equal(listClean.code, 0); // nothing pending now
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

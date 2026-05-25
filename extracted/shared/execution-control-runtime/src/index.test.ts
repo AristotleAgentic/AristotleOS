@@ -1405,6 +1405,50 @@ test("server enforces an Authority-Envelope budget (calls per window) ⇒ BUDGET
   }
 });
 
+test("dual control: a guarded action escalates, two operators approve, then it is admitted", async () => {
+  const file = ledgerPath();
+  const dcEnvelope = { ...envelope, constraints: { ...envelope.constraints, dual_control: { actions: ["drone.takeoff"], required: 2 } } };
+  const { server } = createExecutionControlRuntimeServer({ ward, authorityEnvelope: dcEnvelope, ledgerPath: file, now, operators });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const base = serverBase(server);
+    const evaluate = (token: string) => fetch(`${base}/v1/execution-control/evaluate`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ action }) }).then((r) => r.json());
+    const get = (path: string, token: string) => fetch(`${base}${path}`, { headers: { authorization: `Bearer ${token}` } });
+    const post = (path: string, body: unknown, token: string) => fetch(`${base}${path}`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+
+    // First attempt: dual control ⇒ ESCALATE, no Warrant.
+    const first = await evaluate("tok-operator");
+    assert.equal(first.decision, "ESCALATE");
+    assert.deepEqual(first.reason_codes, ["DUAL_CONTROL_REQUIRED"]);
+
+    // A pending request is listable (viewer).
+    const listed = await get("/v1/execution-control/approvals", "tok-viewer").then((r) => r.json());
+    assert.equal(listed.pending, 1);
+    const requestId = listed.items[0].request_id;
+
+    // Two distinct operators approve (alice@corp via tok-operator, root@corp via tok-admin).
+    const v1 = await post("/v1/execution-control/approvals/decide", { request_id: requestId, decision: "approve", reason: "reviewed" }, "tok-operator").then((r) => r.json());
+    assert.equal(v1.item.status, "pending"); // 1 of 2
+    const v2 = await post("/v1/execution-control/approvals/decide", { request_id: requestId, decision: "approve" }, "tok-admin").then((r) => r.json());
+    assert.equal(v2.item.status, "approved"); // 2 of 2
+
+    // The same canonical action now ALLOWs and carries a Warrant.
+    const admitted = await evaluate("tok-operator");
+    assert.equal(admitted.decision, "ALLOW");
+    assert.match(admitted.warrant.warrant_id, /^wrn-/);
+
+    // The same approver cannot vote twice (separation of duties is enforced server-side).
+    const dup = await post("/v1/execution-control/approvals/decide", { request_id: requestId, decision: "approve" }, "tok-operator");
+    assert.equal(dup.status, 409);
+
+    // Viewer cannot vote (operator role required).
+    const forbidden = await post("/v1/execution-control/approvals/decide", { request_id: requestId, decision: "approve" }, "tok-viewer");
+    assert.equal(forbidden.status, 403);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
 test("conflict inbox: ingest, list, resolve over the durable store, role-gated", async () => {
   const file = ledgerPath();
   const { server } = createExecutionControlRuntimeServer({ ward, authorityEnvelope: envelope, ledgerPath: file, now, operators });

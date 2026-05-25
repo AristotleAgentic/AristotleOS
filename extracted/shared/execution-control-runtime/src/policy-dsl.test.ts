@@ -118,6 +118,12 @@ test("budget rejects an invalid duration with a positioned diagnostic", () => {
   assert.match(r.diagnostics[0].message, /invalid duration '1y'/);
 });
 
+test("approve statement compiles to constraints.dual_control", () => {
+  const { drafts, ok } = compilePolicy(`ward "x" { subject agent:a\n allow t\n approve host.isolate, firewall.purge requires 2 within 1h }`);
+  assert.equal(ok, true, "expected compile ok");
+  assert.deepEqual(drafts[0].authorityEnvelope.constraints.dual_control, { actions: ["host.isolate", "firewall.purge"], required: 2, ttlMs: 3_600_000 });
+});
+
 test("a missing subject and duplicate ward ids are rejected", () => {
   assert.equal(compilePolicy(`ward "x" { allow t1 }`).ok, false);
   const dup = compilePolicy(`ward "A" { id same\n subject agent:x }\nward "B" { id same\n subject agent:y }`);

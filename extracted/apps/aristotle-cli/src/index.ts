@@ -66,6 +66,7 @@ import {
   profileShadowMode,
   reconcileEdgeRecords,
   ConflictInboxStore,
+  ApprovalStore,
   runWardMarshalCensus,
   executeWardMarshalInterdiction,
   loadEvidenceBundle,
@@ -509,6 +510,7 @@ Commands:
   policy <compile|check>          Compile Aristotle Policy Language (.apl) to governance manifests; check validates only; --out <file>
   reconcile                       Reconcile disconnected-edge decisions against current policy
   conflicts <ingest|list|resolve> Durable Edge Conflict Inbox (--inbox <file>): ingest --records/--ward/--envelope; list; resolve --action-id --action <accept|reject|escalate|reconcile> [--reason]
+  dual-control <list|approve|reject> Dual-control (M-of-N) approvals (--store <file>): list; approve/reject --request-id <id> [--by <approver>] [--reason]
   ward-marshal discover           Collect agent observations: --kubernetes, --process [--host], --mcp, or --from-file <f> --source <s> [--map field=key ...]; combine sources; --out <file>
   ward-marshal scan               Discover, inventory, and risk-score autonomous agents
   ward-marshal behavior           Detect denial bursts, rate spikes, first-seen, off-hours, fan-out, and
@@ -1491,6 +1493,36 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
         out(`${outPath ? `manifest → ${outPath}\n` : ""}`);
       }
       return allValid ? 0 : 1;
+    }
+
+    if (command === "dual-control") {
+      const sub = argv[1];
+      const aargs = argv.slice(2);
+      const storePath = path.resolve(cwd, optionValue(aargs, "--store") ?? ".tmp/approvals.json");
+      const store = new ApprovalStore(storePath);
+
+      if (sub === "list") {
+        const items = store.list();
+        const pending = items.filter((i) => i.status === "pending").length;
+        if (json) { printJson(out, { items, pending }, true); }
+        else {
+          out(`Dual-control approvals — ${items.length} request(s), ${pending} pending\n`);
+          for (const i of items) {
+            const approvers = i.votes.filter((v) => v.decision === "approve").length;
+            out(`  ${i.status.padEnd(9)} ${i.request_id} ${i.action_type} by ${i.subject} — ${approvers}/${i.required} approvals\n`);
+          }
+        }
+        return pending === 0 ? 0 : 1; // non-zero while approvals are outstanding (ops gate)
+      }
+
+      if (sub === "approve" || sub === "reject") {
+        const item = store.vote(requiredOption(aargs, "--request-id"), optionValue(aargs, "--by") ?? "operator", sub === "approve" ? "approve" : "reject", optionValue(aargs, "--reason"), optionValue(aargs, "--now"));
+        if (json) { printJson(out, item, true); }
+        else out(`${sub} recorded on ${item.request_id} by ${optionValue(aargs, "--by") ?? "operator"} → ${item.status}\n`);
+        return 0;
+      }
+
+      throw new Error("usage: aristotle dual-control <list|approve|reject> [--store <file>] --request-id <id> [--by <approver>] [--reason <text>]");
     }
 
     if (command === "conflicts") {

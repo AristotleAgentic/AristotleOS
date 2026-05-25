@@ -125,6 +125,7 @@ interface WardNode {
   batteryMin?: number;
   boundary?: string;
   budget?: { windowMs: number; maxCostPerWindow?: number; maxCallsPerWindow?: number };
+  dualControl?: { actions: string[]; required: number; ttlMs?: number };
 }
 
 const DURATION_MS: Record<string, number> = { ms: 1, s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 };
@@ -216,6 +217,16 @@ class Parser {
           node.classification = classification;
           break;
         }
+        case "approve": {
+          const actions = this.identList();
+          const reqKw = this.expect("ident");
+          if (reqKw.value !== "requires") throw new PolicyError(`expected 'requires' in approve statement`, reqKw.line, reqKw.column);
+          const required = Number(this.expect("number").value);
+          let ttlMs = node.dualControl?.ttlMs;
+          if (this.peek().type === "ident" && this.peek().value === "within") { this.next(); ttlMs = parseDuration(this.expect("ident")); }
+          node.dualControl = { actions: [...(node.dualControl?.actions ?? []), ...actions], required, ...(ttlMs !== undefined ? { ttlMs } : {}) };
+          break;
+        }
         case "budget": {
           const dim = this.expect("ident"); // cost | calls
           const op = this.next();
@@ -294,6 +305,7 @@ function compileWard(node: WardNode, now?: string): GovernanceDraft {
   if (node.maxAltitude !== undefined) constraints.max_altitude_m = node.maxAltitude;
   if (node.boundary) constraints.permitted_boundary_id = node.boundary;
   if (node.budget) constraints.budget = node.budget;
+  if (node.dualControl) constraints.dual_control = node.dualControl;
 
   const authorityEnvelope: AuthorityEnvelope = {
     envelope_id: node.envelope ?? `ae-${wardId}`,

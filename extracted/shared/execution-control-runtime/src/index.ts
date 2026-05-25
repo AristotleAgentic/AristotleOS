@@ -432,6 +432,11 @@ export interface ExecutionControlRuntimeServerOptions {
   budgetStatePath?: string;
   /** Disable budget enforcement entirely (default: enabled with an in-memory window). */
   budgetDisabled?: boolean;
+  /** Path to the dual-control approval store; when set, enables M-of-N approval
+   *  enforcement (durable across restarts). When unset, an in-memory store is used. */
+  approvalStatePath?: string;
+  /** Disable dual-control enforcement entirely (default: enabled, in-memory). */
+  dualControlDisabled?: boolean;
   /**
    * Degradation detectors run per request; detected conditions feed the per-Ward
    * fail-mode policy. Defaults to a ledger-writability probe when a file ledger path
@@ -1619,6 +1624,19 @@ export function executionControlOpenApiSpec() {
           responses: { "200": { description: "Updated item + summary" }, "400": { description: "Invalid resolution" }, "403": { description: "Requires operator role" }, "409": { description: "Item unknown or already resolved" } }
         }
       },
+      "/v1/execution-control/approvals": {
+        get: {
+          summary: "List dual-control (M-of-N) approval requests and their status (viewer role)",
+          responses: { "200": { description: "Approval requests + pending count" } }
+        }
+      },
+      "/v1/execution-control/approvals/decide": {
+        post: {
+          summary: "Cast an attributed approve/reject vote on a dual-control request (operator role)",
+          requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { request_id: { type: "string" }, decision: { type: "string", enum: ["approve", "reject"] }, reason: { type: "string" } }, required: ["request_id", "decision"] } } } },
+          responses: { "200": { description: "Updated approval request" }, "400": { description: "Invalid vote" }, "403": { description: "Requires operator role" }, "409": { description: "Already resolved / self-approval / duplicate vote" } }
+        }
+      },
       "/v1/execution-control/marshal/census": {
         post: {
           summary: "Ward Marshal census: risk-score observed agents against the approved registry (operator role)",
@@ -1738,6 +1756,10 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
   // state path is configured, else an in-memory window. Disable with budgetDisabled.
   const budgetGovernor = options.budgetDisabled ? undefined : new BudgetGovernor(options.budgetStatePath ?? null);
 
+  // Dual-control approval store: M-of-N approval for the gravest actions. Durable
+  // when a path is configured, else per-process. Disable with dualControlDisabled.
+  const approvalStore = options.dualControlDisabled ? undefined : new ApprovalStore(options.approvalStatePath ?? null);
+
   // Degradation detectors: default to a ledger-writability probe for file ledgers,
   // so the boundary self-detects "no evidence ⇒ no irreversible action" out of the
   // box. Operators can disable ([]) or add control-plane/quorum/timeout probes.
@@ -1754,7 +1776,8 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
       pathname === "/v1/execution-control/audit/verify" ||
       pathname === "/v1/execution-control/metrics" ||
       pathname === "/v1/execution-control/conflicts" ||
-      pathname === "/v1/execution-control/degradation"
+      pathname === "/v1/execution-control/degradation" ||
+      pathname === "/v1/execution-control/approvals"
     )) return "viewer";
     if (method === "POST" && (
       pathname === "/v1/execution-control/evaluate" ||
@@ -1766,6 +1789,7 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
       pathname === "/v1/execution-control/reconcile" ||
       pathname === "/v1/execution-control/conflicts/ingest" ||
       pathname === "/v1/execution-control/conflicts/resolve" ||
+      pathname === "/v1/execution-control/approvals/decide" ||
       pathname === "/v1/execution-control/marshal/census" ||
       pathname === "/v1/execution-control/marshal/behavior"
     )) return "operator";
@@ -1935,7 +1959,8 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           actor: principal,
           trace_context: traceContextFor(req, body),
           tracer: options.tracer,
-          budgetGovernor
+          budgetGovernor,
+          approvalStore
         };
         let result: EvaluateExecutionControlResult;
         try {
@@ -2140,6 +2165,35 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
       // Conflict Inbox: list current items (viewer).
       if (req.method === "GET" && url.pathname === "/v1/execution-control/conflicts") {
         sendJson(res, 200, { items: conflictInbox.list(), summary: conflictInbox.summary() });
+        return;
+      }
+
+      // Dual control: list approval requests (viewer).
+      if (req.method === "GET" && url.pathname === "/v1/execution-control/approvals") {
+        if (!approvalStore) { sendJson(res, 200, { items: [], pending: 0 }); return; }
+        const items = approvalStore.list();
+        sendJson(res, 200, { items, pending: items.filter((i) => i.status === "pending").length });
+        return;
+      }
+
+      // Dual control: cast an attributed approve/reject vote (operator).
+      if (req.method === "POST" && url.pathname === "/v1/execution-control/approvals/decide") {
+        if (!approvalStore) { sendJson(res, 409, { error: "dual_control_disabled" }); return; }
+        const body = await readJsonBody(req);
+        const requestId = typeof body.request_id === "string" ? body.request_id : undefined;
+        const decision = typeof body.decision === "string" ? body.decision : undefined;
+        const reason = typeof body.reason === "string" ? body.reason : undefined;
+        if (!requestId || (decision !== "approve" && decision !== "reject")) {
+          sendJson(res, 400, { error: "invalid_vote", detail: "request_id and a decision of approve|reject are required" });
+          return;
+        }
+        try {
+          const item = approvalStore.vote(requestId, principal?.subject ?? "anonymous", decision, reason, typeof body.now === "string" ? body.now : options.now);
+          forwardOperatorAudit("approval.vote", principal, { request_id: requestId, decision, status: item.status, reason: reason ?? null });
+          sendJson(res, 200, { item });
+        } catch (error) {
+          sendJson(res, 409, { error: "vote_rejected", detail: error instanceof Error ? error.message : String(error) });
+        }
         return;
       }
 

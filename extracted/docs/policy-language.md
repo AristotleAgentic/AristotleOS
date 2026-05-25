@@ -69,6 +69,14 @@ One file holds one or more `ward "<name>" { ... }` blocks. Statements inside a b
 | `within <boundary-id>` | `physical_bounds.permitted_boundary_id` + constraint | |
 | `budget cost <= N per <dur>` | `constraints.budget.maxCostPerWindow` | cost from `action.params.cost`; `dur` e.g. `30s`,`15m`,`1h`,`1d` |
 | `budget calls <= N per <dur>` | `constraints.budget.maxCallsPerWindow` | each admitted action = one call |
+| `approve <a>[, <b>] requires N [within <dur>]` | `constraints.dual_control` | M-of-N approval: listed actions ESCALATE until N distinct operators approve |
+
+Dual control is **opt-in at the boundary** (an approval store must be configured;
+`approvalStatePath` makes it durable). A guarded action does not get a Warrant on its
+own ALLOW — it ESCALATEs (`DUAL_CONTROL_REQUIRED`) and opens a pending request keyed
+by the canonical action hash; once N distinct approvers (never the requesting subject)
+approve within the TTL, the same action is admitted. Operators vote via
+`POST /v1/execution-control/approvals/decide` or `aristotle dual-control approve`.
 
 Budget enforcement is **opt-in at the boundary**: the runtime applies it when a budget
 governor is configured (`budgetStatePath` makes the rolling window durable across
