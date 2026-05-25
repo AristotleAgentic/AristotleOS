@@ -44,6 +44,7 @@ import { type Classification, enforceClassification } from "./classification.js"
 import { type DegradationCondition, type WardCriticality, resolveFailMode } from "./fail-mode.js";
 import { type DegradationProbe, collectDegradation, ledgerUnavailableProbe } from "./degradation.js";
 import { BudgetGovernor, type BudgetPolicy, budgetPolicyFrom } from "./budget.js";
+import { ApprovalStore, dualControlPolicyFrom } from "./dual-control.js";
 
 export * from "./proxy.js";
 export * from "./mcp.js";
@@ -75,6 +76,7 @@ export * from "./classification.js";
 export * from "./fail-mode.js";
 export * from "./degradation.js";
 export * from "./budget.js";
+export * from "./dual-control.js";
 
 export {
   type AristotleSigner,
@@ -106,6 +108,7 @@ export type ExecutionControlReasonCode =
   | "KILL_SWITCH_ENGAGED"
   | "REPLAY_DETECTED"
   | "BUDGET_EXCEEDED"
+  | "DUAL_CONTROL_REQUIRED"
   | "AUTHORITY_REVOKED"
   | "CLASSIFICATION_VIOLATION"
   | "DEGRADED_MODE"
@@ -330,6 +333,8 @@ export interface EvaluateExecutionControlInput extends CommitGateInput {
   tracer?: AristotleTracer;
   /** When set, enforces the Authority Envelope's budget (constraints.budget) per subject. */
   budgetGovernor?: BudgetGovernor;
+  /** When set, enforces M-of-N approval (constraints.dual_control) for the gravest actions. */
+  approvalStore?: ApprovalStore;
 }
 
 export interface EvaluateExecutionControlResult {
@@ -1181,7 +1186,8 @@ function decideAndWarrant(
   canonical: CanonicalAction,
   runtimeSnapshot: RuntimeRegister,
   replaySeen: boolean,
-  budgetExceeded: { reason: string } | null = null
+  budgetExceeded: { reason: string } | null = null,
+  dualControlPending = false
 ): { decision: CommitGateDecision; warrant?: Warrant } {
   const ward = input.ward ?? undefined;
   const revocations = input.revocationListPath ? loadRevocationList(input.revocationListPath) : undefined;
@@ -1200,6 +1206,11 @@ function decideAndWarrant(
     decision = refuse("REFUSE", ["BUDGET_EXCEEDED"], canonical, runtimeSnapshot, ward, input.authorityEnvelope ?? undefined);
   } else {
     decision = evaluateCommitGate(input);
+  }
+  // Dual control gates the ALLOW→Warrant transition: an otherwise-permitted action
+  // under M-of-N control escalates for plural approval instead of issuing a Warrant.
+  if (dualControlPending && decision.decision === "ALLOW") {
+    decision = refuse("ESCALATE", ["DUAL_CONTROL_REQUIRED"], canonical, runtimeSnapshot, ward, input.authorityEnvelope ?? undefined);
   }
   const warrant = decision.decision === "ALLOW" && input.authorityEnvelope
     ? issueWarrant(decision, input.action, input.authorityEnvelope, input.now, signer, input.warrantTtlSeconds)
@@ -1224,6 +1235,31 @@ function recordBudget(input: Omit<EvaluateExecutionControlInput, "ledger">, budg
   }
 }
 
+/** Resolve whether this action is under M-of-N dual control and already approved. */
+function evaluateDualControl(input: Omit<EvaluateExecutionControlInput, "ledger">, canonical: CanonicalAction): { required: number; ttlMs?: number; satisfied: boolean; now: string } | null {
+  if (!input.approvalStore) return null;
+  const policy = dualControlPolicyFrom((input.authorityEnvelope?.constraints as Record<string, unknown> | undefined)?.dual_control);
+  if (!policy || !policy.actions.includes(input.action.action_type)) return null;
+  const now = input.now ?? new Date().toISOString();
+  const existing = input.approvalStore.getByHash(canonical.canonical_action_hash, now);
+  return { required: policy.required, ttlMs: policy.ttlMs, satisfied: existing?.status === "approved", now };
+}
+
+/** When an action escalated for dual control, ensure a pending approval request exists. */
+function openDualControlRequest(input: Omit<EvaluateExecutionControlInput, "ledger">, canonical: CanonicalAction, dual: NonNullable<ReturnType<typeof evaluateDualControl>>, decision: CommitGateDecision): void {
+  if (input.approvalStore && input.ward && decision.reason_codes.includes("DUAL_CONTROL_REQUIRED")) {
+    input.approvalStore.request({
+      canonicalHash: canonical.canonical_action_hash,
+      wardId: input.ward.ward_id,
+      subject: input.action.subject,
+      actionType: input.action.action_type,
+      required: dual.required,
+      ttlMs: dual.ttlMs,
+      now: dual.now
+    });
+  }
+}
+
 export function evaluateExecutionControl(input: EvaluateExecutionControlInput): EvaluateExecutionControlResult {
   if (!input.ward) throw new Error("ward manifest is required for GEL recording");
   const tracer = input.tracer;
@@ -1236,8 +1272,10 @@ export function evaluateExecutionControl(input: EvaluateExecutionControlInput): 
       ? (input.ledger ? input.ledger.hasPriorAdmission(canonical.canonical_action_hash) : hasPriorAdmission(input.ledgerPath, canonical.canonical_action_hash))
       : false;
     const budget = evaluateBudget(input);
-    const { decision, warrant } = traceSpan(tracer, "aristotle.commit_gate.decide", undefined, () => decideAndWarrant(input, signer, canonical, runtimeSnapshot, replaySeen, budget.exceeded));
+    const dual = evaluateDualControl(input, canonical);
+    const { decision, warrant } = traceSpan(tracer, "aristotle.commit_gate.decide", undefined, () => decideAndWarrant(input, signer, canonical, runtimeSnapshot, replaySeen, budget.exceeded, !!dual && !dual.satisfied));
     recordBudget(input, budget, decision.decision);
+    if (dual) openDualControlRequest(input, canonical, dual, decision);
     const gel_record = traceSpan(tracer, "aristotle.gel.append", undefined, () => (input.ledger
       ? input.ledger.append({ ward: input.ward!, action: input.action, decision, warrant, now: input.now, signer, actor: input.actor, trace_context: input.trace_context })
       : appendGelRecord({ ledgerPath: input.ledgerPath, ward: input.ward!, action: input.action, decision, warrant, now: input.now, signer, actor: input.actor, trace_context: input.trace_context })));
@@ -1270,8 +1308,10 @@ export async function evaluateExecutionControlAsync(input: EvaluateExecutionCont
   const runtimeSnapshot = stableNormalize(input.runtimeRegister ?? {}) as RuntimeRegister;
   const replaySeen = input.replayProtection ? await input.ledger.hasPriorAdmission(canonical.canonical_action_hash) : false;
   const budget = evaluateBudget(input);
-  const { decision, warrant } = decideAndWarrant(input, signer, canonical, runtimeSnapshot, replaySeen, budget.exceeded);
+  const dual = evaluateDualControl(input, canonical);
+  const { decision, warrant } = decideAndWarrant(input, signer, canonical, runtimeSnapshot, replaySeen, budget.exceeded, !!dual && !dual.satisfied);
   recordBudget(input, budget, decision.decision);
+  if (dual) openDualControlRequest(input, canonical, dual, decision);
   const gel_record = await input.ledger.append({ ward: input.ward, action: input.action, decision, warrant, now: input.now, signer, actor: input.actor, trace_context: input.trace_context });
   return {
     decision: decision.decision,
