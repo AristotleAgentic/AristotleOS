@@ -1,0 +1,36 @@
+envelope_id: ae-telecom-noc-change-001
+ward_id: ward-ran-region-west
+subject: agent:noc-change-orchestrator
+allowed_actions:
+  - tmf.service-order.patch
+  - tmf.trouble-ticket.update
+  - netconf.edit-config
+  - gnmi.set
+  - oran.a1.policy.put
+  - oran.r1.service.put
+denied_actions:
+  - ran.cell.shutdown
+  - lawful_intercept.modify
+  - subscriber.bulk_export
+constraints:
+  required_runtime_registers:
+    - telemetry.change_ticket
+    - telemetry.maintenance_window
+    - telemetry.noc_operator
+    - telemetry.precheck_passed
+  permitted_boundary_id: ran-market-west
+  dual_control:
+    actions:
+      - netconf.edit-config
+      - oran.a1.policy.put
+    required: 2
+    ttl_ms: 900000
+  budget:
+    maxCallsPerWindow: 2500
+    windowMs: 3600000
+expires_at: 2026-12-31T23:59:59Z
+issuer: aristotle-telecom-root
+classification:
+  level: CUI
+  caveats:
+    - CPNI

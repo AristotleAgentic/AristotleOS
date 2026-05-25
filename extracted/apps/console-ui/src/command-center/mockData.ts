@@ -21,6 +21,10 @@ import type {
   RuntimeRegister,
   RuntimeSlo,
   ShadowProfileSummary,
+  TelecomAdapterSurface,
+  TelecomEvidenceExport,
+  TelecomNocStep,
+  TelecomScaleDrill,
   ToolGatewayAdapter,
   WardMarshalFinding,
   Ward,
@@ -452,6 +456,74 @@ export const TOOL_GATEWAYS: ToolGatewayAdapter[] = [
   { id: "gw-k8s", label: "Kubernetes Mutator", target: "apps/v1.Deployment", posture: "amber", boundary: "Admission-style warrant check", sampleAction: "k8s.deployment.rollout" },
   { id: "gw-shell", label: "Shell Command Broker", target: "allowlisted process", posture: "green", boundary: "Sandbox receipt tied to warrant", sampleAction: "shell.run" },
   { id: "gw-robotics", label: "Robotics Bus Bridge", target: "ROS command topic", posture: "amber", boundary: "Physical Invariant Gater plus warrant", sampleAction: "drone.takeoff" }
+];
+
+export const TELECOM_NOC_WORKFLOW: TelecomNocStep[] = [
+  { id: "noc-mission", label: "Create governed network mission", owner: "NOC engineer", state: "complete", evidence: "Ward ward-ran-region-west and Authority Envelope ae-telecom-noc-change-001 selected." },
+  { id: "noc-context", label: "Bind runtime registers", owner: "Change manager", state: "complete", evidence: "CHG-2026-0517, maintenance window, NOC operator, and precheck snapshot attached." },
+  { id: "noc-shadow", label: "Profile in Shadow Mode", owner: "Network assurance", state: "complete", evidence: "No customer-impacting action blocked unexpectedly; cell shutdown remains REFUSE." },
+  { id: "noc-approval", label: "Dual-control approval", owner: "Regional operations", state: "active", evidence: "NETCONF and O-RAN mutations require 2-of-N authority before Warrant issuance." },
+  { id: "noc-gate", label: "Commit Gate and Warrant", owner: "Governance kernel", state: "pending", evidence: "ALLOW mints a single-use Warrant scoped to the canonical network action hash." },
+  { id: "noc-execute", label: "Execute adapter", owner: "Adapter boundary", state: "pending", evidence: "TMF / NETCONF / gNMI / O-RAN clients execute only after Warrant verification." },
+  { id: "noc-export", label: "Export telecom evidence", owner: "Audit / compliance", state: "pending", evidence: "Telecom Evidence Bundle includes change ticket, NOC context, GEL record, Warrant, and redaction manifest." }
+];
+
+export const TELECOM_ADAPTERS: TelecomAdapterSurface[] = [
+  {
+    id: "tmf-open-api",
+    label: "TM Forum Open API",
+    standard: "TMF",
+    actionTypes: ["tmf.service-order.patch", "tmf.trouble-ticket.update", "tmf.resource-inventory.patch"],
+    requiredRegisters: ["change_ticket", "noc_operator", "maintenance_window"],
+    boundary: "OSS/BSS mutations become Canonical Governed Actions before the API call leaves AristotleOS.",
+    posture: "green"
+  },
+  {
+    id: "netconf-yang",
+    label: "NETCONF / YANG",
+    standard: "NETCONF",
+    actionTypes: ["netconf.edit-config", "netconf.commit-confirmed"],
+    requiredRegisters: ["change_ticket", "device_lock", "rollback_plan"],
+    boundary: "Candidate and running datastore edits require Authority Envelope scope and dual-control approval.",
+    posture: "amber"
+  },
+  {
+    id: "gnmi-gnoi",
+    label: "gNMI / gNOI",
+    standard: "gNMI/gNOI",
+    actionTypes: ["gnmi.set", "gnoi.certificate.rotate"],
+    requiredRegisters: ["telemetry_fresh", "device_identity", "change_ticket"],
+    boundary: "Telemetry-sensitive set operations are authorized against fresh runtime registers.",
+    posture: "green"
+  },
+  {
+    id: "oran-a1-r1",
+    label: "O-RAN A1 / R1",
+    standard: "O-RAN",
+    actionTypes: ["oran.a1.policy.put", "oran.r1.model.deploy"],
+    requiredRegisters: ["ric_policy_type", "impact_assessment", "change_ticket"],
+    boundary: "RAN optimization policy and model deployment are warranted before they affect cells.",
+    posture: "amber"
+  }
+];
+
+export const TELECOM_EVIDENCE_EXPORT: TelecomEvidenceExport = {
+  bundleVersion: "aristotle.telecom-evidence.v1",
+  changeTicket: "CHG-2026-0517",
+  networkScope: "ran-market-west",
+  nocOperator: "operator:netops-west",
+  impactedServices: ["mobile-broadband", "emergency-calling-observed"],
+  standardsProfile: ["TMF_OPEN_API", "NETCONF_YANG", "GNMI_GNOI", "ORAN_A1_R1"],
+  redactedFields: ["imsi", "msisdn", "subscriber_id"],
+  bundleHash: shortHash("telecom-evidence-bundle-ran-west", 24),
+  verification: "ok"
+};
+
+export const TELECOM_SCALE_DRILLS: TelecomScaleDrill[] = [
+  { id: "bench", label: "Carrier-scale benchmark", command: "npm run bench:telecom", target: ">= 1k decisions", current: "p95 tracked", posture: "green", evidence: "Commit Gate latency, Warrant issuance, and GEL append remain measured together." },
+  { id: "storm", label: "Reconnect storm", command: "npm run soak:telecom", target: "edge records replayed", current: "conflicts classified", posture: "amber", evidence: "Disconnected edge decisions are re-evaluated and routed to Conflict Inbox." },
+  { id: "ha", label: "Multi-region ledger soak", command: "npm run soak:telecom", target: "east/central/west", current: "hash chain verified", posture: "green", evidence: "Region-tagged decisions append to a verifiable GEL chain." },
+  { id: "pilot", label: "CSP pilot export", command: "aristotle telecom evidence export", target: "audit-ready", current: "bundle verifies", posture: "green", evidence: "NOC, policy, authority, Warrant, and ledger material are sealed for audit." }
 ];
 
 export const POLICY_HARNESS: PolicyHarnessCase[] = [

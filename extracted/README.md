@@ -38,6 +38,8 @@ Docs:
 - [Getting started](docs/getting-started.md)
 - [Execution-control runtime](docs/execution-control-runtime.md)
 - [Ward Marshal](docs/ward-marshal.md)
+- [Autonomous Network Pilot Guide](docs/autonomous-network-pilot-guide.md)
+- [Telecom threat model addendum](docs/telecom-threat-model.md)
 - [Defense readiness roadmap](docs/defense-readiness.md)
 - [Crypto posture](docs/crypto-posture.md)
 - [Commercial adoption path](docs/commercial-adoption-path.md)
@@ -101,6 +103,24 @@ npm run aristotle -- ward-marshal scan \
 ```
 
 Even containment is governed: authority before consequence, warrant before execution, evidence after every intervention. See [docs/ward-marshal.md](docs/ward-marshal.md).
+
+## Telecom Readiness
+
+AristotleOS now includes a carrier pilot path for autonomous network operations. Telecom systems are treated as sources of Canonical Governed Actions; they do not receive special bypass authority. TM Forum Open API, NETCONF/YANG, gNMI/gNOI, and O-RAN A1/R1 surfaces become typed adapter boundaries that execute only after Ward resolution, Authority Envelope validation, Commit Gate admission, Warrant verification, and GEL commit.
+
+Run the telecom slice:
+
+```bash
+npm run test:telecom
+npm run aristotle -- telecom templates
+npm run aristotle -- telecom adapters
+npm run aristotle -- telecom benchmark \
+  --ward examples/telecom/ward.ran_region_west.yaml \
+  --envelope examples/telecom/authority_envelope.noc_change_orchestrator.yaml \
+  --count 500
+```
+
+The Command Center includes a NOC workflow from "create governed network mission" to "admitted execution" to "telecom Evidence Bundle export." See [docs/autonomous-network-pilot-guide.md](docs/autonomous-network-pilot-guide.md) and [docs/telecom-threat-model.md](docs/telecom-threat-model.md).
 
 ## Ward/Warrant Execution-Control Path
 

@@ -31,6 +31,7 @@ export type SectionId =
   | "builder"
   | "shadow"
   | "approvals"
+  | "noc"
   | "conflicts"
   | "adoption"
   | "failure"

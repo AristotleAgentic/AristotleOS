@@ -67,6 +67,114 @@ test("cli execution-control evaluate runs Ward/Warrant action through AristotleO
   }
 });
 
+test("cli telecom commands expose CSP templates, evidence export, and scale drills", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    const examples = path.resolve(process.cwd(), "examples", "telecom");
+    cpSync(examples, path.join(dir, "telecom"), { recursive: true });
+
+    const adapters = await capture(["telecom", "adapters"], dir);
+    assert.equal(adapters.code, 0, adapters.stderr);
+    assert.match(adapters.stdout, /tmf-open-api/);
+    assert.match(adapters.stdout, /oran-a1-r1/);
+
+    const evaluated = await capture([
+      "execution-control",
+      "evaluate",
+      "--ward",
+      "telecom/ward.ran_region_west.yaml",
+      "--envelope",
+      "telecom/authority_envelope.noc_change_orchestrator.yaml",
+      "--action",
+      "telecom/actions/refuse_cell_shutdown.json",
+      "--ledger",
+      ".tmp/telecom.gel.jsonl",
+      "--now",
+      "2026-05-25T15:00:00.000Z"
+    ], dir);
+    assert.equal(evaluated.code, 0, evaluated.stderr);
+    assert.match(evaluated.stdout, /decision=REFUSE/);
+
+    const bundle = await capture([
+      "telecom",
+      "evidence",
+      "export",
+      "--ward",
+      "telecom/ward.ran_region_west.yaml",
+      "--envelope",
+      "telecom/authority_envelope.noc_change_orchestrator.yaml",
+      "--ledger",
+      ".tmp/telecom.gel.jsonl",
+      "--out",
+      ".tmp/telecom-evidence.json",
+      "--ticket",
+      "CHG-2026-0517",
+      "--operator",
+      "operator:netops-west",
+      "--scope",
+      "ran-market-west",
+      "--service",
+      "mobile-broadband",
+      "--rollback",
+      "confirmed rollback in change ticket",
+      "--redact",
+      "imsi"
+    ], dir);
+    assert.equal(bundle.code, 0, bundle.stderr);
+    assert.match(bundle.stdout, /verification=ok/);
+    assert.equal(existsSync(path.join(dir, ".tmp", "telecom-evidence.json")), true);
+
+    const benchmark = await capture([
+      "telecom",
+      "benchmark",
+      "--ward",
+      "telecom/ward.ran_region_west.yaml",
+      "--envelope",
+      "telecom/authority_envelope.noc_change_orchestrator.yaml",
+      "--count",
+      "8",
+      "--out",
+      ".tmp/telecom-bench.json",
+      "--now",
+      "2026-05-25T15:00:00.000Z"
+    ], dir);
+    assert.equal(benchmark.code, 0, benchmark.stderr);
+    assert.match(benchmark.stdout, /carrier_benchmark=8 decisions/);
+
+    const storm = await capture([
+      "telecom",
+      "reconnect-storm",
+      "--ward",
+      "telecom/ward.ran_region_west.yaml",
+      "--envelope",
+      "telecom/authority_envelope.noc_change_orchestrator.yaml",
+      "--edge-nodes",
+      "2",
+      "--records-per-node",
+      "5"
+    ], dir);
+    assert.equal(storm.code, 2, storm.stderr);
+    assert.match(storm.stdout, /conflicts=/);
+
+    const soak = await capture([
+      "telecom",
+      "ha-soak",
+      "--ward",
+      "telecom/ward.ran_region_west.yaml",
+      "--envelope",
+      "telecom/authority_envelope.noc_change_orchestrator.yaml",
+      "--regions",
+      "east,west",
+      "--decisions-per-region",
+      "4"
+    ], dir);
+    assert.equal(soak.code, 0, soak.stderr);
+    assert.match(soak.stdout, /ledger_verification=ok/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("cli run governs a child agent process and writes a verifiable ledger", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
   try {

@@ -1,0 +1,31 @@
+{
+  "action_id": "telco-gnmi-set-001",
+  "ward_id": "ward-ran-region-west",
+  "subject": "agent:noc-change-orchestrator",
+  "action_type": "gnmi.set",
+  "target": "upf-west-03:/network-instances/network-instance[name=mobile]/qos/policies",
+  "params": {
+    "adapter": "gnmi-gnoi",
+    "device_id": "upf-west-03",
+    "path": "/network-instances/network-instance[name=mobile]/qos/policies",
+    "operation": "update",
+    "encoding": "json_ietf",
+    "value": {
+      "policy": "congestion-relief-qci9"
+    }
+  },
+  "requested_at": "2026-05-25T15:02:00.000Z",
+  "request_id": "req-telco-gnmi-001",
+  "telemetry": {
+    "change_ticket": "CHG-2026-0517",
+    "maintenance_window": "approved",
+    "noc_operator": "operator:netops-west",
+    "precheck_passed": true,
+    "telemetry_fresh": true,
+    "device_identity": "spiffe://csp.example/network/upf-west-03"
+  },
+  "classification": {
+    "level": "CUI",
+    "caveats": ["CPNI"]
+  }
+}

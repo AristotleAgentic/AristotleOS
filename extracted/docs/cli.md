@@ -65,4 +65,22 @@ with `--api-key`, `--operator role:token`, or `--oidc-config` (see
 - `aristotle execution-control audit verify`: verify the GEL hash chain
 - `aristotle execution-control evidence export|verify`: export/verify offline Evidence Bundles
 
+## Telecom pilot commands
+
+- `aristotle telecom templates`: list carrier Ward, Authority Envelope, APL, and sample action fixtures
+- `aristotle telecom adapters`: list typed TM Forum, NETCONF/YANG, gNMI/gNOI, and O-RAN adapter boundaries
+- `aristotle telecom evidence export`: export a telecom Evidence Bundle with change-ticket, NOC, standards, redaction, GEL, and Warrant material
+- `aristotle telecom benchmark`: run the carrier-scale Commit Gate / Warrant / GEL benchmark
+- `aristotle telecom reconnect-storm`: replay disconnected edge records against current authority and classify conflicts
+- `aristotle telecom ha-soak`: simulate multi-region ledger append and verification
+
+Example:
+
+```bash
+aristotle telecom benchmark \
+  --ward examples/telecom/ward.ran_region_west.yaml \
+  --envelope examples/telecom/authority_envelope.noc_change_orchestrator.yaml \
+  --count 500
+```
+
 The CLI is intentionally deterministic. It does not call an LLM in the enforcement path.

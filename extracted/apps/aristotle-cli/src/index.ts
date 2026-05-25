@@ -21,6 +21,8 @@ import {
   type SandboxExecutionReceipt,
   type SandboxPolicy,
   type ShadowAction,
+  type TelecomDomain,
+  type TelecomEvidenceContext,
   type AgentObservation,
   type AgentRegistry,
   type BehaviorEvent,
@@ -57,6 +59,7 @@ import {
   deriveKeyId,
   evaluateExecutionControl,
   exportEvidenceBundle,
+  exportTelecomEvidenceBundle,
   getDefaultDevSigner,
   governSandboxExecution,
   LedgerStore,
@@ -67,7 +70,11 @@ import {
   reconcileEdgeRecords,
   ConflictInboxStore,
   ApprovalStore,
+  TELECOM_ADAPTER_CATALOG,
   runWardMarshalCensus,
+  runCarrierScaleBenchmark,
+  runReconnectStormSimulation,
+  simulateMultiRegionLedgerSoak,
   executeWardMarshalInterdiction,
   loadEvidenceBundle,
   loadAuthorityEnvelope,
@@ -82,6 +89,7 @@ import {
   verifyEvidenceBundle,
   verifyGelChain,
   verifySandboxReceipt,
+  verifyTelecomEvidenceBundle,
   verifyWarrant,
   writeJson
 } from "@aristotle/execution-control-runtime";
@@ -524,6 +532,12 @@ Commands:
   execution-control audit verify  Verify the execution-control GEL hash chain
   execution-control evidence export  Export an offline Evidence Bundle
   execution-control evidence verify  Verify an offline Evidence Bundle
+  telecom templates                 List carrier Ward templates, policies, and sample actions
+  telecom adapters                  List typed TMF / NETCONF / gNMI / O-RAN adapter surfaces
+  telecom evidence export           Export a telecom NOC Evidence Bundle
+  telecom benchmark                 Run a carrier-scale Commit Gate benchmark
+  telecom reconnect-storm           Simulate disconnected edge reconnect reconciliation
+  telecom ha-soak                   Simulate multi-region GEL append/verify soak
   keys generate        Generate an Ed25519 Warrant signing keypair
   kill engage|release  Engage/release the sovereign-halt kill switch
   revoke key|envelope|warrant <id>   Revoke a compromised trust root
@@ -1095,6 +1109,137 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
       if (json) printJson(out, verification, true);
       else out(`evidence_verification=${verification.ok ? "ok" : `failed:${verification.failures.join(";")}`}\nbundle_hash=${verification.bundle_hash ?? "none"}\nledger_records=${verification.ledger.count}\n`);
       return verification.ok ? 0 : 1;
+    }
+
+    if (command === "telecom") {
+      if (subcommand === "templates") {
+        const base = "examples/telecom";
+        const templates = [
+          `${base}/ward.ran_region_west.yaml`,
+          `${base}/authority_envelope.noc_change_orchestrator.yaml`,
+          `${base}/policy/ran_region_west.apl`
+        ];
+        const actions = [
+          `${base}/actions/tmf_service_order_patch.json`,
+          `${base}/actions/netconf_edit_config.json`,
+          `${base}/actions/gnmi_set_qos.json`,
+          `${base}/actions/oran_a1_policy_put.json`,
+          `${base}/actions/refuse_cell_shutdown.json`
+        ];
+        if (json) printJson(out, { templates, actions }, true);
+        else {
+          out("AristotleOS telecom pilot templates\n");
+          for (const file of [...templates, ...actions]) out(`  ${file}\n`);
+        }
+        return 0;
+      }
+
+      if (subcommand === "adapters") {
+        if (json) printJson(out, { adapters: TELECOM_ADAPTER_CATALOG }, true);
+        else {
+          out("Typed telecom adapter surfaces\n");
+          for (const adapter of TELECOM_ADAPTER_CATALOG) {
+            out(`\n${adapter.kind} — ${adapter.label}\n`);
+            out(`  Boundary: ${adapter.consequenceBoundary}\n`);
+            out(`  Actions: ${adapter.actionExamples.join(", ")}\n`);
+            out(`  Registers: ${adapter.requiredRuntimeRegisters.join(", ")}\n`);
+          }
+        }
+        return 0;
+      }
+
+      if (subcommand === "evidence" && rest[0] === "export") {
+        const outPath = requiredOption(rest, "--out");
+        const warrantPath = optionValue(rest, "--warrant");
+        const standards = optionValues(rest, "--standard");
+        const services = optionValues(rest, "--service");
+        const preChecks = optionValues(rest, "--pre-check").map((item) => {
+          const [name, raw = "true", detail] = item.split(":");
+          return { name, ok: raw !== "false" && raw !== "fail", ...(detail ? { detail } : {}) };
+        });
+        const postChecks = optionValues(rest, "--post-check").map((item) => {
+          const [name, raw = "true", detail] = item.split(":");
+          return { name, ok: raw !== "false" && raw !== "fail", ...(detail ? { detail } : {}) };
+        });
+        const telecom: TelecomEvidenceContext = {
+          change_ticket: requiredOption(rest, "--ticket"),
+          noc_operator: requiredOption(rest, "--operator"),
+          network_domain: (optionValue(rest, "--domain") ?? "ran") as TelecomDomain,
+          network_scope: requiredOption(rest, "--scope"),
+          impacted_services: services.length ? services : [optionValue(rest, "--service-name") ?? "mobile-broadband"],
+          impacted_regions: optionValues(rest, "--region"),
+          customer_impact: (optionValue(rest, "--customer-impact") ?? "low") as TelecomEvidenceContext["customer_impact"],
+          rollback_plan: requiredOption(rest, "--rollback"),
+          pre_checks: preChecks.length ? preChecks : [{ name: "precheck evidence attached", ok: true }],
+          ...(postChecks.length ? { post_checks: postChecks } : {}),
+          standards_profile: (standards.length ? standards : ["TMF_OPEN_API", "NETCONF_YANG", "GNMI_GNOI", "ORAN_A1_R1"]) as TelecomEvidenceContext["standards_profile"],
+          redacted_fields: optionValues(rest, "--redact"),
+          retained_fields: optionValues(rest, "--retain")
+        };
+        const bundle = exportTelecomEvidenceBundle({
+          ledgerPath: path.resolve(cwd, requiredOption(rest, "--ledger")),
+          ward: loadWardManifest(path.resolve(cwd, requiredOption(rest, "--ward"))),
+          authorityEnvelope: loadAuthorityEnvelope(path.resolve(cwd, requiredOption(rest, "--envelope"))),
+          recordId: optionValue(rest, "--record-id"),
+          warrant: warrantPath ? JSON.parse(readFileSync(path.resolve(cwd, warrantPath), "utf8")) : undefined,
+          exportedAt: optionValue(rest, "--now"),
+          telecom
+        });
+        writeJson(path.resolve(cwd, outPath), bundle);
+        const verification = verifyTelecomEvidenceBundle(bundle);
+        if (json) printJson(out, bundle, true);
+        else out(`telecom_evidence_bundle=${outPath}\nbundle_hash=${bundle.hashes.telecom_bundle_hash}\nverification=${verification.ok ? "ok" : `failed:${verification.failures.join(";")}`}\nchange_ticket=${telecom.change_ticket}\nnetwork_scope=${telecom.network_scope}\n`);
+        return verification.ok ? 0 : 1;
+      }
+
+      if (subcommand === "benchmark") {
+        const report = runCarrierScaleBenchmark({
+          ward: loadWardManifest(path.resolve(cwd, requiredOption(rest, "--ward"))),
+          authorityEnvelope: loadAuthorityEnvelope(path.resolve(cwd, requiredOption(rest, "--envelope"))),
+          actionCount: Number(optionValue(rest, "--count") ?? "1000"),
+          ledgerPath: optionValue(rest, "--ledger") ? path.resolve(cwd, requiredOption(rest, "--ledger")) : undefined,
+          now: optionValue(rest, "--now")
+        });
+        const outPath = optionValue(rest, "--out");
+        if (outPath) writeJson(path.resolve(cwd, outPath), report);
+        if (json) printJson(out, report, true);
+        else out(`carrier_benchmark=${report.action_count} decisions\nallowed=${report.allowed} refused=${report.refused} escalated=${report.escalated}\ndecisions_per_second=${report.decisions_per_second}\np95_ms=${report.latency.p95_ms}\nledger_verification=${report.ledger_verification.ok ? "ok" : `failed:${report.ledger_verification.failure}`}\n${outPath ? `report=${outPath}\n` : ""}`);
+        return report.ledger_verification.ok ? 0 : 1;
+      }
+
+      if (subcommand === "reconnect-storm") {
+        const report = runReconnectStormSimulation({
+          ward: loadWardManifest(path.resolve(cwd, requiredOption(rest, "--ward"))),
+          authorityEnvelope: loadAuthorityEnvelope(path.resolve(cwd, requiredOption(rest, "--envelope"))),
+          edgeNodes: Number(optionValue(rest, "--edge-nodes") ?? "50"),
+          recordsPerNode: Number(optionValue(rest, "--records-per-node") ?? "100"),
+          now: optionValue(rest, "--now")
+        });
+        const outPath = optionValue(rest, "--out");
+        if (outPath) writeJson(path.resolve(cwd, outPath), report);
+        if (json) printJson(out, report, true);
+        else out(`reconnect_storm=${report.total_records} records\nagreements=${report.agreements}\nconflicts=${report.conflicts}\nrecords_per_second=${report.records_per_second}\n${outPath ? `report=${outPath}\n` : ""}`);
+        return report.conflicts > 0 ? 2 : 0;
+      }
+
+      if (subcommand === "ha-soak") {
+        const regions = (optionValue(rest, "--regions") ?? "east,central,west").split(",").map((region) => region.trim()).filter(Boolean);
+        const report = simulateMultiRegionLedgerSoak({
+          ward: loadWardManifest(path.resolve(cwd, requiredOption(rest, "--ward"))),
+          authorityEnvelope: loadAuthorityEnvelope(path.resolve(cwd, requiredOption(rest, "--envelope"))),
+          regions,
+          decisionsPerRegion: Number(optionValue(rest, "--decisions-per-region") ?? "200"),
+          ledgerPath: optionValue(rest, "--ledger") ? path.resolve(cwd, requiredOption(rest, "--ledger")) : undefined,
+          now: optionValue(rest, "--now")
+        });
+        const outPath = optionValue(rest, "--out");
+        if (outPath) writeJson(path.resolve(cwd, outPath), report);
+        if (json) printJson(out, report, true);
+        else out(`multi_region_soak=${report.total_decisions} decisions\nregions=${report.regions.join(",")}\ndecisions_per_second=${report.decisions_per_second}\nledger_verification=${report.ledger_verification.ok ? "ok" : `failed:${report.ledger_verification.failure}`}\n${outPath ? `report=${outPath}\n` : ""}`);
+        return report.ledger_verification.ok ? 0 : 1;
+      }
+
+      throw new Error("usage: aristotle telecom <templates|adapters|evidence export|benchmark|reconnect-storm|ha-soak> ...");
     }
 
     if (command === "execution-control" && subcommand === "shadow") {

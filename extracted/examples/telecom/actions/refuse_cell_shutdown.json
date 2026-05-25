@@ -1,0 +1,24 @@
+{
+  "action_id": "telco-ran-cell-shutdown-001",
+  "ward_id": "ward-ran-region-west",
+  "subject": "agent:noc-change-orchestrator",
+  "action_type": "ran.cell.shutdown",
+  "target": "cell-1703",
+  "params": {
+    "adapter": "oran-o1",
+    "cell_id": "cell-1703",
+    "reason": "unapproved autonomous shutdown"
+  },
+  "requested_at": "2026-05-25T15:04:00.000Z",
+  "request_id": "req-telco-refuse-001",
+  "telemetry": {
+    "change_ticket": "CHG-2026-0517",
+    "maintenance_window": "approved",
+    "noc_operator": "operator:netops-west",
+    "precheck_passed": true
+  },
+  "classification": {
+    "level": "CUI",
+    "caveats": ["CPNI"]
+  }
+}

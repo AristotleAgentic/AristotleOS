@@ -13,6 +13,7 @@ import {
   LayoutGrid,
   Network,
   Radar,
+  RadioTower,
   Siren,
   ShieldAlert,
   UserCheck,
@@ -36,6 +37,7 @@ import { ReplayTimeMachine } from "./ReplayTimeMachine.js";
 import { SimulationPanel } from "./SimulationPanel.js";
 import { ShadowModeConsole } from "./ShadowModeConsole.js";
 import { ApprovalsConsole } from "./ApprovalsConsole.js";
+import { TelecomNocConsole } from "./TelecomNocConsole.js";
 import { WardBrowser } from "./WardBrowser.js";
 import { WardMarshalConsole } from "./WardMarshalConsole.js";
 import { WarrantLifecycle } from "./WarrantLifecycle.js";
@@ -48,6 +50,7 @@ const NAV: Array<{ id: SectionId; label: string; icon: LucideIcon }> = [
   { id: "shadow", label: "Shadow", icon: Radar },
   { id: "conflicts", label: "Conflicts", icon: Workflow },
   { id: "approvals", label: "Approvals", icon: UserCheck },
+  { id: "noc", label: "NOC", icon: RadioTower },
   { id: "adoption", label: "Adopt", icon: ClipboardCheck },
   { id: "failure", label: "Failure", icon: ShieldAlert },
   { id: "marshal", label: "Marshal", icon: Crosshair },
@@ -67,6 +70,7 @@ const SECTION_META: Record<SectionId, { title: string; sub: string }> = {
   shadow: { title: "Shadow Mode Profiling", sub: "Observe would-ALLOW / REFUSE / ESCALATE before live enforcement" },
   conflicts: { title: "Edge Conflict Inbox", sub: "Resolve disconnected edge reality against central governance" },
   approvals: { title: "Dual-Control Approvals", sub: "M-of-N approval for the gravest actions — plural authority, fully evidenced" },
+  noc: { title: "Telecom NOC Workflow", sub: "Govern autonomous network changes from mission to admitted execution to evidence export" },
   adoption: { title: "Commercial Adoption Path", sub: "From sandbox to shadow to enforcement to evidence export" },
   failure: { title: "Failure Mode Console", sub: "Partitions, stale authority, witness disagreement, and replay divergence" },
   marshal: { title: "Ward Marshal", sub: "Rogue-agent census and warrant-backed interdiction" },
@@ -99,6 +103,8 @@ function SectionBody({ section }: { section: SectionId }) {
       return <ShadowModeConsole />;
     case "approvals":
       return <ApprovalsConsole />;
+    case "noc":
+      return <TelecomNocConsole />;
     case "conflicts":
       return <ConflictInboxConsole />;
     case "adoption":

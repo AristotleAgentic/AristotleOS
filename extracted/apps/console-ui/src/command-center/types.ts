@@ -334,6 +334,46 @@ export interface ApprovalItem {
   expiresAt?: string;
 }
 
+export interface TelecomNocStep {
+  id: string;
+  label: string;
+  owner: string;
+  state: "complete" | "active" | "blocked" | "pending";
+  evidence: string;
+}
+
+export interface TelecomAdapterSurface {
+  id: string;
+  label: string;
+  standard: "TMF" | "NETCONF" | "gNMI/gNOI" | "O-RAN";
+  actionTypes: string[];
+  requiredRegisters: string[];
+  boundary: string;
+  posture: Posture;
+}
+
+export interface TelecomEvidenceExport {
+  bundleVersion: string;
+  changeTicket: string;
+  networkScope: string;
+  nocOperator: string;
+  impactedServices: string[];
+  standardsProfile: string[];
+  redactedFields: string[];
+  bundleHash: string;
+  verification: "ok" | "blocked";
+}
+
+export interface TelecomScaleDrill {
+  id: string;
+  label: string;
+  command: string;
+  target: string;
+  current: string;
+  posture: Posture;
+  evidence: string;
+}
+
 export interface WardMarshalFinding {
   id: string;
   subject: string;

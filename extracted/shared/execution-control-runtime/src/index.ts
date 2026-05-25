@@ -77,6 +77,7 @@ export * from "./fail-mode.js";
 export * from "./degradation.js";
 export * from "./budget.js";
 export * from "./dual-control.js";
+export * from "./telecom.js";
 
 export {
   type AristotleSigner,
