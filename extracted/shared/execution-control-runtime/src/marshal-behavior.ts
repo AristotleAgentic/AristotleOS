@@ -8,10 +8,13 @@ import {
 /**
  * Ward Marshal — behavioral analysis.
  *
- * Detection over a time-ordered stream of governance events: denial bursts, rate
- * spikes vs a per-subject baseline, first-seen agents, off-hours activity, target
- * fan-out, and configurable cross-agent sequence chains (the "agent A reads → B
- * exfiltrates → C deletes" pattern where each step is individually compliant).
+ * Detection over a time-ordered stream of governance events. Per-subject signals:
+ * denial bursts, rate spikes vs a baseline, first-seen agents, off-hours activity,
+ * target fan-out, privilege escalation (routine → sensitive pivot), and new-capability
+ * scope creep. Cross-agent / fleet signals: configurable sequence chains (the
+ * "A reads → B exfiltrates → C deletes" collusion pattern), coordinated campaigns
+ * (one action refused across many agents at once), peer-group volume outliers, and
+ * shared-credential lateral movement.
  *
  * Two properties make this AristotleOS-native rather than a generic SIEM rule:
  *   1. It runs over the signed Governance Evidence Ledger as its substrate — the
@@ -28,7 +31,12 @@ export type BehaviorFindingKind =
   | "first_seen"
   | "off_hours"
   | "target_fanout"
-  | "sequence_chain";
+  | "sequence_chain"
+  | "coordinated_denial"
+  | "peer_anomaly"
+  | "privilege_escalation"
+  | "new_capability"
+  | "credential_reuse";
 
 export type BehaviorSeverity = "low" | "medium" | "high" | "critical";
 export type BehaviorDisposition = "observe" | "shadow_profile" | "request_authority_review" | "quarantine" | "terminate_execution";
@@ -44,6 +52,8 @@ export interface BehaviorEvent {
   ward_id?: string;
   /** Optional usage/cost signal for spike detection (e.g. tokens, dollars, calls). */
   cost?: number;
+  /** Credential references this event used; the same ref across subjects is lateral movement. */
+  credential_refs?: string[];
   labels?: Record<string, string>;
 }
 
@@ -83,6 +93,16 @@ export interface BehaviorAnalysisConfig {
   knownSubjects?: string[];
   /** Cross-agent sequence rules. */
   sequenceRules?: SequenceRule[];
+  /** Distinct subjects refused the *same* action within the window that trips a coordinated campaign. Default 3. */
+  coordinatedThreshold?: number;
+  /** Minimum distinct subjects before peer-group outlier analysis runs (noise floor). Default 4. */
+  peerMinSubjects?: number;
+  /** Standard deviations above the peer mean that flag a volume outlier. Default 3. */
+  peerStdevFactor?: number;
+  /** Action-type regexes considered sensitive/privileged; escalation toward these is flagged. */
+  sensitiveActions?: string[];
+  /** Minimum per-subject events before new-capability (scope-creep) analysis runs. Default 4. */
+  newCapabilityMinEvents?: number;
 }
 
 export interface BehaviorFinding {
@@ -137,11 +157,17 @@ export function analyzeAgentBehavior(events: BehaviorEvent[], config: BehaviorAn
     ...detectFirstSeen(sorted, config.knownSubjects),
     ...detectOffHours(sorted, config.allowedHoursUtc),
     ...detectFanout(sorted, windowMs, config.fanoutThreshold ?? 8),
-    ...detectSequences(sorted, config.sequenceRules ?? [])
+    ...detectSequences(sorted, config.sequenceRules ?? []),
+    ...detectCoordinatedDenials(sorted, windowMs, config.coordinatedThreshold ?? 3),
+    ...detectPeerAnomalies(sorted, config.peerMinSubjects ?? 4, config.peerStdevFactor ?? 3),
+    ...detectPrivilegeEscalation(sorted, windowMs, config.sensitiveActions),
+    ...detectNewCapability(sorted, config.newCapabilityMinEvents ?? 4),
+    ...detectCredentialReuse(sorted)
   ].sort((a, b) => a.finding_id.localeCompare(b.finding_id));
 
   const by_kind = {
-    denial_burst: 0, rate_spike: 0, first_seen: 0, off_hours: 0, target_fanout: 0, sequence_chain: 0
+    denial_burst: 0, rate_spike: 0, first_seen: 0, off_hours: 0, target_fanout: 0, sequence_chain: 0,
+    coordinated_denial: 0, peer_anomaly: 0, privilege_escalation: 0, new_capability: 0, credential_reuse: 0
   } as Record<BehaviorFindingKind, number>;
   for (const finding of findings) by_kind[finding.kind] += 1;
 
@@ -313,4 +339,127 @@ function matchChainFrom(events: BehaviorEvent[], start: number, matchers: { re: 
 function stepMatches(event: BehaviorEvent, matcher: { re: RegExp; decision?: ExecutionControlDecision }): boolean {
   if (matcher.decision && event.decision !== matcher.decision) return false;
   return typeof event.action_type === "string" && matcher.re.test(event.action_type);
+}
+
+// --- cross-agent + higher-order detectors -----------------------------------
+
+/**
+ * Coordinated campaign: the SAME action_type refused across many distinct subjects
+ * within the window — a fleet of agents probing one boundary in concert, which a
+ * per-subject denial burst misses. This is the cross-agent analogue of denial_burst.
+ */
+function detectCoordinatedDenials(events: BehaviorEvent[], windowMs: number, threshold: number): BehaviorFinding[] {
+  const out: BehaviorFinding[] = [];
+  const byAction = new Map<string, BehaviorEvent[]>();
+  for (const e of events) {
+    if (e.decision !== "REFUSE" || typeof e.action_type !== "string") continue;
+    byAction.set(e.action_type, [...(byAction.get(e.action_type) ?? []), e]);
+  }
+  for (const [action, denials] of byAction) {
+    // Slide a window; flag when >= `threshold` DISTINCT subjects are refused this action within it.
+    for (let i = 0; i < denials.length; i++) {
+      const windowEnd = ms(denials[i].occurred_at) + windowMs;
+      const inWindow = denials.filter((e) => ms(e.occurred_at) >= ms(denials[i].occurred_at) && ms(e.occurred_at) <= windowEnd);
+      const subjects = [...new Set(inWindow.map((e) => e.subject))];
+      if (subjects.length >= threshold) {
+        const severity: BehaviorSeverity = subjects.length >= threshold * 2 ? "high" : "medium";
+        out.push(makeFinding("coordinated_denial", severity, subjects, `${subjects.length} agents were each refused "${action}" within ${Math.round(windowMs / 1000)}s — coordinated probe/campaign`, inWindow));
+        break;
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Peer-group anomaly: a subject whose event volume is a statistical outlier
+ * (> mean + factor·σ) versus its cohort — "one agent behaving unlike the rest."
+ * Only runs with a meaningful population to avoid small-N noise.
+ */
+function detectPeerAnomalies(events: BehaviorEvent[], minSubjects: number, factor: number): BehaviorFinding[] {
+  const groups = bySubject(events);
+  if (groups.size < minSubjects) return [];
+  const counts = [...groups.values()].map((e) => e.length);
+  const mean = counts.reduce((a, b) => a + b, 0) / counts.length;
+  const variance = counts.reduce((a, b) => a + (b - mean) ** 2, 0) / counts.length;
+  const stdev = Math.sqrt(variance);
+  if (stdev === 0) return [];
+  const out: BehaviorFinding[] = [];
+  for (const [subject, subjectEvents] of groups) {
+    if (subjectEvents.length > mean + factor * stdev) {
+      const severity: BehaviorSeverity = subjectEvents.length > mean + factor * 2 * stdev ? "high" : "medium";
+      out.push(makeFinding("peer_anomaly", severity, [subject], `${subject} volume ${subjectEvents.length} is a statistical outlier vs peer mean ${mean.toFixed(1)} (>=${factor}σ, σ=${stdev.toFixed(1)}) — diverging from its cohort`, subjectEvents));
+    }
+  }
+  return out;
+}
+
+/**
+ * Privilege escalation: a subject that pivots from routine activity to a sensitive/
+ * privileged action within the window. A blocked attempt (REFUSE) is more alarming
+ * than an authorized one. Runs only when `sensitiveActions` patterns are configured.
+ */
+function detectPrivilegeEscalation(events: BehaviorEvent[], windowMs: number, sensitiveActions?: string[]): BehaviorFinding[] {
+  if (!sensitiveActions || sensitiveActions.length === 0) return [];
+  const matchers = sensitiveActions.map((p) => new RegExp(p, "i"));
+  const isSensitive = (e: BehaviorEvent) => typeof e.action_type === "string" && matchers.some((re) => re.test(e.action_type!));
+  const out: BehaviorFinding[] = [];
+  for (const [subject, subjectEvents] of bySubject(events)) {
+    const firstSensitiveIdx = subjectEvents.findIndex(isSensitive);
+    if (firstSensitiveIdx <= 0) continue; // need prior benign activity before the pivot
+    const pivot = subjectEvents[firstSensitiveIdx];
+    const prior = subjectEvents.slice(0, firstSensitiveIdx).filter((e) => !isSensitive(e) && ms(pivot.occurred_at) - ms(e.occurred_at) <= windowMs);
+    if (prior.length === 0) continue;
+    const severity: BehaviorSeverity = pivot.decision === "REFUSE" ? "high" : "medium";
+    out.push(makeFinding("privilege_escalation", severity, [subject], `${subject} escalated from ${prior.length} routine action(s) to sensitive "${pivot.action_type}" (${pivot.decision ?? "n/a"}) within ${Math.round(windowMs / 1000)}s`, [...prior, pivot]));
+  }
+  return out;
+}
+
+/**
+ * New capability / scope creep: a subject that begins using action types absent from
+ * its own baseline (first half of its history) in the recent half — an agent quietly
+ * expanding what it does. Only for subjects with enough history to have a baseline.
+ */
+function detectNewCapability(events: BehaviorEvent[], minEvents: number): BehaviorFinding[] {
+  const out: BehaviorFinding[] = [];
+  for (const [subject, subjectEvents] of bySubject(events)) {
+    const typed = subjectEvents.filter((e) => typeof e.action_type === "string");
+    if (typed.length < minEvents) continue;
+    const mid = Math.floor(typed.length / 2);
+    const baseline = new Set(typed.slice(0, mid).map((e) => e.action_type!));
+    const recent = typed.slice(mid);
+    const newActions = [...new Set(recent.filter((e) => !baseline.has(e.action_type!)).map((e) => e.action_type!))];
+    if (newActions.length === 0) continue;
+    const newEvents = recent.filter((e) => newActions.includes(e.action_type!));
+    const severity: BehaviorSeverity = newEvents.some((e) => e.decision === "REFUSE") ? "medium" : "low";
+    out.push(makeFinding("new_capability", severity, [subject], `${subject} began using ${newActions.length} action type(s) absent from its baseline: ${newActions.sort().join(", ")} — capability/scope expansion`, newEvents));
+  }
+  return out;
+}
+
+/**
+ * Credential reuse / lateral movement: the same credential reference used by more
+ * than one distinct subject — a shared or over-broad credential crossing agent
+ * identities, a classic lateral-movement signal. Requires events that carry
+ * `credential_refs`.
+ */
+function detectCredentialReuse(events: BehaviorEvent[]): BehaviorFinding[] {
+  const byCredential = new Map<string, { subjects: Set<string>; events: BehaviorEvent[] }>();
+  for (const e of events) {
+    for (const ref of e.credential_refs ?? []) {
+      const entry = byCredential.get(ref) ?? { subjects: new Set<string>(), events: [] };
+      entry.subjects.add(e.subject);
+      entry.events.push(e);
+      byCredential.set(ref, entry);
+    }
+  }
+  const out: BehaviorFinding[] = [];
+  for (const [ref, entry] of byCredential) {
+    if (entry.subjects.size < 2) continue;
+    const subjects = [...entry.subjects];
+    const severity: BehaviorSeverity = entry.subjects.size >= 3 ? "critical" : "high";
+    out.push(makeFinding("credential_reuse", severity, subjects, `credential "${ref}" used by ${subjects.length} distinct agents (${subjects.sort().join(", ")}) — shared/over-broad credential or lateral movement`, entry.events));
+  }
+  return out;
 }

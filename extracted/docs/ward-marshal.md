@@ -102,11 +102,24 @@ over time* — and feeds the same warrant-gated interdiction. `analyzeAgentBehav
 runs deterministic detectors over a time-ordered event stream and emits content-hashed
 findings, each with a recommended disposition:
 
+Per-subject signals:
 - **denial_burst** — a subject accumulating refusals (probing / misconfigured agent)
 - **rate_spike** — a subject accelerating past its own baseline (runaway / cost spike)
 - **first_seen** — a subject absent from the approved registry
 - **off_hours** — activity outside allowed UTC hours
 - **target_fanout** — one subject touching many distinct targets (lateral movement)
+- **privilege_escalation** — a subject pivoting from routine activity to a configured
+  *sensitive* action within the window; a blocked (REFUSE) pivot is high severity
+- **new_capability** — a subject using action types absent from its own baseline
+  (quiet scope creep)
+
+Cross-agent / fleet signals (what a per-subject SIEM rule misses):
+- **coordinated_denial** — the *same* action refused across many distinct agents at
+  once (a coordinated probe/campaign), not just one noisy agent
+- **peer_anomaly** — a subject whose volume is a statistical outlier (> mean + kσ)
+  versus its cohort — behaving unlike its peers
+- **credential_reuse** — one credential reference used by multiple distinct agents
+  (shared/over-broad credential or lateral movement); 3+ agents ⇒ critical
 - **sequence_chain** — a configurable, optionally **cross-agent** ordered pattern where
   each step is individually compliant but the sequence is not (e.g. *read → external
   egress → delete* spread across three colluding agents)
