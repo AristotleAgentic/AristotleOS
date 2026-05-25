@@ -179,9 +179,25 @@ export async function createSignerFromKeyProvider(provider: KeyMaterialProvider)
   return createEd25519Signer({ privateKeyPem, publicKeyPem, keyId: provider.keyId });
 }
 
+// Parsing a PEM into a KeyObject is the dominant cost of verification; the same
+// public keys recur across thousands of warrant/GEL/bundle verifications. Cache the
+// parsed key by its PEM. Behaviour is unchanged (identical key ⇒ identical result);
+// the cache is bounded so churned/ephemeral keys can't grow it without limit.
+const PUBLIC_KEY_CACHE_LIMIT = 512;
+const publicKeyCache = new Map<string, KeyObject>();
+
+function parsedPublicKey(publicKeyPem: string): KeyObject {
+  const cached = publicKeyCache.get(publicKeyPem);
+  if (cached) return cached;
+  const key = createPublicKey(publicKeyPem);
+  if (publicKeyCache.size >= PUBLIC_KEY_CACHE_LIMIT) publicKeyCache.clear();
+  publicKeyCache.set(publicKeyPem, key);
+  return key;
+}
+
 export function verifyEd25519(publicKeyPem: string, message: string, signatureBase64: string): boolean {
   try {
-    return cryptoVerify(null, Buffer.from(message, "utf8"), createPublicKey(publicKeyPem), Buffer.from(signatureBase64, "base64"));
+    return cryptoVerify(null, Buffer.from(message, "utf8"), parsedPublicKey(publicKeyPem), Buffer.from(signatureBase64, "base64"));
   } catch {
     return false;
   }
