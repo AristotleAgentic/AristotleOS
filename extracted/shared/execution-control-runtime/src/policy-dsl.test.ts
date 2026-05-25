@@ -106,6 +106,18 @@ test("invalid enum values are rejected with a helpful message + position", () =>
   assert.match(cls.diagnostics[0].message, /unknown classification 'COSMIC'/);
 });
 
+test("budget statement compiles to constraints.budget (cost + calls, shared window)", () => {
+  const { drafts, ok } = compilePolicy(`ward "x" { subject agent:a\n allow t\n budget cost <= 1000 per 1h\n budget calls <= 50 per 1h }`);
+  assert.equal(ok, true, "expected compile ok");
+  assert.deepEqual(drafts[0].authorityEnvelope.constraints.budget, { windowMs: 3_600_000, maxCostPerWindow: 1000, maxCallsPerWindow: 50 });
+});
+
+test("budget rejects an invalid duration with a positioned diagnostic", () => {
+  const r = compilePolicy(`ward "x" { subject agent:a\n budget cost <= 10 per 1y }`);
+  assert.equal(r.ok, false);
+  assert.match(r.diagnostics[0].message, /invalid duration '1y'/);
+});
+
 test("a missing subject and duplicate ward ids are rejected", () => {
   assert.equal(compilePolicy(`ward "x" { allow t1 }`).ok, false);
   const dup = compilePolicy(`ward "A" { id same\n subject agent:x }\nward "B" { id same\n subject agent:y }`);

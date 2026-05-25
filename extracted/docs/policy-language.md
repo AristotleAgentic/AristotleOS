@@ -67,6 +67,14 @@ One file holds one or more `ward "<name>" { ... }` blocks. Statements inside a b
 | `bound altitude_m <= N` | `physical_bounds.max_altitude_m` + constraint | |
 | `bound battery_pct >= N` | `physical_bounds.battery_minimum_pct` | |
 | `within <boundary-id>` | `physical_bounds.permitted_boundary_id` + constraint | |
+| `budget cost <= N per <dur>` | `constraints.budget.maxCostPerWindow` | cost from `action.params.cost`; `dur` e.g. `30s`,`15m`,`1h`,`1d` |
+| `budget calls <= N per <dur>` | `constraints.budget.maxCallsPerWindow` | each admitted action = one call |
+
+Budget enforcement is **opt-in at the boundary**: the runtime applies it when a budget
+governor is configured (`budgetStatePath` makes the rolling window durable across
+restarts). Over-budget actions are refused with `BUDGET_EXCEEDED` and recorded in the
+GEL like any other decision. `cost` and `calls` share one window per ward (the last
+`per` wins).
 
 Comments start with `#`. Strings are double-quoted; identifiers may contain
 `. : / _ -` (so `drone.takeoff`, `agent:survey-planner`, `telemetry.gps_lock`, and

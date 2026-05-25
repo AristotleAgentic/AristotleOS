@@ -43,6 +43,7 @@ import { type BehaviorAnalysisConfig, type BehaviorEvent, analyzeAgentBehavior }
 import { type Classification, enforceClassification } from "./classification.js";
 import { type DegradationCondition, type WardCriticality, resolveFailMode } from "./fail-mode.js";
 import { type DegradationProbe, collectDegradation, ledgerUnavailableProbe } from "./degradation.js";
+import { BudgetGovernor, type BudgetPolicy, budgetPolicyFrom } from "./budget.js";
 
 export * from "./proxy.js";
 export * from "./mcp.js";
@@ -73,6 +74,7 @@ export * from "./edge-containment.js";
 export * from "./classification.js";
 export * from "./fail-mode.js";
 export * from "./degradation.js";
+export * from "./budget.js";
 
 export {
   type AristotleSigner,
@@ -103,6 +105,7 @@ export type ExecutionControlReasonCode =
   | "POLICY_VERSION_MISMATCH"
   | "KILL_SWITCH_ENGAGED"
   | "REPLAY_DETECTED"
+  | "BUDGET_EXCEEDED"
   | "AUTHORITY_REVOKED"
   | "CLASSIFICATION_VIOLATION"
   | "DEGRADED_MODE"
@@ -325,6 +328,8 @@ export interface EvaluateExecutionControlInput extends CommitGateInput {
   trace_context?: TraceContext;
   /** Optional OpenTelemetry-shaped tracer; emits spans around the decision phases. */
   tracer?: AristotleTracer;
+  /** When set, enforces the Authority Envelope's budget (constraints.budget) per subject. */
+  budgetGovernor?: BudgetGovernor;
 }
 
 export interface EvaluateExecutionControlResult {
@@ -417,6 +422,11 @@ export interface ExecutionControlRuntimeServerOptions {
   revocationListPath?: string;
   /** Path to the Conflict Inbox state file; when unset, an in-memory store is used. */
   conflictInboxPath?: string;
+  /** When set, enforces Authority-Envelope budgets (constraints.budget) per subject;
+   *  a path makes the spend window durable across restarts, else it is in-memory. */
+  budgetStatePath?: string;
+  /** Disable budget enforcement entirely (default: enabled with an in-memory window). */
+  budgetDisabled?: boolean;
   /**
    * Degradation detectors run per request; detected conditions feed the per-Ward
    * fail-mode policy. Defaults to a ledger-writability probe when a file ledger path
@@ -1170,7 +1180,8 @@ function decideAndWarrant(
   signer: AristotleSigner,
   canonical: CanonicalAction,
   runtimeSnapshot: RuntimeRegister,
-  replaySeen: boolean
+  replaySeen: boolean,
+  budgetExceeded: { reason: string } | null = null
 ): { decision: CommitGateDecision; warrant?: Warrant } {
   const ward = input.ward ?? undefined;
   const revocations = input.revocationListPath ? loadRevocationList(input.revocationListPath) : undefined;
@@ -1185,6 +1196,8 @@ function decideAndWarrant(
     decision = refuse("REFUSE", ["AUTHORITY_REVOKED"], canonical, runtimeSnapshot, ward, input.authorityEnvelope ?? undefined);
   } else if (replaySeen) {
     decision = refuse("REFUSE", ["REPLAY_DETECTED"], canonical, runtimeSnapshot, ward, input.authorityEnvelope ?? undefined);
+  } else if (budgetExceeded) {
+    decision = refuse("REFUSE", ["BUDGET_EXCEEDED"], canonical, runtimeSnapshot, ward, input.authorityEnvelope ?? undefined);
   } else {
     decision = evaluateCommitGate(input);
   }
@@ -1192,6 +1205,23 @@ function decideAndWarrant(
     ? issueWarrant(decision, input.action, input.authorityEnvelope, input.now, signer, input.warrantTtlSeconds)
     : undefined;
   return { decision, warrant };
+}
+
+/** Resolve the per-subject budget verdict for this action (no state mutation). */
+function evaluateBudget(input: Omit<EvaluateExecutionControlInput, "ledger">): { policy?: BudgetPolicy; nowMs: number; cost: number; exceeded: { reason: string } | null } {
+  const nowMs = input.now ? Date.parse(input.now) : Date.now();
+  const cost = typeof input.action.params.cost === "number" ? input.action.params.cost : 0;
+  const policy = input.budgetGovernor ? budgetPolicyFrom((input.authorityEnvelope?.constraints as Record<string, unknown> | undefined)?.budget) : undefined;
+  if (!policy || !input.budgetGovernor) return { nowMs, cost, exceeded: null };
+  const check = input.budgetGovernor.check(input.action.subject, policy, nowMs, cost);
+  return { policy, nowMs, cost, exceeded: check.ok ? null : { reason: check.reason } };
+}
+
+/** Record an admitted action's spend against the budget window (called only on ALLOW). */
+function recordBudget(input: Omit<EvaluateExecutionControlInput, "ledger">, budget: ReturnType<typeof evaluateBudget>, decision: ExecutionControlDecision): void {
+  if (decision === "ALLOW" && budget.policy && input.budgetGovernor) {
+    input.budgetGovernor.record(input.action.subject, budget.cost, budget.nowMs, budget.policy.windowMs);
+  }
 }
 
 export function evaluateExecutionControl(input: EvaluateExecutionControlInput): EvaluateExecutionControlResult {
@@ -1205,7 +1235,9 @@ export function evaluateExecutionControl(input: EvaluateExecutionControlInput): 
     const replaySeen = input.replayProtection
       ? (input.ledger ? input.ledger.hasPriorAdmission(canonical.canonical_action_hash) : hasPriorAdmission(input.ledgerPath, canonical.canonical_action_hash))
       : false;
-    const { decision, warrant } = traceSpan(tracer, "aristotle.commit_gate.decide", undefined, () => decideAndWarrant(input, signer, canonical, runtimeSnapshot, replaySeen));
+    const budget = evaluateBudget(input);
+    const { decision, warrant } = traceSpan(tracer, "aristotle.commit_gate.decide", undefined, () => decideAndWarrant(input, signer, canonical, runtimeSnapshot, replaySeen, budget.exceeded));
+    recordBudget(input, budget, decision.decision);
     const gel_record = traceSpan(tracer, "aristotle.gel.append", undefined, () => (input.ledger
       ? input.ledger.append({ ward: input.ward!, action: input.action, decision, warrant, now: input.now, signer, actor: input.actor, trace_context: input.trace_context })
       : appendGelRecord({ ledgerPath: input.ledgerPath, ward: input.ward!, action: input.action, decision, warrant, now: input.now, signer, actor: input.actor, trace_context: input.trace_context })));
@@ -1237,7 +1269,9 @@ export async function evaluateExecutionControlAsync(input: EvaluateExecutionCont
   const canonical = canonicalizeAction(input.action);
   const runtimeSnapshot = stableNormalize(input.runtimeRegister ?? {}) as RuntimeRegister;
   const replaySeen = input.replayProtection ? await input.ledger.hasPriorAdmission(canonical.canonical_action_hash) : false;
-  const { decision, warrant } = decideAndWarrant(input, signer, canonical, runtimeSnapshot, replaySeen);
+  const budget = evaluateBudget(input);
+  const { decision, warrant } = decideAndWarrant(input, signer, canonical, runtimeSnapshot, replaySeen, budget.exceeded);
+  recordBudget(input, budget, decision.decision);
   const gel_record = await input.ledger.append({ ward: input.ward, action: input.action, decision, warrant, now: input.now, signer, actor: input.actor, trace_context: input.trace_context });
   return {
     decision: decision.decision,
@@ -1660,6 +1694,10 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
   // Stateful Edge Conflict Inbox: durable when a path is configured, else per-process.
   const conflictInbox = new ConflictInboxStore(options.conflictInboxPath ?? null);
 
+  // Budget governor: enforces per-subject Authority-Envelope budgets. Durable when a
+  // state path is configured, else an in-memory window. Disable with budgetDisabled.
+  const budgetGovernor = options.budgetDisabled ? undefined : new BudgetGovernor(options.budgetStatePath ?? null);
+
   // Degradation detectors: default to a ledger-writability probe for file ledgers,
   // so the boundary self-detects "no evidence ⇒ no irreversible action" out of the
   // box. Operators can disable ([]) or add control-plane/quorum/timeout probes.
@@ -1856,7 +1894,8 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           warrantTtlSeconds: options.warrantTtlSeconds,
           actor: principal,
           trace_context: traceContextFor(req, body),
-          tracer: options.tracer
+          tracer: options.tracer,
+          budgetGovernor
         };
         let result: EvaluateExecutionControlResult;
         try {

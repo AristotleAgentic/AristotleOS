@@ -24,4 +24,7 @@ ward "Montana Drone Range" {
   bound altitude_m <= 120
   bound battery_pct >= 20
   within ranch-test-grid-a
+
+  # Quota governance: cap how much authority is spent per rolling window.
+  budget calls <= 500 per 1h
 }

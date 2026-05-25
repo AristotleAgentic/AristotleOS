@@ -1382,6 +1382,29 @@ test("shadow/reconcile/marshal endpoints run the real engines over the boundary,
   }
 });
 
+test("server enforces an Authority-Envelope budget (calls per window) ⇒ BUDGET_EXCEEDED", async () => {
+  const file = ledgerPath();
+  const budgetEnvelope = { ...envelope, constraints: { ...envelope.constraints, budget: { windowMs: 3_600_000, maxCallsPerWindow: 2 } } };
+  const { server } = createExecutionControlRuntimeServer({ ward, authorityEnvelope: budgetEnvelope, ledgerPath: file, now });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const base = serverBase(server);
+    const submit = (id: string) => fetch(`${base}/v1/execution-control/evaluate`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: { ...action, action_id: id, request_id: id } })
+    }).then((r) => r.json());
+
+    assert.equal((await submit("b1")).decision, "ALLOW");
+    assert.equal((await submit("b2")).decision, "ALLOW");
+    const third = await submit("b3");
+    assert.equal(third.decision, "REFUSE");
+    assert.deepEqual(third.reason_codes, ["BUDGET_EXCEEDED"]);
+    assert.equal(third.warrant, undefined);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
 test("conflict inbox: ingest, list, resolve over the durable store, role-gated", async () => {
   const file = ledgerPath();
   const { server } = createExecutionControlRuntimeServer({ ward, authorityEnvelope: envelope, ledgerPath: file, now, operators });

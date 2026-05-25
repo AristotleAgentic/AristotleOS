@@ -124,6 +124,15 @@ interface WardNode {
   maxAltitude?: number;
   batteryMin?: number;
   boundary?: string;
+  budget?: { windowMs: number; maxCostPerWindow?: number; maxCallsPerWindow?: number };
+}
+
+const DURATION_MS: Record<string, number> = { ms: 1, s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 };
+
+function parseDuration(token: { value: string; line: number; column: number }): number {
+  const m = /^(\d+)(ms|s|m|h|d)$/.exec(token.value);
+  if (!m) throw new PolicyError(`invalid duration '${token.value}' (expected e.g. 30s, 15m, 1h, 1d)`, token.line, token.column);
+  return Number(m[1]) * DURATION_MS[m[2]];
 }
 
 class Parser {
@@ -207,6 +216,20 @@ class Parser {
           node.classification = classification;
           break;
         }
+        case "budget": {
+          const dim = this.expect("ident"); // cost | calls
+          const op = this.next();
+          if (op.type !== "punct" || op.value !== "<=") throw new PolicyError(`expected '<=' after budget ${dim.value}`, op.line, op.column);
+          const limit = Number(this.expect("number").value);
+          const per = this.expect("ident");
+          if (per.value !== "per") throw new PolicyError(`expected 'per' in budget statement`, per.line, per.column);
+          const windowMs = parseDuration(this.expect("ident"));
+          node.budget = { ...(node.budget ?? {}), windowMs };
+          if (dim.value === "cost") node.budget.maxCostPerWindow = limit;
+          else if (dim.value === "calls") node.budget.maxCallsPerWindow = limit;
+          else throw new PolicyError(`unknown budget dimension '${dim.value}' (expected cost | calls)`, dim.line, dim.column);
+          break;
+        }
         case "bound": {
           const field = this.expect("ident");
           const op = this.next();
@@ -270,6 +293,7 @@ function compileWard(node: WardNode, now?: string): GovernanceDraft {
   if (requiredRegisters.length) constraints.required_runtime_registers = requiredRegisters;
   if (node.maxAltitude !== undefined) constraints.max_altitude_m = node.maxAltitude;
   if (node.boundary) constraints.permitted_boundary_id = node.boundary;
+  if (node.budget) constraints.budget = node.budget;
 
   const authorityEnvelope: AuthorityEnvelope = {
     envelope_id: node.envelope ?? `ae-${wardId}`,
