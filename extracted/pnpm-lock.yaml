@@ -327,6 +327,8 @@ importers:
 
   shared/governance-core: {}
 
+  shared/mesh-runtime: {}
+
   shared/schemas: {}
 
   shared/trial-engine: {}
