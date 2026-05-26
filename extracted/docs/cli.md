@@ -264,4 +264,33 @@ aristotle logistics evidence export \
   --gross-weight 62100
 ```
 
+## Healthcare pilot commands
+
+- `aristotle healthcare templates`: list clinical Ward, Authority Envelope, APL, and sample action fixtures
+- `aristotle healthcare adapters`: list typed FHIR, HL7, EHR, pharmacy, claims, imaging, device, messaging, and research boundaries
+- `aristotle healthcare evidence export`: export a Healthcare Evidence Bundle with patient-context hash, clinical unit, consent basis, PHI profile, GEL, and Warrant material
+
+Example:
+
+```bash
+aristotle healthcare evidence export \
+  --ward examples/healthcare/ward.hospital_clinical_ops.yaml \
+  --envelope examples/healthcare/authority_envelope.clinical_ops_coordinator.yaml \
+  --ledger ./.tmp/healthcare.gel.jsonl \
+  --out ./.tmp/healthcare-evidence.json \
+  --system west-health-system \
+  --facility west-hospital \
+  --domain pharmacy-operations \
+  --unit pharmacy \
+  --encounter enc-2026-0525-008 \
+  --patient-context-hash patctx-0f2b8d7c9a1e \
+  --action-family prior-authorization \
+  --clinician clinician:nguyen \
+  --pharmacist pharmacist:nguyen \
+  --consent-basis prior-authorization \
+  --phi-purpose prior-authorization \
+  --phi-record-count 8 \
+  --redact patient_name
+```
+
 The CLI is intentionally deterministic. It does not call an LLM in the enforcement path.

@@ -89,6 +89,7 @@ export * from "./aviation.js";
 export * from "./robotics.js";
 export * from "./logistics.js";
 export * from "./swarm.js";
+export * from "./healthcare.js";
 
 export {
   type AristotleSigner,
@@ -452,6 +453,41 @@ export interface PhysicalBounds {
   // Balloon / mothership (Part 101) stress case.
   require_balloon_position_monitor_active?: boolean;
   require_balloon_within_envelope?: boolean;
+  // Healthcare clinical-operations bounds. Patient identity and PHI context are
+  // represented as hashes/flags so evidence can remain useful without carrying raw PHI.
+  permitted_healthcare_system_id?: string;
+  permitted_healthcare_facility_id?: string;
+  permitted_clinical_units?: string[];
+  permitted_fhir_resource_types?: string[];
+  permitted_order_types?: string[];
+  permitted_medication_classes?: string[];
+  permitted_healthcare_device_ids?: string[];
+  permitted_phi_purposes?: string[];
+  max_phi_record_count?: number;
+  max_claim_amount_usd?: number;
+  max_patient_message_risk_score?: number;
+  max_clinical_context_age_ms?: number;
+  max_medication_reconciliation_age_ms?: number;
+  max_device_telemetry_age_ms?: number;
+  require_patient_context?: boolean;
+  require_patient_identity_verified?: boolean;
+  require_tpo_basis_or_consent?: boolean;
+  require_clinician_privilege_active?: boolean;
+  require_pharmacist_authority?: boolean;
+  require_allergy_checked?: boolean;
+  require_no_allergy_conflict?: boolean;
+  require_medication_interaction_clear?: boolean;
+  require_order_signing_authority?: boolean;
+  require_diagnosis_context?: boolean;
+  require_device_safety_limits?: boolean;
+  require_device_alarm_active?: boolean;
+  require_privacy_officer_approval?: boolean;
+  require_deidentification_valid?: boolean;
+  require_break_glass_attestation?: boolean;
+  require_chart_lock_clear?: boolean;
+  require_human_review_for_patient_message?: boolean;
+  require_claim_attestation?: boolean;
+  require_healthcare_audit_context?: boolean;
 }
 
 export interface PhysicalInvariantResult {
@@ -932,6 +968,20 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
     action.action_type === "balloon.override_envelope_protection"
   ) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard swarm safety interlock violation` };
+  }
+  if (
+    action.action_type === "medication.override_allergy" ||
+    action.action_type === "pharmacy.force_dispense_controlled_substance" ||
+    action.action_type === "device.disable_alarm" ||
+    action.action_type === "device.disable_safety_limit" ||
+    action.action_type === "ehr.delete_patient_record" ||
+    action.action_type === "phi.export_without_consent" ||
+    action.action_type === "claims.force_submit_without_attestation" ||
+    action.action_type === "research.export_identified_dataset" ||
+    action.action_type === "order.force_without_clinician_authority" ||
+    action.action_type === "ehr.modify_record_without_patient_context"
+  ) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard healthcare clinical safety and privacy interlock violation` };
   }
   const altitude = numericParam(action, "altitude_m");
   if (bounds.max_altitude_m !== undefined && altitude !== undefined && altitude > bounds.max_altitude_m) {
@@ -1848,6 +1898,120 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
   }
   if (bounds.require_balloon_within_envelope && booleanParam(action, "balloon_within_envelope") !== true) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "balloon is outside its authorized flight envelope" };
+  }
+  // -- healthcare clinical-operations invariants -------------------------------
+  const healthcareSystemId = stringParam(action, "healthcare_system_id");
+  if (bounds.permitted_healthcare_system_id && healthcareSystemId && healthcareSystemId !== bounds.permitted_healthcare_system_id) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `healthcare_system_id ${healthcareSystemId} does not match ${bounds.permitted_healthcare_system_id}` };
+  }
+  const healthcareFacilityId = stringParam(action, "facility_id");
+  if (bounds.permitted_healthcare_facility_id && healthcareFacilityId && healthcareFacilityId !== bounds.permitted_healthcare_facility_id) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `facility_id ${healthcareFacilityId} does not match ${bounds.permitted_healthcare_facility_id}` };
+  }
+  const clinicalUnit = stringParam(action, "clinical_unit");
+  if (bounds.permitted_clinical_units?.length && clinicalUnit && !bounds.permitted_clinical_units.includes(clinicalUnit)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `clinical_unit ${clinicalUnit} is outside permitted clinical units` };
+  }
+  const fhirResourceType = stringParam(action, "fhir_resource_type");
+  if (bounds.permitted_fhir_resource_types?.length && fhirResourceType && !bounds.permitted_fhir_resource_types.includes(fhirResourceType)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `fhir_resource_type ${fhirResourceType} is outside permitted FHIR resource types` };
+  }
+  const orderType = stringParam(action, "order_type");
+  if (bounds.permitted_order_types?.length && orderType && !bounds.permitted_order_types.includes(orderType)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `order_type ${orderType} is outside permitted order types` };
+  }
+  const medicationClass = stringParam(action, "medication_class");
+  if (bounds.permitted_medication_classes?.length && medicationClass && !bounds.permitted_medication_classes.includes(medicationClass)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `medication_class ${medicationClass} is outside permitted medication classes` };
+  }
+  const healthcareDeviceId = stringParam(action, "device_id");
+  if (bounds.permitted_healthcare_device_ids?.length && healthcareDeviceId && !bounds.permitted_healthcare_device_ids.includes(healthcareDeviceId)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `device_id ${healthcareDeviceId} is outside permitted healthcare device ids` };
+  }
+  const phiPurpose = stringParam(action, "phi_purpose") ?? stringParam(action, "tpo_basis");
+  if (bounds.permitted_phi_purposes?.length && phiPurpose && !bounds.permitted_phi_purposes.includes(phiPurpose)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `PHI purpose ${phiPurpose} is outside permitted purposes` };
+  }
+  const phiRecordCount = numericParam(action, "phi_record_count");
+  if (bounds.max_phi_record_count !== undefined && phiRecordCount !== undefined && phiRecordCount > bounds.max_phi_record_count) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `phi_record_count ${phiRecordCount} exceeds max_phi_record_count ${bounds.max_phi_record_count}` };
+  }
+  const claimAmount = numericParam(action, "claim_amount_usd");
+  if (bounds.max_claim_amount_usd !== undefined && claimAmount !== undefined && claimAmount > bounds.max_claim_amount_usd) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `claim_amount_usd ${claimAmount} exceeds max_claim_amount_usd ${bounds.max_claim_amount_usd}` };
+  }
+  const patientMessageRisk = numericParam(action, "patient_message_risk_score");
+  if (bounds.max_patient_message_risk_score !== undefined && patientMessageRisk !== undefined && patientMessageRisk > bounds.max_patient_message_risk_score) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `patient_message_risk_score ${patientMessageRisk} exceeds max_patient_message_risk_score ${bounds.max_patient_message_risk_score}` };
+  }
+  const clinicalContextAge = numericParam(action, "clinical_context_age_ms");
+  if (bounds.max_clinical_context_age_ms !== undefined && clinicalContextAge !== undefined && clinicalContextAge > bounds.max_clinical_context_age_ms) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `clinical_context_age_ms ${clinicalContextAge} exceeds max_clinical_context_age_ms ${bounds.max_clinical_context_age_ms}` };
+  }
+  const medRecAge = numericParam(action, "medication_reconciliation_age_ms");
+  if (bounds.max_medication_reconciliation_age_ms !== undefined && medRecAge !== undefined && medRecAge > bounds.max_medication_reconciliation_age_ms) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `medication_reconciliation_age_ms ${medRecAge} exceeds max_medication_reconciliation_age_ms ${bounds.max_medication_reconciliation_age_ms}` };
+  }
+  const deviceTelemetryAge = numericParam(action, "device_telemetry_age_ms");
+  if (bounds.max_device_telemetry_age_ms !== undefined && deviceTelemetryAge !== undefined && deviceTelemetryAge > bounds.max_device_telemetry_age_ms) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `device_telemetry_age_ms ${deviceTelemetryAge} exceeds max_device_telemetry_age_ms ${bounds.max_device_telemetry_age_ms}` };
+  }
+  if (bounds.require_patient_context && (!stringParam(action, "patient_context_hash") || booleanParam(action, "patient_context_present") !== true)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "patient context hash and presence proof are required before this healthcare action" };
+  }
+  if (bounds.require_patient_identity_verified && booleanParam(action, "patient_identity_verified") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "patient identity must be verified before this healthcare action" };
+  }
+  if (bounds.require_tpo_basis_or_consent && booleanParam(action, "patient_consent_valid") !== true && !["treatment", "payment", "operations", "prior-authorization", "emergency"].includes(String(phiPurpose ?? ""))) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "valid consent or treatment/payment/operations basis is required before this healthcare action" };
+  }
+  if (bounds.require_clinician_privilege_active && booleanParam(action, "clinician_privilege_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "active clinician privilege is required before this healthcare action" };
+  }
+  if (bounds.require_pharmacist_authority && booleanParam(action, "pharmacist_authority_present") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "pharmacist authority is required before this pharmacy action" };
+  }
+  if (bounds.require_allergy_checked && booleanParam(action, "allergy_checked") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "allergy check is required before this medication action" };
+  }
+  if (bounds.require_no_allergy_conflict && booleanParam(action, "allergy_conflict") === true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "active allergy conflict prevents this healthcare action" };
+  }
+  if (bounds.require_medication_interaction_clear && booleanParam(action, "medication_interaction_clear") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "medication interaction check must be clear before this healthcare action" };
+  }
+  if (bounds.require_order_signing_authority && booleanParam(action, "order_signing_authority") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "order signing authority is required before this order action" };
+  }
+  if (bounds.require_diagnosis_context && booleanParam(action, "diagnosis_context_present") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "diagnosis context is required before this healthcare action" };
+  }
+  if (bounds.require_device_safety_limits && booleanParam(action, "device_safety_limits_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "device safety limits must remain active before this device action" };
+  }
+  if (bounds.require_device_alarm_active && booleanParam(action, "alarm_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "device alarm must remain active before this device action" };
+  }
+  if (bounds.require_privacy_officer_approval && booleanParam(action, "privacy_officer_approval") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "privacy officer approval is required before this PHI or research action" };
+  }
+  if (bounds.require_deidentification_valid && booleanParam(action, "deidentification_valid") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "valid de-identification is required before this research export" };
+  }
+  if (bounds.require_break_glass_attestation && stringParam(action, "tpo_basis") === "emergency" && booleanParam(action, "break_glass_attested") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "emergency break-glass actions require attestation" };
+  }
+  if (bounds.require_chart_lock_clear && booleanParam(action, "chart_lock_clear") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "chart lock must be clear before this EHR mutation" };
+  }
+  if (bounds.require_human_review_for_patient_message && booleanParam(action, "human_review_present") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "human review is required before this patient-facing message" };
+  }
+  if (bounds.require_claim_attestation && booleanParam(action, "claim_attestation_present") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "claim attestation is required before this revenue-cycle action" };
+  }
+  if (bounds.require_healthcare_audit_context && booleanParam(action, "audit_context_present") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "audit context is required before this healthcare action" };
   }
   return { ok: true, reason_codes: [], detail: "physical invariants satisfied" };
 }

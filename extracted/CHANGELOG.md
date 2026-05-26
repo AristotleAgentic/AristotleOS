@@ -27,6 +27,26 @@
   pipeline 6, mining 6, port 6, water 6, grid 6, rail 6, gate-property 2,
   execution-control 75.
 
+## v0.1.39 - Healthcare clinical-operations execution-control vertical
+- **Healthcare pilot path**: typed adapters (FHIR resource, HL7 message, EHR
+  writeback, pharmacy workflow, prior authorization, claims, imaging RIS/PACS,
+  medical-device command, patient messaging, research export) -> Canonical
+  Governed Actions; clinical and privacy invariants enforced at the gate
+  (patient-context hash, consent/TPO basis, clinician privilege, allergy and
+  medication-interaction checks, chart lock, device safety limits, alarm posture,
+  PHI minimization, claim attestation, de-identification, audit context);
+  Healthcare Evidence Bundles preserve hashes and redaction material instead of
+  raw PHI by default; a Clinical Ops console workflow; `aristotle healthcare`
+  CLI; `examples/healthcare/` + docs (overview, threat model, pilot guide, Ward
+  templates).
+- **Patient-consequence hardening**: allergy override, controlled-substance
+  force-dispense, device alarm/safety-limit disable, patient-record deletion,
+  PHI export without consent, claim force-submit, identified research export,
+  order force without clinician authority, and patient-context-free EHR mutation
+  are hard-refused even when an envelope is misconfigured; medication-list,
+  dispense, PHI export, device update, and research export actions require
+  plural authority before Warrant issuance.
+
 ## v0.1.37 - Trucking and logistics execution-control vertical
 - **Logistics pilot path**: typed adapters (TMS dispatch, broker/carrier tender,
   carrier vetting, ELD/HOS, telematics route, WMS release, YMS dock/gate, fuel

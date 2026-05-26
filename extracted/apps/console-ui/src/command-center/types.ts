@@ -631,6 +631,47 @@ export interface LogisticsSafetyDrill {
   evidence: string;
 }
 
+export interface HealthcareOpsStep {
+  id: string;
+  label: string;
+  owner: string;
+  state: "complete" | "active" | "blocked" | "pending";
+  evidence: string;
+}
+
+export interface HealthcareAdapterSurface {
+  id: string;
+  label: string;
+  standard: "FHIR" | "HL7" | "EHR" | "Pharmacy" | "Claims" | "PACS/RIS" | "Device" | "Messaging" | "Research";
+  actionTypes: string[];
+  requiredRegisters: string[];
+  boundary: string;
+  posture: Posture;
+}
+
+export interface HealthcareEvidenceExport {
+  bundleVersion: string;
+  systemId: string;
+  facilityId: string;
+  clinicalUnit: string;
+  encounterId: string;
+  patientContextHash: string;
+  actionFamily: string;
+  profiles: string[];
+  redactedFields: string[];
+  bundleHash: string;
+  verification: "ok" | "blocked";
+}
+
+export interface HealthcareSafetyDrill {
+  id: string;
+  label: string;
+  invariant: string;
+  current: string;
+  posture: Posture;
+  evidence: string;
+}
+
 export interface WardMarshalFinding {
   id: string;
   subject: string;

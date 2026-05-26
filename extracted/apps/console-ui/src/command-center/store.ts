@@ -38,6 +38,7 @@ export type SectionId =
   | "port"
   | "water"
   | "logistics"
+  | "healthcare"
   | "conflicts"
   | "adoption"
   | "failure"

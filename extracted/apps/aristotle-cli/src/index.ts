@@ -25,6 +25,8 @@ import {
   type AutomotiveEvidenceContext,
   type GridDomain,
   type GridEvidenceContext,
+  type HealthcareDomain,
+  type HealthcareEvidenceContext,
   type PortDomain,
   type PortEvidenceContext,
   type LogisticsDomain,
@@ -73,6 +75,7 @@ import {
   exportAutomotiveEvidenceBundle,
   exportEvidenceBundle,
   exportGridEvidenceBundle,
+  exportHealthcareEvidenceBundle,
   exportLogisticsEvidenceBundle,
   exportWaterEvidenceBundle,
   exportPortEvidenceBundle,
@@ -90,6 +93,7 @@ import {
   ApprovalStore,
   AUTOMOTIVE_ADAPTER_CATALOG,
   GRID_ADAPTER_CATALOG,
+  HEALTHCARE_ADAPTER_CATALOG,
   LOGISTICS_ADAPTER_CATALOG,
   PORT_ADAPTER_CATALOG,
   RAIL_ADAPTER_CATALOG,
@@ -113,6 +117,7 @@ import {
   verifyEvidenceBundle,
   verifyAutomotiveEvidenceBundle,
   verifyGridEvidenceBundle,
+  verifyHealthcareEvidenceBundle,
   verifyLogisticsEvidenceBundle,
   verifyWaterEvidenceBundle,
   verifyPortEvidenceBundle,
@@ -586,6 +591,9 @@ Commands:
   logistics templates               List trucking/logistics Ward templates, policies, and sample actions
   logistics adapters                List typed TMS / ELD / telematics / WMS / YMS / payment surfaces
   logistics evidence export         Export a trucking/logistics Evidence Bundle
+  healthcare templates              List clinical Ward templates, policies, and sample actions
+  healthcare adapters               List typed FHIR / HL7 / EHR / pharmacy / device surfaces
+  healthcare evidence export        Export a healthcare clinical Evidence Bundle
   keys generate        Generate an Ed25519 Warrant signing keypair
   kill engage|release  Engage/release the sovereign-halt kill switch
   revoke key|envelope|warrant <id>   Revoke a compromised trust root
@@ -1870,6 +1878,103 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
       }
 
       throw new Error("usage: aristotle logistics <templates|adapters|evidence export> ...");
+    }
+
+    if (command === "healthcare") {
+      if (subcommand === "templates") {
+        const base = "examples/healthcare";
+        const templates = [
+          `${base}/ward.hospital_clinical_ops.yaml`,
+          `${base}/authority_envelope.clinical_ops_coordinator.yaml`,
+          `${base}/policy/clinical_ops.apl`
+        ];
+        const actions = [
+          `${base}/actions/allow_prior_auth.json`,
+          `${base}/actions/refuse_allergy_override.json`,
+          `${base}/actions/refuse_device_alarm_disable.json`,
+          `${base}/actions/escalate_missing_patient_context.json`
+        ];
+        if (json) printJson(out, { templates, actions }, true);
+        else {
+          out("AristotleOS healthcare clinical-operations pilot templates\n");
+          for (const file of [...templates, ...actions]) out(`  ${file}\n`);
+        }
+        return 0;
+      }
+
+      if (subcommand === "adapters") {
+        if (json) printJson(out, { adapters: HEALTHCARE_ADAPTER_CATALOG }, true);
+        else {
+          out("Typed healthcare clinical adapter surfaces\n");
+          for (const adapter of HEALTHCARE_ADAPTER_CATALOG) {
+            out(`\n${adapter.kind} - ${adapter.label}\n`);
+            out(`  Boundary: ${adapter.consequenceBoundary}\n`);
+            out(`  Actions: ${adapter.actionExamples.join(", ")}\n`);
+            out(`  Registers: ${adapter.requiredRuntimeRegisters.join(", ")}\n`);
+          }
+        }
+        return 0;
+      }
+
+      if (subcommand === "evidence" && rest[0] === "export") {
+        const outPath = requiredOption(rest, "--out");
+        const warrantPath = optionValue(rest, "--warrant");
+        const profiles = optionValues(rest, "--profile");
+        const approvers = optionValues(rest, "--approver");
+        const preChecks = optionValues(rest, "--pre-check").map((item) => {
+          const [name, raw = "true", detail] = item.split(":");
+          return { name, ok: raw !== "false" && raw !== "fail", ...(detail ? { detail } : {}) };
+        });
+        const postChecks = optionValues(rest, "--post-check").map((item) => {
+          const [name, raw = "true", detail] = item.split(":");
+          return { name, ok: raw !== "false" && raw !== "fail", ...(detail ? { detail } : {}) };
+        });
+        const numericOption = (name: string) => {
+          const value = optionValue(rest, name);
+          return value === undefined ? undefined : Number(value);
+        };
+        const healthcare: HealthcareEvidenceContext = {
+          healthcare_system_id: requiredOption(rest, "--system"),
+          facility_id: requiredOption(rest, "--facility"),
+          clinical_domain: (optionValue(rest, "--domain") ?? "clinical-documentation") as HealthcareDomain,
+          clinical_unit: requiredOption(rest, "--unit"),
+          encounter_id: requiredOption(rest, "--encounter"),
+          patient_context_hash: requiredOption(rest, "--patient-context-hash"),
+          action_family: optionValue(rest, "--action-family") ?? "clinical-operations",
+          actor_subject: optionValue(rest, "--subject") ?? "agent:clinical-ops-coordinator",
+          clinician_id: optionValue(rest, "--clinician"),
+          pharmacist_id: optionValue(rest, "--pharmacist"),
+          privacy_officer_id: optionValue(rest, "--privacy-officer"),
+          ...(approvers.length ? { approver_ids: approvers } : {}),
+          consent_basis: optionValue(rest, "--consent-basis") ?? "treatment",
+          phi_profile: {
+            purpose: optionValue(rest, "--phi-purpose") ?? "treatment",
+            record_count: numericOption("--phi-record-count") ?? 1,
+            deidentified: rest.includes("--deidentified")
+          },
+          regulatory_profile: (profiles.length ? profiles : ["HIPAA", "HITECH", "FHIR_R4", "HL7_V2", "SOC2", "NIST_HIPAA", "LOCAL_CLINICAL_POLICY"]) as HealthcareEvidenceContext["regulatory_profile"],
+          pre_checks: preChecks.length ? preChecks : [{ name: "patient context, authority, consent basis, and clinical invariants evaluated", ok: true }],
+          ...(postChecks.length ? { post_checks: postChecks } : {}),
+          redacted_fields: optionValues(rest, "--redact"),
+          retained_fields: optionValues(rest, "--retain")
+        };
+        const bundle = exportHealthcareEvidenceBundle({
+          ledgerPath: path.resolve(cwd, requiredOption(rest, "--ledger")),
+          ward: loadWardManifest(path.resolve(cwd, requiredOption(rest, "--ward"))),
+          authorityEnvelope: loadAuthorityEnvelope(path.resolve(cwd, requiredOption(rest, "--envelope"))),
+          recordId: optionValue(rest, "--record-id"),
+          warrant: warrantPath ? JSON.parse(readFileSync(path.resolve(cwd, warrantPath), "utf8")) : undefined,
+          exportedAt: optionValue(rest, "--now"),
+          healthcare
+        });
+        writeJson(path.resolve(cwd, outPath), bundle);
+        const verification = verifyHealthcareEvidenceBundle(bundle);
+        if (json) printJson(out, bundle, true);
+        else out(`healthcare_evidence_bundle=${outPath}\nbundle_hash=${bundle.hashes.healthcare_bundle_hash}\nverification=${verification.ok ? "ok" : `failed:${verification.failures.join(";")}`}\nfacility=${healthcare.facility_id}\npatient_context=${healthcare.patient_context_hash}\n`);
+        return verification.ok ? 0 : 1;
+      }
+
+      throw new Error("usage: aristotle healthcare <templates|adapters|evidence export> ...");
     }
 
     if (command === "execution-control" && subcommand === "shadow") {

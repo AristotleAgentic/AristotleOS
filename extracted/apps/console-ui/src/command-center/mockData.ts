@@ -15,6 +15,10 @@ import type {
   GridControlStep,
   GridEvidenceExport,
   GridSafetyDrill,
+  HealthcareAdapterSurface,
+  HealthcareEvidenceExport,
+  HealthcareOpsStep,
+  HealthcareSafetyDrill,
   EvidenceBundleProfile,
   FailureModeDrill,
   GovernanceInvariant,
@@ -1152,6 +1156,114 @@ export const LOGISTICS_SAFETY_DRILLS: LogisticsSafetyDrill[] = [
   { id: "route", label: "Route and geofence", invariant: "route_permitted && route_deviation_km <= 5", current: "permitted / 1.1 km", posture: "green", evidence: "Reroute outside Ward routes fails closed before telematics or TMS mutation." },
   { id: "cold", label: "Cold-chain integrity", invariant: "-25 <= cargo_temperature_c <= 8 && temperature_in_range", current: "-18 C / in range", posture: "green", evidence: "Temperature alarm override is a hard interlock violation." },
   { id: "money", label: "Money controls", invariant: "fuel <= 750 && accessorial <= 1200 && 2-of-N approval", current: "pending", posture: "amber", evidence: "Fuel, accessorial, and payment actions require plural approval before Warrant issuance." }
+];
+
+export const HEALTHCARE_OPS_WORKFLOW: HealthcareOpsStep[] = [
+  { id: "healthcare-mission", label: "Create governed clinical mission", owner: "Clinical operations", state: "complete", evidence: "Ward ward-healthcare-clinical-ops binds facility, unit, patient-context hash, clinician privilege, PHI purpose, and clinical authority." },
+  { id: "healthcare-registers", label: "Bind clinical runtime registers", owner: "EHR / FHIR / pharmacy / device gateways", state: "complete", evidence: "Patient context, consent/TPO basis, privilege, allergy, medication interaction, chart lock, device safety, PHI count, and audit context attached." },
+  { id: "healthcare-shadow", label: "Profile clinical automation in Shadow Mode", owner: "CMIO / privacy / pharmacy", state: "complete", evidence: "Prior auth admits; allergy override, missing patient context, identified research export, and device alarm disable remain REFUSE or ESCALATE." },
+  { id: "healthcare-approval", label: "Dual-control clinical consequence", owner: "Clinician / pharmacist / privacy officer", state: "active", evidence: "Medication-list update, dispense request, PHI export, device setting update, and research export require plural approval before Warrant issuance." },
+  { id: "healthcare-gate", label: "Healthcare Commit Gate", owner: "Governance kernel", state: "pending", evidence: "ALLOW mints a single-use Warrant scoped to the canonical patient-context action hash." },
+  { id: "healthcare-execute", label: "Execute clinical adapter", owner: "FHIR / EHR / pharmacy / device boundary", state: "pending", evidence: "EHR, HL7, pharmacy, claims, imaging, device, messaging, and research adapters execute only after Warrant verification." },
+  { id: "healthcare-export", label: "Export healthcare evidence", owner: "Compliance / privacy / quality", state: "pending", evidence: "Healthcare Evidence Bundle includes patient-context hash, authority, Warrant, GEL record, redaction manifest, and replay material without raw PHI." }
+];
+
+export const HEALTHCARE_ADAPTERS: HealthcareAdapterSurface[] = [
+  {
+    id: "fhir",
+    label: "FHIR Resource",
+    standard: "FHIR",
+    actionTypes: ["fhir.resource.write", "phi.export"],
+    requiredRegisters: ["patient_context_hash", "fhir_resource_type", "tpo_basis", "audit_context_present"],
+    boundary: "FHIR writes and PHI export require patient-context hash, consent/TPO basis, resource scope, and audit context before mutation.",
+    posture: "green"
+  },
+  {
+    id: "hl7",
+    label: "HL7 Interface",
+    standard: "HL7",
+    actionTypes: ["hl7.message.send"],
+    requiredRegisters: ["patient_context_hash", "message_type", "patient_identity_verified"],
+    boundary: "HL7 messages are governed before they trigger downstream ADT, order, result, scheduling, or billing workflows.",
+    posture: "green"
+  },
+  {
+    id: "ehr",
+    label: "EHR Writeback",
+    standard: "EHR",
+    actionTypes: ["ehr.note.append", "ehr.problem_list.update", "ehr.medication_list.update"],
+    requiredRegisters: ["clinician_privilege_active", "chart_lock_clear", "clinical_context_age_ms"],
+    boundary: "Chart changes require active clinical privilege, current context, and clear chart lock before EHR consequence.",
+    posture: "amber"
+  },
+  {
+    id: "pharmacy",
+    label: "Pharmacy Workflow",
+    standard: "Pharmacy",
+    actionTypes: ["pharmacy.prior_auth.submit", "pharmacy.dispense.request"],
+    requiredRegisters: ["allergy_checked", "medication_interaction_clear", "pharmacist_authority_present"],
+    boundary: "Medication workflows bind allergy, interaction, pharmacist authority, and medication reconciliation evidence before action.",
+    posture: "red"
+  },
+  {
+    id: "claims",
+    label: "Claims / Prior Auth",
+    standard: "Claims",
+    actionTypes: ["claims.submit", "claims.adjust", "pharmacy.prior_auth.submit"],
+    requiredRegisters: ["claim_attestation_present", "claim_amount_usd", "tpo_basis"],
+    boundary: "Financial healthcare actions require attestation, bounded claim amount, and payment/operations/prior-auth basis.",
+    posture: "amber"
+  },
+  {
+    id: "imaging",
+    label: "RIS / PACS",
+    standard: "PACS/RIS",
+    actionTypes: ["order.imaging.request", "imaging.study.release"],
+    requiredRegisters: ["order_signing_authority", "fhir_resource_type", "clinical_context_age_ms"],
+    boundary: "Imaging orders and study release require order authority, current context, and resource scope before radiology consequence.",
+    posture: "green"
+  },
+  {
+    id: "device",
+    label: "Medical Device",
+    standard: "Device",
+    actionTypes: ["device.setting.update"],
+    requiredRegisters: ["device_id", "device_safety_limits_active", "alarm_active", "device_telemetry_age_ms"],
+    boundary: "Device commands are blocked unless safety limits, alarm posture, telemetry freshness, and patient context are proven.",
+    posture: "red"
+  },
+  {
+    id: "research",
+    label: "Research Export",
+    standard: "Research",
+    actionTypes: ["research.dataset.export"],
+    requiredRegisters: ["deidentification_valid", "privacy_officer_approval", "phi_record_count"],
+    boundary: "Research exports bind de-identification, privacy approval, cohort size, and PHI minimization before dataset release.",
+    posture: "amber"
+  }
+];
+
+export const HEALTHCARE_EVIDENCE_EXPORT: HealthcareEvidenceExport = {
+  bundleVersion: "aristotle.healthcare-evidence.v1",
+  systemId: "west-health-system",
+  facilityId: "west-hospital",
+  clinicalUnit: "pharmacy",
+  encounterId: "enc-2026-0525-008",
+  patientContextHash: "patctx-0f2b8d7c9a1e",
+  actionFamily: "prior-authorization",
+  profiles: ["HIPAA", "HITECH", "FHIR_R4", "HL7_V2", "SOC2", "NIST_HIPAA"],
+  redactedFields: ["patient_name", "mrn", "date_of_birth", "free_text_clinical_note"],
+  bundleHash: shortHash("healthcare-evidence-bundle-west-hospital", 24),
+  verification: "ok"
+};
+
+export const HEALTHCARE_SAFETY_DRILLS: HealthcareSafetyDrill[] = [
+  { id: "patient-context", label: "Patient context", invariant: "patient_context_hash && patient_context_present", current: "bound / present", posture: "green", evidence: "Missing patient context escalates before EHR, PHI, pharmacy, or device consequence." },
+  { id: "consent", label: "Consent or TPO basis", invariant: "consent_valid || basis in [treatment,payment,operations]", current: "prior-authorization", posture: "green", evidence: "PHI export without consent or TPO basis is hard-refused." },
+  { id: "medication", label: "Medication safety", invariant: "allergy_checked && !allergy_conflict && interaction_clear", current: "clear", posture: "green", evidence: "Allergy override and controlled-substance force-dispense cannot mint a Warrant." },
+  { id: "device", label: "Device safety", invariant: "alarm_active && safety_limits_active && telemetry_age <= 60000", current: "active / 1000 ms", posture: "green", evidence: "Alarm or safety-limit disable is refused even if an envelope is misconfigured." },
+  { id: "phi", label: "PHI minimization", invariant: "phi_record_count <= 25 && redaction_manifest", current: "8 records", posture: "green", evidence: "Healthcare Evidence Bundles retain hashes and references by default, not raw PHI." },
+  { id: "dual", label: "Dual-control clinical actions", invariant: "2-of-N approval before Warrant", current: "pending", posture: "amber", evidence: "Medication-list, dispense, PHI export, device update, and research export actions require plural authority." }
 ];
 
 export const POLICY_HARNESS: PolicyHarnessCase[] = [

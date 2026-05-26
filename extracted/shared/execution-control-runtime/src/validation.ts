@@ -100,14 +100,20 @@ export function validateWardManifest(value: unknown): ValidationResult {
         "max_telematics_age_ms",
         "max_route_deviation_km",
         "min_remaining_drive_minutes",
-        "min_remaining_duty_minutes"
+        "min_remaining_duty_minutes",
+        "max_phi_record_count",
+        "max_claim_amount_usd",
+        "max_patient_message_risk_score",
+        "max_clinical_context_age_ms",
+        "max_medication_reconciliation_age_ms",
+        "max_device_telemetry_age_ms"
       ]) {
         const v = value.physical_bounds[numKey];
         if (v !== undefined && (typeof v !== "number" || !Number.isFinite(v))) {
           issues.push({ path: `ward.physical_bounds.${numKey}`, message: "must be a finite number when present" });
         }
       }
-      for (const strKey of ["permitted_boundary_id", "permitted_odd_id", "permitted_topology_model_id", "permitted_territory_id", "permitted_port_id", "permitted_terminal_id", "permitted_water_system_id", "permitted_facility_id", "permitted_logistics_network_id"]) {
+      for (const strKey of ["permitted_boundary_id", "permitted_odd_id", "permitted_topology_model_id", "permitted_territory_id", "permitted_port_id", "permitted_terminal_id", "permitted_water_system_id", "permitted_facility_id", "permitted_logistics_network_id", "permitted_healthcare_system_id", "permitted_healthcare_facility_id"]) {
         const v = value.physical_bounds[strKey];
         if (v !== undefined && (typeof v !== "string" || v.trim() === "")) {
           issues.push({ path: `ward.physical_bounds.${strKey}`, message: "must be a non-empty string when present" });
@@ -142,7 +148,13 @@ export function validateWardManifest(value: unknown): ValidationResult {
         "permitted_cargo_classes",
         "permitted_logistics_hazmat_classes",
         "permitted_trailer_types",
-        "permitted_cdl_classes"
+        "permitted_cdl_classes",
+        "permitted_clinical_units",
+        "permitted_fhir_resource_types",
+        "permitted_order_types",
+        "permitted_medication_classes",
+        "permitted_healthcare_device_ids",
+        "permitted_phi_purposes"
       ]) {
         const v = value.physical_bounds[arrKey];
         if (v !== undefined && (!Array.isArray(v) || !v.every((item) => typeof item === "string" && item.trim() !== ""))) {
@@ -215,7 +227,26 @@ export function validateWardManifest(value: unknown): ValidationResult {
         "require_yard_gate_access",
         "require_fuel_card_active",
         "require_logistics_dispatcher_identity",
-        "require_no_double_broker_risk"
+        "require_no_double_broker_risk",
+        "require_patient_context",
+        "require_patient_identity_verified",
+        "require_tpo_basis_or_consent",
+        "require_clinician_privilege_active",
+        "require_pharmacist_authority",
+        "require_allergy_checked",
+        "require_no_allergy_conflict",
+        "require_medication_interaction_clear",
+        "require_order_signing_authority",
+        "require_diagnosis_context",
+        "require_device_safety_limits",
+        "require_device_alarm_active",
+        "require_privacy_officer_approval",
+        "require_deidentification_valid",
+        "require_break_glass_attestation",
+        "require_chart_lock_clear",
+        "require_human_review_for_patient_message",
+        "require_claim_attestation",
+        "require_healthcare_audit_context"
       ]) {
         const v = value.physical_bounds[boolKey];
         if (v !== undefined && typeof v !== "boolean") {

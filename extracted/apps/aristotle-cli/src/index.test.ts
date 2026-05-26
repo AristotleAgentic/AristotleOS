@@ -777,6 +777,103 @@ test("cli logistics commands expose trucking templates, adapters, and evidence e
   }
 });
 
+test("cli healthcare commands expose clinical templates, adapters, and evidence export", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    const examples = path.resolve(process.cwd(), "examples", "healthcare");
+    cpSync(examples, path.join(dir, "healthcare"), { recursive: true });
+
+    const templates = await capture(["healthcare", "templates"], dir);
+    assert.equal(templates.code, 0, templates.stderr);
+    assert.match(templates.stdout, /ward.hospital_clinical_ops.yaml/);
+    assert.match(templates.stdout, /allow_prior_auth.json/);
+
+    const adapters = await capture(["healthcare", "adapters"], dir);
+    assert.equal(adapters.code, 0, adapters.stderr);
+    assert.match(adapters.stdout, /fhir-resource/);
+    assert.match(adapters.stdout, /medical-device-command/);
+
+    const allowed = await capture([
+      "execution-control",
+      "evaluate",
+      "--ward",
+      "healthcare/ward.hospital_clinical_ops.yaml",
+      "--envelope",
+      "healthcare/authority_envelope.clinical_ops_coordinator.yaml",
+      "--action",
+      "healthcare/actions/allow_prior_auth.json",
+      "--ledger",
+      ".tmp/healthcare.gel.jsonl",
+      "--now",
+      "2026-05-25T16:00:00.000Z"
+    ], dir);
+    assert.equal(allowed.code, 0, allowed.stderr);
+    assert.match(allowed.stdout, /decision=ALLOW/);
+
+    const refused = await capture([
+      "execution-control",
+      "evaluate",
+      "--ward",
+      "healthcare/ward.hospital_clinical_ops.yaml",
+      "--envelope",
+      "healthcare/authority_envelope.clinical_ops_coordinator.yaml",
+      "--action",
+      "healthcare/actions/refuse_allergy_override.json",
+      "--ledger",
+      ".tmp/healthcare-refuse.gel.jsonl",
+      "--now",
+      "2026-05-25T16:00:00.000Z"
+    ], dir);
+    assert.equal(refused.code, 0, refused.stderr);
+    assert.match(refused.stdout, /decision=REFUSE/);
+
+    const bundle = await capture([
+      "healthcare",
+      "evidence",
+      "export",
+      "--ward",
+      "healthcare/ward.hospital_clinical_ops.yaml",
+      "--envelope",
+      "healthcare/authority_envelope.clinical_ops_coordinator.yaml",
+      "--ledger",
+      ".tmp/healthcare-refuse.gel.jsonl",
+      "--out",
+      ".tmp/healthcare-evidence.json",
+      "--system",
+      "west-health-system",
+      "--facility",
+      "west-hospital",
+      "--domain",
+      "pharmacy-operations",
+      "--unit",
+      "pharmacy",
+      "--encounter",
+      "enc-2026-0525-008",
+      "--patient-context-hash",
+      "patctx-0f2b8d7c9a1e",
+      "--action-family",
+      "prior-authorization",
+      "--clinician",
+      "clinician:nguyen",
+      "--pharmacist",
+      "pharmacist:nguyen",
+      "--consent-basis",
+      "prior-authorization",
+      "--phi-purpose",
+      "prior-authorization",
+      "--phi-record-count",
+      "8",
+      "--redact",
+      "patient_name"
+    ], dir);
+    assert.equal(bundle.code, 0, bundle.stderr);
+    assert.match(bundle.stdout, /verification=ok/);
+    assert.equal(existsSync(path.join(dir, ".tmp", "healthcare-evidence.json")), true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("cli run governs a child agent process and writes a verifiable ledger", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
   try {
