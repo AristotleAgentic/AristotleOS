@@ -1,0 +1,37 @@
+# DEMONSTRATION ONLY — Cape Canaveral Space Force Station launch ops Ward
+# Not coordinated with USSF SLD-45 or FAA AST. For shape illustration only.
+
+ward_id: ward-space-launch-ccsfs
+name: "Demo CCSFS Launch Operations (DEMONSTRATION ONLY)"
+sovereignty_context: ussf-sld-45
+authority_domain: space-launch-ops
+policy_version: "0.1.0"
+permitted_subjects:
+  - agent:launch-orchestrator
+
+physical_bounds:
+  permitted_launch_sites: [ccsfs, vandenberg, wallops, starbase, kodiak, mojave]
+  permitted_vehicle_classes:
+    - orbital-launch-vehicle
+    - suborbital-launch-vehicle
+    - reentry-vehicle
+  max_surface_wind_kts: 30
+  max_upper_wind_shear_kts_per_kft: 30
+  max_q_kpa: 35
+  require_range_clear: true
+  require_weather_within_limits: true
+  require_fts_armed: true
+  require_afts_nominal: true
+  require_fts_battery_ok: true
+  require_fts_rf_link_ok: true
+  require_propellant_temp_in_spec: true
+  require_itar_cleared: true
+  require_comms_licensed: true
+  require_hazard_area_cleared: true
+  require_tracking_radar_acquired: true
+  require_range_commander_go: true
+
+criticality: safety_critical
+classification:
+  level: CUI
+  caveats: [SPACE_OPS, DEMONSTRATION_ONLY]

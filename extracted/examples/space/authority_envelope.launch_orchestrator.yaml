@@ -1,0 +1,70 @@
+# DEMONSTRATION ONLY — Launch Orchestrator Authority Envelope (Demo CCSFS)
+# Not coordinated with USSF SLD-45 or FAA AST. For shape illustration only.
+
+envelope_id: ae-space-launch-001
+ward_id: ward-space-launch-ccsfs
+subject: agent:launch-orchestrator
+
+allowed_actions:
+  - space.range_clear_declare
+  - space.range_commander_go
+  - space.range_hold
+  - space.propellant_load
+  - space.propellant_drain
+  - space.propellant_top_off
+  - space.igniter_arm
+  - space.ignite
+  - space.abort_ignition
+  - space.fts_arm
+  - space.fts_disarm
+  - space.fts_trigger
+  - space.payload_deploy
+  - space.payload_despin
+  - space.payload_separate
+  - space.water_deluge_arm
+  - space.hold_down_release
+  - space.pad_emergency_stop
+  - space.comms_freq_acknowledge
+  - space.weather_constraint_acknowledge
+  - space.historian_write
+
+denied_actions:
+  # Hard interlocks — the gate ALSO refuses these regardless of envelope.
+  - space.disable_flight_termination
+  - space.override_range_safety
+  - space.bypass_collision_avoidance
+  - space.ignite_outside_window
+  - space.bypass_wind_limits
+  - space.override_propellant_limits
+  - space.bypass_pad_interlocks
+  - space.payload_deploy_outside_primary
+
+constraints:
+  required_runtime_registers:
+    - telemetry.launch_site
+    - telemetry.vehicle_class
+    - telemetry.countdown_phase
+    - telemetry.range_clear
+    - telemetry.weather_within_limits
+    - telemetry.fts_armed
+    - telemetry.afts_nominal
+    - telemetry.range_commander_go
+    - telemetry.itar_cleared
+    - telemetry.comms_licensed
+  dual_control:
+    actions:
+      - space.ignite
+      - space.fts_trigger
+      - space.payload_deploy
+      - space.hold_down_release
+    required: 2
+    ttl_ms: 600000
+  budget:
+    maxCallsPerWindow: 5000
+    windowMs: 3600000
+
+expires_at: "2026-12-31T23:59:59Z"
+issuer: aristotle-space-launch-root
+classification:
+  level: CUI
+  caveats: [SPACE_OPS]

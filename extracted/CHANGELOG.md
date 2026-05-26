@@ -1,5 +1,52 @@
 # Changelog
 
+## v0.1.54 - Space launch vertical (15th industry vertical)
+- **New `space` vertical** on the shared branch -- 15th vertical
+  alongside automotive, aviation, grid, healthcare, logistics, mining,
+  pipeline, port, rail, robotics, swarm, telecom, title, water.
+  Covers consequential launch, range-safety, FTS, propellant, ignition,
+  payload-deploy, and downrange-asset actions.
+- **Regulatory framing** (alignment, not substitution): 14 CFR Part 450,
+  Part 415/417, FAA AST license + permit conditions, USSF SLD-30 /
+  SLD-45 range safety, NASA NPR 8715.5, ITAR USML Cat IV + XV, EAR,
+  FCC Part 25/87, ITU radio licensing, UN Outer Space Treaty +
+  Registration + Liability Convention.
+- **`space.ts` runtime module**: SPACE_ADAPTER_CATALOG (13 typed
+  boundaries), SPACE_JURISDICTION_RULE_PRESETS for CCSFS / Vandenberg /
+  Wallops / Starbase / Kodiak / Mojave (all `demonstration_only: true`),
+  SpaceRuntimeSnapshot, adapter request types + builders for each
+  family, evaluateSpaceSafetyInvariants, exportSpaceEvidenceBundle /
+  verifySpaceEvidenceBundle.
+- **`index.ts` wiring**: 16 new space-specific `physical_bounds` fields,
+  hard interlocks at gate level for space.disable_flight_termination /
+  fts.disable, space.override_range_safety, space.bypass_collision_avoidance,
+  space.ignite_outside_window, space.bypass_wind_limits,
+  space.override_propellant_limits, space.bypass_pad_interlocks,
+  space.payload_deploy_outside_primary.
+- **Naming**: avoided collisions with aviation/title --
+  PayloadRequest -> SpacePayloadRequest, payloadToAction ->
+  spacePayloadToAction, JURISDICTION_RULE_PRESETS ->
+  SPACE_JURISDICTION_RULE_PRESETS.
+- **space.test.ts 12/12 pass**: canonical action builders, ALLOW path,
+  REFUSE on range-not-clear / wind / FTS-not-armed, 4 hard-interlock
+  refusals, dual-control ignite (ESCALATE without approvals, ALLOW with
+  two), Evidence Bundle round-trip + tamper detection.
+- **Examples**: ward.ccsfs_launch_ops.yaml,
+  authority_envelope.launch_orchestrator.yaml, policy APL,
+  3 sample actions (allow_propellant_load, refuse_wind_over_limit,
+  refuse_disable_fts).
+- **Docs**: docs/space.md + space-ward-templates.md +
+  space-threat-model.md, each with the explicit demonstration-only
+  disclaimer + production-onboarding checklist (per-range coordination,
+  AST licensee approval, signed LoA).
+- **DEMONSTRATION ONLY** at every surface: presets have NOT been
+  coordinated with FAA AST, USSF SLD-30/45, NASA range safety, or
+  counsel. Real deployments require promotion past `rule_validation_state:
+  "demonstration"`.
+- **No regressions**: governance-core 41/41, execution-control 75/75,
+  title 22/22. Space 12/12 brings branch-wide test count to **327, 0
+  failures**.
+
 ## v0.1.53 - Ultimate mode: 7 framework adapters in one batch
 - **Faramesh framework coverage closes from 6/14 -> 13/14 explicit + 1
   via MCP.** Gap -7 -> -1 (only Anthropic Claude Code is left, which is

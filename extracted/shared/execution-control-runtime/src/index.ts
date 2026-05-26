@@ -91,6 +91,7 @@ export * from "./logistics.js";
 export * from "./swarm.js";
 export * from "./healthcare.js";
 export * from "./title.js";
+export * from "./space.js";
 
 export {
   type AristotleSigner,
@@ -514,6 +515,25 @@ export interface PhysicalBounds {
   require_digital_signature_accepted?: boolean;
   require_lien_exists?: boolean;
   require_lien_release_authority_active?: boolean;
+  // -- space launch (DEMONSTRATION; coordinate with FAA AST / range authority
+  // before promoting any preset past rule_validation_state: "demonstration") --
+  permitted_launch_sites?: string[];
+  permitted_vehicle_classes?: string[];
+  max_surface_wind_kts?: number;
+  max_upper_wind_shear_kts_per_kft?: number;
+  max_q_kpa?: number;
+  require_range_clear?: boolean;
+  // require_weather_within_limits is already declared above for aviation
+  require_fts_armed?: boolean;
+  require_afts_nominal?: boolean;
+  require_fts_battery_ok?: boolean;
+  require_fts_rf_link_ok?: boolean;
+  require_propellant_temp_in_spec?: boolean;
+  require_itar_cleared?: boolean;
+  require_comms_licensed?: boolean;
+  require_hazard_area_cleared?: boolean;
+  require_tracking_radar_acquired?: boolean;
+  require_range_commander_go?: boolean;
 }
 
 export interface PhysicalInvariantResult {
@@ -1030,6 +1050,27 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
     action.action_type === "warrant.replay"
   ) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard title-transaction integrity interlock violation` };
+  }
+  // Space launch hard interlocks: actions that disable range safety or
+  // override FAA Part 450 / range-commander authority CANNOT be made safe
+  // by policy alone -- the gate must always REFUSE.
+  if (
+    action.action_type === "space.disable_flight_termination" ||
+    action.action_type === "fts.disable" ||
+    action.action_type === "space.override_range_safety" ||
+    action.action_type === "range_safety.override" ||
+    action.action_type === "space.bypass_collision_avoidance" ||
+    action.action_type === "collision_avoidance.disable" ||
+    action.action_type === "space.ignite_outside_window" ||
+    action.action_type === "space.bypass_wind_limits" ||
+    action.action_type === "wind_limits.override" ||
+    action.action_type === "space.override_propellant_limits" ||
+    action.action_type === "propellant_limits.override" ||
+    action.action_type === "space.bypass_pad_interlocks" ||
+    action.action_type === "pad_interlocks.override" ||
+    action.action_type === "space.payload_deploy_outside_primary"
+  ) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard space-launch range-safety interlock violation` };
   }
   const altitude = numericParam(action, "altitude_m");
   if (bounds.max_altitude_m !== undefined && altitude !== undefined && altitude > bounds.max_altitude_m) {
@@ -2136,6 +2177,63 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
   }
   if (bounds.require_lien_release_authority_active && booleanParam(action, "lien_release_authority_active") !== true) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "lien-release authority is not active for the requesting lender" };
+  }
+  // -- space launch invariants (DEMONSTRATION ONLY -- not validated against
+  // FAA AST / range authority / counsel; presets must stay
+  // rule_validation_state: "demonstration" until coordinated) ---------------
+  const launchSite = stringParam(action, "launch_site");
+  if (bounds.permitted_launch_sites?.length && launchSite && !bounds.permitted_launch_sites.includes(launchSite)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `launch_site ${launchSite} is outside permitted launch sites` };
+  }
+  const vehicleClass = stringParam(action, "vehicle_class");
+  if (bounds.permitted_vehicle_classes?.length && vehicleClass && !bounds.permitted_vehicle_classes.includes(vehicleClass)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `vehicle_class ${vehicleClass} is outside permitted vehicle classes` };
+  }
+  const surfaceWind = numericParam(action, "surface_wind_kts");
+  if (bounds.max_surface_wind_kts !== undefined && surfaceWind !== undefined && surfaceWind > bounds.max_surface_wind_kts) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `surface_wind_kts ${surfaceWind} exceeds max_surface_wind_kts ${bounds.max_surface_wind_kts}` };
+  }
+  const upperShear = numericParam(action, "upper_wind_shear_kts_per_kft");
+  if (bounds.max_upper_wind_shear_kts_per_kft !== undefined && upperShear !== undefined && upperShear > bounds.max_upper_wind_shear_kts_per_kft) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `upper_wind_shear_kts_per_kft ${upperShear} exceeds max_upper_wind_shear_kts_per_kft ${bounds.max_upper_wind_shear_kts_per_kft}` };
+  }
+  const maxQ = numericParam(action, "expected_max_q_kpa");
+  if (bounds.max_q_kpa !== undefined && maxQ !== undefined && maxQ > bounds.max_q_kpa) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `expected_max_q_kpa ${maxQ} exceeds max_q_kpa ${bounds.max_q_kpa}` };
+  }
+  if (bounds.require_range_clear && booleanParam(action, "range_clear") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "range is not clear (ships / aircraft / hazard area)" };
+  }
+  // require_weather_within_limits is already enforced above in the aviation block
+  if (bounds.require_fts_armed && booleanParam(action, "fts_armed") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "Flight Termination System is not armed" };
+  }
+  if (bounds.require_afts_nominal && booleanParam(action, "afts_nominal") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "Autonomous Flight Termination System is not nominal" };
+  }
+  if (bounds.require_fts_battery_ok && booleanParam(action, "fts_battery_ok") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "FTS battery is outside voltage envelope" };
+  }
+  if (bounds.require_fts_rf_link_ok && booleanParam(action, "fts_rf_link_ok") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "FTS RF link to range is unhealthy" };
+  }
+  if (bounds.require_propellant_temp_in_spec && booleanParam(action, "propellant_temp_k_within_spec") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "propellant temperature is outside spec" };
+  }
+  if (bounds.require_itar_cleared && booleanParam(action, "itar_cleared") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "ITAR pre-clearance is required but missing" };
+  }
+  if (bounds.require_comms_licensed && booleanParam(action, "comms_licensed") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "comms licensing (FCC / ITU) is required but missing" };
+  }
+  if (bounds.require_hazard_area_cleared && booleanParam(action, "hazard_area_cleared") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "downrange hazard area is not cleared" };
+  }
+  if (bounds.require_tracking_radar_acquired && booleanParam(action, "tracking_radar_acquired") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "tracking radar has not acquired the vehicle" };
+  }
+  if (bounds.require_range_commander_go && booleanParam(action, "range_commander_go") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "range commander has not issued GO" };
   }
   return { ok: true, reason_codes: [], detail: "physical invariants satisfied" };
 }
