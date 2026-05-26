@@ -1,5 +1,60 @@
 # Changelog
 
+## v0.1.45 - Python SDK 0.1.0 (aristotle-os-sdk on PyPI, sync + async)
+- **`aristotle-os-sdk` Python package is now publish-ready.** Lives at
+  `packages/os-sdk-python/`, built with hatchling + PEP 621 metadata,
+  Apache-2.0 license, `py.typed` marker, single runtime dependency
+  (`httpx>=0.27,<1.0`). `python -m build` emits a clean wheel
+  (`aristotle_os_sdk-0.1.0-py3-none-any.whl`, ~14 kB) and sdist with
+  LICENSE + NOTICE embedded under PEP 639 `dist-info/licenses/`.
+- **Two clients, same surface**:
+  - **`AristotleClient`** (sync) — uses `httpx.Client`, supports context
+    manager.
+  - **`AsyncAristotleClient`** (async) — uses `httpx.AsyncClient`,
+    supports `async with`. Every method `await`-ed.
+  Mirrors the TypeScript SDK's HTTP surface with Python-idiomatic
+  snake_case naming (`evaluate`, `audit_tail`, `decide_approval`,
+  `kill_switch`, `govern_and_execute`, `title_action`, etc.).
+- **High-level helpers**:
+  - `govern_and_execute(action, executor, *, runtime_register=None,
+    now=None)` — evaluate → ALLOW runs executor → REFUSE raises
+    `AristotleApiError` → ESCALATE returns escalation handle. Sync
+    expects a sync callable; async expects an async coroutine function.
+    Executor never runs on non-ALLOW (proven by tests in both clients).
+  - `AristotleClient.title_action(...)` / `AsyncAristotleClient.title_action(...)`
+    — static builder for Title vertical canonical actions; raises
+    `ValueError` if `action_type` is not in the `title.*` namespace.
+- **Typed surface**: `TypedDict` shapes mirror the TS SDK's interfaces:
+  `EvaluateResponse`, `ApprovalItem`, `ApprovalDecisionResult`,
+  `KillSwitchResult`, `RevokeEnvelopeResult`, `MetricsSnapshot`,
+  `DegradationStatus`, `ShadowReport`, `ReconciliationReport`,
+  `GovernanceManifest`, `GovernanceDiffResult`, `PolicyExplanation`,
+  `AuditVerifyResult`, `ConflictSummary`, `CanonicalAction`,
+  `TitleCanonicalAction`, `TitleSubmissionReceipt`. `py.typed` marker
+  installed so downstream type checkers see the SDK as fully typed.
+- **Tests (20/20 pass, sync + async)**:
+  - 13 sync tests: evaluate posts action + bearer token, api_key as
+    X-API-Key, governance compile/diff/explain, audit_tail query +
+    audit_verify, non-2xx raises typed exception, metrics + approvals +
+    decide_approval + kill_switch + revoke_envelope, govern_and_execute
+    ALLOW / REFUSE (executor never runs) / ESCALATE (executor never
+    runs), title_action namespacing + namespace refusal, context
+    manager.
+  - 7 async tests: async evaluate, async non-2xx raises, async
+    govern_and_execute ALLOW / REFUSE / ESCALATE, async context
+    manager, static title_action.
+- **Mock transport via `httpx.MockTransport`** — no real network needed
+  in tests; the SDK exposes a `transport` constructor parameter for the
+  same reason (sync + async).
+- **README**: install + quickstart (sync and async), four recipes
+  (govern-and-execute, dual-control approval, shadow-mode profiling,
+  kill switch), full API surface tables, auth + transport injection +
+  license footer.
+- **No regressions**: governance-core 41/41, execution-control 75/75,
+  TS SDK 15/15, Python SDK 20/20.
+- **This closes the second of the four Faramesh-comparison follow-ups.**
+  Next: pick ONE agent framework to integrate first (Claude Agents SDK).
+
 ## v0.1.44 - TypeScript SDK 0.2.0 (publish-ready, expanded surface)
 - **`@aristotle/os-sdk` is now publish-ready.** Removed `private: true`, added
   `publishConfig.access: "public"`, expanded `files` to include LICENSE +
