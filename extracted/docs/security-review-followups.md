@@ -8,7 +8,21 @@ parameterized queries. The items below are the genuine gaps found.
 
 ## Implemented in this change (verified)
 
-All three are covered by tests that run offline (`node --import tsx --test`):
+All four are covered by tests that run offline (`node --import tsx --test`):
+
+0. **Issuer→key binding (was the highest-priority recommendation; now closed).**
+   `verifyObjectSignatures` gains an optional `allowedKeyIds: ReadonlySet<string>`
+   parameter; when provided, ANY signature whose `keyId` is not in the set fails
+   verification BEFORE the cryptographic check. Validators now derive that set
+   from `mae.signing_keys` via `maeAllowedKeyIds(mae)` and pass it down to the
+   four artifact validators (MAE, Ward, Authority Envelope, Warrant). This stops
+   a key trusted for tenant B from forging tenant A's artifacts in a multi-tenant
+   deployment that shares a global keyring — the gap previously documented at
+   `validators.ts:87/155/216/304` and `hash.ts:162`. The fix preserves legacy
+   behavior when `signing_keys` is empty so existing fixtures/deployments keep
+   working; operators close the gap by populating `signing_keys`.
+   Tests: `validators.security.test.ts` stages exactly the cross-tenant forge
+   attack at each of the four levels and asserts refusal.
 
 1. **Prototype-pollution hardening in constraint evaluation** —
    `shared/governance-core/src/constraints.ts` `getPath`. The fact record is built from
@@ -41,14 +55,6 @@ All three are covered by tests that run offline (`node --import tsx --test`):
 Left as recommendations because they touch the core trust model or the durable store and
 should land with full-suite runs and fixture/spec updates rather than blind edits:
 
-- **Issuer→key binding (highest priority).** `verifyObjectSignatures` accepts a signature
-  from *any* key in the gate's keyring; the artifact's `keyId` is attacker-chosen and is
-  never constrained to the authority that owns the artifact. `MetaAuthorityEnvelope.signing_keys`
-  and federation `trust_anchors` are declared in `types.ts` but never enforced in
-  `validators.ts`. In a multi-tenant/federated gate (or any `HmacKeyring` deployment) this
-  lets one trusted key forge another authority's Ward/Envelope/Warrant. Fix: pass an
-  `allowedKeyIds` set derived from the parent authority and reject signatures whose
-  `keyId` is not authorized. (`hash.ts:162`, `validators.ts:87/155/216/304`)
 - **Request-level replay + bounded nonce store.** Replay is keyed solely on the single-use
   warrant nonce; `request_id`/`presented_at` are not recorded, and `store.consumedNonces`
   grows unbounded (memory DoS, serialized in snapshots). Add a TTL-bounded `jti`/request-id

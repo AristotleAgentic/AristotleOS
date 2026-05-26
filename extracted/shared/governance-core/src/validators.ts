@@ -12,6 +12,28 @@
  */
 
 import { canonicalize, hashCanonical, verifyObjectSignatures, type Keyring } from "./hash.js";
+
+/**
+ * Compute the issuer→key binding set for everything under a given MAE.
+ *
+ * In this trust model the MAE is the constitutional root of its tenant: every
+ * artifact beneath it (the MAE itself, Wards under it, Authority Envelopes
+ * under those Wards, and Warrants issued by those Envelopes) must be signed
+ * by a key whose id appears in `mae.signing_keys`. This prevents a key
+ * trusted for tenant B from forging tenant A's artifacts in a multi-tenant
+ * deployment that shares a global keyring.
+ *
+ * Returns `undefined` when the MAE has no declared signing keys, which
+ * preserves legacy behavior ("any keyring-known key is acceptable") for
+ * fixtures and deployments that have not yet declared their key set. This
+ * is intentional, but operators should populate `signing_keys` to actually
+ * close the gap.
+ */
+function maeAllowedKeyIds(mae: MetaAuthorityEnvelope): ReadonlySet<string> | undefined {
+  const keys = mae.signing_keys ?? [];
+  if (keys.length === 0) return undefined;
+  return new Set(keys.map((k) => k.key_id));
+}
 import { evaluateConstraints, intersect, isSubsetOf } from "./constraints.js";
 import { combine, fromViolations, valid, violation, type ValidationResult, type Violation } from "./errors.js";
 import type {
@@ -84,7 +106,10 @@ export function validateMae(mae: MetaAuthorityEnvelope, ctx: ValidationContext):
   if (mae.policy_hash !== hashCanonical(stripForPolicyHash(mae as unknown as Record<string, unknown>)))
     v.push(violation("mae-policy-hash", "MAE policy_hash does not match content"));
   if ((mae.signatures ?? []).length === 0) v.push(violation("mae-unsigned", "MAE carries no signature"));
-  if (ctx.keyring && !verifyObjectSignatures(ctx.keyring, mae as unknown as Record<string, unknown> & { signatures: typeof mae.signatures }))
+  // Issuer→key binding: the MAE is self-rooting, so its own signatures must
+  // be by keys it declares in `signing_keys`. Stops a key from another tenant
+  // (also present in a shared keyring) from forging this MAE.
+  if (ctx.keyring && !verifyObjectSignatures(ctx.keyring, mae as unknown as Record<string, unknown> & { signatures: typeof mae.signatures }, maeAllowedKeyIds(mae)))
     v.push(violation("mae-signature-invalid", "MAE signature failed verification"));
   v.push(...lifecycle("mae", mae, ctx.now));
   return fromViolations(v);
@@ -154,7 +179,9 @@ export function validateWardUnderMae(ward: Ward, mae: MetaAuthorityEnvelope, ctx
   if ((ward.signatures ?? []).length === 0) v.push(violation("ward-unsigned", "Ward carries no signature"));
   // Verify unconditionally (as the MAE path does): verifyObjectSignatures fails closed
   // on an empty signature set, so no `length > 0` guard that could weaken the check.
-  if (ctx.keyring && !verifyObjectSignatures(ctx.keyring, ward as unknown as Record<string, unknown> & { signatures: typeof ward.signatures }))
+  // Issuer→key binding: a Ward under this MAE must be signed by a key the MAE
+  // declares — a key trusted for another tenant's MAE cannot sign this Ward.
+  if (ctx.keyring && !verifyObjectSignatures(ctx.keyring, ward as unknown as Record<string, unknown> & { signatures: typeof ward.signatures }, maeAllowedKeyIds(mae)))
     v.push(violation("ward-signature-invalid", "Ward signature failed verification"));
   v.push(...lifecycle("ward", ward, ctx.now));
 
@@ -215,7 +242,10 @@ export function validateEnvelopeUnderWard(
   if (env.policy_hash !== hashCanonical(stripForPolicyHash(env as unknown as Record<string, unknown>)))
     v.push(violation("envelope-policy-hash", "Envelope policy_hash does not match content"));
   if ((env.signatures ?? []).length === 0) v.push(violation("envelope-unsigned", "Envelope carries no signature"));
-  if (ctx.keyring && !verifyObjectSignatures(ctx.keyring, env as unknown as Record<string, unknown> & { signatures: typeof env.signatures }))
+  // Issuer→key binding: an Authority Envelope under this Ward/MAE must be
+  // signed by a key the MAE declares — no foreign tenant's key may author
+  // an envelope in this constitutional scope.
+  if (ctx.keyring && !verifyObjectSignatures(ctx.keyring, env as unknown as Record<string, unknown> & { signatures: typeof env.signatures }, maeAllowedKeyIds(mae)))
     v.push(violation("envelope-signature-invalid", "Envelope signature failed verification"));
   v.push(...lifecycle("authority-envelope", env, ctx.now));
 
@@ -303,7 +333,11 @@ export function validateWarrant(
 
   // Integrity.
   if ((warrant.signatures ?? []).length === 0) v.push(violation("warrant-unsigned", "Warrant carries no signature"));
-  if (ctx.keyring && !verifyObjectSignatures(ctx.keyring, warrant as unknown as Record<string, unknown> & { signatures: typeof warrant.signatures }))
+  // Issuer→key binding: a Warrant issued under this Envelope/Ward/MAE must
+  // be signed by a key the MAE declares. Even a perfectly-constructed Warrant
+  // for a real Envelope cannot be admitted if the signing key belongs to
+  // another tenant's constitution.
+  if (ctx.keyring && !verifyObjectSignatures(ctx.keyring, warrant as unknown as Record<string, unknown> & { signatures: typeof warrant.signatures }, maeAllowedKeyIds(mae)))
     v.push(violation("warrant-signature-invalid", "Warrant signature failed verification"));
 
   return fromViolations(v);

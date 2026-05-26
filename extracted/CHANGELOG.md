@@ -1,5 +1,46 @@
 # Changelog
 
+## v0.1.42 - Issuer→key binding (security hardening, all verticals)
+- **Closes the #1 security gap from `docs/security-review-followups.md`.**
+  Before this change, `verifyObjectSignatures` accepted any signature whose `keyId`
+  was in the gate's keyring. In a multi-tenant deployment that shares a keyring
+  (an `HmacKeyring` with multiple tenants, or a JWKS that aggregates trust
+  anchors), tenant B's key could be used to sign tenant A's Ward, Authority
+  Envelope, or Warrant — and validation passed.
+- **`verifyObjectSignatures(keyring, obj, allowedKeyIds?)`** in
+  `shared/governance-core/src/hash.ts` gains an optional `allowedKeyIds:
+  ReadonlySet<string>`. When provided, ANY signature with `keyId ∉ allowedKeyIds`
+  fails verification BEFORE the cryptographic check. The check is all-or-nothing
+  on the signature set, so one foreign signature in a mixed set refuses the
+  whole artifact.
+- **`maeAllowedKeyIds(mae)`** helper in
+  `shared/governance-core/src/validators.ts` derives the set from
+  `mae.signing_keys`. Passed at all four call sites: `validateMae`,
+  `validateWardUnderMae`, `validateEnvelopeUnderWard`, `validateWarrant`. The
+  MAE is treated as the constitutional root of its tenant — every artifact
+  beneath it must be signed by a key the MAE declares.
+- **Backward compatible.** When `mae.signing_keys` is empty/undefined, the
+  helper returns `undefined` and the legacy "any keyring-known key is
+  acceptable" behavior is preserved. Existing fixtures populate
+  `signing_keys` already, so no test fixture needed changes.
+- **Tests: `validators.security.test.ts`** stages the cross-tenant forge
+  attack at every level:
+  - MAE forge (signed by foreign key) → refused with `mae-signature-invalid`
+  - Ward forge → refused with `ward-signature-invalid`
+  - Envelope forge → refused with `envelope-signature-invalid`
+  - Warrant forge → refused with `warrant-signature-invalid`
+  - Unit test for `verifyObjectSignatures` with/without `allowedKeyIds`,
+    including the all-or-nothing rule on mixed signature sets.
+  - Backward-compat test: empty `mae.signing_keys` does NOT raise the new
+    `*-signature-invalid` violation (legacy mode preserved).
+- **No regressions.** governance-core 41/41 + 4/4 (constraints security) +
+  6/6 (new validators security) = 51/51 tests pass. execution-control 75/75.
+  title vertical 22/22. Title UI typecheck clean.
+- **Remaining follow-ups in `docs/security-review-followups.md`** (request-level
+  replay store, atomic warrant consumption, monetary currency checks,
+  `parent_mae_id` lineage, signed revocation lists, JWKS fail-static pairing)
+  are unchanged.
+
 ## v0.1.41 - Title outbound submission adapter (demonstration transport)
 - **`TitleSubmissionTransport` interface + `DemonstrationTitleSubmissionTransport`.**
   AristotleOS gates the action; the outbound adapter actually delivers the resulting

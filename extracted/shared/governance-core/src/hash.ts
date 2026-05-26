@@ -158,10 +158,28 @@ export function signObject(keyring: Keyring, keyId: string, obj: Record<string, 
   return keyring.sign(keyId, canonicalize(omit(obj, OMIT_FROM_SIGNATURE)));
 }
 
-/** Verify every signature on an artifact. Empty signature list => unverifiable => false. */
-export function verifyObjectSignatures(keyring: Keyring, obj: { signatures?: Signature[] } & Record<string, unknown>): boolean {
+/**
+ * Verify every signature on an artifact. Empty signature list => unverifiable => false.
+ *
+ * `allowedKeyIds` (optional) constrains which `keyId`s the artifact may have been
+ * signed by — when provided, any signature whose `keyId` is NOT in the set fails
+ * verification BEFORE the cryptographic check is even attempted. This is the
+ * issuer→key binding mechanism: it stops a key trusted for tenant B from forging
+ * an artifact for tenant A in a multi-tenant deployment, even though both keys
+ * live in the same global keyring.
+ *
+ * Pass `undefined` (or omit) to preserve the legacy behavior of "any key the
+ * keyring knows about is acceptable". Validators derive the appropriate set
+ * from the parent authority (MAE.signing_keys) and pass it down.
+ */
+export function verifyObjectSignatures(
+  keyring: Keyring,
+  obj: { signatures?: Signature[] } & Record<string, unknown>,
+  allowedKeyIds?: ReadonlySet<string>,
+): boolean {
   const sigs = obj.signatures ?? [];
   if (sigs.length === 0) return false;
+  if (allowedKeyIds && sigs.some((s) => !allowedKeyIds.has(s.keyId))) return false;
   const data = canonicalize(omit(obj, OMIT_FROM_SIGNATURE));
   return sigs.every((s) => keyring.verify(data, s));
 }
