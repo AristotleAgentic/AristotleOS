@@ -25,6 +25,7 @@ import {
   type VerticalScenario,
   type VerticalWorkflowStep
 } from "./verticals/registry.js";
+import { WorkflowRunner } from "./WorkflowRunner.js";
 
 // ---------------------------------------------------------------------------
 // Tone helpers
@@ -323,10 +324,13 @@ export function VerticalDetailConsole() {
       </Panel>
 
       {v.workflow?.length ? (
-        <div className="ac-grid" style={{ gridTemplateColumns: "minmax(0, 1.2fr) minmax(320px, 0.8fr)", alignItems: "start" }}>
-          <WorkflowPanel v={v} />
-          <BoundaryChainPanel v={v} />
-        </div>
+        <>
+          <div className="ac-grid" style={{ gridTemplateColumns: "minmax(0, 1.2fr) minmax(320px, 0.8fr)", alignItems: "start" }}>
+            <WorkflowPanel v={v} />
+            <BoundaryChainPanel v={v} />
+          </div>
+          <WorkflowRunner vertical={v} />
+        </>
       ) : null}
 
       <AdapterMatrix v={v} />

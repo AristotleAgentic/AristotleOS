@@ -1,5 +1,44 @@
 # Changelog
 
+## v0.1.58 - Generic WorkflowRunner for every vertical with a workflow defined
+- **New `WorkflowRunner` component** that does for every vertical with a
+  `workflow` defined what `TitleSubmissionWalkthrough` does for Title:
+  animate through intent -> authority -> pre-checks -> commit -> warrant ->
+  adapter dispatch -> evidence; compute real SHA-256 hashes at the
+  action / warrant / evidence steps via Web Crypto + stable JSON
+  canonicalization; offer a Tamper button that demonstrates verification
+  catches a post-export mutation.
+- **Step-role inference**: each step's `id + label` is matched against
+  patterns to classify as action / authority / precheck / commit /
+  warrant / dispatch / evidence / other. Hash computations fire at the
+  three semantic seams (action_hash at action; warrant_id + signature
+  derived from action_hash at warrant; bundle_hash at evidence).
+- **Generic across the 6 registry-driven verticals**: aviation, mining,
+  pipeline, robotics, space, swarm all immediately gain an interactive
+  walkthrough with no per-vertical code -- the workflow rows in
+  registry.ts feed the same component.
+- **Demo data synthesized from registry**:
+  - action_type = `vertical.adapters[0].actionTypes[0]`
+  - jurisdiction / rule_version derived from `vertical.presets.states[0]`
+    and `vertical.id`
+  - Boundary / target derived from `vertical.adapters[0]`
+  - `rule_validation_state: "demonstration"` carried in the bundle
+    context so the demo provenance is explicit in evidence
+- **Hash binding visible inline**: each step's row shows the relevant
+  hash next to the owner/evidence text once computed -- action_hash
+  in cyan, warrant_id in green, bundle_hash in green (or red after
+  tamper). Bound-detail cards beneath show the full values for copy.
+- **Tamper demo**: clicking Tamper after a successful run flips the
+  bundle verification badge to "verifyEvidenceBundle: failed" and
+  surfaces the explanatory paragraph (mutation detected because
+  hashes are pinned at export time).
+- **VerticalDetailConsole** now renders `WorkflowRunner` directly below
+  the static `WorkflowPanel` + `BoundaryChainPanel` row, when a
+  workflow is defined. The static panel still shows the canonical
+  config view; the runner adds the live interactive layer beneath.
+- **Verified**: console-ui `tsc --noEmit` clean. governance-core 41/41,
+  execution-control-runtime 75/75 (no regressions).
+
 ## v0.1.57 - Outbound title submission walkthrough (UI demo of runtime binding)
 - New TitleSubmissionWalkthrough panel in TitleOpsConsole. End-to-end
   visualization of the runtime contract that shipped in commit 5365e30
