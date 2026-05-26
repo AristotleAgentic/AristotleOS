@@ -1,5 +1,77 @@
 # Changelog
 
+## v0.1.49 - OpenAI Agents SDK integration (@aristotle/openai-agents)
+- **Third agent-framework integration ships.** Faramesh framework
+  coverage now 3/14 explicit (Claude Agent SDK, LangChain.js,
+  OpenAI Agents SDK) — the three anchor TypeScript agent frameworks
+  in market — plus MCP-over-stdio reachable from Claude Code, Cursor,
+  Zed, etc.
+- **`aristotleToolInputGuardrail(options)` returns a real
+  `ToolInputGuardrailDefinition`** matching the OpenAI Agents SDK's
+  first-class guardrail primitive from `@openai/agents-core@0.11.x`.
+  Type signatures verified against the installed `.d.ts` files —
+  `ToolGuardrailBehavior`, `ToolGuardrailFunctionOutput`,
+  `ToolInputGuardrailData`, `SdkFunctionCall` are all defined locally
+  to match the SDK structurally, so the adapter compiles without the
+  peer.
+- **Decision mapping using the SDK's own behavior union**:
+  - `ALLOW`    → `{ type: "allow" }` + `outputInfo: { warrantId,
+    gelRecordId }` so they show up in the agent run trace
+  - `REFUSE`   → `{ type: "rejectContent", message: "..." }` carrying
+    the gate's reason_codes; agent sees a structured refusal it can
+    incorporate
+  - `ESCALATE` → `{ type: "rejectContent", message: "..." }`
+    (default) or `{ type: "throwException" }` with
+    `onEscalate: "throwException"`
+  - Gate unreachable → `{ type: "rejectContent", message: "..." }`
+    (default, fail-closed) or `{ type: "throwException" }` with
+    `onError: "throwException"`
+- **No monkey-patching, no tool wrapping.** Plugs into the SDK's
+  first-class `toolInputGuardrails: [...]` option on each tool — fully
+  traced by the SDK's runtime, visible in the run history.
+- **JSON-argument parsing**: the SDK's `FunctionCallItem.arguments`
+  is a JSON-encoded string; the adapter parses it back into a
+  `Record<string, unknown>` for the canonical action's `params`.
+  Non-JSON arguments (legacy / freeform) are normalized into
+  `params: { input: "..." }` (proven by test).
+- **Customizable mapping** identical to the other two adapters:
+  `guardrailName`, `actionTypePrefix`, `actionTypeFor(toolName)`,
+  `buildAction({...})`, `passthroughTools`, `onDecision({...})`.
+- **Reusable across tools**: the guardrail is stateless; build it once
+  and spread it into every tool's `toolInputGuardrails: [gate]`.
+- **Packaging**:
+  - `dependencies`: `@aristotle/os-sdk` (workspace)
+  - `peerDependencies`: `@openai/agents` (>=0.11.0 <1.0.0, optional)
+  - LICENSE + NOTICE copied into the package
+  - `npm pack --dry-run`: 8 files, ~42 kB tarball (LICENSE, NOTICE,
+    README, dist/index.{js,d.ts} + source maps, package.json)
+  - `publishConfig.access: public`, `engines.node: >=18`,
+    `sideEffects: false`
+- **Tests (13/13 pass)**:
+  - ALLOW returns `behavior: "allow"` with warrant + GEL record id
+    in outputInfo
+  - REFUSE returns `behavior: "rejectContent"` with reason codes
+  - ESCALATE returns `behavior: "rejectContent"` by default
+  - `onEscalate: "throwException"` raises the runner instead
+  - Custom actionTypeFor routes into vertical namespaces
+  - buildAction overrides the canonical-action shape (and receives the
+    agent name from `data.agent`)
+  - passthroughTools skips the gate call entirely
+  - onDecision telemetry fires with elapsedMs and the verdict
+  - Gate-unreachable defaults to fail-closed rejectContent
+  - `onError: "throwException"` raises the runner on gate failure
+  - Non-JSON tool arguments normalize into `params: { input: ... }`
+  - Resulting guardrail has the right name, type, run function
+  - Constructor refuses missing required options
+- **README**: install + working `tool({...})` + `Agent({...})` +
+  `Runner.run(...)` example + decision-mapping table + canonical
+  mapping table + three recipes (vertical routing, escalation
+  handling at the agent level, telemetry) + exports + Apache-2.0
+  footer.
+- **No regressions**: governance-core 51/51, execution-control 75/75,
+  TS os-sdk 15/15, claude-agents 13/13, langchain 14/14, openai-agents
+  13/13 = 181/181. Python SDK 20/20 unaffected.
+
 ## v0.1.48 - LangChain.js integration (@aristotle/langchain)
 - **Second agent-framework integration ships.** LangChain.js is the
   single biggest agent framework in market; closing it after the

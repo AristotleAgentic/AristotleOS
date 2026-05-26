@@ -123,7 +123,16 @@ importers:
         version: link:../os-sdk
       '@langchain/core':
         specifier: '>=0.3.0 <1.0.0'
-        version: 0.3.80
+        version: 0.3.80(openai@6.39.0(ws@8.21.0)(zod@3.25.76))
+
+  packages/openai-agents:
+    dependencies:
+      '@aristotle/os-sdk':
+        specifier: workspace:*
+        version: link:../os-sdk
+      '@openai/agents':
+        specifier: '>=0.11.0 <1.0.0'
+        version: 0.11.5(@cfworker/json-schema@4.1.1)(ws@8.21.0)(zod@3.25.76)
 
   packages/os-sdk: {}
 
@@ -942,6 +951,29 @@ packages:
       '@cfworker/json-schema':
         optional: true
 
+  '@openai/agents-core@0.11.5':
+    resolution: {integrity: sha512-djqc3VUMw6wZlGOHa/+1jqIcEJnzI6PBNKPuf6tXO1MoE+o4NuTYgMpZ+pDUDvV6cor8+dEdmF5bsuqhb2dOMw==}
+    peerDependencies:
+      zod: ^4.0.0
+    peerDependenciesMeta:
+      zod:
+        optional: true
+
+  '@openai/agents-openai@0.11.5':
+    resolution: {integrity: sha512-gd/UiHtjMiqQFgzrqSS2wiBIlvqzIsf8/kSms1iRM0x2jO4eaVbK8txX1APT/om5AhZfduLSCzBsRbEur7MvNQ==}
+    peerDependencies:
+      zod: ^4.0.0
+
+  '@openai/agents-realtime@0.11.5':
+    resolution: {integrity: sha512-TEoxtzOv/+Pk0rNvypubyRmVajpebX3DkfdXp++uEH02MZhWQTmUI9khn+vsBvzTbdBo2Ery+FwdeJeVPjiVRA==}
+    peerDependencies:
+      zod: ^4.0.0
+
+  '@openai/agents@0.11.5':
+    resolution: {integrity: sha512-tS9U5RKlSm/ZL/P0wyo7Ta6mtr8CXrQBmjOfj3rI/NttIm/W+uAFZXOQdvCh2y8lxezPmSfoR8mJG6IDX+XCWA==}
+    peerDependencies:
+      zod: ^4.0.0
+
   '@playwright/test@1.60.0':
     resolution: {integrity: sha512-O71yZIbAh/PxDMNGns37GHBIfrVkEVyn+AXyIa5dOTfb4/xNvRWV+Vv/NMbNCtODB/pO7vLlF2OTmMVLhmr7Ag==}
     engines: {node: '>=18'}
@@ -1155,6 +1187,9 @@ packages:
 
   '@types/uuid@10.0.0':
     resolution: {integrity: sha512-7gqG38EyHgyP1S+7+xomFtL+ZNHcKv6DwNaCZmJmo1vgMugyF3TCnXVg4t1uk89mLNwnLtnY3TpOpCOyp1/xHQ==}
+
+  '@types/ws@8.18.1':
+    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
   '@vitejs/plugin-react@4.7.0':
     resolution: {integrity: sha512-gUu9hwfWvvEDBBmgtAowQCojwZmJ5mcLn3aufeCsitijs3+f2NsrPtlAWIR6OPiqljl96GVCUbLe0HyqIpVaoA==}
@@ -1666,6 +1701,18 @@ packages:
   once@1.4.0:
     resolution: {integrity: sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==}
 
+  openai@6.39.0:
+    resolution: {integrity: sha512-O61LIsimY3acVabwvomwFhwrnN36yvHY2quIfy9keEcFytGgWeV35yLHQ6NVMLSBxRpHmcg2yuhCnlu2HT4pLQ==}
+    hasBin: true
+    peerDependencies:
+      ws: ^8.18.0
+      zod: ^3.25 || ^4.0
+    peerDependenciesMeta:
+      ws:
+        optional: true
+      zod:
+        optional: true
+
   p-finally@1.0.0:
     resolution: {integrity: sha512-LICb2p9CB7FS+0eR1oqWnHhp0FljGLZCWBE9aix0Uye9W8LTQPwMTYVGWQWIw9RdQiDg4+epXQODwIYJtSJaow==}
     engines: {node: '>=4'}
@@ -1972,6 +2019,18 @@ packages:
 
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
+
+  ws@8.21.0:
+    resolution: {integrity: sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
 
   y18n@5.0.8:
     resolution: {integrity: sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==}
@@ -2428,14 +2487,14 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@langchain/core@0.3.80':
+  '@langchain/core@0.3.80(openai@6.39.0(ws@8.21.0)(zod@3.25.76))':
     dependencies:
       '@cfworker/json-schema': 4.1.1
       ansi-styles: 5.2.0
       camelcase: 6.3.0
       decamelize: 1.2.0
       js-tiktoken: 1.0.21
-      langsmith: 0.3.87
+      langsmith: 0.3.87(openai@6.39.0(ws@8.21.0)(zod@3.25.76))
       mustache: 4.2.0
       p-queue: 6.6.2
       p-retry: 4.6.2
@@ -2471,6 +2530,57 @@ snapshots:
       '@cfworker/json-schema': 4.1.1
     transitivePeerDependencies:
       - supports-color
+
+  '@openai/agents-core@0.11.5(@cfworker/json-schema@4.1.1)(ws@8.21.0)(zod@3.25.76)':
+    dependencies:
+      debug: 4.4.3
+      openai: 6.39.0(ws@8.21.0)(zod@3.25.76)
+    optionalDependencies:
+      '@modelcontextprotocol/sdk': 1.29.0(@cfworker/json-schema@4.1.1)(zod@3.25.76)
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - '@cfworker/json-schema'
+      - supports-color
+      - ws
+
+  '@openai/agents-openai@0.11.5(@cfworker/json-schema@4.1.1)(ws@8.21.0)(zod@3.25.76)':
+    dependencies:
+      '@openai/agents-core': 0.11.5(@cfworker/json-schema@4.1.1)(ws@8.21.0)(zod@3.25.76)
+      debug: 4.4.3
+      openai: 6.39.0(ws@8.21.0)(zod@3.25.76)
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - '@cfworker/json-schema'
+      - supports-color
+      - ws
+
+  '@openai/agents-realtime@0.11.5(@cfworker/json-schema@4.1.1)(zod@3.25.76)':
+    dependencies:
+      '@openai/agents-core': 0.11.5(@cfworker/json-schema@4.1.1)(ws@8.21.0)(zod@3.25.76)
+      '@types/ws': 8.18.1
+      debug: 4.4.3
+      ws: 8.21.0
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - '@cfworker/json-schema'
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
+  '@openai/agents@0.11.5(@cfworker/json-schema@4.1.1)(ws@8.21.0)(zod@3.25.76)':
+    dependencies:
+      '@openai/agents-core': 0.11.5(@cfworker/json-schema@4.1.1)(ws@8.21.0)(zod@3.25.76)
+      '@openai/agents-openai': 0.11.5(@cfworker/json-schema@4.1.1)(ws@8.21.0)(zod@3.25.76)
+      '@openai/agents-realtime': 0.11.5(@cfworker/json-schema@4.1.1)(zod@3.25.76)
+      debug: 4.4.3
+      openai: 6.39.0(ws@8.21.0)(zod@3.25.76)
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - '@cfworker/json-schema'
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+      - ws
 
   '@playwright/test@1.60.0':
     dependencies:
@@ -2637,6 +2747,10 @@ snapshots:
       '@types/node': 22.19.15
 
   '@types/uuid@10.0.0': {}
+
+  '@types/ws@8.18.1':
+    dependencies:
+      '@types/node': 22.19.15
 
   '@vitejs/plugin-react@4.7.0(vite@5.4.21(@types/node@22.19.15))':
     dependencies:
@@ -3139,7 +3253,7 @@ snapshots:
 
   json5@2.2.3: {}
 
-  langsmith@0.3.87:
+  langsmith@0.3.87(openai@6.39.0(ws@8.21.0)(zod@3.25.76)):
     dependencies:
       '@types/uuid': 10.0.0
       chalk: 4.1.2
@@ -3147,6 +3261,8 @@ snapshots:
       p-queue: 6.6.2
       semver: 7.8.1
       uuid: 10.0.0
+    optionalDependencies:
+      openai: 6.39.0(ws@8.21.0)(zod@3.25.76)
 
   loose-envify@1.4.0:
     dependencies:
@@ -3211,6 +3327,11 @@ snapshots:
   once@1.4.0:
     dependencies:
       wrappy: 1.0.2
+
+  openai@6.39.0(ws@8.21.0)(zod@3.25.76):
+    optionalDependencies:
+      ws: 8.21.0
+      zod: 3.25.76
 
   p-finally@1.0.0: {}
 
@@ -3539,6 +3660,8 @@ snapshots:
       strip-ansi: 6.0.1
 
   wrappy@1.0.2: {}
+
+  ws@8.21.0: {}
 
   y18n@5.0.8: {}
 
