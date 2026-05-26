@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.1.36 - Robotics / humanoid execution-control vertical
+- **Robotics pilot path**: typed adapters (motion-control, manipulation, mobile-base,
+  humanoid-locomotion, teleoperation, human-robot-interaction, safety-config, fleet,
+  historian) -> Canonical Governed Actions; robotics physical invariants enforced at
+  the gate (workcell/zone/operating-mode/state, TCP speed, force/torque/power
+  biomechanical limits, separation distance, center-of-mass deviation and step height
+  for humanoids, payload, fresh telemetry, and readiness flags for e-stop, protective
+  stop, SSM, PFL, collision detection, safety scanner, humanoid balance controller and
+  fall protection, teleop link, operator qualification, plus collaborative-mode-when-
+  human-present) plus hard interlocks (disable e-stop / protective stop / collision
+  detection / safety scanner, override SSM / PFL / safety zone, humanoid balance-
+  controller and fall-protection disable); signed Robotics Evidence Bundles with a
+  regulatory profile and collaboration risk class; `examples/robotics/` ward, envelope,
+  policy, and allow/refuse actions runnable via `execution-control evaluate`; docs
+  (overview, ward templates, threat model). Designed to meet and exceed ISO 10218-1/-2,
+  ISO/TS 15066, ANSI/RIA R15.06/.08, ISO 3691-4, ISO 13482, and ISO 13849 / IEC 61508.
+
 ## v0.1.35 - Aviation / UAV / eVTOL execution-control vertical
 - **Aviation pilot path**: typed adapters (UTM/USS, flight-control/autopilot,
   geofence, payload, vertiport, detect-and-avoid, C2-link, Remote ID, ground

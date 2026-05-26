@@ -64,6 +64,9 @@ Docs:
 - [Aviation / UAV / eVTOL execution-control path](docs/aviation.md)
 - [Aviation Ward templates](docs/aviation-ward-templates.md)
 - [Aviation threat model addendum](docs/aviation-threat-model.md)
+- [Robotics / humanoid execution-control path](docs/robotics.md)
+- [Robotics Ward templates](docs/robotics-ward-templates.md)
+- [Robotics threat model addendum](docs/robotics-threat-model.md)
 - [Defense readiness roadmap](docs/defense-readiness.md)
 - [Crypto posture](docs/crypto-posture.md)
 - [Commercial adoption path](docs/commercial-adoption-path.md)
@@ -292,6 +295,37 @@ release, eVTOL vertiport clearance, and UTM authorization are dual-control. See
 [docs/aviation.md](docs/aviation.md),
 [docs/aviation-ward-templates.md](docs/aviation-ward-templates.md), and
 [docs/aviation-threat-model.md](docs/aviation-threat-model.md).
+
+## Robotics / Humanoid Readiness
+
+AristotleOS includes a robotics pilot path for governed industrial-arm, collaborative-
+cobot, AMR, and **humanoid** operations. Motion, manipulation, mobile-base, humanoid-
+locomotion, teleoperation, human-robot-interaction, safety-config, and fleet requests
+become typed adapter boundaries (`ROBOTICS_ADAPTER_CATALOG`) and execute only after Ward
+resolution, Authority Envelope validation, Robotics Safety Invariant checks (TCP speed,
+force/torque/power biomechanical limits, separation distance, center-of-mass deviation and
+step height for humanoids, payload, operating mode/zone/state, e-stop, protective stop,
+SSM, PFL, collision detection, safety scanner, balance controller, fall protection,
+operator qualification, and collaborative-mode-when-human-present), Commit Gate admission,
+Warrant verification, and GEL commit. It is built to meet and exceed ISO 10218-1/-2,
+ISO/TS 15066, ANSI/RIA R15.06/.08, ISO 3691-4, ISO 13482, and ISO 13849 / IEC 61508.
+
+```bash
+npm run test:robotics
+npm run aristotle -- execution-control evaluate \
+  --ward examples/robotics/ward.humanoid_cell.yaml \
+  --envelope examples/robotics/authority_envelope.cell_operator.yaml \
+  --action examples/robotics/actions/humanoid_step.json \
+  --ledger ./.tmp/robotics.gel.jsonl \
+  --now 2026-05-25T15:00:00.000Z
+```
+
+`refuse_force_over_limit.json`, `refuse_separation_breach.json`, and
+`refuse_human_present_not_collaborative.json` demonstrate fail-closed refusals; force
+application, humanoid locomotion, teleop takeover, and fleet dispatch are dual-control. See
+[docs/robotics.md](docs/robotics.md),
+[docs/robotics-ward-templates.md](docs/robotics-ward-templates.md), and
+[docs/robotics-threat-model.md](docs/robotics-threat-model.md).
 
 ## Maritime Port Readiness
 

@@ -1,0 +1,62 @@
+envelope_id: ae-robotics-operations-001
+ward_id: ward-robotics-humanoid-cell
+subject: agent:robot-ops-orchestrator
+allowed_actions:
+  - motion.move
+  - motion.trajectory.execute
+  - manipulation.grasp
+  - manipulation.release
+  - manipulation.force.apply
+  - base.navigate
+  - humanoid.step.execute
+  - humanoid.posture.set
+  - humanoid.locomotion.start
+  - teleop.mode.set
+  - teleop.takeover
+  - hri.handover
+  - hri.collaborative.start
+  - safety.zone.configure
+  - fleet.task.assign
+  - fleet.dispatch
+  - historian.record.write
+denied_actions:
+  - robot.disable_estop
+  - robot.disable_protective_stop
+  - robot.override_speed_separation_monitoring
+  - robot.override_power_force_limiting
+  - robot.disable_collision_detection
+  - robot.disable_safety_scanner
+  - humanoid.disable_balance_controller
+  - humanoid.disable_fall_protection
+constraints:
+  required_runtime_registers:
+    - telemetry.asset_id
+    - telemetry.workcell_id
+    - telemetry.robot_zone
+    - telemetry.operating_mode
+    - telemetry.estop_functional
+    - telemetry.protective_stop_armed
+    - telemetry.ssm_active
+    - telemetry.pfl_active
+    - telemetry.collision_detection_active
+    - telemetry.safety_scanner_active
+    - telemetry.operator_qualified
+    - telemetry.operator_id
+  permitted_workcell_id: cell-humanoid-a
+  dual_control:
+    actions:
+      - manipulation.force.apply
+      - humanoid.locomotion.start
+      - teleop.takeover
+      - fleet.dispatch
+    required: 2
+    ttl_ms: 600000
+  budget:
+    maxCallsPerWindow: 600
+    windowMs: 3600000
+expires_at: 2026-12-31T23:59:59Z
+issuer: aristotle-robotics-ops-root
+classification:
+  level: CUI
+  caveats:
+    - ROBOTICS_OPS

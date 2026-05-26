@@ -86,6 +86,7 @@ export * from "./mining.js";
 export * from "./port.js";
 export * from "./water.js";
 export * from "./aviation.js";
+export * from "./robotics.js";
 
 export {
   type AristotleSigner,
@@ -357,6 +358,29 @@ export interface PhysicalBounds {
   require_vertiport_clearance?: boolean;
   require_weather_within_limits?: boolean;
   require_ops_over_people_authorized?: boolean;
+  // Robotics / humanoid bounds. asset types reuse permitted_asset_types, telemetry freshness
+  // reuses max_telemetry_age_ms, payload reuses max_payload_kg, qualification reuses require_operator_qualified.
+  permitted_workcell_id?: string;
+  permitted_robot_zones?: string[];
+  permitted_operating_modes?: string[];
+  permitted_robot_states?: string[];
+  max_tcp_speed_mm_s?: number;
+  max_force_n?: number;
+  max_torque_nm?: number;
+  max_power_w?: number;
+  min_separation_distance_mm?: number;
+  max_com_deviation_mm?: number;
+  max_step_height_mm?: number;
+  require_estop_functional?: boolean;
+  require_protective_stop_armed?: boolean;
+  require_ssm_active?: boolean;
+  require_pfl_active?: boolean;
+  require_collision_detection_active?: boolean;
+  require_safety_scanner_active?: boolean;
+  require_balance_controller_active?: boolean;
+  require_fall_protection_armed?: boolean;
+  require_collaborative_mode_when_human_present?: boolean;
+  require_teleop_link_healthy?: boolean;
 }
 
 export interface PhysicalInvariantResult {
@@ -781,6 +805,28 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
     action.action_type === "evtol.disable_flight_envelope_protection"
   ) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard aviation safety interlock violation` };
+  }
+  if (
+    action.action_type === "robot.disable_estop" ||
+    action.action_type === "estop.disable" ||
+    action.action_type === "emergency_stop.disable" ||
+    action.action_type === "robot.disable_protective_stop" ||
+    action.action_type === "protective_stop.disable" ||
+    action.action_type === "robot.override_speed_separation_monitoring" ||
+    action.action_type === "ssm.override" ||
+    action.action_type === "robot.override_power_force_limiting" ||
+    action.action_type === "pfl.override" ||
+    action.action_type === "robot.disable_collision_detection" ||
+    action.action_type === "collision_detection.disable" ||
+    action.action_type === "robot.disable_safety_scanner" ||
+    action.action_type === "safety_scanner.disable" ||
+    action.action_type === "robot.override_safety_zone" ||
+    action.action_type === "safety_zone.override" ||
+    action.action_type === "humanoid.disable_balance_controller" ||
+    action.action_type === "balance.override" ||
+    action.action_type === "humanoid.disable_fall_protection"
+  ) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard robotics safety interlock violation` };
   }
   const altitude = numericParam(action, "altitude_m");
   if (bounds.max_altitude_m !== undefined && altitude !== undefined && altitude > bounds.max_altitude_m) {
@@ -1385,6 +1431,85 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
   }
   if (bounds.require_ops_over_people_authorized && booleanParam(action, "ops_over_people_authorized") !== true) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "operations over people authorization is required for this action" };
+  }
+  // -- robotics / humanoid invariants ------------------------------------------
+  const workcellId = stringParam(action, "workcell_id");
+  if (bounds.permitted_workcell_id && workcellId && workcellId !== bounds.permitted_workcell_id) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `workcell_id ${workcellId} does not match ${bounds.permitted_workcell_id}` };
+  }
+  const robotZone = stringParam(action, "robot_zone");
+  if (bounds.permitted_robot_zones?.length && robotZone && !bounds.permitted_robot_zones.includes(robotZone)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `robot_zone ${robotZone} is outside permitted robot zones` };
+  }
+  const operatingMode = stringParam(action, "operating_mode");
+  if (bounds.permitted_operating_modes?.length && operatingMode && !bounds.permitted_operating_modes.includes(operatingMode)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `operating_mode ${operatingMode} is outside permitted operating modes` };
+  }
+  const robotState = stringParam(action, "robot_state");
+  if (bounds.permitted_robot_states?.length && robotState && !bounds.permitted_robot_states.includes(robotState)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `robot_state ${robotState} is outside permitted robot states` };
+  }
+  const tcpSpeed = numericParam(action, "tcp_speed_mm_s");
+  if (bounds.max_tcp_speed_mm_s !== undefined && tcpSpeed !== undefined && tcpSpeed > bounds.max_tcp_speed_mm_s) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `tcp_speed_mm_s ${tcpSpeed} exceeds max_tcp_speed_mm_s ${bounds.max_tcp_speed_mm_s}` };
+  }
+  const appliedForce = numericParam(action, "force_n");
+  if (bounds.max_force_n !== undefined && appliedForce !== undefined && appliedForce > bounds.max_force_n) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `force_n ${appliedForce} exceeds max_force_n ${bounds.max_force_n} (ISO/TS 15066 biomechanical limit)` };
+  }
+  const appliedTorque = numericParam(action, "torque_nm");
+  if (bounds.max_torque_nm !== undefined && appliedTorque !== undefined && appliedTorque > bounds.max_torque_nm) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `torque_nm ${appliedTorque} exceeds max_torque_nm ${bounds.max_torque_nm}` };
+  }
+  const appliedPower = numericParam(action, "power_w");
+  if (bounds.max_power_w !== undefined && appliedPower !== undefined && appliedPower > bounds.max_power_w) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `power_w ${appliedPower} exceeds max_power_w ${bounds.max_power_w}` };
+  }
+  const robotSeparation = numericParam(action, "separation_distance_mm");
+  if (bounds.min_separation_distance_mm !== undefined && robotSeparation !== undefined && robotSeparation < bounds.min_separation_distance_mm) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `separation_distance_mm ${robotSeparation} below min_separation_distance_mm ${bounds.min_separation_distance_mm} (SSM)` };
+  }
+  const comDeviation = numericParam(action, "com_deviation_mm");
+  if (bounds.max_com_deviation_mm !== undefined && comDeviation !== undefined && comDeviation > bounds.max_com_deviation_mm) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `com_deviation_mm ${comDeviation} exceeds max_com_deviation_mm ${bounds.max_com_deviation_mm} (humanoid balance)` };
+  }
+  const stepHeight = numericParam(action, "step_height_mm");
+  if (bounds.max_step_height_mm !== undefined && stepHeight !== undefined && stepHeight > bounds.max_step_height_mm) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `step_height_mm ${stepHeight} exceeds max_step_height_mm ${bounds.max_step_height_mm}` };
+  }
+  if (bounds.require_estop_functional && booleanParam(action, "estop_functional") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "a functional emergency stop is required before this robot action" };
+  }
+  if (bounds.require_protective_stop_armed && booleanParam(action, "protective_stop_armed") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "the protective stop must be armed before this robot action" };
+  }
+  if (bounds.require_ssm_active && booleanParam(action, "ssm_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "speed-and-separation monitoring must be active before this robot action" };
+  }
+  if (bounds.require_pfl_active && booleanParam(action, "pfl_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "power-and-force limiting must be active before this robot action" };
+  }
+  if (bounds.require_collision_detection_active && booleanParam(action, "collision_detection_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "collision detection must be active before this robot action" };
+  }
+  if (bounds.require_safety_scanner_active && booleanParam(action, "safety_scanner_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "the safety scanner must be active before this robot action" };
+  }
+  if (bounds.require_balance_controller_active && booleanParam(action, "balance_controller_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "the humanoid balance controller must be active before this action" };
+  }
+  if (bounds.require_fall_protection_armed && booleanParam(action, "fall_protection_armed") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "humanoid fall protection must be armed before this action" };
+  }
+  if (bounds.require_teleop_link_healthy && booleanParam(action, "teleop_link_healthy") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "the teleoperation link must be healthy before this action" };
+  }
+  if (
+    bounds.require_collaborative_mode_when_human_present &&
+    booleanParam(action, "human_present") === true &&
+    stringParam(action, "operating_mode") !== "collaborative"
+  ) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "a human is present but the robot is not in collaborative mode (ISO/TS 15066)" };
   }
   return { ok: true, reason_codes: [], detail: "physical invariants satisfied" };
 }
