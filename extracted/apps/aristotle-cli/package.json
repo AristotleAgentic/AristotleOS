@@ -1,8 +1,7 @@
 {
   "name": "@aristotle/os-cli",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "AristotleOS CLI — run AI agents behind a governed execution-control boundary with signed, single-use Warrants and a tamper-evident evidence ledger.",
-  "private": true,
   "type": "module",
   "bin": {
     "aristotle": "dist/index.js"
@@ -14,8 +13,14 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "examples",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=18"
   },
@@ -25,6 +30,7 @@
     "governance",
     "authorization",
     "execution-control",
+    "commit-gate",
     "policy",
     "audit",
     "cli"
@@ -44,7 +50,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "dev": "tsx src/index.ts",
     "test": "tsx src/index.test.ts",
-    "prepack": "node build.mjs"
+    "prepack": "node build.mjs",
+    "prepublishOnly": "node build.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.0"

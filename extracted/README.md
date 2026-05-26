@@ -4,6 +4,59 @@ A service-backed governance operating system prototype behind the fixed Aristotl
 
 AristotleOS is runtime governance for autonomous execution: authority resolution, policy compilation, Commit Gate admissibility, warrant issuance, and evidence finalization before consequential action.
 
+## Install in 30 seconds
+
+```bash
+npm install -g @aristotle/os-cli
+aristotle execution-control dev
+```
+
+A real Commit Gate boundary boots on `http://127.0.0.1:8181` with the sample Ward + Authority Envelope bundled inside the CLI — no `git clone`, no `pnpm install`, no TypeScript toolchain. Requires Node.js 18+.
+
+Then point an agent at it. **From TypeScript**:
+
+```bash
+npm install @aristotle/os-sdk
+```
+
+```ts
+import { AristotleClient } from "@aristotle/os-sdk";
+const aos = new AristotleClient({ baseUrl: "http://127.0.0.1:8181" });
+const decision = await aos.evaluate({ action_id: "act-1", ward_id: "ward-x", subject: "agent:demo", action_type: "demo.run" });
+console.log(decision.decision);   // ALLOW / REFUSE / ESCALATE
+```
+
+**From Python** (sync or async):
+
+```bash
+pip install aristotle-os-sdk
+```
+
+```python
+from aristotle import AristotleClient
+aos = AristotleClient(base_url="http://127.0.0.1:8181")
+decision = aos.evaluate({"action_id": "act-1", "ward_id": "ward-x", "subject": "agent:demo", "action_type": "demo.run"})
+print(decision["decision"])
+```
+
+**Govern a Claude Agent SDK agent**:
+
+```bash
+npm install @aristotle/claude-agents @aristotle/os-sdk @anthropic-ai/claude-agent-sdk
+```
+
+```ts
+import { query } from "@anthropic-ai/claude-agent-sdk";
+import { AristotleClient } from "@aristotle/os-sdk";
+import { aristotleGuard } from "@aristotle/claude-agents";
+
+const aos = new AristotleClient({ baseUrl: "http://127.0.0.1:8181" });
+const guard = aristotleGuard({ client: aos, wardId: "ward-agent-ops", subject: "agent:assistant-1" });
+for await (const m of query({ prompt: "...", options: { hooks: guard.hooksConfig } })) { /* ... */ }
+```
+
+Every tool call the agent attempts is admitted only on `ALLOW` + warrant.
+
 ## Try AristotleOS
 
 Install the CLI and run a governed agent in about five minutes:

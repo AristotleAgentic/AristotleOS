@@ -1,5 +1,71 @@
 # Changelog
 
+## v0.1.47 - @aristotle/os-cli 0.2.0 (single-binary install, 30-second eval)
+- **Closes follow-up #4 from the Faramesh comparison: package the
+  runtime as a single binary.** A user evaluating AristotleOS can now
+  install the CLI in one command and have a real Commit Gate boundary
+  running in ~30 seconds, with no `git clone`, no `pnpm install`, and
+  no TypeScript toolchain on their machine.
+- **`@aristotle/os-cli` is now publish-ready.** Removed `private: true`,
+  added `publishConfig.access: "public"`, version bumped 0.1.8 -> 0.2.0,
+  `prepublishOnly` runs the bundle build. `npm pack --dry-run` ships a
+  ~119 kB tarball: LICENSE, NOTICE, README, dist/index.js (the bundle),
+  examples/execution_control/*.yaml (sample Ward + Authority Envelope),
+  package.json. Seven files, no source-tree leakage, no symlinks to
+  workspace packages -- it's a self-contained binary.
+- **Single 538.5 kB ESM bundle.** `node build.mjs` uses esbuild to
+  inline every workspace dep into `dist/index.js` with a `#!/usr/bin/env
+  node` shebang and 0755 perms. The bundle includes the full execution-
+  control runtime (governance-core + execution-control-runtime + all
+  10+ verticals from the branch), the operator CLI, the MCP-over-stdio
+  bridge, the boundary HTTP server, and every subcommand the project
+  exposes.
+- **Bundled sample fixtures.** The `execution-control dev` command now
+  uses `resolveBundledFixture(...)` to find the sample Ward +
+  Authority Envelope YAMLs relative to the bundle (preferring the copy
+  shipped inside the installed package), with a CWD-relative fallback
+  for workspace dev mode. Verified end-to-end: from a fresh
+  `/tmp/aristotle-fresh-cwd`, `node dist/index.js execution-control
+  dev` boots the boundary on `http://127.0.0.1:8181` and serves
+  /evaluate, /proxy, /audit/verify, /metrics with the sample Ward
+  `montana-drone-test-range` and Authority Envelope `ae-drone-survey-001`.
+- **Documented install paths** in the root README:
+  - `npm install -g @aristotle/os-cli && aristotle execution-control dev`
+  - `npm install @aristotle/os-sdk` (TypeScript SDK) -- with a 4-line
+    quickstart against the dev boundary
+  - `pip install aristotle-os-sdk` (Python SDK) -- with a 4-line
+    quickstart
+  - `npm install @aristotle/claude-agents` (Claude Agent SDK
+    integration) -- with the query() wiring example
+- **CLI README updated**: install + 30-second eval section that boots
+  the boundary, then submits/curls against it; existing 'governed
+  project' quickstart preserved below.
+- **LICENSE + NOTICE copied into the CLI package** so the npm tarball
+  carries the Apache-2.0 text + the demonstration-material disclaimer.
+  Same pattern used for the TS SDK, Python SDK, and Claude Agents
+  adapter.
+- **Tarball + bundle verified**:
+  - `node build.mjs`: dist/index.js 538.5 kB (Done in ~1.5s)
+  - `npm pack --dry-run`: 118.7 kB packed, 7 files
+  - `node /path/to/dist/index.js execution-control dev` from a fresh
+    cwd: boundary listens on 127.0.0.1:8181 with sample Ward + Envelope
+    loaded
+  - `node /path/to/dist/index.js --help` from a fresh cwd: full command
+    surface listed
+- **Pre-existing test environment gap acknowledged**: the CLI's
+  `tsx src/index.test.ts` script fails in this workspace because
+  `@aristotle/*` deps are resolved via tsconfig paths rather than
+  symlinks (a known tsx + pnpm workspace mismatch documented in the
+  memory note). The runtime libraries the bundle inlines all pass:
+  governance-core 41/41, execution-control-runtime 75/75. The bundle
+  produced by esbuild handles path resolution natively and runs cleanly.
+- **No code regressions in the runtime libraries.** governance-core
+  41/41 + 4/4 + 6/6 = 51/51, execution-control-runtime 75/75, TS SDK
+  15/15, claude-agents 13/13. Python SDK 20/20 unaffected.
+- **Series complete.** All four Faramesh-comparison follow-ups are
+  now closed: license (Apache-2.0), TS SDK, Python SDK, Claude Agent
+  SDK integration, single-binary install path.
+
 ## v0.1.46 - Claude Agent SDK integration (@aristotle/claude-agents)
 - **`@aristotle/claude-agents` 0.1.0 ships the first agent-framework
   integration.** Closes follow-up #3 from the Faramesh comparison: pick

@@ -10,10 +10,31 @@ consequential action is evaluated at a Commit Gate, receives a single-use
 ```bash
 npm install -g @aristotle/os-cli
 # or run without installing:
-npx @aristotle/os-cli init
+npx @aristotle/os-cli execution-control dev
 ```
 
-## Quick start
+Requires Node.js 18+. The CLI ships as a single ~540 kB ESM bundle with the sample Ward + Authority Envelope fixtures included, so the boundary boots from any directory without further setup.
+
+## 30-second eval
+
+```bash
+npm install -g @aristotle/os-cli
+aristotle execution-control dev          # boots a real Commit Gate on http://127.0.0.1:8181
+```
+
+In another shell:
+
+```bash
+curl -s http://127.0.0.1:8181/v1/execution-control/audit/verify | jq
+# {"ok": true, "count": 0}
+
+# Submit an action and watch the gate evaluate it
+aristotle execution-control submit --action ./my-action.json
+```
+
+The boundary serves `/v1/execution-control/evaluate`, `/proxy`, `/audit/verify`, `/metrics`, `/approvals`, and the full HTTP surface documented in `@aristotle/os-sdk`.
+
+## Quick start (governed project)
 
 ```bash
 aristotle init                          # scaffold a governed project

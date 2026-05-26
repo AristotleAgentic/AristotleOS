@@ -1,0 +1,15 @@
+ward_id: montana-drone-test-range
+name: Montana Drone Test Range
+sovereignty_context: private-ranch-field-test
+authority_domain: drone-swarm-ops
+policy_version: 0.1.0
+evidence_ledger_path: ./.tmp/gel.jsonl
+permitted_subjects:
+  - agent:survey-planner
+physical_bounds:
+  max_altitude_m: 120
+  permitted_boundary_id: ranch-test-grid-a
+  battery_minimum_pct: 20
+metadata:
+  execution_control_profile: ward-warrant-runtime-control
+  doctrine: execution-boundary-governance

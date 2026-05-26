@@ -4,7 +4,25 @@ import { generateKeyPairSync } from "node:crypto";
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+/**
+ * Locate a sample fixture path that ships with the CLI bundle.
+ *
+ * When the CLI runs from a globally-installed npm package (or from any
+ * directory that isn't the repo root), CWD-relative fixture paths like
+ * `examples/execution_control/...yaml` won't resolve. We ship the same
+ * fixtures inside the CLI package at `<package>/examples/...` and
+ * resolve to that copy first; the CWD fallback preserves the dev-mode
+ * UX where examples live at the repo root.
+ */
+function resolveBundledFixture(relPath: string, cwd: string): string {
+  const bundleDir = path.dirname(fileURLToPath(import.meta.url));
+  const bundled = path.resolve(bundleDir, "..", relPath);
+  if (existsSync(bundled)) return bundled;
+  const cwdRelative = path.resolve(cwd, relPath);
+  return cwdRelative;
+}
 import {
   type AristotleSigner,
   type OidcConfig,
@@ -1092,13 +1110,15 @@ Audit: GET http://127.0.0.1:${port}/v1/execution-control/audit/verify
 
     if (command === "execution-control" && subcommand === "dev") {
       const devNow = optionValue(rest, "--now");
+      const wardPath = resolveBundledFixture("examples/execution_control/ward.montana_drone_test_range.yaml", cwd);
+      const envelopePath = resolveBundledFixture("examples/execution_control/authority_envelope.survey_planner.yaml", cwd);
       return runCli([
         "execution-control",
         "serve",
         "--ward",
-        "examples/execution_control/ward.montana_drone_test_range.yaml",
+        wardPath,
         "--envelope",
-        "examples/execution_control/authority_envelope.survey_planner.yaml",
+        envelopePath,
         "--ledger",
         ".tmp/execution-control-runtime.gel.jsonl",
         "--port",
