@@ -691,6 +691,45 @@ export interface GelRecord {
   actor?: GelActor;
   runtime_register_snapshot: RuntimeRegister;
   physical_invariant_result?: PhysicalInvariantResult;
+  /**
+   * Model lineage of the AI agent (or policy model) that originated the
+   * action. Beyond `policy_version`: identifies the specific model
+   * artifact whose output became the action, so insurance / forensic /
+   * audit can trace "which model proposed this".
+   */
+  model_lineage?: {
+    model_id: string;
+    model_version: string;
+    /** Content hash of the model weights (or manifest hash for hosted
+     *  models). Optional — host may not have access to weights. */
+    model_hash?: string;
+    /** Hash of the prompt / system message / policy bound at decision time. */
+    prompt_hash?: string;
+  };
+  /**
+   * Hardware attestation chain. When the action is destined for a physical
+   * actuator (autopilot, robot controller, SCADA RTU, etc.), the
+   * orchestrator may include a fresh TPM / TEE / Secure Element quote
+   * that pins the firmware hash + boot signature the gate observed at
+   * admission time. A subsequent firmware swap diverges from the
+   * recorded attestation and is detectable.
+   */
+  hardware_attestation?: {
+    /** Identifier of the target device whose firmware was attested. */
+    device_id: string;
+    /** Attestation source (TPM 2.0 quote, Intel SGX report, ARM TrustZone, vendor-specific). */
+    source: "tpm2-quote" | "sgx-report" | "trustzone" | "vendor-attestation" | "stub";
+    /** SHA-256 hash of the running firmware/OS image. */
+    firmware_hash: string;
+    /** Hash of the secure-boot chain leading to firmware_hash. */
+    boot_chain_hash: string;
+    /** ISO timestamp when the attestation was captured (PCR quote time). */
+    captured_at: string;
+    /** Optional vendor key id that signed the attestation. */
+    attestation_signer?: string;
+    /** Raw attestation blob (base64) for forensic re-verification. */
+    raw_b64?: string;
+  };
   /** Base64 Ed25519 signature over record_hash. Present when a signer is configured. */
   signature?: string;
   signature_algorithm?: SignatureAlgorithm;
