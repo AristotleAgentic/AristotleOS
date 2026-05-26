@@ -1,5 +1,102 @@
 # Changelog
 
+## v0.1.50 - CrewAI integration (aristotle-crewai, Python)
+- **Fourth agent-framework integration ships, and the FIRST Python adapter.**
+  Faramesh framework coverage now 4/14 explicit (Claude Agent SDK, LangChain.js,
+  OpenAI Agents SDK, CrewAI) + 1 via MCP. Proves the canonical-action
+  pattern works in BOTH JS and Python runtimes — same shape, same
+  decision mapping, same vertical-routing recipe.
+- **Lives at `packages/crewai-python/` as `aristotle-crewai`** on PyPI.
+  Apache-2.0. No compile-time dependency on `crewai` — the wrappers are
+  pure Python and exercise the gate via `aristotle-os-sdk`. CrewAI is an
+  optional extra (`pip install aristotle-crewai[crewai]`).
+- **Three integration shapes** (matches how Python users actually wire
+  governance into existing tools):
+  - `govern_run(inner_run, *, name, client, ...) -> Callable` — wrap any
+    CrewAI `BaseTool._run` callable. Returns a same-signature callable.
+    Easiest path: `tool._run = govern_run(tool._run, name=tool.name, ...)`.
+  - `govern_arun(inner_arun, *, name, client, ...)` — async variant for
+    `_arun`. Expects `AsyncAristotleClient`.
+  - `govern_crewai_tool(tool, *, client, ...) -> tool` — wraps a CrewAI
+    `BaseTool` INSTANCE and returns a same-shape governed twin
+    (dynamic subclass of `type(tool)`, preserves `name` / `description`
+    / `args_schema`). Useful for third-party tools you didn't author.
+    The original instance is left UNTOUCHED (proven by test) so the
+    same registry can be used for governed and ungoverned runs.
+- **Decision mapping**:
+  - `ALLOW` -> invokes the wrapped `_run` and returns its output
+  - `REFUSE` -> returns refusal message (default) or raises `GateRefusal`
+    (`on_refuse="raise"`)
+  - `ESCALATE` -> returns escalation message (default) or raises
+    `GateEscalation` (`on_escalate="raise"`)
+  - Gate unreachable -> raises (default) or returns error message
+    (`on_error="return_message"`)
+- **Customizable mapping identical to the JS adapters**:
+  - `action_type_prefix` — default `"tool"`
+  - `action_type_for(name)` — vertical routing
+    (e.g. `"transfer_title"` -> `"title.transfer"`)
+  - `build_action(**kwargs)` — full CanonicalAction control
+  - `passthrough` (or `passthrough_tools={...}`) — skip the gate for
+    read-only / safe tools
+  - `on_decision(**info)` — telemetry callback
+- **Argument normalization**: CrewAI's `_run(*args, **kwargs)` is
+  normalized into the action's `params` field: pure kwargs -> dict;
+  single positional -> `{"input": arg}`; multiple positional -> `{"_args": [...]}`.
+- **Errors**: new `AristotleCrewaiError` base + `GateRefusal` and
+  `GateEscalation` subclasses carrying `tool_name`, `reason_codes`,
+  `gel_record_id`, and the full decision dict for inspection.
+- **Tests (24/24 pass)**, split across two files:
+  - `test_govern_run.py` (17 tests):
+    - ALLOW invokes inner and returns its output
+    - REFUSE returns message by default, inner never runs
+    - REFUSE raises `GateRefusal` when `on_refuse="raise"`
+    - ESCALATE returns message by default
+    - ESCALATE raises `GateEscalation` when configured
+    - Gate-error raises `AristotleApiError` by default
+    - Gate-error returns message when `on_error="return_message"`
+    - `passthrough=True` skips the gate entirely
+    - `action_type_for` routes specific tools into a vertical
+    - `build_action` overrides the canonical action shape
+    - `on_decision` telemetry fires with `elapsed_ms` and verdict
+    - Constructor refuses missing required options
+    - Positional single arg normalizes into `params={"input": ...}`
+    - Async: `govern_arun` ALLOW awaits inner and returns
+    - Async: `govern_arun` REFUSE returns message by default
+    - Async: `govern_arun` REFUSE raises when configured
+  - `test_govern_crewai_tool.py` (7 tests, against a Pydantic-shaped
+    fake of CrewAI's BaseTool so tests run WITHOUT installing CrewAI):
+    - Governed tool preserves `name` / `description` / `args_schema`
+    - Governed tool is an instance of the original class
+      (so the CrewAI runtime recognizes it as a tool)
+    - `_run` calls inner on ALLOW
+    - `_run` returns refusal message on REFUSE
+    - `_run` raises on REFUSE when configured
+    - `passthrough_tools` set skips the gate for named tools
+    - `action_type_for` routes vertical namespace
+    - Original tool instance is unchanged
+- **Packaging**:
+  - `dependencies`: `aristotle-os-sdk>=0.1.0`
+  - `optional-dependencies.crewai`: `crewai>=0.40,<2.0`
+  - `optional-dependencies.dev`: `pytest`, `pytest-asyncio`, `pydantic`
+  - LICENSE + NOTICE shipped via PEP 639 `license-files = ["LICENSE", "NOTICE"]`
+  - Wheel inspection: 8 entries, including the `py.typed` marker;
+    LICENSE + NOTICE under `dist-info/licenses/` (PEP 639 placement)
+- **README**: install + 2 quickstarts (wrap your own tool's `_run`;
+  wrap a third-party tool you didn't author) + decision-mapping table
+  + async (`govern_arun`) example + three recipes (vertical routing,
+  passthrough read-only tools, telemetry) + full API reference +
+  Notes (no compile-time CrewAI dep; the wrappers work against ANY
+  Pydantic v2 BaseTool, proven by structural-fake tests) + Apache-2.0
+  footer.
+- **Cross-language symmetry now proven**: the same options dict shape
+  works in TS (`@aristotle/claude-agents`, `@aristotle/langchain`,
+  `@aristotle/openai-agents`) and Python (`aristotle-crewai`). The
+  remaining 10 frameworks follow this exact pattern.
+- **No regressions**: governance-core 51/51, execution-control 75/75,
+  TS os-sdk 15/15, claude-agents 13/13, langchain 14/14,
+  openai-agents 13/13 = 181 TS tests. Python: os-sdk 20/20 + crewai
+  24/24 = 44 Python tests.
+
 ## v0.1.49 - OpenAI Agents SDK integration (@aristotle/openai-agents)
 - **Third agent-framework integration ships.** Faramesh framework
   coverage now 3/14 explicit (Claude Agent SDK, LangChain.js,

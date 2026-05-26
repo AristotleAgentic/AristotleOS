@@ -1,0 +1,76 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aristotle-crewai"
+version = "0.1.0"
+description = "Govern CrewAI tool calls with AristotleOS. Drop-in wrappers that route every tool invocation through the execution-control Commit Gate before it runs."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.9"
+authors = [
+    { name = "AristotleAgentic" }
+]
+keywords = [
+    "aristotle",
+    "aristotleos",
+    "crewai",
+    "ai-governance",
+    "agent-governance",
+    "tool-call-gate",
+    "commit-gate"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = [
+    "aristotle-os-sdk>=0.1.0",
+]
+
+[project.optional-dependencies]
+crewai = [
+    "crewai>=0.40,<2.0",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pydantic>=2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/AristotleAgentic/AristotleOS"
+Repository = "https://github.com/AristotleAgentic/AristotleOS"
+Issues = "https://github.com/AristotleAgentic/AristotleOS/issues"
+Changelog = "https://github.com/AristotleAgentic/AristotleOS/blob/main/CHANGELOG.md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aristotle_crewai"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/aristotle_crewai",
+    "tests",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "pyproject.toml",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
