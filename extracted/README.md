@@ -78,6 +78,9 @@ Docs:
 - [Healthcare execution-control path](docs/healthcare.md)
 - [Healthcare Ward templates](docs/healthcare-ward-templates.md)
 - [Healthcare threat model addendum](docs/healthcare-threat-model.md)
+- [Aristotle Verified Title Transaction Layer](docs/title.md)
+- [Title Ward templates](docs/title-ward-templates.md)
+- [Title threat model addendum](docs/title-threat-model.md)
 - [Defense readiness roadmap](docs/defense-readiness.md)
 - [Crypto posture](docs/crypto-posture.md)
 - [Commercial adoption path](docs/commercial-adoption-path.md)
@@ -431,6 +434,40 @@ npm run aristotle -- execution-control evaluate \
 ```
 
 The Command Center includes a Logistics workflow from "create governed load mission" to "admitted dispatch" to "logistics Evidence Bundle export." See [docs/logistics-operator-pilot-guide.md](docs/logistics-operator-pilot-guide.md), [docs/logistics.md](docs/logistics.md), and [docs/logistics-ward-templates.md](docs/logistics-ward-templates.md).
+
+## Aristotle Verified Title Transaction Layer
+
+AristotleOS now includes a vehicle title and registration pilot path that governs
+consequential title, lien, registration, and DMV-document actions **before** they cross
+into legal effect. Vitu, CVR, Dealertrack, DDI Technology, and Reynolds & Reynolds move
+bits to government endpoints; **this layer proves every consequential title action was
+authorized, state-rule compliant, fraud-checked, and audit-ready before it executed.**
+
+Adapter surfaces (`TITLE_ADAPTER_CATALOG`): ELT lien, title transaction, registration,
+digital signature, dealer workflow, lender workflow, DMV submission, fraud check, NMVTIS,
+historian. Designed to align with (DEMONSTRATION ONLY — not legal advice): state ELT
+programs, NMVTIS, 49 CFR Part 580 (odometer), ESIGN/UETA, AAMVA DLDV, UCC Article 9, and
+state motor-vehicle codes. `JURISDICTION_RULE_PRESETS` ships sample rule sets for **MT,
+OR, CA, TX, FL**.
+
+```bash
+npm run test:title
+npm run aristotle -- execution-control evaluate \
+  --ward examples/title/ward.mt_lender_ops.yaml \
+  --envelope examples/title/authority_envelope.title_orchestrator.yaml \
+  --action examples/title/actions/allow_lien_release_clean_mt.json \
+  --ledger ./.tmp/title.gel.jsonl \
+  --now 2026-05-25T15:00:00.000Z
+```
+
+`refuse_unauthorized_signer.json` and `refuse_revoked_envelope.json` demonstrate fail-
+closed refusals; transfer, correction, interstate registration, and DMV submission are
+dual-controlled. See [docs/title.md](docs/title.md),
+[docs/title-ward-templates.md](docs/title-ward-templates.md), and
+[docs/title-threat-model.md](docs/title-threat-model.md).
+
+> **Demonstration only.** All shipped jurisdiction rules and sample data are
+> demonstration material; validate with counsel before any production use.
 
 ## Ward/Warrant Execution-Control Path
 

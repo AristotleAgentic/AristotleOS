@@ -1,5 +1,40 @@
 # Changelog
 
+## v0.1.40 - Aristotle Verified Title Transaction Layer (vehicle title / registration / ELT)
+- **Vehicle title transaction governance vertical.** New
+  `shared/execution-control-runtime/src/title.ts` governs consequential title, lien,
+  registration, and DMV-document actions BEFORE they cross into legal effect.
+  Positioned alongside Vitu / CVR / Dealertrack / DDI Technology / Reynolds & Reynolds:
+  those platforms move bits to government endpoints; Aristotle proves every action was
+  authorized, state-rule compliant, fraud-checked, and audit-ready.
+- **`TITLE_ADAPTER_CATALOG`** — 10 typed boundaries: ELT lien, title transaction,
+  registration, digital signature, dealer workflow, lender workflow, DMV submission,
+  fraud check, NMVTIS, historian.
+- **`JURISDICTION_RULE_PRESETS`** for **MT, OR, CA, TX, FL** (SAMPLE / DEMONSTRATION
+  ONLY — not legal advice). Each declares ELT support, digital-signature support,
+  odometer-disclosure requirement, VIN-inspection requirement, NMVTIS requirement,
+  fraud-escalation threshold, identity-confidence floor, permitted transaction types,
+  and required forms by transaction type.
+- **Gate enforcement:** new `physical_bounds` (jurisdictions/transaction-types/
+  organization-kinds, fraud-risk / identity-confidence thresholds, warrant freshness,
+  require_* flags for signer/NMVTIS/theft/odometer/identity/envelope/warrant/forms/
+  VIN-inspection/ELT/digital-signature/lien-exists/lien-release-authority/dealer-
+  license/lender-active/lender-elt-participant) and hard interlocks for bypass-NMVTIS,
+  bypass-theft-check, bypass-state-rules, override-dealer-license, override-odometer-
+  disclosure, disable-identity-verification, signature-bypass-jurisdiction-acceptance,
+  and `warrant.reuse_attempt`.
+- **Aligned with (DEMO):** state ELT programs, NMVTIS, 49 CFR Part 580 (odometer),
+  ESIGN / UETA, AAMVA DLDV, UCC Article 9, state motor-vehicle codes, state dealer-
+  licensing statutes. Signed Title Evidence Bundles (`aristotle.title-evidence.v1`).
+- **15/15 title tests** pass — covers all 7 named demo scenarios (clean MT lien
+  release ALLOW; unauthorized signer REFUSE; interstate transfer ESCALATE; revoked
+  envelope REFUSE; fraud over threshold REFUSE; title correction ESCALATE; suspended
+  dealer license REFUSE), 18-condition refuse sweep, hard interlocks,
+  `warrant.reuse_attempt`, dual-control escalate->approve, Title Evidence Bundle
+  round-trip, and **GEL chain tamper detection**. No regressions across healthcare 6,
+  swarm 8, logistics 6, aviation 7, robotics 7, pipeline 6, mining 6, port 6, water 6,
+  grid 6, rail 6, gate-property 2, execution-control 75.
+
 ## v0.1.38 - UAV-swarm governance for disconnected operations
 - **Swarm-first, not high-altitude-first.** New `shared/execution-control-runtime/src/swarm.ts`
   module: intermittent connectivity is not a corner case — delegated authority must

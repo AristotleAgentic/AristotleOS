@@ -1,0 +1,57 @@
+envelope_id: ae-title-operations-001
+ward_id: ward-title-mt-lender-ops
+subject: agent:title-orchestrator
+allowed_actions:
+  - lien.release.submit
+  - lien.perfection.submit
+  - title.transfer.submit
+  - title.correction.submit
+  - registration.renewal.submit
+  - registration.interstate.submit
+  - digital_signature.execute
+  - dmv.submit
+  - nmvtis.check.run
+  - fraud.check.run
+  - historian.record.write
+denied_actions:
+  - title.override_lien_release
+  - title.bypass_nmvtis
+  - title.bypass_theft_check
+  - title.bypass_state_rules
+  - title.override_dealer_license
+  - title.override_odometer_disclosure
+  - title.disable_identity_verification
+  - signature.bypass_jurisdiction_acceptance
+  - warrant.reuse_attempt
+constraints:
+  required_runtime_registers:
+    - telemetry.transaction_id
+    - telemetry.transaction_type
+    - telemetry.jurisdiction
+    - telemetry.signer_authorized
+    - telemetry.nmvtis_passed
+    - telemetry.theft_flag_clear
+    - telemetry.odometer_disclosed
+    - telemetry.identity_verified
+    - telemetry.authority_envelope_unrevoked
+    - telemetry.warrant_unused
+    - telemetry.required_forms_present
+    - telemetry.state_supports_elt
+    - telemetry.operator_qualified
+  dual_control:
+    actions:
+      - title.transfer.submit
+      - title.correction.submit
+      - registration.interstate.submit
+      - dmv.submit
+    required: 2
+    ttl_ms: 600000
+  budget:
+    maxCallsPerWindow: 5000
+    windowMs: 3600000
+expires_at: 2026-12-31T23:59:59Z
+issuer: aristotle-title-ops-root
+classification:
+  level: CUI
+  caveats:
+    - TITLE_OPS

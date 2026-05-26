@@ -90,6 +90,7 @@ export * from "./robotics.js";
 export * from "./logistics.js";
 export * from "./swarm.js";
 export * from "./healthcare.js";
+export * from "./title.js";
 
 export {
   type AristotleSigner,
@@ -488,6 +489,31 @@ export interface PhysicalBounds {
   require_human_review_for_patient_message?: boolean;
   require_claim_attestation?: boolean;
   require_healthcare_audit_context?: boolean;
+  // Vehicle title / registration / ELT bounds (DEMONSTRATION ONLY — see title.ts
+  // JURISDICTION_RULE_PRESETS). Reuses max_telemetry_age_ms and require_operator_qualified.
+  permitted_jurisdictions?: string[];
+  permitted_transaction_types?: string[];
+  permitted_organization_kinds?: string[];
+  max_fraud_risk_score?: number;
+  min_identity_confidence_score?: number;
+  max_warrant_age_ms?: number;
+  require_dealer_license_active?: boolean;
+  require_lender_active?: boolean;
+  require_lender_elt_participant?: boolean;
+  require_signer_authorized?: boolean;
+  require_nmvtis_passed?: boolean;
+  require_theft_flag_clear?: boolean;
+  require_odometer_disclosed?: boolean;
+  require_identity_verified?: boolean;
+  require_authority_envelope_unrevoked?: boolean;
+  require_warrant_unused?: boolean;
+  require_required_forms_present?: boolean;
+  require_vin_inspection_present?: boolean;
+  require_state_supports_elt?: boolean;
+  require_state_supports_digital_signature?: boolean;
+  require_digital_signature_accepted?: boolean;
+  require_lien_exists?: boolean;
+  require_lien_release_authority_active?: boolean;
 }
 
 export interface PhysicalInvariantResult {
@@ -982,6 +1008,28 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
     action.action_type === "ehr.modify_record_without_patient_context"
   ) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard healthcare clinical safety and privacy interlock violation` };
+  }
+  if (
+    action.action_type === "title.override_lien_release" ||
+    action.action_type === "lien_release.override" ||
+    action.action_type === "title.bypass_nmvtis" ||
+    action.action_type === "nmvtis.disable" ||
+    action.action_type === "title.bypass_theft_check" ||
+    action.action_type === "theft_check.disable" ||
+    action.action_type === "title.bypass_state_rules" ||
+    action.action_type === "state_rule.override" ||
+    action.action_type === "title.override_dealer_license" ||
+    action.action_type === "dealer_license.override" ||
+    action.action_type === "title.override_odometer_disclosure" ||
+    action.action_type === "odometer.bypass" ||
+    action.action_type === "title.disable_identity_verification" ||
+    action.action_type === "identity.disable" ||
+    action.action_type === "signature.bypass_jurisdiction_acceptance" ||
+    action.action_type === "digital_signature.bypass" ||
+    action.action_type === "warrant.reuse_attempt" ||
+    action.action_type === "warrant.replay"
+  ) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard title-transaction integrity interlock violation` };
   }
   const altitude = numericParam(action, "altitude_m");
   if (bounds.max_altitude_m !== undefined && altitude !== undefined && altitude > bounds.max_altitude_m) {
@@ -2012,6 +2060,82 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
   }
   if (bounds.require_healthcare_audit_context && booleanParam(action, "audit_context_present") !== true) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "audit context is required before this healthcare action" };
+  }
+  // -- vehicle title / registration / ELT invariants ---------------------------
+  const titleJurisdiction = stringParam(action, "jurisdiction");
+  if (bounds.permitted_jurisdictions?.length && titleJurisdiction && !bounds.permitted_jurisdictions.includes(titleJurisdiction)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `jurisdiction ${titleJurisdiction} is outside permitted jurisdictions` };
+  }
+  const titleTransactionType = stringParam(action, "transaction_type");
+  if (bounds.permitted_transaction_types?.length && titleTransactionType && !bounds.permitted_transaction_types.includes(titleTransactionType)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `transaction_type ${titleTransactionType} is outside permitted transaction types` };
+  }
+  const titleOrgKind = stringParam(action, "organization_kind");
+  if (bounds.permitted_organization_kinds?.length && titleOrgKind && !bounds.permitted_organization_kinds.includes(titleOrgKind)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `organization_kind ${titleOrgKind} is outside permitted organization kinds` };
+  }
+  const titleFraudScore = numericParam(action, "fraud_risk_score");
+  if (bounds.max_fraud_risk_score !== undefined && titleFraudScore !== undefined && titleFraudScore > bounds.max_fraud_risk_score) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `fraud_risk_score ${titleFraudScore} exceeds max_fraud_risk_score ${bounds.max_fraud_risk_score}` };
+  }
+  const titleIdentityConfidence = numericParam(action, "identity_confidence_score");
+  if (bounds.min_identity_confidence_score !== undefined && titleIdentityConfidence !== undefined && titleIdentityConfidence < bounds.min_identity_confidence_score) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `identity_confidence_score ${titleIdentityConfidence} below min_identity_confidence_score ${bounds.min_identity_confidence_score}` };
+  }
+  const titleWarrantAge = numericParam(action, "warrant_age_ms");
+  if (bounds.max_warrant_age_ms !== undefined && titleWarrantAge !== undefined && titleWarrantAge > bounds.max_warrant_age_ms) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `warrant_age_ms ${titleWarrantAge} exceeds max_warrant_age_ms ${bounds.max_warrant_age_ms} (warrant stale)` };
+  }
+  if (bounds.require_dealer_license_active && booleanParam(action, "dealer_license_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "dealer license must be active for this title transaction" };
+  }
+  if (bounds.require_lender_active && booleanParam(action, "lender_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "lender must be active for this lien transaction" };
+  }
+  if (bounds.require_lender_elt_participant && booleanParam(action, "lender_elt_participant") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "lender must participate in the state ELT program for this action" };
+  }
+  if (bounds.require_signer_authorized && booleanParam(action, "signer_authorized") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "signer is not authorized for this title transaction" };
+  }
+  if (bounds.require_nmvtis_passed && booleanParam(action, "nmvtis_passed") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "NMVTIS check must pass before this title transaction" };
+  }
+  if (bounds.require_theft_flag_clear && booleanParam(action, "theft_flag_clear") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "theft flag is set on this vehicle; title action refused" };
+  }
+  if (bounds.require_odometer_disclosed && booleanParam(action, "odometer_disclosed") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "odometer disclosure is required (49 CFR Part 580) but missing" };
+  }
+  if (bounds.require_identity_verified && booleanParam(action, "identity_verified") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "identity verification required but not completed" };
+  }
+  if (bounds.require_authority_envelope_unrevoked && booleanParam(action, "authority_envelope_unrevoked") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "authority envelope has been revoked" };
+  }
+  if (bounds.require_warrant_unused && booleanParam(action, "warrant_unused") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "warrant has already been consumed (single-use)" };
+  }
+  if (bounds.require_required_forms_present && booleanParam(action, "required_forms_present") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "required forms for this jurisdiction/transaction are missing" };
+  }
+  if (bounds.require_vin_inspection_present && booleanParam(action, "vin_inspection_present") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "VIN inspection is required for this transaction but missing" };
+  }
+  if (bounds.require_state_supports_elt && booleanParam(action, "state_supports_elt") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "state does not support ELT for this transaction" };
+  }
+  if (bounds.require_state_supports_digital_signature && booleanParam(action, "state_supports_digital_signature") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "state does not accept digital signatures for this transaction" };
+  }
+  if (bounds.require_digital_signature_accepted && booleanParam(action, "digital_signature_accepted") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "digital signature was not accepted by the jurisdiction for this document" };
+  }
+  if (bounds.require_lien_exists && booleanParam(action, "lien_exists") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "no lien exists on this title (refusing lien-release / satisfaction)" };
+  }
+  if (bounds.require_lien_release_authority_active && booleanParam(action, "lien_release_authority_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "lien-release authority is not active for the requesting lender" };
   }
   return { ok: true, reason_codes: [], detail: "physical invariants satisfied" };
 }
