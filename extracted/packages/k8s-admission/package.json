@@ -1,0 +1,24 @@
+{
+  "name": "@aristotle/k8s-admission",
+  "version": "0.1.0",
+  "description": "Govern Kubernetes AdmissionReview requests with AristotleOS. Maps cluster-API mutations into Commit Gate decisions; refuses unauthorized workloads before they reach the API server.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "files": ["dist", "README.md", "LICENSE", "NOTICE"],
+  "keywords": ["aristotle", "kubernetes", "k8s", "admission-webhook", "agent-governance"],
+  "homepage": "https://github.com/AristotleAgentic/AristotleOS",
+  "repository": { "type": "git", "url": "https://github.com/AristotleAgentic/AristotleOS.git", "directory": "packages/k8s-admission" },
+  "bugs": { "url": "https://github.com/AristotleAgentic/AristotleOS/issues" },
+  "publishConfig": { "access": "public" },
+  "engines": { "node": ">=18" },
+  "sideEffects": false,
+  "dependencies": { "@aristotle/os-sdk": "workspace:*" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test src/index.test.ts",
+    "prepublishOnly": "npm run build"
+  }
+}

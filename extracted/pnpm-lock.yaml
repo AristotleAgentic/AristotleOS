@@ -122,6 +122,18 @@ importers:
         specifier: workspace:*
         version: link:../os-sdk
 
+  packages/dnp3-adapter:
+    dependencies:
+      '@aristotle/os-sdk':
+        specifier: workspace:*
+        version: link:../os-sdk
+
+  packages/k8s-admission:
+    dependencies:
+      '@aristotle/os-sdk':
+        specifier: workspace:*
+        version: link:../os-sdk
+
   packages/langchain:
     dependencies:
       '@aristotle/os-sdk':
