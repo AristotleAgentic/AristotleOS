@@ -298,6 +298,51 @@ export class AristotleClient {
     return this.request<{ bundle: unknown; bundle_hash: string }>("POST", "/v1/execution-control/evidence/export", input);
   }
 
+  /** Verify a Warrant's signature, expiry, single-use status, and binding to
+   *  the parameters_hash + context_hash + telemetry_snapshot_hash claimed.
+   *  Returns the boundary's verification result. */
+  verifyWarrant(input: {
+    warrant: { warrant_id: string; [key: string]: unknown };
+    /** Optional canonical action whose hashes should be re-verified against the warrant. */
+    action?: CanonicalAction;
+    now?: string;
+  }): Promise<{
+    ok: boolean;
+    warrant_id: string;
+    /** True iff signatures verify against the issuer's allowed key set. */
+    signature_ok: boolean;
+    /** True iff the warrant is not yet expired and is past valid_from. */
+    temporal_ok: boolean;
+    /** True iff the warrant has not been consumed already. */
+    single_use_ok: boolean;
+    /** True iff the optional action's hashes match the warrant's bound hashes. */
+    binding_ok?: boolean;
+    failures: string[];
+  }> {
+    return this.request("POST", "/v1/execution-control/warrant/verify", input);
+  }
+
+  /** Inspect the authority delegation chain for a Warrant:
+   *      MetaAuthorityEnvelope -> Ward -> AuthorityEnvelope -> Warrant
+   *  Each layer carries its id, signer, issuer, expiry, revocation state. */
+  inspectChain(input: { warrant_id: string }): Promise<{
+    warrant_id: string;
+    chain: Array<{
+      layer: "mae" | "ward" | "envelope" | "warrant";
+      id: string;
+      issuer: string;
+      signer: string;
+      issued_at: string;
+      expires_at?: string;
+      revoked_at?: string;
+      version?: number;
+    }>;
+    intact: boolean;
+    failures: string[];
+  }> {
+    return this.request("POST", "/v1/execution-control/warrant/inspect-chain", input);
+  }
+
   /** Govern-and-forward: only proxies the upstream call on ALLOW + verified Warrant. */
   proxy(action: CanonicalAction): Promise<unknown> {
     return this.request<unknown>("POST", "/v1/execution-control/proxy", { action });

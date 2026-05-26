@@ -310,3 +310,39 @@ test("exportEvidence POSTs to /v1/execution-control/evidence/export and returns 
   assert.equal(r.bundle_hash, "0xabc");
   assert.equal(calls[0].url, "https://gate.internal/v1/execution-control/evidence/export");
 });
+
+test("verifyWarrant POSTs to /v1/execution-control/warrant/verify and parses the result", async () => {
+  const { fn, calls } = mockFetch(() => ({
+    status: 200,
+    body: { ok: true, warrant_id: "wr-1", signature_ok: true, temporal_ok: true, single_use_ok: true, binding_ok: true, failures: [] }
+  }));
+  const aos = new AristotleClient({ baseUrl: "https://gate.internal/", token: "t", fetch: fn });
+  const r = await aos.verifyWarrant({ warrant: { warrant_id: "wr-1" } });
+  assert.equal(r.ok, true);
+  assert.equal(r.signature_ok, true);
+  assert.equal(calls[0].url, "https://gate.internal/v1/execution-control/warrant/verify");
+});
+
+test("inspectChain POSTs to /v1/execution-control/warrant/inspect-chain and returns MAE -> Ward -> Envelope -> Warrant chain", async () => {
+  const { fn, calls } = mockFetch(() => ({
+    status: 200,
+    body: {
+      warrant_id: "wr-1",
+      chain: [
+        { layer: "mae", id: "mae-demo", issuer: "treasury", signer: "treasury-key-1", issued_at: "2026-01-01T00:00:00Z", expires_at: "2027-01-01T00:00:00Z" },
+        { layer: "ward", id: "ward-demo", issuer: "treasury", signer: "treasury-key-1", issued_at: "2026-02-01T00:00:00Z", expires_at: "2026-12-31T23:59:59Z", version: 1 },
+        { layer: "envelope", id: "env-demo", issuer: "treasury", signer: "treasury-key-1", issued_at: "2026-05-26T00:00:00Z", expires_at: "2026-12-31T23:59:59Z", version: 2 },
+        { layer: "warrant", id: "wr-1", issuer: "treasury-key-1", signer: "treasury-key-1", issued_at: "2026-05-26T15:00:00Z", expires_at: "2026-05-26T15:10:00Z" }
+      ],
+      intact: true,
+      failures: []
+    }
+  }));
+  const aos = new AristotleClient({ baseUrl: "https://gate.internal/", token: "t", fetch: fn });
+  const r = await aos.inspectChain({ warrant_id: "wr-1" });
+  assert.equal(r.intact, true);
+  assert.equal(r.chain.length, 4);
+  assert.equal(r.chain[0].layer, "mae");
+  assert.equal(r.chain[3].layer, "warrant");
+  assert.equal(calls[0].url, "https://gate.internal/v1/execution-control/warrant/inspect-chain");
+});
