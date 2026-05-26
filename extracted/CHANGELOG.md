@@ -1,5 +1,115 @@
 # Changelog
 
+## v0.1.60 - Operating substrate: mesh, hardware adapter, partition demo, EXPIRE + requestWarrant
+- **The substrate's missing legs.** Closes items #4 (governance mesh), #7
+  (hardware adapter layer), #12 (40-asset disconnected-swarm demo), and
+  parts of #1 (distinct EXPIRE) + #3 (ergonomic warrant API) + #11
+  (replay + evidence-export endpoints) from the operating-substrate audit.
+
+### #4 — `@aristotle/mesh-runtime` (real multi-process mesh)
+- Three node roles: ROOT (signs envelopes + revocations), WITNESS
+  (replicates state, gossips revocations), EDGE (Disconnected Commit
+  Gate, issues Warrants under Fluidity Tokens).
+- Protocols: envelope propagation, revocation gossip, Fluidity Token
+  issuance, partition-aware reconciliation, monotonic envelope
+  versioning.
+- Real `node:http` server per node; in-process registry for
+  deterministic tests; live TCP-socket integration test bound to ports
+  21041-21042.
+- Tests (11/11): envelope propagates root → witnesses → edges; ALLOW
+  under Fluidity Token; REFUSE on revocation; partition EXPIRES on TTL
+  expiry; revocation reaches edge via surviving witness; disconnected-
+  quota cap; reconciliation submits + clears; warrant-after-revocation
+  flagged as conflict; envelope versioning replaces lower-version;
+  distinct EXPIRE for envelope-expired; live HTTP transport.
+
+### #12 — 40-asset disconnected-swarm partition demo
+- `examples/mesh/swarm-partition-40-asset.ts` runs against the real
+  mesh runtime above (not a mock, not animation).
+- Spins 1 root + 2 witnesses + 40 edge gates; runs four phases (nominal
+  → partition → revocation under partition → heal + reconcile).
+- ScenarioReport returns per-phase counts: phase 1 issues 40 warrants;
+  phase 3 witness-reachable subset REFUSEs on revocation gossip while
+  fully-isolated subset still ALLOWs under TTL; phase 4 reconciliation
+  surfaces warrants-after-revocation as conflicts.
+- Tests (7/7) verify each phase + the 30-asset config that exercises the
+  witness-reachable refusal path.
+
+### #7 — `@aristotle/mavlink-px4` (first real hardware adapter)
+- Real MAVLink v2 framing (0xFD start byte, X.25-style CRC with
+  crc_extra=152 for COMMAND_LONG msg id 76).
+- Two transports: `DemonstrationFlightControlTransport` (records what
+  would be sent, production_validated: false) and `MavlinkUdpTransport`
+  (real UDP socket; tested against a real UDP listener which sees
+  MAVLink v2 frames).
+- 9 supported `FlightCommandKind`: ARM, DISARM, TAKEOFF, LAND, RTL,
+  GOTO_NED, SET_MODE, GEOFENCE_ARM, FTS_TRIGGER (the last is
+  hard-interlocked at the gate by default).
+- `governFlightCommand` orchestrator: builds CanonicalAction, calls
+  Commit Gate, on ALLOW derives FlightAuthorization from the Warrant,
+  hands packet to transport. REFUSE / ESCALATE / gate-unreachable never
+  reach the autopilot.
+- Tests (13/13): MAVLink framing; demo transport hash-bound receipt;
+  **real UDP datagram to real listener with MAVLink v2 frame
+  verification**; orchestrator ALLOW emits + REFUSE skips + demo-only
+  block + actionTypeFor override + gate-unreachable fail-closed.
+
+### #1 — Distinct `EXPIRE` decision
+- `ExecutionControlDecision` union: now `"ALLOW" | "REFUSE" | "ESCALATE"
+  | "EXPIRE"`.
+- New `EXPIRE_REASON_CODES` set: warrant-expired, warrant-not-yet-valid,
+  envelope-expired, envelope-not-yet-effective, ward-expired,
+  ward-not-yet-effective, mae-expired, mae-not-yet-effective,
+  warrant-presented-after-expiry, commit-presentation-stale.
+- `reclassifyExpire()` re-classifies REFUSE with any time-bound reason
+  code as EXPIRE. Applied at `evaluateExecutionControl` +
+  `evaluateExecutionControlAsync` return seams.
+- `metrics.ts` + `shadow.ts` counter records updated to track EXPIRE.
+
+### #3 — Ergonomic `requestWarrant` helper
+- New `aos.requestWarrant({action, subject, ward, authority?, params?,
+  jurisdiction?, risk?, actionId?, runtime_register?, now?})` matches
+  the audit's example shape exactly.
+- Returns `{warrant_id, canonical_action_hash, gel_record_id, full}` on
+  ALLOW; throws AristotleApiError with status 403 (REFUSE) / 410
+  (EXPIRE) / 202 (ESCALATE) on non-ALLOW.
+
+### #11 — New API endpoints
+- `aos.replay({record_id, now?})` → POST `/v1/execution-control/replay`
+  (counterfactual re-evaluation; returns `EvaluateResponse & {replay:
+  true}`).
+- `aos.exportEvidence({from_seq?, to_seq?, format?, exportedAt?})` →
+  POST `/v1/execution-control/evidence/export` (signed Evidence Bundle
+  + bundle_hash).
+
+### Verification across the branch
+- governance-core 41/41
+- execution-control-runtime 75/75 (no regressions from EXPIRE addition)
+- os-sdk 20/20 (5 new tests for requestWarrant / replay / exportEvidence)
+- claude-agents 13, langchain 14, openai-agents 13, vercel-ai 13,
+  bedrock 11, mastra 12 = unchanged
+- mavlink-px4 13/13 (new)
+- mesh-runtime 11/11 (new)
+- 40-asset swarm partition scenario 7/7 (new)
+- All Python suites unchanged
+
+**Substrate audit after this batch:**
+
+| Item | Before | After |
+|---|---:|---:|
+| #1 Commit Gate | ~75% | ~95% (EXPIRE distinct, time-bound paths reclassified) |
+| #3 Warrant infrastructure | ~80% | ~95% (ergonomic requestWarrant) |
+| #4 Governance Mesh | ~25% | ~85% (real multi-process protocol, partition + reconcile) |
+| #7 Hardware adapter | ~10% | ~50% (first real wire-level adapter; pattern is now copy-paste for OPC-UA / DNP3 / Modbus / ROS2 / K8s) |
+| #11 APIs | ~85% | ~95% (replay + evidence-export endpoints) |
+| #12 One ruthlessly real scenario | ~20% | ~80% (40-asset partition runs against real mesh; PX4 SITL integration is the next mile) |
+
+What remains genuinely blocked on external resources: counsel review of
+demonstration presets (#2 partial), real production deployments,
+customer reference accounts, real PX4 SITL integration test (the
+transport is implemented; running it against actual SITL is a CI
+exercise on a host with SITL installed).
+
 ## v0.1.59 - All 15 verticals fully populated in the registry
 - **Filled out workflow / safetyDrills / evidenceSample / boundaryChainLabels /
   failClosedRule / scenarios for the 9 verticals that already had dedicated
