@@ -83,6 +83,8 @@ export * from "./grid.js";
 export * from "./rail.js";
 export * from "./pipeline.js";
 export * from "./mining.js";
+export * from "./port.js";
+export * from "./water.js";
 
 export {
   type AristotleSigner,
@@ -268,6 +270,68 @@ export interface PhysicalBounds {
   require_piezometer_monitoring?: boolean;
   require_overspeed_protection?: boolean;
   require_mining_scada_fresh?: boolean;
+  permitted_port_id?: string;
+  permitted_terminal_id?: string;
+  permitted_berth_ids?: string[];
+  permitted_yard_blocks?: string[];
+  permitted_gate_ids?: string[];
+  permitted_cargo_types?: string[];
+  permitted_hazmat_classes?: string[];
+  permitted_terminal_zones?: string[];
+  max_container_weight_kg?: number;
+  min_pnt_confidence?: number;
+  max_ais_track_age_ms?: number;
+  max_port_telemetry_age_ms?: number;
+  max_wind_speed_kn?: number;
+  min_reefer_temp_c?: number;
+  max_reefer_temp_c?: number;
+  require_customs_release?: boolean;
+  require_no_security_hold?: boolean;
+  require_no_inspection_hold?: boolean;
+  require_vgm_verified?: boolean;
+  require_crane_exclusion_clear?: boolean;
+  require_spreader_safe?: boolean;
+  require_berth_clear?: boolean;
+  require_tide_window_open?: boolean;
+  require_vessel_clearance?: boolean;
+  require_truck_appointment?: boolean;
+  require_driver_identity?: boolean;
+  require_cold_chain_valid?: boolean;
+  require_shore_power_lockout?: boolean;
+  require_shore_power_isolated?: boolean;
+  require_fire_watch_ready?: boolean;
+  require_hazmat_route_approved?: boolean;
+  require_gate_access_granted?: boolean;
+  require_operator_identity?: boolean;
+  require_no_vendor_remote_session?: boolean;
+  permitted_water_system_id?: string;
+  permitted_facility_id?: string;
+  permitted_pressure_zones?: string[];
+  permitted_process_areas?: string[];
+  permitted_water_asset_types?: string[];
+  permitted_discharge_permit_ids?: string[];
+  max_chlorine_dose_mg_l?: number;
+  min_chlorine_residual_mg_l?: number;
+  min_pressure_psi?: number;
+  max_pressure_psi?: number;
+  min_tank_level_pct?: number;
+  max_tank_level_pct?: number;
+  max_wetwell_level_pct?: number;
+  max_turbidity_ntu?: number;
+  min_ph?: number;
+  max_ph?: number;
+  max_sensor_age_ms?: number;
+  max_lab_sample_age_min?: number;
+  max_flow_mgd?: number;
+  min_uv_intensity_pct?: number;
+  require_water_scada_fresh?: boolean;
+  require_backflow_clear?: boolean;
+  require_disinfection_active?: boolean;
+  require_chemical_inventory_ok?: boolean;
+  require_pump_available?: boolean;
+  require_valve_interlock_clear?: boolean;
+  require_discharge_permit_window?: boolean;
+  require_no_bypass_active?: boolean;
 }
 
 export interface PhysicalInvariantResult {
@@ -654,6 +718,26 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
   ) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard mining safety interlock violation` };
   }
+  if (
+    action.action_type === "port.disable_crane_interlock" ||
+    action.action_type === "crane.override_exclusion_zone" ||
+    action.action_type === "customs.force_release_hold" ||
+    action.action_type === "gate.force_open" ||
+    action.action_type === "shore-power.force_energize" ||
+    action.action_type === "pnt.override_confidence"
+  ) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard port safety interlock violation` };
+  }
+  if (
+    action.action_type === "water.disable_disinfection" ||
+    action.action_type === "chemical.force_overfeed" ||
+    action.action_type === "plc.force_override" ||
+    action.action_type === "valve.force_open" ||
+    action.action_type === "pump.force_run_dry" ||
+    action.action_type === "wastewater.bypass.force_open"
+  ) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard water safety interlock violation` };
+  }
   const altitude = numericParam(action, "altitude_m");
   if (bounds.max_altitude_m !== undefined && altitude !== undefined && altitude > bounds.max_altitude_m) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `altitude_m ${altitude} exceeds max_altitude_m ${bounds.max_altitude_m}` };
@@ -962,6 +1046,223 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
   }
   if (bounds.require_mining_scada_fresh && booleanParam(action, "mining_scada_fresh") !== true) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "fresh SCADA telemetry is required before this mining action" };
+  }
+  const portId = stringParam(action, "port_id");
+  if (bounds.permitted_port_id && portId && portId !== bounds.permitted_port_id) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `port_id ${portId} does not match ${bounds.permitted_port_id}` };
+  }
+  const terminalId = stringParam(action, "terminal_id");
+  if (bounds.permitted_terminal_id && terminalId && terminalId !== bounds.permitted_terminal_id) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `terminal_id ${terminalId} does not match ${bounds.permitted_terminal_id}` };
+  }
+  const berthId = stringParam(action, "berth_id");
+  if (bounds.permitted_berth_ids?.length && berthId && !bounds.permitted_berth_ids.includes(berthId)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `berth_id ${berthId} is outside permitted berths` };
+  }
+  const yardBlock = stringParam(action, "yard_block_id") ?? stringParam(action, "to_block") ?? stringParam(action, "from_block");
+  if (bounds.permitted_yard_blocks?.length && yardBlock && !bounds.permitted_yard_blocks.includes(yardBlock)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `yard block ${yardBlock} is outside permitted yard blocks` };
+  }
+  const gateId = stringParam(action, "gate_id");
+  if (bounds.permitted_gate_ids?.length && gateId && !bounds.permitted_gate_ids.includes(gateId)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `gate_id ${gateId} is outside permitted gates` };
+  }
+  const cargoType = stringParam(action, "cargo_type");
+  if (bounds.permitted_cargo_types?.length && cargoType && !bounds.permitted_cargo_types.includes(cargoType)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `cargo_type ${cargoType} is outside permitted cargo types` };
+  }
+  const hazmatClass = stringParam(action, "hazmat_class");
+  if (bounds.permitted_hazmat_classes?.length && hazmatClass && !bounds.permitted_hazmat_classes.includes(hazmatClass)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `hazmat_class ${hazmatClass} is outside permitted hazmat classes` };
+  }
+  const terminalZone = stringParam(action, "terminal_network_zone");
+  if (bounds.permitted_terminal_zones?.length && terminalZone && !bounds.permitted_terminal_zones.includes(terminalZone)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `terminal_network_zone ${terminalZone} is outside permitted zones` };
+  }
+  const containerWeight = numericParam(action, "container_weight_kg");
+  if (bounds.max_container_weight_kg !== undefined && containerWeight !== undefined && containerWeight > bounds.max_container_weight_kg) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `container_weight_kg ${containerWeight} exceeds max_container_weight_kg ${bounds.max_container_weight_kg}` };
+  }
+  const pntConfidence = numericParam(action, "pnt_confidence");
+  if (bounds.min_pnt_confidence !== undefined && pntConfidence !== undefined && pntConfidence < bounds.min_pnt_confidence) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `pnt_confidence ${pntConfidence} below minimum ${bounds.min_pnt_confidence}` };
+  }
+  const aisAge = numericParam(action, "ais_track_age_ms");
+  if (bounds.max_ais_track_age_ms !== undefined && aisAge !== undefined && aisAge > bounds.max_ais_track_age_ms) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `ais_track_age_ms ${aisAge} exceeds max_ais_track_age_ms ${bounds.max_ais_track_age_ms}` };
+  }
+  const portTelemetryAge = numericParam(action, "ot_telemetry_age_ms");
+  if (bounds.max_port_telemetry_age_ms !== undefined && portTelemetryAge !== undefined && portTelemetryAge > bounds.max_port_telemetry_age_ms) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `ot_telemetry_age_ms ${portTelemetryAge} exceeds max_port_telemetry_age_ms ${bounds.max_port_telemetry_age_ms}` };
+  }
+  const windSpeed = numericParam(action, "wind_speed_kn");
+  if (bounds.max_wind_speed_kn !== undefined && windSpeed !== undefined && windSpeed > bounds.max_wind_speed_kn) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `wind_speed_kn ${windSpeed} exceeds max_wind_speed_kn ${bounds.max_wind_speed_kn}` };
+  }
+  const reeferTemp = numericParam(action, "reefer_temperature_c") ?? numericParam(action, "reefer_setpoint_c");
+  if (bounds.min_reefer_temp_c !== undefined && reeferTemp !== undefined && reeferTemp < bounds.min_reefer_temp_c) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `reefer temperature ${reeferTemp} below min_reefer_temp_c ${bounds.min_reefer_temp_c}` };
+  }
+  if (bounds.max_reefer_temp_c !== undefined && reeferTemp !== undefined && reeferTemp > bounds.max_reefer_temp_c) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `reefer temperature ${reeferTemp} exceeds max_reefer_temp_c ${bounds.max_reefer_temp_c}` };
+  }
+  if (bounds.require_customs_release && booleanParam(action, "customs_hold") === true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "customs hold must be released before this port action" };
+  }
+  if (bounds.require_no_security_hold && booleanParam(action, "security_hold") === true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "security hold must be released before this port action" };
+  }
+  if (bounds.require_no_inspection_hold && booleanParam(action, "inspection_hold") === true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "inspection hold must be released before this port action" };
+  }
+  if (bounds.require_vgm_verified && booleanParam(action, "vgm_verified") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "verified gross mass is required before this port action" };
+  }
+  if (bounds.require_crane_exclusion_clear && booleanParam(action, "crane_exclusion_zone_clear") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "crane exclusion zone must be clear before this port action" };
+  }
+  if (bounds.require_spreader_safe && booleanParam(action, "spreader_locked") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "spreader/twistlock state must be safe before this port action" };
+  }
+  if (bounds.require_berth_clear && booleanParam(action, "berth_conflict_present") === true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "berth conflict is present" };
+  }
+  if (bounds.require_tide_window_open && booleanParam(action, "tide_window_open") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "tide/weather window must be open before this port action" };
+  }
+  if (bounds.require_vessel_clearance && booleanParam(action, "vessel_clearance_granted") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "vessel clearance is required before this port action" };
+  }
+  if (bounds.require_truck_appointment && booleanParam(action, "truck_appointment_valid") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "valid truck appointment is required before this port action" };
+  }
+  if (bounds.require_driver_identity && booleanParam(action, "driver_identity_verified") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "driver identity must be verified before this port action" };
+  }
+  if (bounds.require_cold_chain_valid && booleanParam(action, "cold_chain_valid") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "cold-chain validity is required before this port action" };
+  }
+  if (bounds.require_shore_power_lockout && booleanParam(action, "shore_power_lockout_released") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "shore-power lockout release is required before this port action" };
+  }
+  if (bounds.require_shore_power_isolated && booleanParam(action, "shore_power_isolated") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "shore-power isolation state must be proven before this port action" };
+  }
+  if (bounds.require_fire_watch_ready && booleanParam(action, "fire_watch_ready") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "fire watch readiness is required before this port action" };
+  }
+  if (bounds.require_hazmat_route_approved && booleanParam(action, "hazmat_route_approved") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "hazmat route approval is required before this port action" };
+  }
+  if (bounds.require_gate_access_granted && booleanParam(action, "gate_access_granted") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "gate access must be granted before this port action" };
+  }
+  if (bounds.require_operator_identity && !stringParam(action, "operator_id")) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "operator identity is required before this port action" };
+  }
+  if (bounds.require_no_vendor_remote_session && booleanParam(action, "vendor_remote_session") === true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "vendor remote session must not be active during this port action" };
+  }
+  const waterSystemId = stringParam(action, "water_system_id");
+  if (bounds.permitted_water_system_id && waterSystemId && waterSystemId !== bounds.permitted_water_system_id) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `water_system_id ${waterSystemId} does not match ${bounds.permitted_water_system_id}` };
+  }
+  const facilityId = stringParam(action, "facility_id");
+  if (bounds.permitted_facility_id && facilityId && facilityId !== bounds.permitted_facility_id) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `facility_id ${facilityId} does not match ${bounds.permitted_facility_id}` };
+  }
+  const pressureZone = stringParam(action, "pressure_zone_id");
+  if (bounds.permitted_pressure_zones?.length && pressureZone && !bounds.permitted_pressure_zones.includes(pressureZone)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `pressure_zone_id ${pressureZone} is outside permitted pressure zones` };
+  }
+  const processArea = stringParam(action, "process_area");
+  if (bounds.permitted_process_areas?.length && processArea && !bounds.permitted_process_areas.includes(processArea)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `process_area ${processArea} is outside permitted process areas` };
+  }
+  const waterAssetType = stringParam(action, "asset_type");
+  if (bounds.permitted_water_asset_types?.length && waterAssetType && !bounds.permitted_water_asset_types.includes(waterAssetType)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `asset_type ${waterAssetType} is outside permitted water asset types` };
+  }
+  const dischargePermitId = stringParam(action, "discharge_permit_id");
+  if (bounds.permitted_discharge_permit_ids?.length && dischargePermitId && !bounds.permitted_discharge_permit_ids.includes(dischargePermitId)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `discharge_permit_id ${dischargePermitId} is outside permitted discharge permits` };
+  }
+  const chlorineDose = numericParam(action, "chlorine_dose_mg_l") ?? numericParam(action, "dose_mg_l");
+  if (bounds.max_chlorine_dose_mg_l !== undefined && chlorineDose !== undefined && chlorineDose > bounds.max_chlorine_dose_mg_l) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `chlorine dose ${chlorineDose} exceeds max_chlorine_dose_mg_l ${bounds.max_chlorine_dose_mg_l}` };
+  }
+  const chlorineResidual = numericParam(action, "chlorine_residual_mg_l");
+  if (bounds.min_chlorine_residual_mg_l !== undefined && chlorineResidual !== undefined && chlorineResidual < bounds.min_chlorine_residual_mg_l) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `chlorine_residual_mg_l ${chlorineResidual} below minimum ${bounds.min_chlorine_residual_mg_l}` };
+  }
+  const waterPressure = numericParam(action, "pressure_psi");
+  if (bounds.min_pressure_psi !== undefined && waterPressure !== undefined && waterPressure < bounds.min_pressure_psi) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `pressure_psi ${waterPressure} below min_pressure_psi ${bounds.min_pressure_psi}` };
+  }
+  if (bounds.max_pressure_psi !== undefined && waterPressure !== undefined && waterPressure > bounds.max_pressure_psi) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `pressure_psi ${waterPressure} exceeds max_pressure_psi ${bounds.max_pressure_psi}` };
+  }
+  const tankLevel = numericParam(action, "tank_level_pct");
+  if (bounds.min_tank_level_pct !== undefined && tankLevel !== undefined && tankLevel < bounds.min_tank_level_pct) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `tank_level_pct ${tankLevel} below min_tank_level_pct ${bounds.min_tank_level_pct}` };
+  }
+  if (bounds.max_tank_level_pct !== undefined && tankLevel !== undefined && tankLevel > bounds.max_tank_level_pct) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `tank_level_pct ${tankLevel} exceeds max_tank_level_pct ${bounds.max_tank_level_pct}` };
+  }
+  const wetwellLevel = numericParam(action, "wetwell_level_pct");
+  if (bounds.max_wetwell_level_pct !== undefined && wetwellLevel !== undefined && wetwellLevel > bounds.max_wetwell_level_pct) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `wetwell_level_pct ${wetwellLevel} exceeds max_wetwell_level_pct ${bounds.max_wetwell_level_pct}` };
+  }
+  const turbidity = numericParam(action, "turbidity_ntu");
+  if (bounds.max_turbidity_ntu !== undefined && turbidity !== undefined && turbidity > bounds.max_turbidity_ntu) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `turbidity_ntu ${turbidity} exceeds max_turbidity_ntu ${bounds.max_turbidity_ntu}` };
+  }
+  const waterPh = numericParam(action, "ph");
+  if (bounds.min_ph !== undefined && waterPh !== undefined && waterPh < bounds.min_ph) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `ph ${waterPh} below min_ph ${bounds.min_ph}` };
+  }
+  if (bounds.max_ph !== undefined && waterPh !== undefined && waterPh > bounds.max_ph) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `ph ${waterPh} exceeds max_ph ${bounds.max_ph}` };
+  }
+  const sensorAge = numericParam(action, "sensor_age_ms");
+  if (bounds.max_sensor_age_ms !== undefined && sensorAge !== undefined && sensorAge > bounds.max_sensor_age_ms) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `sensor_age_ms ${sensorAge} exceeds max_sensor_age_ms ${bounds.max_sensor_age_ms}` };
+  }
+  const labSampleAge = numericParam(action, "lab_sample_age_min");
+  if (bounds.max_lab_sample_age_min !== undefined && labSampleAge !== undefined && labSampleAge > bounds.max_lab_sample_age_min) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `lab_sample_age_min ${labSampleAge} exceeds max_lab_sample_age_min ${bounds.max_lab_sample_age_min}` };
+  }
+  const waterFlow = numericParam(action, "flow_mgd");
+  if (bounds.max_flow_mgd !== undefined && waterFlow !== undefined && waterFlow > bounds.max_flow_mgd) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `flow_mgd ${waterFlow} exceeds max_flow_mgd ${bounds.max_flow_mgd}` };
+  }
+  const uvIntensity = numericParam(action, "uv_intensity_pct");
+  if (bounds.min_uv_intensity_pct !== undefined && uvIntensity !== undefined && uvIntensity < bounds.min_uv_intensity_pct) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `uv_intensity_pct ${uvIntensity} below min_uv_intensity_pct ${bounds.min_uv_intensity_pct}` };
+  }
+  if (bounds.require_water_scada_fresh && booleanParam(action, "scada_fresh") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "fresh SCADA telemetry is required before this water action" };
+  }
+  if (bounds.require_backflow_clear && booleanParam(action, "backflow_risk_clear") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "backflow risk must be clear before this water action" };
+  }
+  if (bounds.require_disinfection_active && booleanParam(action, "disinfection_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "disinfection must be active before this water action" };
+  }
+  if (bounds.require_chemical_inventory_ok && booleanParam(action, "chemical_inventory_ok") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "chemical inventory must be verified before this water action" };
+  }
+  if (bounds.require_pump_available && booleanParam(action, "pump_available") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "pump availability is required before this water action" };
+  }
+  if (bounds.require_valve_interlock_clear && booleanParam(action, "valve_interlock_clear") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "valve interlock must be clear before this water action" };
+  }
+  if (bounds.require_discharge_permit_window && booleanParam(action, "discharge_permit_window_open") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "discharge permit window must be open before this water action" };
+  }
+  if (bounds.require_no_bypass_active && booleanParam(action, "bypass_active") === true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "active bypass prevents this water action" };
   }
   return { ok: true, reason_codes: [], detail: "physical invariants satisfied" };
 }

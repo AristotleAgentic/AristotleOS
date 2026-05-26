@@ -1,10 +1,12 @@
 import {
+  Anchor,
   Boxes,
   Car,
   CheckCircle2,
   ClipboardCheck,
   Construction,
   Crosshair,
+  Droplets,
   FlaskConical,
   Gauge,
   GitBranch,
@@ -37,12 +39,14 @@ import { LedgerExplorer } from "./LedgerExplorer.js";
 import { MeshNodeDetail, MeshView } from "./MeshView.js";
 import { OperatorActionBar } from "./OperatorActionBar.js";
 import { PhysicalInvariantPanel } from "./PhysicalInvariantPanel.js";
+import { PortOpsConsole } from "./PortOpsConsole.js";
 import { RailOpsConsole } from "./RailOpsConsole.js";
 import { ReplayTimeMachine } from "./ReplayTimeMachine.js";
 import { SimulationPanel } from "./SimulationPanel.js";
 import { ShadowModeConsole } from "./ShadowModeConsole.js";
 import { ApprovalsConsole } from "./ApprovalsConsole.js";
 import { TelecomNocConsole } from "./TelecomNocConsole.js";
+import { WaterOpsConsole } from "./WaterOpsConsole.js";
 import { WardBrowser } from "./WardBrowser.js";
 import { WardMarshalConsole } from "./WardMarshalConsole.js";
 import { WarrantLifecycle } from "./WarrantLifecycle.js";
@@ -59,6 +63,8 @@ const NAV: Array<{ id: SectionId; label: string; icon: LucideIcon }> = [
   { id: "fleet", label: "Fleet", icon: Car },
   { id: "grid", label: "Grid", icon: Zap },
   { id: "rail", label: "Rail", icon: Landmark },
+  { id: "port", label: "Port", icon: Anchor },
+  { id: "water", label: "Water", icon: Droplets },
   { id: "adoption", label: "Adopt", icon: ClipboardCheck },
   { id: "failure", label: "Failure", icon: ShieldAlert },
   { id: "marshal", label: "Marshal", icon: Crosshair },
@@ -82,6 +88,8 @@ const SECTION_META: Record<SectionId, { title: string; sub: string }> = {
   fleet: { title: "Autonomous Vehicle Fleet", sub: "Govern vehicle actions from mission to admitted execution to safety evidence export" },
   grid: { title: "Electric Grid Control", sub: "Govern switching, DERMS, relay, and substation actions before field consequence" },
   rail: { title: "Railroad Operations", sub: "Govern dispatch, PTC, wayside, switch, and movement authority before rail consequence" },
+  port: { title: "Maritime Port Operations", sub: "Govern terminal, gate, crane, VTS, customs, and shore-power actions before port consequence" },
+  water: { title: "Water Infrastructure", sub: "Govern SCADA, PLC, pump, valve, dosing, and discharge actions before utility consequence" },
   adoption: { title: "Commercial Adoption Path", sub: "From sandbox to shadow to enforcement to evidence export" },
   failure: { title: "Failure Mode Console", sub: "Partitions, stale authority, witness disagreement, and replay divergence" },
   marshal: { title: "Ward Marshal", sub: "Rogue-agent census and warrant-backed interdiction" },
@@ -122,6 +130,10 @@ function SectionBody({ section }: { section: SectionId }) {
       return <GridControlConsole />;
     case "rail":
       return <RailOpsConsole />;
+    case "port":
+      return <PortOpsConsole />;
+    case "water":
+      return <WaterOpsConsole />;
     case "conflicts":
       return <ConflictInboxConsole />;
     case "adoption":

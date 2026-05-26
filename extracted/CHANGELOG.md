@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.33 - Mining execution-control vertical
+## v0.1.34 - Mining execution-control vertical
 - **Mining pilot path**: typed adapters (autonomous-haulage/AHS, ventilation,
   blasting, tailings/TSF, gas-monitoring, hoist, Modbus, DNP3, OPC-UA, historian)
   -> Canonical Governed Actions; mining physical invariants enforced at the gate
@@ -16,6 +16,38 @@
   and allow/refuse actions runnable via `execution-control evaluate`; docs
   (overview, ward templates, threat model). Designed to meet and exceed MSHA 30 CFR
   56/57/75/77, ISO 17757, and ICMM GISTM.
+## v0.1.33 - Port and water infrastructure execution-control verticals
+- **Water/wastewater pilot path**: typed adapters (SCADA/plant control, PLC/RTU,
+  pump station, valve/pressure-zone, chemical dosing, lab/LIMS, historian, AMI,
+  tank/reservoir, lift station, UV/disinfection, wastewater discharge) ->
+  Canonical Governed Actions; water physical invariants enforced at the gate
+  (system/facility/pressure zone/process area, chlorine dose/residual, pH,
+  turbidity, pressure, tank/wetwell level, flow, UV intensity, sensor/lab
+  freshness, backflow, disinfection, chemical inventory, pump availability,
+  valve interlock, discharge permit window, bypass posture); Water Evidence
+  Bundles; a Water Ops console workflow; `aristotle water` CLI;
+  `examples/water/` + docs (overview, threat model, pilot guide, ward templates).
+- **Utility safety hardening**: disinfection disable, chemical overfeed, PLC force
+  override, valve force-open, pump run-dry, and bypass force-open are hard-refused
+  even when an envelope is misconfigured; chemical/PLC/valve/disinfection/
+  discharge actions require dual control and fail closed when approval state is
+  unavailable.
+
+## v0.1.32 - Maritime port execution-control vertical
+- **Port pilot path**: typed adapters (Terminal Operating System, Port Community /
+  EDI, customs hold, VTS/AIS/PNT, crane automation, gate OCR/access, yard tractor,
+  reefer, weighbridge/VGM, shore-power, bunkering/hazmat) -> Canonical Governed
+  Actions; port physical invariants enforced at the gate (customs/security holds,
+  VGM, PNT/AIS freshness, crane exclusion zone, berth conflict, tide/weather,
+  truck appointment, driver identity, cold chain, shore-power, hazmat routing,
+  vendor remote-session posture); Port Evidence Bundles; a Port Ops console
+  workflow; `aristotle port` CLI; `examples/port/` + docs (overview, threat
+  model, pilot guide, ward templates).
+- **Terminal safety hardening**: crane interlock disable, exclusion-zone override,
+  forced customs release, forced gate-open, shore-power forced energization, and
+  PNT confidence override are hard-refused even when an envelope is misconfigured;
+  crane/VTS/shore-power/hazmat actions require dual control and fail closed when
+  approval state is unavailable.
 
 ## v0.1.32 - Pipeline (oil & gas / energy) execution-control vertical
 - **Pipeline pilot path**: typed adapters (SCADA pump-control, SCADA compressor,

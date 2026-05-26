@@ -1,0 +1,64 @@
+envelope_id: ae-water-ops-001
+ward_id: ward-water-plant-west
+subject: agent:water-ops-orchestrator
+allowed_actions:
+  - scada.process.setpoint
+  - scada.alarm.ack
+  - plc.register.write
+  - rtu.output.operate
+  - pump.speed.set
+  - pump.start.request
+  - pump.stop.request
+  - valve.position.set
+  - zone.pressure.adjust
+  - chemical.dose.adjust
+  - chlorine.feed.set
+  - lims.sample.accept
+  - historian.record.write
+  - compliance.marker.append
+  - tank.level.setpoint
+  - reservoir.transfer.authorize
+  - uv.intensity.set
+  - disinfection.release.authorize
+  - discharge.release.authorize
+denied_actions:
+  - water.disable_disinfection
+  - chemical.force_overfeed
+  - plc.force_override
+  - valve.force_open
+  - pump.force_run_dry
+  - wastewater.bypass.force_open
+constraints:
+  required_runtime_registers:
+    - telemetry.facility_id
+    - telemetry.asset_id
+    - telemetry.process_area
+    - telemetry.chlorine_residual_mg_l
+    - telemetry.ph
+    - telemetry.turbidity_ntu
+    - telemetry.pressure_psi
+    - telemetry.sensor_age_ms
+    - telemetry.scada_fresh
+    - telemetry.backflow_risk_clear
+    - telemetry.disinfection_active
+    - telemetry.chemical_inventory_ok
+    - telemetry.pump_available
+    - telemetry.valve_interlock_clear
+    - telemetry.manual_fallback_ready
+    - telemetry.operator_id
+  dual_control:
+    actions:
+      - chemical.dose.adjust
+      - chlorine.feed.set
+      - valve.position.set
+      - plc.register.write
+      - disinfection.release.authorize
+      - discharge.release.authorize
+    required: 2
+    ttl_ms: 900000
+expires_at: 2026-12-31T23:59:59Z
+issuer: aristotle-water-root
+classification:
+  level: CUI
+  caveats:
+    - WATER_OPS

@@ -55,6 +55,12 @@ Docs:
 - [Mining execution-control path](docs/mining.md)
 - [Mining Ward templates](docs/mining-ward-templates.md)
 - [Mining threat model addendum](docs/mining-threat-model.md)
+- [Maritime Port Operator Pilot Guide](docs/port-operator-pilot-guide.md)
+- [Port execution-control path](docs/port.md)
+- [Port threat model addendum](docs/port-threat-model.md)
+- [Water Utility Operator Pilot Guide](docs/water-operator-pilot-guide.md)
+- [Water execution-control path](docs/water.md)
+- [Water threat model addendum](docs/water-threat-model.md)
 - [Defense readiness roadmap](docs/defense-readiness.md)
 - [Crypto posture](docs/crypto-posture.md)
 - [Commercial adoption path](docs/commercial-adoption-path.md)
@@ -253,6 +259,45 @@ fail-closed refusals; blast initiation, tailings decant, and hoist movement are
 dual-control. See [docs/mining.md](docs/mining.md),
 [docs/mining-ward-templates.md](docs/mining-ward-templates.md), and
 [docs/mining-threat-model.md](docs/mining-threat-model.md).
+## Maritime Port Readiness
+
+AristotleOS now includes a maritime port pilot path for governed terminal operations. Terminal Operating System, Port Community / EDI, customs hold, VTS/AIS/PNT, crane automation, gate OCR/access, yard tractor, reefer, weighbridge/VGM, shore-power, and bunkering/hazmat surfaces become typed adapter boundaries. They execute only after Ward resolution, Authority Envelope validation, Port Safety Invariant checks, Commit Gate admission, Warrant verification, and GEL commit.
+
+Run the port slice:
+
+```bash
+npm run test:port
+npm run aristotle -- port templates
+npm run aristotle -- port adapters
+npm run aristotle -- execution-control evaluate \
+  --ward examples/port/ward.container_terminal_alpha.yaml \
+  --envelope examples/port/authority_envelope.terminal_orchestrator.yaml \
+  --action examples/port/actions/allow_container_release.json \
+  --ledger ./.tmp/port.gel.jsonl \
+  --now 2026-05-25T15:00:00.000Z
+```
+
+The Command Center includes a Port workflow from "create governed terminal mission" to "admitted execution" to "port Evidence Bundle export." See [docs/port-operator-pilot-guide.md](docs/port-operator-pilot-guide.md), [docs/port.md](docs/port.md), and [docs/port-ward-templates.md](docs/port-ward-templates.md).
+
+## Water Infrastructure Readiness
+
+AristotleOS now includes a water and wastewater pilot path for governed utility operations. SCADA/plant control, PLC/RTU, pump station, valve/pressure-zone, chemical dosing, lab/LIMS, historian, AMI, tank/reservoir, lift-station, UV/disinfection, and wastewater discharge surfaces become typed adapter boundaries. They execute only after Ward resolution, Authority Envelope validation, Water Safety Invariant checks, Commit Gate admission, Warrant verification, and GEL commit.
+
+Run the water slice:
+
+```bash
+npm run test:water
+npm run aristotle -- water templates
+npm run aristotle -- water adapters
+npm run aristotle -- execution-control evaluate \
+  --ward examples/water/ward.drinking_water_plant.yaml \
+  --envelope examples/water/authority_envelope.water_operator.yaml \
+  --action examples/water/actions/allow_pump_speed_adjust.json \
+  --ledger ./.tmp/water.gel.jsonl \
+  --now 2026-05-25T15:00:00.000Z
+```
+
+The Command Center includes a Water workflow from "create governed treatment mission" to "admitted execution" to "water Evidence Bundle export." See [docs/water-operator-pilot-guide.md](docs/water-operator-pilot-guide.md), [docs/water.md](docs/water.md), and [docs/water-ward-templates.md](docs/water-ward-templates.md).
 
 ## Ward/Warrant Execution-Control Path
 

@@ -68,14 +68,35 @@ export function validateWardManifest(value: unknown): ValidationResult {
         "min_train_separation_m",
         "max_train_length_ft",
         "max_train_tonnage",
-        "max_ptc_telemetry_age_ms"
+        "max_ptc_telemetry_age_ms",
+        "max_container_weight_kg",
+        "min_pnt_confidence",
+        "max_ais_track_age_ms",
+        "max_port_telemetry_age_ms",
+        "max_wind_speed_kn",
+        "min_reefer_temp_c",
+        "max_reefer_temp_c",
+        "max_chlorine_dose_mg_l",
+        "min_chlorine_residual_mg_l",
+        "min_pressure_psi",
+        "max_pressure_psi",
+        "min_tank_level_pct",
+        "max_tank_level_pct",
+        "max_wetwell_level_pct",
+        "max_turbidity_ntu",
+        "min_ph",
+        "max_ph",
+        "max_sensor_age_ms",
+        "max_lab_sample_age_min",
+        "max_flow_mgd",
+        "min_uv_intensity_pct"
       ]) {
         const v = value.physical_bounds[numKey];
         if (v !== undefined && (typeof v !== "number" || !Number.isFinite(v))) {
           issues.push({ path: `ward.physical_bounds.${numKey}`, message: "must be a finite number when present" });
         }
       }
-      for (const strKey of ["permitted_boundary_id", "permitted_odd_id", "permitted_topology_model_id", "permitted_territory_id"]) {
+      for (const strKey of ["permitted_boundary_id", "permitted_odd_id", "permitted_topology_model_id", "permitted_territory_id", "permitted_port_id", "permitted_terminal_id", "permitted_water_system_id", "permitted_facility_id"]) {
         const v = value.physical_bounds[strKey];
         if (v !== undefined && (typeof v !== "string" || v.trim() === "")) {
           issues.push({ path: `ward.physical_bounds.${strKey}`, message: "must be a non-empty string when present" });
@@ -91,7 +112,17 @@ export function validateWardManifest(value: unknown): ValidationResult {
         "permitted_track_classes",
         "permitted_signal_aspects",
         "permitted_train_types",
-        "permitted_operating_states"
+        "permitted_operating_states",
+        "permitted_berth_ids",
+        "permitted_yard_blocks",
+        "permitted_gate_ids",
+        "permitted_cargo_types",
+        "permitted_hazmat_classes",
+        "permitted_terminal_zones",
+        "permitted_pressure_zones",
+        "permitted_process_areas",
+        "permitted_water_asset_types",
+        "permitted_discharge_permit_ids"
       ]) {
         const v = value.physical_bounds[arrKey];
         if (v !== undefined && (!Array.isArray(v) || !v.every((item) => typeof item === "string" && item.trim() !== ""))) {
@@ -115,7 +146,34 @@ export function validateWardManifest(value: unknown): ValidationResult {
         "require_consist_verified",
         "require_grade_crossing_protected",
         "require_crew_acknowledged",
-        "require_no_conflicting_authority"
+        "require_no_conflicting_authority",
+        "require_customs_release",
+        "require_no_security_hold",
+        "require_no_inspection_hold",
+        "require_vgm_verified",
+        "require_crane_exclusion_clear",
+        "require_spreader_safe",
+        "require_berth_clear",
+        "require_tide_window_open",
+        "require_vessel_clearance",
+        "require_truck_appointment",
+        "require_driver_identity",
+        "require_cold_chain_valid",
+        "require_shore_power_lockout",
+        "require_shore_power_isolated",
+        "require_fire_watch_ready",
+        "require_hazmat_route_approved",
+        "require_gate_access_granted",
+        "require_operator_identity",
+        "require_no_vendor_remote_session",
+        "require_water_scada_fresh",
+        "require_backflow_clear",
+        "require_disinfection_active",
+        "require_chemical_inventory_ok",
+        "require_pump_available",
+        "require_valve_interlock_clear",
+        "require_discharge_permit_window",
+        "require_no_bypass_active"
       ]) {
         const v = value.physical_bounds[boolKey];
         if (v !== undefined && typeof v !== "boolean") {

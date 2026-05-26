@@ -498,6 +498,94 @@ export interface RailSafetyDrill {
   evidence: string;
 }
 
+export interface PortOpsStep {
+  id: string;
+  label: string;
+  owner: string;
+  state: "complete" | "active" | "blocked" | "pending";
+  evidence: string;
+}
+
+export interface PortAdapterSurface {
+  id: string;
+  label: string;
+  standard: "TOS" | "PCS/EDI" | "Customs" | "VTS/AIS/PNT" | "Crane" | "Gate" | "Yard" | "Reefer" | "Weighbridge" | "Shore Power" | "Hazmat";
+  actionTypes: string[];
+  requiredRegisters: string[];
+  boundary: string;
+  posture: Posture;
+}
+
+export interface PortEvidenceExport {
+  bundleVersion: string;
+  portId: string;
+  terminalId: string;
+  operationsCenter: string;
+  berthId: string;
+  yardBlock: string;
+  gateId: string;
+  containerId: string;
+  vesselImo: string;
+  releaseOrder: string;
+  profiles: string[];
+  redactedFields: string[];
+  bundleHash: string;
+  verification: "ok" | "blocked";
+}
+
+export interface PortSafetyDrill {
+  id: string;
+  label: string;
+  invariant: string;
+  current: string;
+  posture: Posture;
+  evidence: string;
+}
+
+export interface WaterOpsStep {
+  id: string;
+  label: string;
+  owner: string;
+  state: "complete" | "active" | "blocked" | "pending";
+  evidence: string;
+}
+
+export interface WaterAdapterSurface {
+  id: string;
+  label: string;
+  standard: "SCADA" | "PLC/RTU" | "Pump" | "Valve" | "Chemical" | "Lab/LIMS" | "Historian" | "AMI" | "Tank/Reservoir" | "Lift Station" | "UV/Disinfection" | "Wastewater";
+  actionTypes: string[];
+  requiredRegisters: string[];
+  boundary: string;
+  posture: Posture;
+}
+
+export interface WaterEvidenceExport {
+  bundleVersion: string;
+  utilityId: string;
+  waterSystemId: string;
+  facilityId: string;
+  operationsCenter: string;
+  assetId: string;
+  assetType: string;
+  processArea: string;
+  workOrder: string;
+  permitId: string;
+  profiles: string[];
+  redactedFields: string[];
+  bundleHash: string;
+  verification: "ok" | "blocked";
+}
+
+export interface WaterSafetyDrill {
+  id: string;
+  label: string;
+  invariant: string;
+  current: string;
+  posture: Posture;
+  evidence: string;
+}
+
 export interface WardMarshalFinding {
   id: string;
   subject: string;

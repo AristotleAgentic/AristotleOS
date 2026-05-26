@@ -1,0 +1,60 @@
+ward_id: ward-water-plant-west
+name: West Drinking Water Treatment Plant
+sovereignty_context: municipal-water-authority-west
+authority_domain: water-treatment-distribution-ops
+policy_version: 0.1.0
+evidence_ledger_path: ./.tmp/water-west.gel.jsonl
+permitted_subjects:
+  - agent:water-ops-orchestrator
+physical_bounds:
+  permitted_boundary_id: west-water-system
+  permitted_water_system_id: west-water-system
+  permitted_facility_id: west-treatment-plant
+  permitted_pressure_zones:
+    - west-zone-a
+    - west-zone-b
+  permitted_process_areas:
+    - intake
+    - filtration
+    - disinfection
+    - distribution
+  permitted_water_asset_types:
+    - pump
+    - valve
+    - chemical-feed
+    - tank
+    - uv-reactor
+    - plc
+    - rtu
+  permitted_discharge_permit_ids:
+    - NPDES-WEST-001
+  max_chlorine_dose_mg_l: 4
+  min_chlorine_residual_mg_l: 0.2
+  min_pressure_psi: 35
+  max_pressure_psi: 120
+  min_tank_level_pct: 20
+  max_tank_level_pct: 92
+  max_turbidity_ntu: 0.3
+  min_ph: 6.5
+  max_ph: 8.5
+  max_sensor_age_ms: 5000
+  max_lab_sample_age_min: 240
+  max_flow_mgd: 24
+  min_uv_intensity_pct: 85
+  require_water_scada_fresh: true
+  require_backflow_clear: true
+  require_disinfection_active: true
+  require_chemical_inventory_ok: true
+  require_pump_available: true
+  require_valve_interlock_clear: true
+  require_manual_fallback_ready: true
+  require_operator_identity: true
+  require_no_vendor_remote_session: true
+criticality: safety_critical
+classification:
+  level: CUI
+  caveats:
+    - WATER_OPS
+metadata:
+  pilot: west-drinking-water-plant
+  doctrine: authority-before-water-consequence

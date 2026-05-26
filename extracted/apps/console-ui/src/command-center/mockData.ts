@@ -26,6 +26,10 @@ import type {
   PhysicalChannel,
   PolicyHarnessCase,
   PolicyPromotionStage,
+  PortAdapterSurface,
+  PortEvidenceExport,
+  PortOpsStep,
+  PortSafetyDrill,
   RuntimeRegister,
   RuntimeSlo,
   RailAdapterSurface,
@@ -38,6 +42,10 @@ import type {
   TelecomNocStep,
   TelecomScaleDrill,
   ToolGatewayAdapter,
+  WaterAdapterSurface,
+  WaterEvidenceExport,
+  WaterOpsStep,
+  WaterSafetyDrill,
   WardMarshalFinding,
   Ward,
   WarrantStep
@@ -806,6 +814,228 @@ export const RAIL_SAFETY_DRILLS: RailSafetyDrill[] = [
   { id: "work-zone", label: "Work-zone release", invariant: "work_zone_released && track_bulletin_ack", current: "released", posture: "green", evidence: "Active work zones or missing bulletin acknowledgement fail closed." },
   { id: "crossing", label: "Crossing protection", invariant: "grade_crossing_protected == true", current: "protected", posture: "green", evidence: "Crossing protection must be proven before movement over protected limits." },
   { id: "dual", label: "Route plural authority", invariant: "2-of-N approval before Warrant", current: "pending", posture: "amber", evidence: "Route clear, switch align, PTC restriction, and hazmat routing require dual control." }
+];
+
+export const PORT_OPS_WORKFLOW: PortOpsStep[] = [
+  { id: "port-mission", label: "Create governed terminal mission", owner: "Terminal control", state: "complete", evidence: "Ward ward-port-terminal-alpha binds terminal, berth, yard, gate, cargo, vessel, and OT invariants." },
+  { id: "port-context", label: "Bind port runtime registers", owner: "TOS / port OT gateway", state: "complete", evidence: "TOS transaction, customs/security holds, VGM, PNT/AIS, crane exclusion zone, driver identity, and operator identity attached." },
+  { id: "port-shadow", label: "Profile release path", owner: "Cyber / terminal operations", state: "complete", evidence: "Clean release admits; customs hold, unsafe crane, missing PNT, and force-gate paths remain REFUSE or ESCALATE." },
+  { id: "port-approval", label: "Dual-control heavy action", owner: "Terminal supervisor / safety officer", state: "active", evidence: "Crane, VTS, shore-power, customs-release, and hazmat actions require 2-of-N approval before Warrant issuance." },
+  { id: "port-gate", label: "Port Commit Gate", owner: "Governance kernel", state: "pending", evidence: "ALLOW mints a single-use Warrant scoped to the canonical terminal action hash." },
+  { id: "port-execute", label: "Execute port adapter", owner: "TOS / gate / crane / VTS boundary", state: "pending", evidence: "Adapters execute only after Warrant verification and append a terminal execution receipt." },
+  { id: "port-export", label: "Export port evidence", owner: "Port security / compliance", state: "pending", evidence: "Port Evidence Bundle includes cargo, vessel, terminal, GEL record, Warrant, and redaction manifest." }
+];
+
+export const PORT_ADAPTERS: PortAdapterSurface[] = [
+  {
+    id: "tos",
+    label: "Terminal Operating System",
+    standard: "TOS",
+    actionTypes: ["tos.container.release", "tos.yard-move.authorize"],
+    requiredRegisters: ["terminal_id", "tos_transaction_id", "customs_hold", "security_hold"],
+    boundary: "Cargo release and yard mutations require hold status, VGM, gate, and operator context before Warrant issuance.",
+    posture: "green"
+  },
+  {
+    id: "pcs",
+    label: "Port Community / EDI",
+    standard: "PCS/EDI",
+    actionTypes: ["edi.manifest.submit", "pcs.release-notice.publish"],
+    requiredRegisters: ["booking_id", "bill_of_lading", "operator_id"],
+    boundary: "Carrier and community data writes become evidenced governance events instead of unbounded workflow updates.",
+    posture: "green"
+  },
+  {
+    id: "customs",
+    label: "Customs / Holds",
+    standard: "Customs",
+    actionTypes: ["customs.hold.release", "security.hold.release"],
+    requiredRegisters: ["customs_hold", "security_hold", "release_order_id"],
+    boundary: "Release under customs, security, or inspection hold is refused; true hold release requires plural authority.",
+    posture: "amber"
+  },
+  {
+    id: "vts",
+    label: "VTS / AIS / PNT",
+    standard: "VTS/AIS/PNT",
+    actionTypes: ["vts.berth.clearance", "ais.track.attest"],
+    requiredRegisters: ["vessel_imo", "pnt_confidence", "ais_track_age_ms", "berth_conflict_present"],
+    boundary: "Berth clearance must bind PNT confidence, AIS freshness, tide/weather window, and berth conflict state.",
+    posture: "amber"
+  },
+  {
+    id: "crane",
+    label: "Crane Automation",
+    standard: "Crane",
+    actionTypes: ["crane.move.request", "crane.job.assign"],
+    requiredRegisters: ["equipment_id", "crane_exclusion_zone_clear", "spreader_locked"],
+    boundary: "Crane moves cannot proceed while exclusion zones are unclear or equipment interlocks are bypassed.",
+    posture: "red"
+  },
+  {
+    id: "gate",
+    label: "Gate OCR / Access",
+    standard: "Gate",
+    actionTypes: ["gate.access.grant", "gate.appointment.update"],
+    requiredRegisters: ["gate_id", "truck_appointment_valid", "driver_identity_verified"],
+    boundary: "Gate access binds appointment, driver identity, release status, and evidence before perimeter consequence.",
+    posture: "green"
+  },
+  {
+    id: "reefer",
+    label: "Reefer / Cold Chain",
+    standard: "Reefer",
+    actionTypes: ["reefer.setpoint.update", "reefer.alarm.ack"],
+    requiredRegisters: ["container_id", "reefer_temperature_c", "cold_chain_valid"],
+    boundary: "Cold-chain changes require valid temperature evidence and a replayable Warrant-bound decision.",
+    posture: "green"
+  },
+  {
+    id: "shore-power",
+    label: "Shore Power",
+    standard: "Shore Power",
+    actionTypes: ["shore-power.energize.request", "shore-power.isolate.request"],
+    requiredRegisters: ["shore_power_lockout_released", "shore_power_isolated", "fire_watch_ready"],
+    boundary: "High-energy berth operations require lockout, isolation, fire-watch, and plural authority.",
+    posture: "amber"
+  }
+];
+
+export const PORT_EVIDENCE_EXPORT: PortEvidenceExport = {
+  bundleVersion: "aristotle.port-evidence.v1",
+  portId: "port-of-aristotle",
+  terminalId: "terminal-alpha",
+  operationsCenter: "terminal-control-alpha",
+  berthId: "berth-7",
+  yardBlock: "A12",
+  gateId: "gate-3",
+  containerId: "MSCU1234567",
+  vesselImo: "IMO9876543",
+  releaseOrder: "REL-2026-0525-001",
+  profiles: ["USCG_MTSA_CYBER", "IMO_MSC_FAL", "CISA_MTS_RESILIENCE", "ISPS", "NIST_CSF"],
+  redactedFields: ["driver_license", "gate_camera_uri", "exact_container_contents"],
+  bundleHash: shortHash("port-evidence-bundle-terminal-alpha", 24),
+  verification: "ok"
+};
+
+export const PORT_SAFETY_DRILLS: PortSafetyDrill[] = [
+  { id: "holds", label: "Cargo holds", invariant: "customs_hold == false && security_hold == false", current: "clear", posture: "green", evidence: "Container release refuses while customs, security, or inspection holds remain active." },
+  { id: "crane", label: "Crane exclusion zone", invariant: "crane_exclusion_zone_clear == true", current: "clear", posture: "green", evidence: "Unsafe crane movement returns PHYSICAL_INVARIANT_FAILED and no Warrant." },
+  { id: "pnt", label: "PNT / AIS confidence", invariant: "pnt_confidence >= 0.97 && ais_track_age_ms <= 5000", current: "0.992 / 1400 ms", posture: "green", evidence: "Missing PNT state escalates berth clearance before vessel-side consequence." },
+  { id: "gate", label: "Gate authority", invariant: "truck_appointment_valid && driver_identity_verified", current: "verified", posture: "green", evidence: "Forced gate opening is a hard interlock violation, even if mistakenly allowed." },
+  { id: "shore-power", label: "Shore power", invariant: "lockout_released && isolated && fire_watch_ready", current: "ready", posture: "amber", evidence: "Energization requires dual-control approval and verified high-energy work state." },
+  { id: "vendor", label: "Vendor remote session", invariant: "vendor_remote_session == false", current: "none", posture: "green", evidence: "Port OT actions fail closed when a forbidden vendor remote session is active." }
+];
+
+export const WATER_OPS_WORKFLOW: WaterOpsStep[] = [
+  { id: "water-mission", label: "Create governed treatment mission", owner: "Water operations", state: "complete", evidence: "Ward ward-water-plant-west binds utility, system, facility, pressure zone, process area, and safety chemistry invariants." },
+  { id: "water-registers", label: "Bind water runtime registers", owner: "SCADA / historian / lab", state: "complete", evidence: "Chlorine residual, pH, turbidity, pressure, tank level, sensor age, backflow, disinfection, pump, and valve state attached." },
+  { id: "water-shadow", label: "Profile in Shadow Mode", owner: "Cyber / plant operations", state: "complete", evidence: "Safe pump action admits; overfeed, backflow, missing turbidity, and disinfection-disable paths remain REFUSE or ESCALATE." },
+  { id: "water-approval", label: "Dual-control treatment action", owner: "Shift supervisor / water quality lead", state: "active", evidence: "Chemical dose, PLC write, valve position, disinfection release, and discharge actions require 2-of-N approval before Warrant issuance." },
+  { id: "water-gate", label: "Water Commit Gate", owner: "Governance kernel", state: "pending", evidence: "ALLOW mints a single-use Warrant scoped to the canonical water action hash." },
+  { id: "water-execute", label: "Execute water adapter", owner: "SCADA / PLC / plant boundary", state: "pending", evidence: "Pump, valve, dosing, lab, historian, tank, UV, and discharge adapters execute only after Warrant verification." },
+  { id: "water-export", label: "Export water evidence", owner: "Utility compliance / engineering", state: "pending", evidence: "Water Evidence Bundle includes treatment context, process snapshot, GEL record, Warrant, and redaction manifest." }
+];
+
+export const WATER_ADAPTERS: WaterAdapterSurface[] = [
+  {
+    id: "scada",
+    label: "SCADA / Plant Control",
+    standard: "SCADA",
+    actionTypes: ["scada.process.setpoint", "scada.alarm.ack"],
+    requiredRegisters: ["facility_id", "scada_fresh", "operator_id"],
+    boundary: "Treatment setpoints and control-room mutations require Ward, Authority Envelope, runtime registers, and GEL evidence.",
+    posture: "green"
+  },
+  {
+    id: "plc-rtu",
+    label: "PLC / RTU",
+    standard: "PLC/RTU",
+    actionTypes: ["plc.register.write", "rtu.output.operate"],
+    requiredRegisters: ["asset_id", "sensor_age_ms", "manual_fallback_ready"],
+    boundary: "Field-controller writes are held at the Commit Gate before they can mutate pumps, valves, or process equipment.",
+    posture: "amber"
+  },
+  {
+    id: "pump",
+    label: "Pump Station",
+    standard: "Pump",
+    actionTypes: ["pump.speed.set", "pump.start.request"],
+    requiredRegisters: ["pump_available", "pressure_psi", "tank_level_pct"],
+    boundary: "Pump operations bind pressure, tank level, availability, and failover state before consequence.",
+    posture: "green"
+  },
+  {
+    id: "valve",
+    label: "Valve / Pressure Zone",
+    standard: "Valve",
+    actionTypes: ["valve.position.set", "zone.pressure.adjust"],
+    requiredRegisters: ["backflow_risk_clear", "valve_interlock_clear", "pressure_zone_id"],
+    boundary: "Valve motions and pressure-zone changes fail closed on backflow risk or interlock uncertainty.",
+    posture: "amber"
+  },
+  {
+    id: "chemical",
+    label: "Chemical Dosing",
+    standard: "Chemical",
+    actionTypes: ["chemical.dose.adjust", "chlorine.feed.set"],
+    requiredRegisters: ["chlorine_residual_mg_l", "ph", "turbidity_ntu", "chemical_inventory_ok"],
+    boundary: "Chemical feed changes require bounded chemistry and plural authority before a Warrant is minted.",
+    posture: "red"
+  },
+  {
+    id: "lab",
+    label: "Lab / LIMS",
+    standard: "Lab/LIMS",
+    actionTypes: ["lims.sample.accept", "compliance.result.publish"],
+    requiredRegisters: ["lab_sample_age_min", "operator_id"],
+    boundary: "Sample and compliance result actions preserve replayable water-quality evidence.",
+    posture: "green"
+  },
+  {
+    id: "historian",
+    label: "Historian / Compliance",
+    standard: "Historian",
+    actionTypes: ["historian.record.write", "compliance.marker.append"],
+    requiredRegisters: ["asset_id", "operator_id"],
+    boundary: "Compliance-relevant writes become governed evidence records rather than unbounded annotations.",
+    posture: "green"
+  },
+  {
+    id: "discharge",
+    label: "UV / Wastewater Discharge",
+    standard: "Wastewater",
+    actionTypes: ["disinfection.release.authorize", "discharge.release.authorize"],
+    requiredRegisters: ["uv_intensity_pct", "disinfection_active", "discharge_permit_window_open"],
+    boundary: "Treatment release and outfall discharge require disinfection, permit window, no bypass, and evidence export.",
+    posture: "amber"
+  }
+];
+
+export const WATER_EVIDENCE_EXPORT: WaterEvidenceExport = {
+  bundleVersion: "aristotle.water-evidence.v1",
+  utilityId: "west-municipal-water",
+  waterSystemId: "west-water-system",
+  facilityId: "west-treatment-plant",
+  operationsCenter: "west-water-control",
+  assetId: "PUMP-WEST-2",
+  assetType: "pump",
+  processArea: "distribution",
+  workOrder: "WO-WATER-0525-11",
+  permitId: "NPDES-WEST-001",
+  profiles: ["EPA_WATER_CYBER", "CISA_WWS_CPG", "AWWA_CYBER", "AWIA_RRA", "NIST_CSF"],
+  redactedFields: ["customer_id", "exact_pipe_segment", "sample_chain_of_custody_contact"],
+  bundleHash: shortHash("water-evidence-bundle-west-plant", 24),
+  verification: "ok"
+};
+
+export const WATER_SAFETY_DRILLS: WaterSafetyDrill[] = [
+  { id: "chlorine", label: "Chlorine bounds", invariant: "0.2 <= residual && dose_mg_l <= 4.0", current: "0.8 / 1.7 mg/L", posture: "green", evidence: "Overfeed attempts return PHYSICAL_INVARIANT_FAILED and no Warrant." },
+  { id: "turbidity", label: "Turbidity / sample freshness", invariant: "turbidity_ntu <= 0.3 && lab_sample_age_min <= 240", current: "0.08 NTU / 45 min", posture: "green", evidence: "Missing turbidity state escalates before filter or release consequence." },
+  { id: "pressure", label: "Pressure / tank level", invariant: "35 <= pressure_psi <= 120 && 20 <= tank_level_pct <= 92", current: "62 psi / 66%", posture: "green", evidence: "Pump and tank actions refuse outside pressure and storage bounds." },
+  { id: "backflow", label: "Backflow clear", invariant: "backflow_risk_clear == true", current: "clear", posture: "green", evidence: "Backflow-sensitive valve movement fails closed before distribution consequence." },
+  { id: "disinfection", label: "Disinfection active", invariant: "disinfection_active && uv_intensity_pct >= 85", current: "active / 91%", posture: "green", evidence: "Disable-disinfection is a hard interlock violation even if mistakenly allowed." },
+  { id: "dual", label: "Dual-control chemistry", invariant: "2-of-N approval before Warrant", current: "pending", posture: "amber", evidence: "Chemical, PLC, valve, disinfection, and discharge changes require plural approval." }
 ];
 
 export const POLICY_HARNESS: PolicyHarnessCase[] = [

@@ -456,6 +456,215 @@ test("cli rail commands expose railroad templates, adapters, and evidence export
   }
 });
 
+test("cli port commands expose maritime templates, adapters, and evidence export", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    const examples = path.resolve(process.cwd(), "examples", "port");
+    cpSync(examples, path.join(dir, "port"), { recursive: true });
+
+    const templates = await capture(["port", "templates"], dir);
+    assert.equal(templates.code, 0, templates.stderr);
+    assert.match(templates.stdout, /ward.container_terminal_alpha.yaml/);
+    assert.match(templates.stdout, /allow_container_release.json/);
+
+    const adapters = await capture(["port", "adapters"], dir);
+    assert.equal(adapters.code, 0, adapters.stderr);
+    assert.match(adapters.stdout, /terminal-operating-system/);
+    assert.match(adapters.stdout, /crane-automation/);
+
+    const allowed = await capture([
+      "execution-control",
+      "evaluate",
+      "--ward",
+      "port/ward.container_terminal_alpha.yaml",
+      "--envelope",
+      "port/authority_envelope.terminal_orchestrator.yaml",
+      "--action",
+      "port/actions/allow_container_release.json",
+      "--ledger",
+      ".tmp/port.gel.jsonl",
+      "--now",
+      "2026-05-25T15:00:00.000Z"
+    ], dir);
+    assert.equal(allowed.code, 0, allowed.stderr);
+    assert.match(allowed.stdout, /decision=ALLOW/);
+
+    const refused = await capture([
+      "execution-control",
+      "evaluate",
+      "--ward",
+      "port/ward.container_terminal_alpha.yaml",
+      "--envelope",
+      "port/authority_envelope.terminal_orchestrator.yaml",
+      "--action",
+      "port/actions/refuse_customs_hold_release.json",
+      "--ledger",
+      ".tmp/port-refuse.gel.jsonl",
+      "--now",
+      "2026-05-25T15:00:00.000Z"
+    ], dir);
+    assert.equal(refused.code, 0, refused.stderr);
+    assert.match(refused.stdout, /decision=REFUSE/);
+
+    const bundle = await capture([
+      "port",
+      "evidence",
+      "export",
+      "--ward",
+      "port/ward.container_terminal_alpha.yaml",
+      "--envelope",
+      "port/authority_envelope.terminal_orchestrator.yaml",
+      "--ledger",
+      ".tmp/port-refuse.gel.jsonl",
+      "--out",
+      ".tmp/port-evidence.json",
+      "--port",
+      "port-of-aristotle",
+      "--facility",
+      "facility-alpha",
+      "--terminal",
+      "terminal-alpha",
+      "--ops-center",
+      "terminal-control-alpha",
+      "--berth",
+      "berth-7",
+      "--yard-block",
+      "A12",
+      "--gate",
+      "gate-3",
+      "--container",
+      "MSCU1234567",
+      "--vessel",
+      "IMO9876543",
+      "--voyage",
+      "VOY-ALPHA-19",
+      "--release",
+      "REL-2026-0525-001",
+      "--equipment",
+      "ASC-12",
+      "--cargo-type",
+      "reefer",
+      "--hazmat",
+      "none",
+      "--reefer",
+      "--weight-kg",
+      "22400",
+      "--redact",
+      "driver_license"
+    ], dir);
+    assert.equal(bundle.code, 0, bundle.stderr);
+    assert.match(bundle.stdout, /verification=ok/);
+    assert.equal(existsSync(path.join(dir, ".tmp", "port-evidence.json")), true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("cli water commands expose utility templates, adapters, and evidence export", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    const examples = path.resolve(process.cwd(), "examples", "water");
+    cpSync(examples, path.join(dir, "water"), { recursive: true });
+
+    const templates = await capture(["water", "templates"], dir);
+    assert.equal(templates.code, 0, templates.stderr);
+    assert.match(templates.stdout, /ward.drinking_water_plant.yaml/);
+    assert.match(templates.stdout, /allow_pump_speed_adjust.json/);
+
+    const adapters = await capture(["water", "adapters"], dir);
+    assert.equal(adapters.code, 0, adapters.stderr);
+    assert.match(adapters.stdout, /scada-plant/);
+    assert.match(adapters.stdout, /chemical-dosing/);
+
+    const allowed = await capture([
+      "execution-control",
+      "evaluate",
+      "--ward",
+      "water/ward.drinking_water_plant.yaml",
+      "--envelope",
+      "water/authority_envelope.water_operator.yaml",
+      "--action",
+      "water/actions/allow_pump_speed_adjust.json",
+      "--ledger",
+      ".tmp/water.gel.jsonl",
+      "--now",
+      "2026-05-25T15:00:00.000Z"
+    ], dir);
+    assert.equal(allowed.code, 0, allowed.stderr);
+    assert.match(allowed.stdout, /decision=ALLOW/);
+
+    const refused = await capture([
+      "execution-control",
+      "evaluate",
+      "--ward",
+      "water/ward.drinking_water_plant.yaml",
+      "--envelope",
+      "water/authority_envelope.water_operator.yaml",
+      "--action",
+      "water/actions/refuse_chlorine_overfeed.json",
+      "--ledger",
+      ".tmp/water-refuse.gel.jsonl",
+      "--now",
+      "2026-05-25T15:00:00.000Z"
+    ], dir);
+    assert.equal(refused.code, 0, refused.stderr);
+    assert.match(refused.stdout, /decision=REFUSE/);
+
+    const bundle = await capture([
+      "water",
+      "evidence",
+      "export",
+      "--ward",
+      "water/ward.drinking_water_plant.yaml",
+      "--envelope",
+      "water/authority_envelope.water_operator.yaml",
+      "--ledger",
+      ".tmp/water-refuse.gel.jsonl",
+      "--out",
+      ".tmp/water-evidence.json",
+      "--utility",
+      "west-municipal-water",
+      "--system",
+      "west-water-system",
+      "--facility",
+      "west-treatment-plant",
+      "--ops-center",
+      "west-water-control",
+      "--asset",
+      "PUMP-WEST-2",
+      "--asset-type",
+      "pump",
+      "--process-area",
+      "distribution",
+      "--pressure-zone",
+      "west-zone-a",
+      "--work-order",
+      "WO-WATER-0525-11",
+      "--permit",
+      "NPDES-WEST-001",
+      "--chlorine",
+      "0.8",
+      "--ph",
+      "7.3",
+      "--turbidity",
+      "0.08",
+      "--pressure",
+      "62",
+      "--tank-level",
+      "66",
+      "--flow",
+      "12.4",
+      "--redact",
+      "customer_id"
+    ], dir);
+    assert.equal(bundle.code, 0, bundle.stderr);
+    assert.match(bundle.stdout, /verification=ok/);
+    assert.equal(existsSync(path.join(dir, ".tmp", "water-evidence.json")), true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("cli run governs a child agent process and writes a verifiable ledger", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
   try {
