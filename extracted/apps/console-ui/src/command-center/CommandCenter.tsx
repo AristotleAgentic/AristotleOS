@@ -39,6 +39,8 @@ import { FailureModeConsole } from "./FailureModeConsole.js";
 import { GovernanceBuilderConsole } from "./GovernanceBuilderConsole.js";
 import { GridControlConsole } from "./GridControlConsole.js";
 import { HealthcareOpsConsole } from "./HealthcareOpsConsole.js";
+import { VerticalDetailConsole } from "./VerticalDetailConsole.js";
+import { VerticalsRegistryConsole } from "./VerticalsRegistryConsole.js";
 import { LedgerExplorer } from "./LedgerExplorer.js";
 import { LogisticsOpsConsole } from "./LogisticsOpsConsole.js";
 import { MeshNodeDetail, MeshView } from "./MeshView.js";
@@ -74,6 +76,7 @@ const NAV: Array<{ id: SectionId; label: string; icon: LucideIcon }> = [
   { id: "logistics", label: "Freight", icon: Truck },
   { id: "healthcare", label: "Clinical", icon: Hospital },
   { id: "title", label: "Title", icon: FileText },
+  { id: "verticals", label: "Verticals", icon: LayoutGrid },
   { id: "adoption", label: "Adopt", icon: ClipboardCheck },
   { id: "failure", label: "Failure", icon: ShieldAlert },
   { id: "marshal", label: "Marshal", icon: Crosshair },
@@ -101,6 +104,8 @@ const SECTION_META: Record<SectionId, { title: string; sub: string }> = {
   water: { title: "Water Infrastructure", sub: "Govern SCADA, PLC, pump, valve, dosing, and discharge actions before utility consequence" },
   logistics: { title: "Trucking and Logistics", sub: "Govern dispatch, tender, HOS, route, cargo release, fuel, and payment before freight consequence" },
   healthcare: { title: "Healthcare Clinical Operations", sub: "Govern EHR, pharmacy, PHI, device, claims, and patient workflows before clinical consequence" },
+  verticals: { title: "Industry Verticals", sub: "All 15 verticals on this branch — adapters, hard interlocks, presets, evidence" },
+  "vertical-detail": { title: "Vertical Detail", sub: "Adapter boundaries, hard interlocks, and demonstration rule presets" },
   title: { title: "Vehicle Title Transaction Layer", sub: "Govern ELT, title, registration, ESIGN, dealer, lender, DMV, fraud, and NMVTIS workflows before title consequence — demonstration rule sets only" },
   adoption: { title: "Commercial Adoption Path", sub: "From sandbox to shadow to enforcement to evidence export" },
   failure: { title: "Failure Mode Console", sub: "Partitions, stale authority, witness disagreement, and replay divergence" },
@@ -152,6 +157,10 @@ function SectionBody({ section }: { section: SectionId }) {
       return <HealthcareOpsConsole />;
     case "title":
       return <TitleOpsConsole />;
+    case "verticals":
+      return <VerticalsRegistryConsole />;
+    case "vertical-detail":
+      return <VerticalDetailConsole />;
     case "conflicts":
       return <ConflictInboxConsole />;
     case "adoption":

@@ -1,5 +1,30 @@
 # Changelog
 
+## v0.1.55 - Verticals Registry UI (all 15 verticals visible in console-ui)
+- **New Verticals section** in the operator console showing every
+  industry vertical on the branch (15 total) in one place. Closes the
+  gap where only Title had a dedicated panel.
+- **`verticals/registry.ts`** -- static VerticalConfig registry with
+  id, name, regulatory framing, purpose, citation chips, typed adapter
+  rows, hard-interlock action types, demonstration preset states, test
+  surface, hasDedicatedConsole flag.
+- **`VerticalsRegistryConsole.tsx`** -- grid of all 15 cards with
+  icons, regulatory framing, adapter/interlock/preset counts; hero KPIs;
+  guarantees panel; pre-coordination disclaimer.
+- **`VerticalDetailConsole.tsx`** -- generic detail view for verticals
+  without a dedicated *OpsConsole (aviation, mining, pipeline, robotics,
+  space, swarm). Tables for adapter boundaries, hard interlocks
+  (red-bordered chips), demonstration presets; evidence + tests panel.
+- **Click routing**: registry cards go to dedicated *OpsConsole when
+  available (9 of 15: fleet, grid, healthcare, logistics, port, rail,
+  noc=telecom, title, water), generic detail view otherwise.
+- **store.ts**: SectionId += "verticals" | "vertical-detail";
+  selectedVerticalId state + selectVertical action.
+- **CommandCenter.tsx**: NAV entry (LayoutGrid icon between Title and
+  Adopt), SECTION_META entries, switch cases.
+- **Verified**: console-ui tsc --noEmit clean; governance-core 41/41,
+  execution-control-runtime 75/75 (no regressions).
+
 ## v0.1.54 - Space launch vertical (15th industry vertical)
 - **New `space` vertical** on the shared branch -- 15th vertical
   alongside automotive, aviation, grid, healthcare, logistics, mining,

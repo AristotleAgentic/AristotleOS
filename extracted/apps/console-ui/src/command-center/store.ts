@@ -40,6 +40,8 @@ export type SectionId =
   | "logistics"
   | "healthcare"
   | "title"
+  | "verticals"
+  | "vertical-detail"
   | "conflicts"
   | "adoption"
   | "failure"
@@ -104,6 +106,7 @@ interface CommandState {
   selectedLedgerSeq: number | null;
   selectedWardId: string | null;
   selectedMeshNodeId: string | null;
+  selectedVerticalId: string | null;
   opsOpen: boolean;
   replayT: number; // 0..100 percent of history
   toasts: Toast[];
@@ -114,6 +117,7 @@ interface CommandState {
   selectLedger: (seq: number | null) => void;
   selectWard: (id: string | null) => void;
   selectMeshNode: (id: string | null) => void;
+  selectVertical: (id: string | null) => void;
   setOpsOpen: (open: boolean) => void;
   setReplayT: (t: number) => void;
 
@@ -157,6 +161,7 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   selectedLedgerSeq: null,
   selectedWardId: null,
   selectedMeshNodeId: null,
+  selectedVerticalId: null,
   opsOpen: false,
   replayT: 100,
   toasts: [],
@@ -166,6 +171,7 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   selectLedger: (selectedLedgerSeq) => set({ selectedLedgerSeq }),
   selectWard: (selectedWardId) => set({ selectedWardId }),
   selectMeshNode: (selectedMeshNodeId) => set({ selectedMeshNodeId }),
+  selectVertical: (selectedVerticalId) => set({ selectedVerticalId }),
   setOpsOpen: (opsOpen) => set({ opsOpen }),
   setReplayT: (replayT) => set({ replayT }),
 
