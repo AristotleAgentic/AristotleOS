@@ -7,6 +7,7 @@ import {
   Construction,
   Crosshair,
   Droplets,
+  FileText,
   FlaskConical,
   Gauge,
   GitBranch,
@@ -50,6 +51,7 @@ import { SimulationPanel } from "./SimulationPanel.js";
 import { ShadowModeConsole } from "./ShadowModeConsole.js";
 import { ApprovalsConsole } from "./ApprovalsConsole.js";
 import { TelecomNocConsole } from "./TelecomNocConsole.js";
+import { TitleOpsConsole } from "./TitleOpsConsole.js";
 import { WaterOpsConsole } from "./WaterOpsConsole.js";
 import { WardBrowser } from "./WardBrowser.js";
 import { WardMarshalConsole } from "./WardMarshalConsole.js";
@@ -71,6 +73,7 @@ const NAV: Array<{ id: SectionId; label: string; icon: LucideIcon }> = [
   { id: "water", label: "Water", icon: Droplets },
   { id: "logistics", label: "Freight", icon: Truck },
   { id: "healthcare", label: "Clinical", icon: Hospital },
+  { id: "title", label: "Title", icon: FileText },
   { id: "adoption", label: "Adopt", icon: ClipboardCheck },
   { id: "failure", label: "Failure", icon: ShieldAlert },
   { id: "marshal", label: "Marshal", icon: Crosshair },
@@ -98,6 +101,7 @@ const SECTION_META: Record<SectionId, { title: string; sub: string }> = {
   water: { title: "Water Infrastructure", sub: "Govern SCADA, PLC, pump, valve, dosing, and discharge actions before utility consequence" },
   logistics: { title: "Trucking and Logistics", sub: "Govern dispatch, tender, HOS, route, cargo release, fuel, and payment before freight consequence" },
   healthcare: { title: "Healthcare Clinical Operations", sub: "Govern EHR, pharmacy, PHI, device, claims, and patient workflows before clinical consequence" },
+  title: { title: "Vehicle Title Transaction Layer", sub: "Govern ELT, title, registration, ESIGN, dealer, lender, DMV, fraud, and NMVTIS workflows before title consequence — demonstration rule sets only" },
   adoption: { title: "Commercial Adoption Path", sub: "From sandbox to shadow to enforcement to evidence export" },
   failure: { title: "Failure Mode Console", sub: "Partitions, stale authority, witness disagreement, and replay divergence" },
   marshal: { title: "Ward Marshal", sub: "Rogue-agent census and warrant-backed interdiction" },
@@ -146,6 +150,8 @@ function SectionBody({ section }: { section: SectionId }) {
       return <LogisticsOpsConsole />;
     case "healthcare":
       return <HealthcareOpsConsole />;
+    case "title":
+      return <TitleOpsConsole />;
     case "conflicts":
       return <ConflictInboxConsole />;
     case "adoption":

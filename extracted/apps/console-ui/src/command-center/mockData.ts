@@ -19,6 +19,11 @@ import type {
   HealthcareEvidenceExport,
   HealthcareOpsStep,
   HealthcareSafetyDrill,
+  TitleAdapterSurface,
+  TitleEvidenceExport,
+  TitleJurisdictionRow,
+  TitleOpsStep,
+  TitleScenario,
   EvidenceBundleProfile,
   FailureModeDrill,
   GovernanceInvariant,
@@ -1411,4 +1416,189 @@ export const CONFLICT_INBOX: ConflictInboxItem[] = [
     occurredAt: new Date(Date.now() - 1000 * 60 * 196).toISOString(),
     operatorNextStep: "Review runtime register gap before marking reconciled."
   }
+];
+
+export const TITLE_OPS_WORKFLOW: TitleOpsStep[] = [
+  { id: "tx-intake", label: "Transaction Intake (VIN, jurisdiction, parties)", owner: "Title agent", state: "complete", evidence: "Canonical Governed Action recorded" },
+  { id: "authority", label: "Authority Envelope resolved (lender / dealer / DMV)", owner: "Authority service", state: "complete", evidence: "Envelope unrevoked, signer authorized" },
+  { id: "checks", label: "Fraud / NMVTIS / theft / identity checks bound", owner: "Verification adapters", state: "complete", evidence: "All checks passed; scores recorded" },
+  { id: "commit", label: "Commit Gate decision (ALLOW / REFUSE / ESCALATE)", owner: "Commit Gate", state: "active", evidence: "Decision pinned to rule-set version" },
+  { id: "warrant", label: "Single-use Warrant issued (Ed25519 signed)", owner: "Warrant service", state: "pending", evidence: "Warrant consumed before receipt" },
+  { id: "submit", label: "DMV / ELT submission with bound evidence", owner: "DMV / ELT adapter", state: "pending", evidence: "State agency endpoint" },
+  { id: "evidence", label: "Title Evidence Bundle exported", owner: "GEL exporter", state: "pending", evidence: "aristotle.title-evidence.v1, signed and hash-chained" }
+];
+
+export const TITLE_ADAPTERS: TitleAdapterSurface[] = [
+  {
+    id: "elt-lien",
+    label: "ELT Lien Release / Lien Add",
+    standard: "ELT",
+    actionTypes: ["title.lien_release", "title.lien_add"],
+    requiredRegisters: ["vin", "lienholder_id", "payoff_quote_id"],
+    boundary: "Lender / state ELT hub",
+    posture: "green"
+  },
+  {
+    id: "title-transaction",
+    label: "Title Transaction (transfer / correction / duplicate)",
+    standard: "Title",
+    actionTypes: ["title.transfer", "title.correction", "title.duplicate_issue"],
+    requiredRegisters: ["vin", "from_party", "to_party", "transaction_type"],
+    boundary: "DMV title system",
+    posture: "green"
+  },
+  {
+    id: "registration",
+    label: "Vehicle Registration",
+    standard: "Registration",
+    actionTypes: ["title.registration_issue", "title.registration_renewal"],
+    requiredRegisters: ["vin", "owner_id", "plate_class"],
+    boundary: "DMV registration system",
+    posture: "green"
+  },
+  {
+    id: "digital-signature",
+    label: "ESIGN / UETA Digital Signature",
+    standard: "Digital Signature",
+    actionTypes: ["title.signature_capture", "title.signature_verify"],
+    requiredRegisters: ["signer_id", "intent_evidence", "identity_confidence_score"],
+    boundary: "Signature provider",
+    posture: "green"
+  },
+  {
+    id: "dealer-workflow",
+    label: "Dealer Workflow (sale / consignment / dealer-to-dealer)",
+    standard: "Dealer",
+    actionTypes: ["title.dealer_sale_submit", "title.dealer_consignment_submit"],
+    requiredRegisters: ["dealer_id", "dealer_license_state", "vin", "buyer_id"],
+    boundary: "Dealer DMS / state portal",
+    posture: "green"
+  },
+  {
+    id: "lender-workflow",
+    label: "Lender Workflow (payoff / release / refinance)",
+    standard: "Lender",
+    actionTypes: ["title.lender_payoff_confirm", "title.lender_refinance_attach"],
+    requiredRegisters: ["lender_id", "loan_id", "vin", "payoff_amount_cents"],
+    boundary: "Lender core / loan-origination system",
+    posture: "green"
+  },
+  {
+    id: "dmv-submission",
+    label: "DMV Submission (out-bound)",
+    standard: "DMV",
+    actionTypes: ["title.dmv_submit_packet"],
+    requiredRegisters: ["jurisdiction", "packet_id", "submission_channel"],
+    boundary: "State DMV endpoint",
+    posture: "amber"
+  },
+  {
+    id: "fraud-check",
+    label: "Fraud Check (identity / synthetic / impersonation)",
+    standard: "Fraud Check",
+    actionTypes: ["title.fraud_check_run"],
+    requiredRegisters: ["fraud_provider", "fraud_score", "identity_confidence_score"],
+    boundary: "Fraud / identity provider",
+    posture: "green"
+  },
+  {
+    id: "nmvtis",
+    label: "NMVTIS Title History Verification",
+    standard: "NMVTIS",
+    actionTypes: ["title.nmvtis_query", "title.nmvtis_report"],
+    requiredRegisters: ["vin", "brand_codes", "previous_jurisdictions"],
+    boundary: "AAMVA NMVTIS",
+    posture: "green"
+  }
+];
+
+export const TITLE_EVIDENCE_EXPORT: TitleEvidenceExport = {
+  bundleVersion: "aristotle.title-evidence.v1",
+  actorId: "actor:lender-signer-jane",
+  organizationId: "org:demo-bank-mt",
+  organizationKind: "lender",
+  jurisdiction: "MT",
+  stateRuleVersion: "mt-demo-2026-05-25",
+  transactionId: "tx-demo-MT-0007",
+  transactionType: "lien_release",
+  vin: "1FTFW1ET5DFC10312",
+  titleState: "clear",
+  ruleValidationState: "demonstration",
+  profiles: ["aristotle.title-evidence.v1", "aristotle.evidence-base.v1"],
+  redactedFields: ["buyer_phone", "exact_address"],
+  bundleHash: "0xa1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+  verification: "ok"
+};
+
+export const TITLE_JURISDICTION_PRESETS: TitleJurisdictionRow[] = [
+  {
+    state: "MT",
+    supportsElt: true,
+    supportsDigitalSignature: true,
+    requiresOdometerDisclosure: true,
+    requiresVinInspectionForOutOfState: true,
+    fraudEscalationThreshold: 0.35,
+    minIdentityConfidenceScore: 0.85,
+    permittedTransactionTypes: ["lien_release", "lien_add", "transfer", "correction", "duplicate_issue", "registration_issue", "registration_renewal"],
+    ruleVersion: "mt-demo-2026-05-25",
+    demonstrationOnly: true
+  },
+  {
+    state: "OR",
+    supportsElt: true,
+    supportsDigitalSignature: true,
+    requiresOdometerDisclosure: true,
+    requiresVinInspectionForOutOfState: true,
+    fraudEscalationThreshold: 0.30,
+    minIdentityConfidenceScore: 0.85,
+    permittedTransactionTypes: ["lien_release", "lien_add", "transfer", "correction", "duplicate_issue", "registration_issue", "registration_renewal"],
+    ruleVersion: "or-demo-2026-05-25",
+    demonstrationOnly: true
+  },
+  {
+    state: "CA",
+    supportsElt: true,
+    supportsDigitalSignature: true,
+    requiresOdometerDisclosure: true,
+    requiresVinInspectionForOutOfState: true,
+    fraudEscalationThreshold: 0.25,
+    minIdentityConfidenceScore: 0.90,
+    permittedTransactionTypes: ["lien_release", "lien_add", "transfer", "correction", "duplicate_issue", "registration_issue", "registration_renewal"],
+    ruleVersion: "ca-demo-2026-05-25",
+    demonstrationOnly: true
+  },
+  {
+    state: "TX",
+    supportsElt: true,
+    supportsDigitalSignature: true,
+    requiresOdometerDisclosure: true,
+    requiresVinInspectionForOutOfState: false,
+    fraudEscalationThreshold: 0.30,
+    minIdentityConfidenceScore: 0.85,
+    permittedTransactionTypes: ["lien_release", "lien_add", "transfer", "correction", "duplicate_issue", "registration_issue", "registration_renewal"],
+    ruleVersion: "tx-demo-2026-05-25",
+    demonstrationOnly: true
+  },
+  {
+    state: "FL",
+    supportsElt: true,
+    supportsDigitalSignature: true,
+    requiresOdometerDisclosure: true,
+    requiresVinInspectionForOutOfState: true,
+    fraudEscalationThreshold: 0.30,
+    minIdentityConfidenceScore: 0.85,
+    permittedTransactionTypes: ["lien_release", "lien_add", "transfer", "correction", "duplicate_issue", "registration_issue", "registration_renewal"],
+    ruleVersion: "fl-demo-2026-05-25",
+    demonstrationOnly: true
+  }
+];
+
+export const TITLE_SCENARIOS: TitleScenario[] = [
+  { id: "clean-mt-lien", label: "Clean Montana lien release", expected: "ALLOW", rationale: "Authorized signer, unrevoked envelope, all checks pass, identity confidence above threshold." },
+  { id: "unauthorized-signer", label: "Unauthorized signer attempts release", expected: "REFUSE", rationale: "Signer not bound to lender envelope; authority service denies." },
+  { id: "interstate-transfer", label: "Out-of-state transfer requires VIN inspection", expected: "ESCALATE", rationale: "Jurisdiction requires VIN inspection record before transfer can ALLOW." },
+  { id: "revoked-envelope", label: "Authority envelope revoked mid-flow", expected: "REFUSE", rationale: "Envelope revocation list checked at commit; fail-closed." },
+  { id: "fraud-over-threshold", label: "Fraud score exceeds jurisdiction threshold", expected: "REFUSE", rationale: "Fraud check score above demo threshold; commit gate refuses." },
+  { id: "title-correction", label: "Title correction needs supervisor approval", expected: "ESCALATE", rationale: "Correction transactions require dual-control approval store entry." },
+  { id: "suspended-dealer", label: "Suspended dealer license submits sale", expected: "REFUSE", rationale: "Dealer license posture is not 'active' in dealer registry." }
 ];

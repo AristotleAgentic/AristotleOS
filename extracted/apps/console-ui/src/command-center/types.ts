@@ -672,6 +672,62 @@ export interface HealthcareSafetyDrill {
   evidence: string;
 }
 
+export interface TitleOpsStep {
+  id: string;
+  label: string;
+  owner: string;
+  state: "complete" | "active" | "blocked" | "pending";
+  evidence: string;
+}
+
+export interface TitleAdapterSurface {
+  id: string;
+  label: string;
+  standard: "ELT" | "Title" | "Registration" | "DMV" | "Digital Signature" | "Dealer" | "Lender" | "Fraud Check" | "NMVTIS";
+  actionTypes: string[];
+  requiredRegisters: string[];
+  boundary: string;
+  posture: Posture;
+}
+
+export interface TitleEvidenceExport {
+  bundleVersion: string;
+  actorId: string;
+  organizationId: string;
+  organizationKind: string;
+  jurisdiction: string;
+  stateRuleVersion: string;
+  transactionId: string;
+  transactionType: string;
+  vin: string;
+  titleState: string;
+  ruleValidationState: "demonstration" | "operator-validated" | "counsel-reviewed";
+  profiles: string[];
+  redactedFields: string[];
+  bundleHash: string;
+  verification: "ok" | "blocked";
+}
+
+export interface TitleJurisdictionRow {
+  state: string;
+  supportsElt: boolean;
+  supportsDigitalSignature: boolean;
+  requiresOdometerDisclosure: boolean;
+  requiresVinInspectionForOutOfState: boolean;
+  fraudEscalationThreshold: number;
+  minIdentityConfidenceScore: number;
+  permittedTransactionTypes: string[];
+  ruleVersion: string;
+  demonstrationOnly: true;
+}
+
+export interface TitleScenario {
+  id: string;
+  label: string;
+  expected: "ALLOW" | "REFUSE" | "ESCALATE";
+  rationale: string;
+}
+
 export interface WardMarshalFinding {
   id: string;
   subject: string;
