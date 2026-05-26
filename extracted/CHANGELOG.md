@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.1.38 - UAV-swarm governance for disconnected operations
+- **Swarm-first, not high-altitude-first.** New `shared/execution-control-runtime/src/swarm.ts`
+  module: intermittent connectivity is not a corner case — delegated authority must
+  remain enforceable locally, safety must degrade predictably, and accountability must be
+  provable after the fact. High-altitude balloon / mothership (14 CFR Part 101) is the
+  EXTREME STRESS CASE.
+- **Primitives:** Swarm Authority Envelope, Disconnected Commit Gate, Mesh Revocation
+  Protocol, Flight Warrant Service, Fluidity Token (time-bounded degraded-comms
+  authority), Airspace Authority Compiler, Launch Readiness Gate, GEL Mission
+  Reconstruction. `SWARM_ADAPTER_CATALOG` exposes 10 typed boundaries;
+  `nextSwarmFlightState` realizes the disconnected state machine (connected -> degraded
+  -> mesh-relay -> hold-safe -> recover -> evidence-sync). Mission classes: wildfire,
+  disaster-response, temporary-comms-mesh, agriculture, range-ops,
+  infrastructure-inspection, defense-perimeter, reconnaissance, high-altitude-launch.
+- **Gate enforcement:** new `physical_bounds` (swarm size/radius/separation, mesh link
+  quality/hops, lost-link seconds, authority sync age, fluidity-token validity, launch
+  readiness, recovery plan, balloon position-monitor + envelope) and hard interlocks for
+  disable-mesh, override-lost-link-failsafe, bypass-launch-readiness, override-fluidity-
+  token, force-payload-release, balloon position-monitor / envelope-protection disable.
+- **Built to meet and exceed:** 14 CFR Part 107 + waivers, Part 108 (BVLOS), Part 101
+  (unmanned free balloons), Part 89 (Remote ID), Part 91, LAANC, ASTM F3548 (UTM), and
+  SORA. Signed Swarm Evidence Bundles (`aristotle.swarm-evidence.v1`) for Mission
+  Reconstruction.
+- 8/8 swarm tests pass; full regression green: logistics 6, aviation 7, robotics 7,
+  pipeline 6, mining 6, port 6, water 6, grid 6, rail 6, gate-property 2,
+  execution-control 75.
+
 ## v0.1.37 - Trucking and logistics execution-control vertical
 - **Logistics pilot path**: typed adapters (TMS dispatch, broker/carrier tender,
   carrier vetting, ELD/HOS, telematics route, WMS release, YMS dock/gate, fuel

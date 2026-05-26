@@ -88,6 +88,7 @@ export * from "./water.js";
 export * from "./aviation.js";
 export * from "./robotics.js";
 export * from "./logistics.js";
+export * from "./swarm.js";
 
 export {
   type AristotleSigner,
@@ -428,6 +429,29 @@ export interface PhysicalBounds {
   require_fuel_card_active?: boolean;
   require_logistics_dispatcher_identity?: boolean;
   require_no_double_broker_risk?: boolean;
+  // Swarm / disconnected-operation bounds. Reuses many aviation flags (geofence, DAA, C2,
+  // Remote ID, airspace authorization, TFR, weather, max_altitude_agl_ft, max_groundspeed_kts,
+  // max_wind_speed_kts, min_visibility_sm, max_payload_kg, permitted_flight_states) and
+  // operator qualification.
+  permitted_swarm_id?: string;
+  permitted_mission_classes?: string[];
+  min_swarm_size?: number;
+  max_swarm_size?: number;
+  max_swarm_radius_m?: number;
+  min_unit_separation_m?: number;
+  max_unit_separation_m?: number;
+  min_swarm_battery_soc_pct?: number;
+  min_mesh_link_quality?: number;
+  max_mesh_hops?: number;
+  max_lost_link_seconds?: number;
+  max_authority_sync_age_ms?: number;
+  require_mesh_relay_healthy?: boolean;
+  require_fluidity_token_valid?: boolean;
+  require_launch_readiness_approved?: boolean;
+  require_recovery_plan_active?: boolean;
+  // Balloon / mothership (Part 101) stress case.
+  require_balloon_position_monitor_active?: boolean;
+  require_balloon_within_envelope?: boolean;
 }
 
 export interface PhysicalInvariantResult {
@@ -890,6 +914,24 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
     action.action_type === "telematics.spoof_override"
   ) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard logistics safety and fraud interlock violation` };
+  }
+  if (
+    action.action_type === "swarm.disable_mesh" ||
+    action.action_type === "mesh.disable" ||
+    action.action_type === "swarm.disable_revocation_propagation" ||
+    action.action_type === "mesh.revocation.disable" ||
+    action.action_type === "swarm.override_lost_link_failsafe" ||
+    action.action_type === "lost_link_failsafe.override" ||
+    action.action_type === "swarm.bypass_launch_readiness" ||
+    action.action_type === "launch_readiness.bypass" ||
+    action.action_type === "swarm.override_fluidity_token" ||
+    action.action_type === "fluidity_token.override" ||
+    action.action_type === "swarm.disable_evidence_ledger" ||
+    action.action_type === "swarm.force_payload_release_without_authorization" ||
+    action.action_type === "balloon.disable_position_monitor" ||
+    action.action_type === "balloon.override_envelope_protection"
+  ) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard swarm safety interlock violation` };
   }
   const altitude = numericParam(action, "altitude_m");
   if (bounds.max_altitude_m !== undefined && altitude !== undefined && altitude > bounds.max_altitude_m) {
@@ -1741,6 +1783,71 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
   }
   if (bounds.require_no_double_broker_risk && booleanParam(action, "double_broker_flag") === true) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "double-broker risk flag prevents this logistics action" };
+  }
+  // -- swarm / disconnected-operation invariants -------------------------------
+  const swarmId = stringParam(action, "swarm_id");
+  if (bounds.permitted_swarm_id && swarmId && swarmId !== bounds.permitted_swarm_id) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `swarm_id ${swarmId} does not match ${bounds.permitted_swarm_id}` };
+  }
+  const missionClass = stringParam(action, "mission_class");
+  if (bounds.permitted_mission_classes?.length && missionClass && !bounds.permitted_mission_classes.includes(missionClass)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `mission_class ${missionClass} is outside permitted mission classes` };
+  }
+  const swarmSize = numericParam(action, "swarm_size");
+  if (bounds.min_swarm_size !== undefined && swarmSize !== undefined && swarmSize < bounds.min_swarm_size) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `swarm_size ${swarmSize} below min_swarm_size ${bounds.min_swarm_size}` };
+  }
+  if (bounds.max_swarm_size !== undefined && swarmSize !== undefined && swarmSize > bounds.max_swarm_size) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `swarm_size ${swarmSize} exceeds max_swarm_size ${bounds.max_swarm_size}` };
+  }
+  const swarmRadius = numericParam(action, "swarm_radius_m");
+  if (bounds.max_swarm_radius_m !== undefined && swarmRadius !== undefined && swarmRadius > bounds.max_swarm_radius_m) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `swarm_radius_m ${swarmRadius} exceeds max_swarm_radius_m ${bounds.max_swarm_radius_m}` };
+  }
+  const unitSeparation = numericParam(action, "unit_separation_m");
+  if (bounds.min_unit_separation_m !== undefined && unitSeparation !== undefined && unitSeparation < bounds.min_unit_separation_m) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `unit_separation_m ${unitSeparation} below min_unit_separation_m ${bounds.min_unit_separation_m}` };
+  }
+  if (bounds.max_unit_separation_m !== undefined && unitSeparation !== undefined && unitSeparation > bounds.max_unit_separation_m) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `unit_separation_m ${unitSeparation} exceeds max_unit_separation_m ${bounds.max_unit_separation_m} (mesh degraded)` };
+  }
+  const swarmBatteryMin = numericParam(action, "swarm_battery_soc_min_pct");
+  if (bounds.min_swarm_battery_soc_pct !== undefined && swarmBatteryMin !== undefined && swarmBatteryMin < bounds.min_swarm_battery_soc_pct) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `swarm_battery_soc_min_pct ${swarmBatteryMin} below min_swarm_battery_soc_pct ${bounds.min_swarm_battery_soc_pct}` };
+  }
+  const meshLinkQuality = numericParam(action, "mesh_link_quality");
+  if (bounds.min_mesh_link_quality !== undefined && meshLinkQuality !== undefined && meshLinkQuality < bounds.min_mesh_link_quality) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `mesh_link_quality ${meshLinkQuality} below min_mesh_link_quality ${bounds.min_mesh_link_quality}` };
+  }
+  const meshHops = numericParam(action, "mesh_hops");
+  if (bounds.max_mesh_hops !== undefined && meshHops !== undefined && meshHops > bounds.max_mesh_hops) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `mesh_hops ${meshHops} exceeds max_mesh_hops ${bounds.max_mesh_hops}` };
+  }
+  const lostLinkSeconds = numericParam(action, "lost_link_seconds");
+  if (bounds.max_lost_link_seconds !== undefined && lostLinkSeconds !== undefined && lostLinkSeconds > bounds.max_lost_link_seconds) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `lost_link_seconds ${lostLinkSeconds} exceeds max_lost_link_seconds ${bounds.max_lost_link_seconds} — swarm must enter hold-safe` };
+  }
+  const authoritySyncAge = numericParam(action, "authority_sync_age_ms");
+  if (bounds.max_authority_sync_age_ms !== undefined && authoritySyncAge !== undefined && authoritySyncAge > bounds.max_authority_sync_age_ms) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `authority_sync_age_ms ${authoritySyncAge} exceeds max_authority_sync_age_ms ${bounds.max_authority_sync_age_ms}` };
+  }
+  if (bounds.require_mesh_relay_healthy && booleanParam(action, "mesh_relay_healthy") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "mesh relay must be healthy before this swarm action" };
+  }
+  if (bounds.require_fluidity_token_valid && booleanParam(action, "fluidity_token_valid") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "fluidity token must be valid (degraded-comms authority expired)" };
+  }
+  if (bounds.require_launch_readiness_approved && booleanParam(action, "launch_readiness_approved") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "launch readiness must be approved before this swarm action" };
+  }
+  if (bounds.require_recovery_plan_active && booleanParam(action, "recovery_plan_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "an active recovery plan is required before this swarm action" };
+  }
+  if (bounds.require_balloon_position_monitor_active && booleanParam(action, "balloon_position_monitor_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "balloon position-monitor must be active (14 CFR Part 101)" };
+  }
+  if (bounds.require_balloon_within_envelope && booleanParam(action, "balloon_within_envelope") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "balloon is outside its authorized flight envelope" };
   }
   return { ok: true, reason_codes: [], detail: "physical invariants satisfied" };
 }

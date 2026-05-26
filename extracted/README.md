@@ -64,6 +64,9 @@ Docs:
 - [Aviation / UAV / eVTOL execution-control path](docs/aviation.md)
 - [Aviation Ward templates](docs/aviation-ward-templates.md)
 - [Aviation threat model addendum](docs/aviation-threat-model.md)
+- [UAV-swarm governance for disconnected operations](docs/swarm.md)
+- [Swarm Ward templates](docs/swarm-ward-templates.md)
+- [Swarm threat model addendum](docs/swarm-threat-model.md)
 - [Robotics / humanoid execution-control path](docs/robotics.md)
 - [Robotics Ward templates](docs/robotics-ward-templates.md)
 - [Robotics threat model addendum](docs/robotics-threat-model.md)
@@ -299,6 +302,40 @@ release, eVTOL vertiport clearance, and UTM authorization are dual-control. See
 [docs/aviation.md](docs/aviation.md),
 [docs/aviation-ward-templates.md](docs/aviation-ward-templates.md), and
 [docs/aviation-threat-model.md](docs/aviation-threat-model.md).
+
+## UAV Swarm — Disconnected Operations
+
+AristotleOS's UAV-swarm vertical is the runtime expression of the doctrine that
+intermittent connectivity is not a corner case: delegated authority must remain
+enforceable locally, safety must degrade predictably, and accountability must be provable
+after the fact. The vertical is **UAV-swarm-first, not high-altitude-first** — wildfire,
+disaster response, agriculture, infrastructure inspection, defense perimeter, and
+temporary comms-mesh are the normal operating set; **high-altitude balloon / mothership
+(Part 101) is treated as the extreme stress case**.
+
+Core primitives (`SWARM_ADAPTER_CATALOG`): Swarm Orchestrator, Mesh Relay, Airspace
+Authority Compiler, Launch Readiness Gate, Flight Warrant Service, Mission
+Reconstruction, Fluidity Token Service, Payload Coordination, Balloon Mothership,
+Historian. A disconnected flight state machine carries the swarm through *connected →
+degraded → mesh-relay → hold-safe → recover → evidence-sync*. Built to meet and exceed
+14 CFR Part 107 + waivers, Part 108 (BVLOS), Part 101 (free balloons), Part 89 (Remote
+ID), Part 91, LAANC, ASTM F3548 (UTM), and SORA.
+
+```bash
+npm run test:swarm
+npm run aristotle -- execution-control evaluate \
+  --ward examples/swarm/ward.wildfire_swarm.yaml \
+  --envelope examples/swarm/authority_envelope.incident_commander.yaml \
+  --action examples/swarm/actions/swarm_mission_tick.json \
+  --ledger ./.tmp/swarm.gel.jsonl \
+  --now 2026-05-25T15:00:00.000Z
+```
+
+`refuse_lost_link_timeout.json`, `refuse_fluidity_token_expired.json`, and
+`refuse_mesh_unhealthy.json` demonstrate the three load-bearing disconnected-operation
+refusals; launch, recovery, payload release, and balloon ops are dual-control. See
+[docs/swarm.md](docs/swarm.md), [docs/swarm-ward-templates.md](docs/swarm-ward-templates.md),
+and [docs/swarm-threat-model.md](docs/swarm-threat-model.md).
 
 ## Robotics / Humanoid Readiness
 
