@@ -146,6 +146,12 @@ importers:
         specifier: workspace:*
         version: link:../os-sdk
 
+  packages/opcua-adapter:
+    dependencies:
+      '@aristotle/os-sdk':
+        specifier: workspace:*
+        version: link:../os-sdk
+
   packages/openai-agents:
     dependencies:
       '@aristotle/os-sdk':
@@ -156,6 +162,12 @@ importers:
         version: 0.11.5(@cfworker/json-schema@4.1.1)(ws@8.21.0)(zod@4.4.3)
 
   packages/os-sdk: {}
+
+  packages/ros2-bridge:
+    dependencies:
+      '@aristotle/os-sdk':
+        specifier: workspace:*
+        version: link:../os-sdk
 
   packages/vercel-ai:
     dependencies:
