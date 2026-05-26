@@ -1,0 +1,64 @@
+{
+  "name": "@aristotle/claude-agents",
+  "version": "0.1.0",
+  "description": "Govern Claude Agent SDK tool calls with AristotleOS. A drop-in PreToolUse hook that routes every tool invocation through the execution-control Commit Gate before it runs.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "keywords": [
+    "aristotle",
+    "aristotleos",
+    "claude",
+    "claude-agent-sdk",
+    "agent-governance",
+    "ai-governance",
+    "tool-call-gate",
+    "commit-gate",
+    "pretooluse"
+  ],
+  "homepage": "https://github.com/AristotleAgentic/AristotleOS",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AristotleAgentic/AristotleOS.git",
+    "directory": "packages/claude-agents"
+  },
+  "bugs": {
+    "url": "https://github.com/AristotleAgentic/AristotleOS/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "sideEffects": false,
+  "dependencies": {
+    "@aristotle/os-sdk": "workspace:*"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/claude-agent-sdk": ">=0.3.0 <1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/claude-agent-sdk": {
+      "optional": false
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test src/index.test.ts",
+    "prepublishOnly": "npm run build"
+  }
+}

@@ -1,5 +1,65 @@
 # Changelog
 
+## v0.1.46 - Claude Agent SDK integration (@aristotle/claude-agents)
+- **`@aristotle/claude-agents` 0.1.0 ships the first agent-framework
+  integration.** Closes follow-up #3 from the Faramesh comparison: pick
+  ONE agent framework to integrate first. The Claude Agent SDK is the
+  natural first target — Anthropic-native, the canonical reference
+  implementation for AI agents calling tools.
+- **Drop-in `PreToolUse` hook.** Every tool the agent invokes — `Bash`,
+  `Write`, `Edit`, `Read`, MCP tools — first becomes a `CanonicalAction`
+  (`action_type: "tool.bash"`, etc.), gets sent to the Aristotle Commit
+  Gate, and runs only on `ALLOW`. The reason string returned to the agent
+  carries the `warrant_id` + `gel_record_id` so the agent can cite them.
+- **Decision mapping**:
+  - `ALLOW`  -> `permissionDecision: "allow"`  (tool runs, reason cites warrant + GEL record)
+  - `REFUSE` -> `permissionDecision: "deny"`  (tool blocked, reason cites reason_codes)
+  - `ESCALATE` -> `permissionDecision: "ask"`  (Claude SDK routes to user / approval workflow)
+  - Gate unreachable -> fail-closed `deny` by default; opt into `onError: "ask"`
+  - Non-PreToolUse event -> `{}` no-op (defensive guard)
+- **Configurable mapping**:
+  - `actionTypePrefix` -> change the default `"tool"` namespace
+  - `actionTypeFor(toolName)` -> route specific tools into a vertical
+    (e.g. `mcp__title__lien_release` -> `title.lien_release`)
+  - `buildAction({...})` -> take full control over the CanonicalAction shape
+  - `passthroughTools` -> set of tool names to allow without hitting the gate
+  - `onDecision({...})` -> telemetry/audit callback fired after every gate
+    decision (including errors), with elapsed time
+- **Packaging**:
+  - `dependencies`: `@aristotle/os-sdk` (workspace; pulls in the typed client)
+  - `peerDependencies`: `@anthropic-ai/claude-agent-sdk@>=0.3.0 <1.0.0`
+    (matches the actually-published v0.3.150 surface; the SDK types
+    are not imported at compile time, so the package compiles even if
+    the peer isn't installed -- only required at runtime)
+  - LICENSE + NOTICE copied into the package; `npm pack --dry-run`
+    emits a clean tarball (LICENSE, NOTICE, README, dist/index.{js,d.ts}
+    + maps, package.json)
+  - `publishConfig.access: public`, `engines.node: >=18`,
+    `sideEffects: false`
+- **Tests (13/13 pass)**:
+  - ALLOW maps to `permissionDecision: "allow"` and surfaces warrant + GEL record id
+  - REFUSE maps to `permissionDecision: "deny"` with reason codes
+  - ESCALATE maps to `permissionDecision: "ask"`
+  - Default action_type is `tool.<toolname-lowercased>`; tool_input
+    becomes params; session_id becomes request_id; tool_use_id becomes
+    action_id
+  - `actionTypeFor` routes specific tools into vertical namespaces
+  - `buildAction` overrides the default mapping entirely
+  - `passthroughTools` skips the gate call for the specified tools
+  - `onDecision` telemetry fires with verdict + elapsed time
+  - Gate-unreachable fails closed (deny) by default
+  - `onError: "ask"` routes failures to user instead of denying
+  - Non-PreToolUse events return `{}` (defensive)
+  - `hooksConfig` is a ready-made registration object to spread into
+    `query({ options })`
+  - Constructor refuses missing required options (client / wardId / subject)
+- **README**: install + quickstart + decision-mapping table + mapping
+  table + four recipes (passthrough read-only tools, route a vertical's
+  tool calls through that vertical's authority, telemetry/audit,
+  fail-closed vs ask-on-error) + auth + exports + Apache-2.0 footer.
+- **No regressions**: governance-core 41/41, execution-control 75/75,
+  TS os-sdk 15/15, claude-agents 13/13, Python SDK 20/20.
+
 ## v0.1.45 - Python SDK 0.1.0 (aristotle-os-sdk on PyPI, sync + async)
 - **`aristotle-os-sdk` Python package is now publish-ready.** Lives at
   `packages/os-sdk-python/`, built with hatchling + PEP 621 metadata,
