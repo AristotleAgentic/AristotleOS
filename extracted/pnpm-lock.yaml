@@ -373,6 +373,12 @@ importers:
 
   shared/schemas: {}
 
+  shared/time-machine:
+    dependencies:
+      '@aristotle/execution-control-runtime':
+        specifier: workspace:*
+        version: link:../execution-control-runtime
+
   shared/trial-engine: {}
 
   shared/types: {}
