@@ -1,5 +1,59 @@
 # Changelog
 
+## v0.1.56 - Rich per-vertical detail (6 verticals upgraded via registry)
+- **VerticalDetailConsole upgraded from generic-only to full per-vertical
+  detail** for the 6 verticals that don't have a dedicated *OpsConsole
+  (aviation, mining, pipeline, robotics, space, swarm). Same level of
+  polish as HealthcareOpsConsole / TitleOpsConsole, but driven by data
+  in the registry rather than hand-built components — one component
+  replaces 6 hand-built files, and any future vertical added to the
+  registry automatically inherits the rich panels.
+- **registry.ts extended** with optional rich fields per vertical:
+  - `workflow: VerticalWorkflowStep[]` — intent -> authority ->
+    pre-checks -> commit -> warrant -> submit -> evidence timeline.
+  - `safetyDrills: VerticalSafetyDrill[]` — invariant cards with
+    posture / current value / invariant expression / evidence pin.
+  - `evidenceSample: VerticalEvidenceSample` — bundle version + field
+    rows + profile chips + redaction manifest + bundle hash + verification.
+  - `boundaryChainLabels: string[]` — Intent -> Ward -> Checks ->
+    Adapter -> GEL identity chain.
+  - `failClosedRule: { description, chips }` — fail-closed boundary
+    summary.
+  - `scenarios: VerticalScenario[]` — ALLOW / REFUSE / ESCALATE
+    scenario cards mirroring per-vertical test suites.
+- **All 6 verticals populated** with realistic per-domain data:
+  - aviation: workflow (mission -> LAANC -> pre-flight -> commit ->
+    warrant -> evidence); DAA / Remote ID / C2 / RTL safety drills;
+    Part 107 standard scenario + DAA-disabled REFUSE + BVLOS-no-waiver
+    REFUSE + weather REFUSE + expired-LAANC ESCALATE.
+  - mining: methane / PDS / tailings / ventilation drills; MSHA-clean
+    ALLOW + methane REFUSE + PDS-off REFUSE + tailings TARP ESCALATE +
+    blast-outside-window REFUSE.
+  - pipeline: MAOP / LDS / ESD / SCADA-freshness drills; clean valve
+    close ALLOW + overpressure override REFUSE + LDS-off REFUSE +
+    compressor restart ESCALATE + expired OQ REFUSE.
+  - robotics: E-stop / force PFL / SSM separation / humanoid balance
+    drills; PFL pick-and-place ALLOW + e-stop disable REFUSE + SSM
+    breach REFUSE + collab-mode switch ESCALATE + humanoid fall REFUSE.
+  - space: FTS / wind / range-clear / ITAR drills; clean dual-control
+    ignite ALLOW + disable-FTS REFUSE + wind-over REFUSE + ignite-
+    outside-window REFUSE + payload-deploy-outside-primary REFUSE +
+    one-approval-pending ESCALATE.
+  - swarm: connectivity state / Fluidity Token TTL / mesh revocation /
+    Part 101 balloon drills; clean-connected ALLOW + mesh-relay ALLOW +
+    TTL-expired REFUSE + revocation-off REFUSE + Part-101-altitude
+    REFUSE + hold-safe ESCALATE.
+- **VerticalDetailConsole.tsx** renders the rich panels conditionally:
+  WorkflowPanel + BoundaryChainPanel side-by-side (when workflow data
+  is present); AdapterMatrix; HardInterlocks + Presets side-by-side;
+  EvidenceSample + SafetyDrills side-by-side (when evidence sample
+  present, else SafetyDrills full-width); ScenariosPanel;
+  FailClosedPanel. Sub-panels gracefully degrade when their config
+  field is absent — the 9 verticals with dedicated consoles are
+  unaffected, and any new vertical can opt in incrementally.
+- **Verified**: console-ui `tsc --noEmit` clean.
+- **No regressions**: governance-core 41/41, execution-control 75/75.
+
 ## v0.1.55 - Verticals Registry UI (all 15 verticals visible in console-ui)
 - **New Verticals section** in the operator console showing every
   industry vertical on the branch (15 total) in one place. Closes the
