@@ -1,0 +1,56 @@
+envelope_id: ae-mining-operations-001
+ward_id: ward-mining-pilbara-west
+subject: agent:mine-ops-orchestrator
+allowed_actions:
+  - haulage.dispatch.assign
+  - haulage.move.authorize
+  - haulage.stop
+  - ventilation.on
+  - ventilation.fan.setpoint
+  - blast.arm
+  - blast.initiate
+  - blast.abort
+  - tailings.decant.set
+  - gas.threshold.set
+  - hoist.move.authorize
+  - historian.record.write
+  - modbus.register.write
+denied_actions:
+  - mining.disable_proximity_detection
+  - mining.disable_gas_monitoring
+  - mining.disable_ventilation
+  - mining.disable_ground_control_monitoring
+  - mining.disable_tailings_monitoring
+  - hoist.disable_overspeed_protection
+  - blast.force_initiate
+constraints:
+  required_runtime_registers:
+    - telemetry.asset_id
+    - telemetry.site_id
+    - telemetry.zone_id
+    - telemetry.proximity_detection_active
+    - telemetry.exclusion_zone_clear
+    - telemetry.personnel_cleared
+    - telemetry.ground_control_stable
+    - telemetry.gas_monitoring_active
+    - telemetry.ventilation_on
+    - telemetry.mining_scada_fresh
+    - telemetry.operator_qualified
+    - telemetry.operator_id
+  permitted_mine_site_id: site-pilbara-west
+  dual_control:
+    actions:
+      - blast.initiate
+      - tailings.decant.set
+      - hoist.move.authorize
+    required: 2
+    ttl_ms: 600000
+  budget:
+    maxCallsPerWindow: 300
+    windowMs: 3600000
+expires_at: 2026-12-31T23:59:59Z
+issuer: aristotle-mine-ops-root
+classification:
+  level: CUI
+  caveats:
+    - MINE_OPS

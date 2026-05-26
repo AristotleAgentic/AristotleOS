@@ -52,6 +52,9 @@ Docs:
 - [Pipeline execution-control path](docs/pipeline.md)
 - [Pipeline Ward templates](docs/pipeline-ward-templates.md)
 - [Pipeline threat model addendum](docs/pipeline-threat-model.md)
+- [Mining execution-control path](docs/mining.md)
+- [Mining Ward templates](docs/mining-ward-templates.md)
+- [Mining threat model addendum](docs/mining-threat-model.md)
 - [Defense readiness roadmap](docs/defense-readiness.md)
 - [Crypto posture](docs/crypto-posture.md)
 - [Commercial adoption path](docs/commercial-adoption-path.md)
@@ -222,6 +225,34 @@ npm run aristotle -- execution-control evaluate \
 (CPM offline) demonstrate fail-closed refusals. See [docs/pipeline.md](docs/pipeline.md),
 [docs/pipeline-ward-templates.md](docs/pipeline-ward-templates.md), and
 [docs/pipeline-threat-model.md](docs/pipeline-threat-model.md).
+
+## Mining Readiness
+
+AristotleOS includes a mining pilot path for governed autonomous-haulage, ventilation,
+blasting, tailings, gas-monitoring, and hoist operations. AHS / SCADA / ICS requests
+become typed adapter boundaries (`MINING_ADAPTER_CATALOG`) and execute only after Ward
+resolution, Authority Envelope validation, Mining Safety Invariant checks (methane/CO/
+oxygen, airflow, haulage speed, tailings pond level & freeboard, proximity detection,
+exclusion-zone & personnel clearance, ground control, ventilation, fresh SCADA, operator
+qualification), Commit Gate admission, Warrant verification, and GEL commit. It is built
+to meet and exceed MSHA 30 CFR 56/57/75/77 (incl. 75.323 methane and 75.1732 proximity
+detection), ISO 17757, and ICMM GISTM.
+
+```bash
+npm run test:mining
+npm run aristotle -- execution-control evaluate \
+  --ward examples/mining/ward.open_pit.yaml \
+  --envelope examples/mining/authority_envelope.control_room.yaml \
+  --action examples/mining/actions/haulage_move.json \
+  --ledger ./.tmp/mining.gel.jsonl \
+  --now 2026-05-25T15:00:00.000Z
+```
+
+`refuse_methane_over_limit.json` and `refuse_exclusion_zone_breach.json` demonstrate
+fail-closed refusals; blast initiation, tailings decant, and hoist movement are
+dual-control. See [docs/mining.md](docs/mining.md),
+[docs/mining-ward-templates.md](docs/mining-ward-templates.md), and
+[docs/mining-threat-model.md](docs/mining-threat-model.md).
 
 ## Ward/Warrant Execution-Control Path
 

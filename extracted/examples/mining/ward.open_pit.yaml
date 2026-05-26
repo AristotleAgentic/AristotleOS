@@ -1,0 +1,60 @@
+ward_id: ward-mining-pilbara-west
+name: Pilbara West Surface Operations
+sovereignty_context: operator-west-mine-authority
+authority_domain: mining-surface-ops
+policy_version: 0.1.0
+evidence_ledger_path: .aristotle/mining-pilbara-west.gel.jsonl
+permitted_subjects:
+  - agent:mine-ops-orchestrator
+  - agent:haulage-edge-controller
+physical_bounds:
+  permitted_mine_site_id: site-pilbara-west
+  permitted_mine_zones:
+    - haul-road-a
+    - pit-3-bench-12
+    - rom-pad
+    - tsf-1
+  permitted_asset_types:
+    - haul-truck
+    - fan
+    - blast-controller
+    - tailings-pump
+    - gas-sensor
+    - hoist
+  permitted_mine_states:
+    - normal
+    - maintenance
+    - blasting
+  max_methane_pct: 1.0
+  max_co_ppm: 50
+  min_oxygen_pct: 19.5
+  min_airflow_cfm: 9000
+  max_haulage_speed_kph: 50
+  max_telemetry_age_ms: 5000
+  require_proximity_detection: true
+  require_exclusion_zone_clear: true
+  require_personnel_cleared: true
+  require_ground_control_stable: true
+  require_gas_monitoring: true
+  require_ventilation_on: true
+  require_mining_scada_fresh: true
+  require_operator_qualified: true
+metadata:
+  mining_domain: surface
+  regulatory_evidence_profile:
+    - MSHA_PART_56
+    - MSHA_METHANE
+    - PROXIMITY_DETECTION
+    - ISO_17757
+    - GROUND_CONTROL_PLAN
+    - BLAST_CLEARANCE
+  protected_scope:
+    - autonomous-haulage
+    - blasting
+    - ventilation
+    - gas-monitoring
+criticality: safety_critical
+classification:
+  level: CUI
+  caveats:
+    - MINE_OPS

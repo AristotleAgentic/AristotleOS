@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.1.33 - Mining execution-control vertical
+- **Mining pilot path**: typed adapters (autonomous-haulage/AHS, ventilation,
+  blasting, tailings/TSF, gas-monitoring, hoist, Modbus, DNP3, OPC-UA, historian)
+  -> Canonical Governed Actions; mining physical invariants enforced at the gate
+  (site/zone/state, methane/CO/oxygen action levels, minimum airflow, haulage
+  speed ceiling, tailings pond level & freeboard, hoist load, fresh SCADA, and
+  readiness flags for proximity detection, exclusion-zone & personnel clearance,
+  ground control, gas monitoring, ventilation, operator qualification) plus hard
+  interlocks (disable proximity detection / gas monitoring / ventilation / ground-
+  control monitoring / tailings monitoring, disable hoist overspeed protection,
+  blast force-initiate); signed Mining Evidence Bundles with a regulatory profile
+  (MSHA 30 CFR 56/57/75/77, methane, proximity detection, ISO 17757, ICMM GISTM,
+  ground-control plan, blast clearance); `examples/mining/` ward, envelope, policy,
+  and allow/refuse actions runnable via `execution-control evaluate`; docs
+  (overview, ward templates, threat model). Designed to meet and exceed MSHA 30 CFR
+  56/57/75/77, ISO 17757, and ICMM GISTM.
+
 ## v0.1.32 - Pipeline (oil & gas / energy) execution-control vertical
 - **Pipeline pilot path**: typed adapters (SCADA pump-control, SCADA compressor,
   valve-control, pressure-control, leak-detection/CPM, pig-launcher, Modbus, DNP3,

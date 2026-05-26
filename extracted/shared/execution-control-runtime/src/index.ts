@@ -82,6 +82,7 @@ export * from "./automotive.js";
 export * from "./grid.js";
 export * from "./rail.js";
 export * from "./pipeline.js";
+export * from "./mining.js";
 
 export {
   type AristotleSigner,
@@ -245,6 +246,28 @@ export interface PhysicalBounds {
   require_pump_primed?: boolean;
   require_pipeline_scada_fresh?: boolean;
   require_operator_qualified?: boolean;
+  // Mining bounds (surface, underground, tailings). asset types reuse permitted_asset_types,
+  // telemetry freshness reuses max_telemetry_age_ms, operator qualification reuses require_operator_qualified.
+  permitted_mine_site_id?: string;
+  permitted_mine_zones?: string[];
+  permitted_mine_states?: string[];
+  max_methane_pct?: number;
+  max_co_ppm?: number;
+  min_oxygen_pct?: number;
+  min_airflow_cfm?: number;
+  max_haulage_speed_kph?: number;
+  max_tailings_pond_level_m?: number;
+  min_tailings_freeboard_m?: number;
+  max_hoist_load_kg?: number;
+  require_proximity_detection?: boolean;
+  require_exclusion_zone_clear?: boolean;
+  require_personnel_cleared?: boolean;
+  require_ground_control_stable?: boolean;
+  require_gas_monitoring?: boolean;
+  require_ventilation_on?: boolean;
+  require_piezometer_monitoring?: boolean;
+  require_overspeed_protection?: boolean;
+  require_mining_scada_fresh?: boolean;
 }
 
 export interface PhysicalInvariantResult {
@@ -616,6 +639,21 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
   ) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard pipeline safety interlock violation` };
   }
+  if (
+    action.action_type === "mining.disable_proximity_detection" ||
+    action.action_type === "proximity_detection.disable" ||
+    action.action_type === "mining.disable_gas_monitoring" ||
+    action.action_type === "gas_monitoring.disable" ||
+    action.action_type === "mining.disable_ventilation" ||
+    action.action_type === "ventilation.force_off" ||
+    action.action_type === "mining.disable_ground_control_monitoring" ||
+    action.action_type === "mining.disable_tailings_monitoring" ||
+    action.action_type === "piezometer.disable" ||
+    action.action_type === "hoist.disable_overspeed_protection" ||
+    action.action_type === "blast.force_initiate"
+  ) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard mining safety interlock violation` };
+  }
   const altitude = numericParam(action, "altitude_m");
   if (bounds.max_altitude_m !== undefined && altitude !== undefined && altitude > bounds.max_altitude_m) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `altitude_m ${altitude} exceeds max_altitude_m ${bounds.max_altitude_m}` };
@@ -851,7 +889,79 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "fresh SCADA telemetry (control room management) is required before this pipeline action" };
   }
   if (bounds.require_operator_qualified && booleanParam(action, "operator_qualified") !== true) {
-    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "operator qualification is required before this pipeline action" };
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "operator qualification is required before this action" };
+  }
+  // -- mining (surface / underground / tailings) invariants --------------------
+  const mineSiteId = stringParam(action, "site_id");
+  if (bounds.permitted_mine_site_id && mineSiteId && mineSiteId !== bounds.permitted_mine_site_id) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `site_id ${mineSiteId} does not match ${bounds.permitted_mine_site_id}` };
+  }
+  const mineZoneId = stringParam(action, "zone_id");
+  if (bounds.permitted_mine_zones?.length && mineZoneId && !bounds.permitted_mine_zones.includes(mineZoneId)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `zone_id ${mineZoneId} is outside permitted mine zones` };
+  }
+  const mineState = stringParam(action, "mine_state");
+  if (bounds.permitted_mine_states?.length && mineState && !bounds.permitted_mine_states.includes(mineState)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `mine_state ${mineState} is outside permitted mine states` };
+  }
+  const methane = numericParam(action, "methane_pct");
+  if (bounds.max_methane_pct !== undefined && methane !== undefined && methane > bounds.max_methane_pct) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `methane_pct ${methane} exceeds max_methane_pct ${bounds.max_methane_pct}` };
+  }
+  const co = numericParam(action, "co_ppm");
+  if (bounds.max_co_ppm !== undefined && co !== undefined && co > bounds.max_co_ppm) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `co_ppm ${co} exceeds max_co_ppm ${bounds.max_co_ppm}` };
+  }
+  const oxygen = numericParam(action, "oxygen_pct");
+  if (bounds.min_oxygen_pct !== undefined && oxygen !== undefined && oxygen < bounds.min_oxygen_pct) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `oxygen_pct ${oxygen} below min_oxygen_pct ${bounds.min_oxygen_pct}` };
+  }
+  const airflow = numericParam(action, "airflow_cfm");
+  if (bounds.min_airflow_cfm !== undefined && airflow !== undefined && airflow < bounds.min_airflow_cfm) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `airflow_cfm ${airflow} below min_airflow_cfm ${bounds.min_airflow_cfm}` };
+  }
+  const haulSpeed = numericParam(action, "speed_kph");
+  if (bounds.max_haulage_speed_kph !== undefined && haulSpeed !== undefined && haulSpeed > bounds.max_haulage_speed_kph) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `speed_kph ${haulSpeed} exceeds max_haulage_speed_kph ${bounds.max_haulage_speed_kph}` };
+  }
+  const pondLevel = numericParam(action, "tailings_pond_level_m");
+  if (bounds.max_tailings_pond_level_m !== undefined && pondLevel !== undefined && pondLevel > bounds.max_tailings_pond_level_m) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `tailings_pond_level_m ${pondLevel} exceeds max_tailings_pond_level_m ${bounds.max_tailings_pond_level_m}` };
+  }
+  const freeboard = numericParam(action, "tailings_freeboard_m");
+  if (bounds.min_tailings_freeboard_m !== undefined && freeboard !== undefined && freeboard < bounds.min_tailings_freeboard_m) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `tailings_freeboard_m ${freeboard} below min_tailings_freeboard_m ${bounds.min_tailings_freeboard_m}` };
+  }
+  const hoistLoad = numericParam(action, "hoist_load_kg");
+  if (bounds.max_hoist_load_kg !== undefined && hoistLoad !== undefined && hoistLoad > bounds.max_hoist_load_kg) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `hoist_load_kg ${hoistLoad} exceeds max_hoist_load_kg ${bounds.max_hoist_load_kg}` };
+  }
+  if (bounds.require_proximity_detection && booleanParam(action, "proximity_detection_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "proximity detection must be active before this mining action" };
+  }
+  if (bounds.require_exclusion_zone_clear && booleanParam(action, "exclusion_zone_clear") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "exclusion zone must be clear before this mining action" };
+  }
+  if (bounds.require_personnel_cleared && booleanParam(action, "personnel_cleared") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "personnel must be cleared before this mining action" };
+  }
+  if (bounds.require_ground_control_stable && booleanParam(action, "ground_control_stable") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "ground control must be stable before this mining action" };
+  }
+  if (bounds.require_gas_monitoring && booleanParam(action, "gas_monitoring_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "gas monitoring must be active before this mining action" };
+  }
+  if (bounds.require_ventilation_on && booleanParam(action, "ventilation_on") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "ventilation must be on before this mining action" };
+  }
+  if (bounds.require_piezometer_monitoring && booleanParam(action, "piezometer_monitoring_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "tailings piezometer monitoring must be active before this mining action" };
+  }
+  if (bounds.require_overspeed_protection && booleanParam(action, "overspeed_protection_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "hoist overspeed protection must be active before this mining action" };
+  }
+  if (bounds.require_mining_scada_fresh && booleanParam(action, "mining_scada_fresh") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "fresh SCADA telemetry is required before this mining action" };
   }
   return { ok: true, reason_codes: [], detail: "physical invariants satisfied" };
 }
