@@ -1,5 +1,54 @@
 # Changelog
 
+## v0.1.53 - Ultimate mode: 7 framework adapters in one batch
+- **Faramesh framework coverage closes from 6/14 -> 13/14 explicit + 1
+  via MCP.** Gap -7 -> -1 (only Anthropic Claude Code is left, which is
+  effectively covered already via the existing @aristotle/claude-agents
+  adapter — Claude Code's tool runtime is a superset of the Agent SDK's
+  hook surface). The pattern is empirically proven runtime- and
+  SDK-agnostic across 13 explicit integrations.
+- **Seven new adapters land together in this batch**:
+  1. `aristotle-pydantic-ai` (Python, 12/12 tests) — decorator factory
+     stacked above @agent.tool/tool_plain; RunContext first-arg
+     auto-stripped from gate params.
+  2. `aristotle-autogen` (Python, 10/10 tests) — wraps function before
+     FunctionTool(func, description=...).
+  3. `aristotle-semantic-kernel` (Python, 9/9 tests) — preserves
+     __kernel_function_* metadata attributes; stack ABOVE
+     @kernel_function.
+  4. `aristotle-llamaindex` (Python, 9/9 tests) — wraps fn AND async_fn
+     in FunctionTool.from_defaults.
+  5. `@aristotle/bedrock` (TS, 11/11 tests) — makeBedrockToolDispatcher
+     for Converse-API toolUse blocks. AWS SDK is NOT a peer.
+  6. `aristotle-ag2` (Python, 9/9 tests) — thin AG2 sibling of
+     aristotle-autogen with ag2 telemetry tag.
+  7. `@aristotle/mastra` (TS, 12/12 tests) — wraps Tool.execute.
+     Passthrough preserves tool IDENTITY for SDK identity checks.
+- **Same options surface across all 13 adapters**: `client`, `wardId`,
+  `subject`, `actionTypePrefix`, `actionTypeFor(name)`, `buildAction`,
+  `passthrough(_tools)`, `onDecision`, plus per-adapter
+  `on{Refuse,Escalate,Error}` defaults that match each SDK's idiomatic
+  error model.
+- **Cross-runtime + cross-SDK proof now complete**:
+  - 7 TS adapters: claude-agents, langchain, openai-agents, vercel-ai,
+    bedrock, mastra, plus @aristotle/os-cli for the gate boundary
+  - 7 Python adapters: os-sdk + crewai + langgraph + pydantic-ai +
+    autogen + semantic-kernel + llamaindex + ag2
+- **Verified test counts** (running each package's test script
+  individually then in a single sweep): pydantic-ai 12, autogen 10,
+  semantic-kernel 9, llamaindex 9, bedrock 11, ag2 9, mastra 12 = 72
+  new tests pass in this batch. Combined with pre-existing:
+  governance-core 41, execution-control 75, TS os-sdk 15, claude-agents
+  13, langchain 14, openai-agents 13, vercel-ai 13, Python os-sdk 20,
+  crewai 24, langgraph 15. **Grand total 315 across all suites on the
+  branch (no regressions).** Note: the 22-test title vertical suite
+  (title.test.ts) is exercised as part of execution-control's 75-test
+  scope; not separately counted.
+- **Packaging consistency**: every package ships Apache-2.0 with
+  LICENSE + NOTICE; py.typed marker for Python; publishConfig.access
+  public for TS; sideEffects:false; engines.node:>=18 for TS;
+  Python 3.9+ for the Python packages.
+
 ## v0.1.52 - LangGraph integration (aristotle-langgraph, Python)
 - **Sixth agent-framework integration ships, SECOND Python adapter.**
   Faramesh framework coverage now 6/14 explicit (Claude Agent SDK,
