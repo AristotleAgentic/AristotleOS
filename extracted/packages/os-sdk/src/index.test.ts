@@ -132,3 +132,99 @@ test("degradation() parses the live status", async () => {
 test("constructor rejects a missing baseUrl", () => {
   assert.throws(() => new AristotleClient({ baseUrl: "" } as unknown as { baseUrl: string }), /requires a baseUrl/);
 });
+
+test("metrics() reads the aggregate metrics endpoint", async () => {
+  const { fn, calls } = mockFetch(() => ({ status: 200, body: { warrants_today: 42, refusals_today: 3, gate_latency_ms: 7.1 } }));
+  const aos = new AristotleClient({ baseUrl: "https://gate.internal", token: "t", fetch: fn });
+  const m = await aos.metrics();
+  assert.equal(calls[0].url, "https://gate.internal/v1/execution-control/metrics");
+  assert.equal(calls[0].method, "GET");
+  assert.equal(m.warrants_today, 42);
+  assert.equal(m.gate_latency_ms, 7.1);
+});
+
+test("approvals() lists the queue; decideApproval votes on a request", async () => {
+  const { fn, calls } = mockFetch((rec) => rec.url.endsWith("/approvals")
+    ? { status: 200, body: { items: [{ request_id: "ap-1", action_id: "act-1", action_type: "title.transfer", ward_id: "ward-title", required: 2, votes: [], status: "pending", created_at: "t" }] } }
+    : { status: 200, body: { ok: true, status: "approved", votes: [{ operator_id: "op-1", decision: "approve", voted_at: "t" }, { operator_id: "op-2", decision: "approve", voted_at: "t" }] } });
+  const aos = new AristotleClient({ baseUrl: "https://gate.internal", token: "t", fetch: fn });
+  const list = await aos.approvals();
+  assert.equal(list.items.length, 1);
+  assert.equal(list.items[0].status, "pending");
+  const result = await aos.decideApproval({ request_id: "ap-1", decision: "approve", reason: "verified" });
+  assert.equal(result.ok, true);
+  assert.equal(result.status, "approved");
+  assert.equal(calls[1].method, "POST");
+  assert.deepEqual(JSON.parse(calls[1].body!), { request_id: "ap-1", decision: "approve", reason: "verified" });
+});
+
+test("killSwitch() and revokeEnvelope() POST to the admin routes with the right body", async () => {
+  const { fn, calls } = mockFetch((rec) => rec.url.endsWith("/kill")
+    ? { status: 200, body: { ok: true, scope: "global", action: "arm", applied_at: "t" } }
+    : { status: 200, body: { ok: true, envelope_id: "env-1", revoked_at: "t" } });
+  const aos = new AristotleClient({ baseUrl: "https://gate.internal", token: "t", fetch: fn });
+  const ks = await aos.killSwitch({ scope: "global", action: "arm", reason: "incident" });
+  assert.equal(ks.action, "arm");
+  assert.equal(calls[0].url, "https://gate.internal/v1/execution-control/admin/kill");
+  const rv = await aos.revokeEnvelope({ envelope_id: "env-1", reason: "issuer compromise" });
+  assert.equal(rv.envelope_id, "env-1");
+  assert.equal(calls[1].url, "https://gate.internal/v1/execution-control/admin/revoke");
+});
+
+test("governAndExecute: ALLOW runs the executor and returns its result with the warrant", async () => {
+  const { fn } = mockFetch(() => ({ status: 200, body: { decision: "ALLOW", reason_codes: [], canonical_action_hash: "h", warrant: { warrant_id: "wr1" }, gel_record: { record_id: "r1", record_hash: "rh" } } }));
+  const aos = new AristotleClient({ baseUrl: "https://gate.internal", token: "t", fetch: fn });
+  let captured: string | undefined;
+  const out = await aos.governAndExecute(action, async (dec) => { captured = dec.warrant?.warrant_id as string | undefined; return { ok: true }; });
+  assert.equal(out.decision, "ALLOW");
+  if (out.decision !== "ALLOW") return;
+  assert.deepEqual(out.result, { ok: true });
+  assert.equal(out.warrant?.warrant_id, "wr1");
+  assert.equal(captured, "wr1");
+});
+
+test("governAndExecute: REFUSE throws AristotleApiError with the reason codes; executor never runs", async () => {
+  const { fn } = mockFetch(() => ({ status: 200, body: { decision: "REFUSE", reason_codes: ["ACTION_DENIED", "WARRANT_NOT_ISSUED"], canonical_action_hash: "h", gel_record: { record_id: "r1", record_hash: "rh" } } }));
+  const aos = new AristotleClient({ baseUrl: "https://gate.internal", token: "t", fetch: fn });
+  let executorRan = false;
+  await assert.rejects(
+    () => aos.governAndExecute(action, async () => { executorRan = true; return { ok: true }; }),
+    (err: unknown) => {
+      assert.ok(err instanceof AristotleApiError);
+      assert.equal((err as AristotleApiError).status, 403);
+      assert.match((err as Error).message, /ACTION_DENIED.*WARRANT_NOT_ISSUED/);
+      return true;
+    }
+  );
+  assert.equal(executorRan, false, "executor must not run on REFUSE");
+});
+
+test("governAndExecute: ESCALATE returns an escalation handle and never calls the executor", async () => {
+  const { fn } = mockFetch(() => ({ status: 200, body: { decision: "ESCALATE", reason_codes: ["DUAL_CONTROL_REQUIRED"], canonical_action_hash: "h", gel_record: { record_id: "r1", record_hash: "rh" } } }));
+  const aos = new AristotleClient({ baseUrl: "https://gate.internal", token: "t", fetch: fn });
+  let executorRan = false;
+  const out = await aos.governAndExecute(action, async () => { executorRan = true; return { ok: true }; });
+  assert.equal(out.decision, "ESCALATE");
+  if (out.decision !== "ESCALATE") return;
+  assert.deepEqual(out.reason_codes, ["DUAL_CONTROL_REQUIRED"]);
+  assert.equal(out.record.record_id, "r1");
+  assert.equal(executorRan, false, "executor must not run on ESCALATE");
+});
+
+test("AristotleClient.titleAction builds a typed title action with namespaced params", () => {
+  const a = AristotleClient.titleAction({
+    action_id: "act-mt-7",
+    ward_id: "ward-title",
+    subject: "agent:lender-orchestrator",
+    action_type: "title.lien_release",
+    vin: "1HGCM82633A123456",
+    jurisdiction: "MT",
+    transaction_type: "lien-release",
+    params: { lienholder_id: "lender:demo-bank-mt" }
+  });
+  assert.equal(a.action_type, "title.lien_release");
+  assert.equal(a.params?.vin, "1HGCM82633A123456");
+  assert.equal(a.params?.jurisdiction, "MT");
+  assert.equal(a.params?.transaction_type, "lien-release");
+  assert.equal(a.params?.lienholder_id, "lender:demo-bank-mt");
+});

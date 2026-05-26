@@ -1,5 +1,54 @@
 # Changelog
 
+## v0.1.44 - TypeScript SDK 0.2.0 (publish-ready, expanded surface)
+- **`@aristotle/os-sdk` is now publish-ready.** Removed `private: true`, added
+  `publishConfig.access: "public"`, expanded `files` to include LICENSE +
+  NOTICE (now copied into the package directory), added repository / bugs /
+  homepage / keywords metadata, declared `engines.node: ">=18"` and
+  `sideEffects: false`. `npm pack --dry-run` ships a 11.3 kB tarball
+  containing LICENSE, NOTICE, README.md, dist/index.{js,d.ts}, package.json
+  — no source, no tests, no secrets.
+- **Bumped version** 0.1.8 → 0.2.0 to mark the surface expansion.
+- **Added 5 endpoints** previously missing from the SDK that exist on the
+  execution-control boundary:
+  - `metrics()` → `GET /v1/execution-control/metrics`
+  - `approvals()` → `GET /v1/execution-control/approvals`
+  - `decideApproval({request_id, decision, reason?})` →
+    `POST /v1/execution-control/approvals/decide`
+  - `killSwitch({scope, action, reason?})` →
+    `POST /v1/execution-control/admin/kill` (admin)
+  - `revokeEnvelope({envelope_id, reason?})` →
+    `POST /v1/execution-control/admin/revoke` (admin)
+- **`governAndExecute(action, executor, opts?)`** high-level helper: evaluates
+  at the Commit Gate, runs `executor(decision)` ONLY on ALLOW (with the
+  warrant in hand), throws `AristotleApiError` on REFUSE, returns an
+  escalation handle on ESCALATE. Never runs the executor on a non-ALLOW
+  outcome — proven by tests.
+- **`AristotleClient.titleAction({...})`** static builder for Title vertical
+  canonical actions; produces a `CanonicalAction` with `action_type: "title.*"`
+  and the required `params` already namespaced (`vin`, `jurisdiction`,
+  `transaction_type`).
+- **New types exported**: `ApprovalItem`, `ApprovalDecisionResult`,
+  `KillSwitchResult`, `RevokeEnvelopeResult`, `MetricsSnapshot`,
+  `TitleCanonicalAction`, `TitleSubmissionReceipt` (mirrors the runtime's
+  hash-bound receipt shape so callers can verify submission receipts
+  client-side before binding them into evidence).
+- **+7 SDK tests** (`packages/os-sdk/src/index.test.ts` now 15/15):
+  metrics, approvals + decideApproval, killSwitch + revokeEnvelope,
+  governAndExecute on ALLOW / REFUSE (executor never runs) / ESCALATE
+  (executor never runs), titleAction builder.
+- **Expanded README**: copy-paste quickstart, four recipe sections
+  (govern-and-execute, dual-control approval, shadow-mode profiling,
+  kill switch), full API surface table organized by area, auth + custom
+  fetch sections, license footer.
+- **Workspace**: `packages/*` added to `pnpm-workspace.yaml` so the SDK is a
+  proper workspace member; `corepack pnpm --filter @aristotle/os-sdk` now
+  resolves correctly.
+- **No regressions**: governance-core 41/41, execution-control 75/75, title
+  vertical 22/22, console-ui typecheck clean.
+- **Note on Python SDK** (next commit in this series): same boundary, same
+  shape, translated to Python — explicit follow-up.
+
 ## v0.1.43 - License: Apache-2.0
 - **AristotleOS is now licensed under Apache License 2.0.** Replaces the
   previous proprietary all-rights-reserved license. The Apache-2.0 license

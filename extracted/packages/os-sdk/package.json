@@ -1,8 +1,7 @@
 {
   "name": "@aristotle/os-sdk",
-  "version": "0.1.8",
-  "description": "Typed TypeScript client for the AristotleOS execution-control boundary.",
-  "private": true,
+  "version": "0.2.0",
+  "description": "Typed TypeScript client for the AristotleOS execution-control boundary. Governs autonomous actions before they cross into consequence: evaluate -> warrant -> execute -> evidence.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "dist/index.js",
@@ -15,9 +14,40 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "NOTICE"
   ],
+  "keywords": [
+    "aristotle",
+    "aristotleos",
+    "ai-governance",
+    "agent-governance",
+    "execution-control",
+    "commit-gate",
+    "authority",
+    "warrant",
+    "evidence-ledger"
+  ],
+  "homepage": "https://github.com/AristotleAgentic/AristotleOS",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AristotleAgentic/AristotleOS.git",
+    "directory": "packages/os-sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/AristotleAgentic/AristotleOS/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "sideEffects": false,
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test src/index.test.ts",
+    "prepublishOnly": "npm run build"
   }
 }

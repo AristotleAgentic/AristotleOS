@@ -99,6 +99,69 @@ export interface AuditVerifyResult {
   failure?: string;
 }
 
+export interface ApprovalItem {
+  request_id: string;
+  action_id: string;
+  action_type: string;
+  ward_id: string;
+  required: number;
+  votes: Array<{ operator_id: string; decision: "approve" | "reject"; reason?: string; voted_at: string }>;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+  [key: string]: unknown;
+}
+
+export interface ApprovalDecisionResult {
+  ok: boolean;
+  status: "pending" | "approved" | "rejected";
+  votes: ApprovalItem["votes"];
+  [key: string]: unknown;
+}
+
+export interface KillSwitchResult {
+  ok: boolean;
+  scope: string;
+  action: "arm" | "disarm" | "pause";
+  applied_at: string;
+  [key: string]: unknown;
+}
+
+export interface RevokeEnvelopeResult {
+  ok: boolean;
+  envelope_id: string;
+  revoked_at: string;
+  [key: string]: unknown;
+}
+
+export interface MetricsSnapshot {
+  warrants_today?: number;
+  refusals_today?: number;
+  escalations_today?: number;
+  gate_latency_ms?: number;
+  ledger_height?: number;
+  [key: string]: unknown;
+}
+
+/** Generic title canonical action — the runtime accepts action_type "title.*". */
+export interface TitleCanonicalAction extends CanonicalAction {
+  action_type: `title.${string}`;
+}
+
+/** Hash-bound submission receipt mirroring the runtime's TitleSubmissionReceipt. */
+export interface TitleSubmissionReceipt {
+  packet_id: string;
+  jurisdiction: string;
+  transport: string;
+  channel: string;
+  remote_receipt_id: string;
+  ack_at: string;
+  ack_kind: "accepted" | "queued" | "pending-review";
+  warrant_id: string;
+  action_hash: string;
+  receipt_hash: string;
+  production_validated: boolean;
+}
+
 /** Thrown on any non-2xx response; carries the HTTP status and parsed body. */
 export class AristotleApiError extends Error {
   constructor(readonly status: number, message: string, readonly body?: unknown) {
@@ -235,6 +298,91 @@ export class AristotleClient {
   /** Live degradation status + the fail action it implies for this Ward. */
   degradation(): Promise<DegradationStatus> {
     return this.request<DegradationStatus>("GET", "/v1/execution-control/degradation");
+  }
+
+  // --- Metrics (viewer) ---
+  /** Aggregate gate metrics: warrants/refusals/escalations counters + latency. */
+  metrics(): Promise<MetricsSnapshot> {
+    return this.request<MetricsSnapshot>("GET", "/v1/execution-control/metrics");
+  }
+
+  // --- Dual-control Approvals (operator + admin) ---
+  /** List pending and resolved dual-control (M-of-N) approval requests. */
+  approvals(): Promise<{ items: ApprovalItem[] }> {
+    return this.request<{ items: ApprovalItem[] }>("GET", "/v1/execution-control/approvals");
+  }
+
+  /** Cast an attributed approve/reject vote on a pending approval. */
+  decideApproval(input: { request_id: string; decision: "approve" | "reject"; reason?: string }): Promise<ApprovalDecisionResult> {
+    return this.request<ApprovalDecisionResult>("POST", "/v1/execution-control/approvals/decide", input);
+  }
+
+  // --- Admin actions (admin role required) ---
+  /** Arm or disarm the kill switch for a given scope (ward, global). */
+  killSwitch(input: { scope: string; action: "arm" | "disarm" | "pause"; reason?: string }): Promise<KillSwitchResult> {
+    return this.request<KillSwitchResult>("POST", "/v1/execution-control/admin/kill", input);
+  }
+
+  /** Revoke an Authority Envelope. Cascades per Ward.delegation_rules. */
+  revokeEnvelope(input: { envelope_id: string; reason?: string }): Promise<RevokeEnvelopeResult> {
+    return this.request<RevokeEnvelopeResult>("POST", "/v1/execution-control/admin/revoke", input);
+  }
+
+  // ----------------------------------------------------------------------
+  // High-level helpers
+  // ----------------------------------------------------------------------
+
+  /**
+   * Govern-and-execute: evaluate the action at the Commit Gate; on ALLOW run
+   * `executor(decision)` and return its result; on REFUSE throw an
+   * AristotleApiError-like exception carrying the reason codes; on ESCALATE
+   * return an escalation handle the caller can poll or surface to a human.
+   *
+   * This is the recommended pattern for agent integrations — the agent
+   * proposes the action, the gate authorizes, the executor performs the
+   * actuator call, and the warrant is consumed before any external side effect.
+   */
+  async governAndExecute<T>(
+    action: CanonicalAction,
+    executor: (decision: EvaluateResponse) => Promise<T>,
+    options: { runtime_register?: Record<string, unknown>; now?: string } = {}
+  ): Promise<
+    | { decision: "ALLOW"; result: T; warrant: EvaluateResponse["warrant"]; record: EvaluateResponse["gel_record"] }
+    | { decision: "ESCALATE"; reason_codes: string[]; record: EvaluateResponse["gel_record"] }
+  > {
+    const verdict = await this.evaluate(action, options);
+    if (verdict.decision === "REFUSE") {
+      throw new AristotleApiError(403, `AristotleOS REFUSED ${action.action_type}: ${verdict.reason_codes.join(", ")}`, verdict);
+    }
+    if (verdict.decision === "ESCALATE") {
+      return { decision: "ESCALATE", reason_codes: verdict.reason_codes, record: verdict.gel_record };
+    }
+    const result = await executor(verdict);
+    return { decision: "ALLOW", result, warrant: verdict.warrant, record: verdict.gel_record };
+  }
+
+  /**
+   * Build a canonical title action with the action_type already namespaced.
+   * Convenience for title-vertical integrations; equivalent to constructing
+   * the object literal yourself.
+   */
+  static titleAction(input: {
+    action_id: string;
+    ward_id: string;
+    subject: string;
+    action_type: TitleCanonicalAction["action_type"];
+    vin: string;
+    jurisdiction: string;
+    transaction_type: string;
+    params?: Record<string, unknown>;
+    telemetry?: Record<string, unknown>;
+  }): TitleCanonicalAction {
+    const { vin, jurisdiction, transaction_type, params, ...rest } = input;
+    return {
+      ...rest,
+      params: { vin, jurisdiction, transaction_type, ...(params ?? {}) },
+      telemetry: input.telemetry
+    };
   }
 }
 

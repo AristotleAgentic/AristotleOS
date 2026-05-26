@@ -107,6 +107,8 @@ importers:
         specifier: ^5.4.11
         version: 5.4.21(@types/node@22.19.15)
 
+  packages/os-sdk: {}
+
   services/agent-os:
     dependencies:
       '@aristotle/shared-types':

@@ -3,3 +3,4 @@ packages:
   - "adapters/*"
   - "shared/*"
   - "apps/*"
+  - "packages/*"
