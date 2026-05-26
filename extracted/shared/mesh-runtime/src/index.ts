@@ -628,6 +628,100 @@ export class EdgeNode extends MeshNode {
 }
 
 // ---------------------------------------------------------------------------
+// Quorum signing — a decision is admissible only after m of n witnesses
+// co-sign. High-consequence action classes can require quorum signatures
+// before the consumer (or replay verifier) accepts the warrant.
+// ---------------------------------------------------------------------------
+
+export interface QuorumSignature {
+  witness_id: string;
+  signature: string;
+  signed_at: string;
+}
+
+export class QuorumCollector {
+  private collected: Map<string, QuorumSignature[]> = new Map();
+  constructor(public readonly required: number, public readonly witnessIds: string[]) {}
+  /** Add a witness's signature for a warrant. Returns the running count. */
+  add(warrant_id: string, sig: QuorumSignature): number {
+    if (!this.witnessIds.includes(sig.witness_id)) return this.count(warrant_id);
+    const sigs = this.collected.get(warrant_id) ?? [];
+    if (sigs.some((s) => s.witness_id === sig.witness_id)) return sigs.length; // de-dup
+    sigs.push(sig);
+    this.collected.set(warrant_id, sigs);
+    return sigs.length;
+  }
+  count(warrant_id: string): number { return this.collected.get(warrant_id)?.length ?? 0; }
+  satisfied(warrant_id: string): boolean { return this.count(warrant_id) >= this.required; }
+  signatures(warrant_id: string): QuorumSignature[] { return [...(this.collected.get(warrant_id) ?? [])]; }
+}
+
+/** Ask a witness to co-sign a warrant (deterministic for the demo: signs
+ *  shared secret + warrant payload). Production swaps to Ed25519 per witness. */
+export function witnessCoSign(secret: string, witness_id: string, warrant: Warrant): QuorumSignature {
+  const signed_at = nowIso();
+  const sig = sha256Hex(secret + ":quorum:" + witness_id + ":" + sha256Hex(stableStringify(warrant)));
+  return { witness_id, signature: sig, signed_at };
+}
+
+/** Verify a quorum signature. */
+export function verifyQuorumSignature(secret: string, warrant: Warrant, sig: QuorumSignature): boolean {
+  return sig.signature === sha256Hex(secret + ":quorum:" + sig.witness_id + ":" + sha256Hex(stableStringify(warrant)));
+}
+
+// ---------------------------------------------------------------------------
+// Persistent state — allows mesh nodes to survive restarts.
+// ---------------------------------------------------------------------------
+
+export interface MeshPersistence {
+  loadEnvelopes(): AuthorityEnvelope[];
+  loadRevocations(): Revocation[];
+  saveEnvelope(env: AuthorityEnvelope): void;
+  saveRevocation(rev: Revocation): void;
+}
+
+/** In-memory persistence — useful for tests + demos. Swap for SQLite / Postgres
+ *  in production by implementing the MeshPersistence interface. */
+export class InMemoryMeshPersistence implements MeshPersistence {
+  private readonly envelopes: Map<string, AuthorityEnvelope> = new Map();
+  private readonly revocations: Map<string, Revocation> = new Map();
+  loadEnvelopes(): AuthorityEnvelope[] { return [...this.envelopes.values()]; }
+  loadRevocations(): Revocation[] { return [...this.revocations.values()]; }
+  saveEnvelope(env: AuthorityEnvelope): void { this.envelopes.set(env.envelope_id, env); }
+  saveRevocation(rev: Revocation): void { this.revocations.set(rev.revocation_id, rev); }
+}
+
+// ---------------------------------------------------------------------------
+// Sovereign routing — when a request references a foreign MAE, the node
+// looks up its trust anchor and routes the request to that mesh's witness
+// or root. Anchors are configured statically here; production deployments
+// would gate this with the issuer→key binding from governance-core.
+// ---------------------------------------------------------------------------
+
+export interface TrustAnchor {
+  mae_id: string;
+  target: NodeId;
+}
+
+export interface SovereignRouter {
+  /** Returns the route target for a given MAE id, or undefined if local. */
+  route(mae_id: string): TrustAnchor | undefined;
+}
+
+export class StaticSovereignRouter implements SovereignRouter {
+  constructor(
+    private readonly localMaeId: string,
+    private readonly trustAnchors: TrustAnchor[]
+  ) {}
+  route(mae_id: string): TrustAnchor | undefined {
+    if (mae_id === this.localMaeId) return undefined;
+    return this.trustAnchors.find((a) => a.mae_id === mae_id);
+  }
+  isLocal(mae_id: string): boolean { return mae_id === this.localMaeId; }
+  anchorIds(): string[] { return this.trustAnchors.map((a) => a.mae_id); }
+}
+
+// ---------------------------------------------------------------------------
 // Test-helper: in-process registry so nodes can call each other without HTTP
 // (deterministic, partition-aware, used by the integration tests).
 // ---------------------------------------------------------------------------
