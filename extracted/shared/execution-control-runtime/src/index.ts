@@ -527,6 +527,20 @@ export interface PhysicalBounds {
   require_human_review_for_patient_message?: boolean;
   require_claim_attestation?: boolean;
   require_healthcare_audit_context?: boolean;
+  // Geographic scope (cross-vertical). Beyond jurisdiction strings: a
+  // geofence polygon (sequence of [lat, lon] vertices) or a circular fence
+  // (center + radius_km) the action must fall inside. The orchestrator
+  // includes the action's geocoordinates as runtime register fields
+  // `lat` / `lon` (or `latitude` / `longitude`); the gate refuses if those
+  // are outside the configured fence.
+  geofence_polygon?: Array<[number, number]>;
+  geofence_center?: [number, number];
+  geofence_radius_km?: number;
+  // Model lineage (cross-vertical). When set, the gate refuses if the
+  // action's `model_id` does not match an allowed model, or if `model_hash`
+  // is outside the allowed hash set.
+  permitted_model_ids?: string[];
+  permitted_model_hashes?: string[];
   // Vehicle title / registration / ELT bounds (DEMONSTRATION ONLY — see title.ts
   // JURISDICTION_RULE_PRESETS). Reuses max_telemetry_age_ms and require_operator_qualified.
   permitted_jurisdictions?: string[];
@@ -2254,6 +2268,35 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
   if (bounds.require_lien_release_authority_active && booleanParam(action, "lien_release_authority_active") !== true) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "lien-release authority is not active for the requesting lender" };
   }
+  // -- geographic scope (cross-vertical) -----------------------------------
+  if (bounds.geofence_polygon?.length || (bounds.geofence_center && bounds.geofence_radius_km !== undefined)) {
+    const coords = extractCoords(action);
+    if (!coords) {
+      return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "geofence configured but action params carry no lat/lon" };
+    }
+    if (bounds.geofence_polygon?.length && !pointInPolygon(coords, bounds.geofence_polygon)) {
+      return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `coordinates [${coords[0]}, ${coords[1]}] outside geofence_polygon` };
+    }
+    if (bounds.geofence_center && bounds.geofence_radius_km !== undefined) {
+      const dist = haversineKm(coords, bounds.geofence_center);
+      if (dist > bounds.geofence_radius_km) {
+        return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `coordinates ${dist.toFixed(2)} km from center; outside ${bounds.geofence_radius_km} km radius` };
+      }
+    }
+  }
+  // -- model lineage (cross-vertical) --------------------------------------
+  if (bounds.permitted_model_ids?.length) {
+    const modelId = stringParam(action, "model_id");
+    if (modelId && !bounds.permitted_model_ids.includes(modelId)) {
+      return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `model_id ${modelId} not in permitted_model_ids` };
+    }
+  }
+  if (bounds.permitted_model_hashes?.length) {
+    const modelHash = stringParam(action, "model_hash");
+    if (modelHash && !bounds.permitted_model_hashes.includes(modelHash)) {
+      return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `model_hash ${modelHash} not in permitted_model_hashes` };
+    }
+  }
   // -- space launch invariants (DEMONSTRATION ONLY -- not validated against
   // FAA AST / range authority / counsel; presets must stay
   // rule_validation_state: "demonstration" until coordinated) ---------------
@@ -3231,6 +3274,40 @@ function stringParam(action: CanonicalActionInput, key: string): string | undefi
 function booleanParam(action: CanonicalActionInput, key: string): boolean | undefined {
   const value = action.params[key];
   return typeof value === "boolean" ? value : undefined;
+}
+
+/** Haversine great-circle distance between two [lat, lon] points, kilometers. */
+function haversineKm(a: [number, number], b: [number, number]): number {
+  const R = 6371; // mean Earth radius in km
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b[0] - a[0]);
+  const dLon = toRad(b[1] - a[1]);
+  const lat1 = toRad(a[0]);
+  const lat2 = toRad(b[0]);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/** Ray-cast point-in-polygon for [lat, lon] coordinates. */
+function pointInPolygon(point: [number, number], polygon: Array<[number, number]>): boolean {
+  if (polygon.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i][0], yi = polygon[i][1];
+    const xj = polygon[j][0], yj = polygon[j][1];
+    const intersect = ((yi > point[1]) !== (yj > point[1])) &&
+      (point[0] < ((xj - xi) * (point[1] - yi)) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+/** Extract a [lat, lon] from action params, supporting both lat/lon and latitude/longitude. */
+function extractCoords(action: CanonicalActionInput): [number, number] | undefined {
+  const latRaw = action.params["lat"] ?? action.params["latitude"];
+  const lonRaw = action.params["lon"] ?? action.params["longitude"];
+  if (typeof latRaw === "number" && typeof lonRaw === "number") return [latRaw, lonRaw];
+  return undefined;
 }
 
 export function writeJson(file: string, value: unknown): void {
