@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.1.57 - Outbound title submission walkthrough (UI demo of runtime binding)
+- New TitleSubmissionWalkthrough panel in TitleOpsConsole. End-to-end
+  visualization of the runtime contract that shipped in commit 5365e30
+  (submitTitlePacket + DemonstrationTitleSubmissionTransport +
+  verifyTitleSubmissionReceipt + bundle binding).
+- Hashes computed LIVE in the browser via Web Crypto SHA-256 + stable
+  JSON canonicalization (same canonical shape the runtime uses). Not a
+  narrated demo -- the receipt_hash and title_context_hash shown on
+  screen are actual SHA-256 hashes.
+- 5-step state machine: build action (hash bound) -> commit gate /
+  warrant -> demo transport submit (receipt covers warrant_id +
+  action_hash + ack) -> bind into TitleEvidenceContext (bundle hash now
+  covers receipt) -> verify + optional tamper.
+- Live tamper demo: Tamper button mutates remote_receipt_id
+  post-export; verification re-runs and observes both receipt_hash
+  mismatch and title_context_hash mismatch. Visibly demonstrates the
+  cryptographic binding.
+- production_validated:false labeled at every step.
+- Wired between JurisdictionMatrix and Evidence/Scenario row in
+  TitleOpsConsole.
+- Verified: console-ui tsc --noEmit clean. governance-core 41/41,
+  execution-control-runtime 75/75 (no regressions).
+
 ## v0.1.56 - Rich per-vertical detail (6 verticals upgraded via registry)
 - **VerticalDetailConsole upgraded from generic-only to full per-vertical
   detail** for the 6 verticals that don't have a dedicated *OpsConsole

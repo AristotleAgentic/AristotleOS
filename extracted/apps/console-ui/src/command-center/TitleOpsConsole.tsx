@@ -9,6 +9,7 @@ import {
 } from "./mockData.js";
 import { Badge, Metric, Panel, StatusDot, cx } from "./primitives.js";
 import { useCommandStore } from "./store.js";
+import { TitleSubmissionWalkthrough } from "./TitleSubmissionWalkthrough.js";
 import type { Posture, TitleOpsStep, TitleScenario } from "./types.js";
 
 const stepTone: Record<TitleOpsStep["state"], "green" | "cyan" | "red" | "slate"> = {
@@ -243,6 +244,7 @@ export function TitleOpsConsole() {
 
       <AdapterMatrix />
       <JurisdictionMatrix />
+      <TitleSubmissionWalkthrough />
       <div className="ac-grid" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", alignItems: "start" }}>
         <EvidenceExport />
         <ScenarioMatrix />
