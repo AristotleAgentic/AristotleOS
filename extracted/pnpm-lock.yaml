@@ -365,6 +365,12 @@ importers:
 
   shared/mesh-runtime: {}
 
+  shared/scenario-engine:
+    dependencies:
+      '@aristotle/mesh-runtime':
+        specifier: workspace:*
+        version: link:../mesh-runtime
+
   shared/schemas: {}
 
   shared/trial-engine: {}
