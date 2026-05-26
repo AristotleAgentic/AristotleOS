@@ -493,6 +493,14 @@ export interface TitleEvidenceContext {
   post_checks?: Array<{ name: string; ok: boolean; detail?: string }>;
   redacted_fields?: string[];
   retained_fields?: string[];
+  /**
+   * Outbound submission receipt produced by a TitleSubmissionTransport after the Commit
+   * Gate ALLOWED the action and the Warrant was consumed. Binding this into the Title
+   * Evidence Context means the bundle hash covers the receipt — a tampered or substituted
+   * receipt fails verifyTitleEvidenceBundle. Absent when the transaction did not produce
+   * an outbound submission (e.g. internal correction-only flows).
+   */
+  submission_receipt?: TitleSubmissionReceipt;
 }
 
 export interface TitleEvidenceBundle {
@@ -768,4 +776,209 @@ export function verifyTitleEvidenceBundle(bundle: TitleEvidenceBundle): TitleEvi
   });
   if (expected !== bundle.hashes.title_bundle_hash) failures.push("title bundle hash mismatch");
   return { ok: failures.length === 0, failures, execution_bundle_ok: executionVerification.ok };
+}
+
+// ============================================================================
+// Outbound Title Submission Adapter (demonstration)
+// ----------------------------------------------------------------------------
+// AristotleOS gates the action; this section actually delivers the resulting
+// packet to a state ELT / DMV / dealer endpoint. The shipped transport is a
+// demonstration: it returns a deterministic receipt, never touches a real
+// state system, and refuses by default to be used as a production transport.
+//
+// To wire a real state hub (e.g. Montana ELT, Oregon ELT, AAMVA NMVTIS web
+// service), implement the TitleSubmissionTransport interface and set
+// production_validated=true ONLY AFTER end-to-end test, counsel review, and
+// per-state credential / signing-key onboarding. The orchestrator refuses to
+// hand a packet to a non-production-validated transport unless the caller
+// EXPLICITLY passes allowDemonstrationTransport=true — this is intentional to
+// prevent a demonstration receipt from ending up in a real evidence bundle.
+//
+// Cryptographic binding: the receipt covers warrant_id + action_hash from
+// the consumed warrant. The receipt is embedded inside TitleEvidenceContext,
+// so the existing title_bundle_hash covers it — substituting or mutating a
+// receipt after export fails verifyTitleEvidenceBundle.
+// ============================================================================
+
+export interface TitleSubmissionAuthorization {
+  /** Identifier of the single-use Warrant produced by the Commit Gate. */
+  warrant_id: string;
+  /** Opaque signature material from the Warrant; adapter does not re-verify
+   *  the signature itself, but binds the id + action_hash into the receipt. */
+  warrant_signature: string;
+  /** Must be true. The Warrant must already have been consumed by the gate
+   *  before the adapter is invoked. Defense-in-depth against the adapter
+   *  ever being called before warrant consume. */
+  consumed: true;
+  /** ISO timestamp when the Warrant was consumed. */
+  consumed_at: string;
+  /** Canonical action hash bound at gate time. */
+  action_hash: string;
+  /** Jurisdiction the authorization is scoped to (e.g. "MT"). */
+  jurisdiction: string;
+  /** Transaction type the authorization is scoped to. */
+  transaction_type: string;
+}
+
+export interface TitleSubmissionPacket {
+  packet_id: string;
+  jurisdiction: string;
+  transaction_id: string;
+  transaction_type: string;
+  vin: string;
+  /** Where the packet is going. demonstration-echo is the only built-in
+   *  channel and is non-production. */
+  channel: "elt-hub" | "dmv-portal" | "dealer-portal" | "demonstration-echo";
+  /** The outbound payload. Real integrations should serialize this in the
+   *  format the state hub requires (XML / JSON / EDI), sign per state spec,
+   *  and encrypt in transit. The orchestrator does not transform payload. */
+  payload: Record<string, JsonValue>;
+  /** Fields excluded from the payload for PII minimization. */
+  redacted_fields: string[];
+}
+
+export interface TitleSubmissionReceipt {
+  packet_id: string;
+  jurisdiction: string;
+  transport: string;
+  channel: string;
+  remote_receipt_id: string;
+  ack_at: string;
+  ack_kind: "accepted" | "queued" | "pending-review";
+  /** Cryptographic binding back to the authorizing Warrant. */
+  warrant_id: string;
+  /** Cryptographic binding back to the canonical action that the Warrant covered. */
+  action_hash: string;
+  /** sha256 over the rest of the receipt (excluding receipt_hash itself).
+   *  Allows callers to verify a receipt out-of-band before binding it into
+   *  the Title Evidence Context. */
+  receipt_hash: string;
+  /** True if the transport that produced this receipt is production-validated. */
+  production_validated: boolean;
+}
+
+export type TitleSubmissionRefusalCode =
+  | "MISSING_AUTHORIZATION"
+  | "WARRANT_NOT_CONSUMED"
+  | "JURISDICTION_MISMATCH"
+  | "TRANSACTION_TYPE_MISMATCH"
+  | "TRANSPORT_REJECTED"
+  | "TRANSPORT_UNREACHABLE"
+  | "DEMONSTRATION_ONLY_BLOCKED";
+
+export type TitleSubmissionOutcome =
+  | { ok: true; receipt: TitleSubmissionReceipt }
+  | { ok: false; refusal: { code: TitleSubmissionRefusalCode; detail: string } };
+
+export interface TitleSubmissionTransport {
+  readonly id: string;
+  /** True if this transport has been onboarded for real state submissions.
+   *  Demonstration transports MUST return false. The orchestrator uses this
+   *  to refuse a demonstration receipt being attached to real evidence. */
+  readonly production_validated: boolean;
+  submit(packet: TitleSubmissionPacket, authz: TitleSubmissionAuthorization): Promise<TitleSubmissionOutcome>;
+}
+
+/**
+ * In-memory transport that simulates a state ELT / DMV hub. Deterministic,
+ * never touches the network, and is_production_validated=false. Use ONLY for
+ * tests, demos, the operator UI preview, and the CLI dry-run path.
+ *
+ * Configure with { ackKind } to model "accepted" / "queued" / "pending-review",
+ * or { reject: true } to model a hub rejection.
+ */
+export class DemonstrationTitleSubmissionTransport implements TitleSubmissionTransport {
+  readonly id = "demonstration-echo";
+  readonly production_validated = false;
+  private seq = 0;
+  private readonly ackKind: TitleSubmissionReceipt["ack_kind"];
+  private readonly reject: boolean;
+  private readonly clock: () => string;
+
+  constructor(opts?: {
+    ackKind?: TitleSubmissionReceipt["ack_kind"];
+    reject?: boolean;
+    /** Inject a clock for deterministic tests. */
+    clock?: () => string;
+  }) {
+    this.ackKind = opts?.ackKind ?? "accepted";
+    this.reject = opts?.reject ?? false;
+    this.clock = opts?.clock ?? (() => new Date().toISOString());
+  }
+
+  async submit(
+    packet: TitleSubmissionPacket,
+    authz: TitleSubmissionAuthorization
+  ): Promise<TitleSubmissionOutcome> {
+    if (this.reject) {
+      return { ok: false, refusal: { code: "TRANSPORT_REJECTED", detail: "demonstration transport configured to reject" } };
+    }
+    this.seq += 1;
+    const partial = {
+      packet_id: packet.packet_id,
+      jurisdiction: packet.jurisdiction,
+      transport: this.id,
+      channel: packet.channel,
+      remote_receipt_id: `demo-${packet.jurisdiction}-${this.seq.toString().padStart(6, "0")}`,
+      ack_at: this.clock(),
+      ack_kind: this.ackKind,
+      warrant_id: authz.warrant_id,
+      action_hash: authz.action_hash,
+      production_validated: this.production_validated
+    };
+    const receipt: TitleSubmissionReceipt = {
+      ...partial,
+      receipt_hash: sha256(stableStringify(partial))
+    };
+    return { ok: true, receipt };
+  }
+}
+
+/**
+ * Submit a title packet through a transport, enforcing defense-in-depth
+ * authorization checks BEFORE the transport is invoked. Refuses if:
+ *   - authz is missing or not marked consumed
+ *   - authz jurisdiction does not match packet jurisdiction
+ *   - authz transaction_type does not match packet transaction_type
+ *   - transport.production_validated is false and caller did not opt in
+ *
+ * On a transport exception, returns a TRANSPORT_UNREACHABLE refusal rather
+ * than throwing — the caller decides whether to retry or escalate.
+ */
+export async function submitTitlePacket(
+  packet: TitleSubmissionPacket,
+  authz: TitleSubmissionAuthorization,
+  transport: TitleSubmissionTransport,
+  opts?: { allowDemonstrationTransport?: boolean }
+): Promise<TitleSubmissionOutcome> {
+  if (!authz) {
+    return { ok: false, refusal: { code: "MISSING_AUTHORIZATION", detail: "no warrant authorization provided" } };
+  }
+  if (authz.consumed !== true) {
+    return { ok: false, refusal: { code: "WARRANT_NOT_CONSUMED", detail: "warrant must be consumed by the gate before adapter submit" } };
+  }
+  if (authz.jurisdiction !== packet.jurisdiction) {
+    return { ok: false, refusal: { code: "JURISDICTION_MISMATCH", detail: `authz jurisdiction ${authz.jurisdiction} != packet jurisdiction ${packet.jurisdiction}` } };
+  }
+  if (authz.transaction_type !== packet.transaction_type) {
+    return { ok: false, refusal: { code: "TRANSACTION_TYPE_MISMATCH", detail: `authz transaction_type ${authz.transaction_type} != packet transaction_type ${packet.transaction_type}` } };
+  }
+  if (!transport.production_validated && opts?.allowDemonstrationTransport !== true) {
+    return { ok: false, refusal: { code: "DEMONSTRATION_ONLY_BLOCKED", detail: `transport ${transport.id} is not production-validated; caller must explicitly pass allowDemonstrationTransport=true` } };
+  }
+  try {
+    return await transport.submit(packet, authz);
+  } catch (err) {
+    return { ok: false, refusal: { code: "TRANSPORT_UNREACHABLE", detail: err instanceof Error ? err.message : String(err) } };
+  }
+}
+
+/**
+ * Verify a receipt's internal hash. Returns true if receipt_hash matches the
+ * recomputed sha256 over the rest of the receipt fields. Useful before binding
+ * a receipt into a Title Evidence Context.
+ */
+export function verifyTitleSubmissionReceipt(receipt: TitleSubmissionReceipt): boolean {
+  const { receipt_hash, ...rest } = receipt;
+  return sha256(stableStringify(rest)) === receipt_hash;
 }

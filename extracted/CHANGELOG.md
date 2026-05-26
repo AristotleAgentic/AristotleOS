@@ -1,5 +1,38 @@
 # Changelog
 
+## v0.1.41 - Title outbound submission adapter (demonstration transport)
+- **`TitleSubmissionTransport` interface + `DemonstrationTitleSubmissionTransport`.**
+  AristotleOS gates the action; the outbound adapter actually delivers the resulting
+  packet to a state ELT / DMV / dealer endpoint. The shipped demonstration transport
+  is deterministic, never touches the network, and reports `production_validated:
+  false` so the orchestrator refuses to ship a fictional receipt into a real evidence
+  bundle by accident.
+- **`submitTitlePacket(packet, authz, transport, opts)` orchestrator.** Enforces
+  defense-in-depth before invoking the transport: refuses MISSING_AUTHORIZATION,
+  WARRANT_NOT_CONSUMED, JURISDICTION_MISMATCH, TRANSACTION_TYPE_MISMATCH,
+  DEMONSTRATION_ONLY_BLOCKED (unless `allowDemonstrationTransport: true`), and
+  surfaces transport exceptions as TRANSPORT_UNREACHABLE rather than throwing.
+- **`TitleSubmissionReceipt` cryptographically bound to the authorizing Warrant.**
+  Each receipt carries `warrant_id`, `action_hash`, `remote_receipt_id`, `ack_at`,
+  `ack_kind`, and a `receipt_hash` covering the rest. `verifyTitleSubmissionReceipt()`
+  re-checks the receipt out-of-band before it is bound into evidence.
+- **`TitleEvidenceContext.submission_receipt?: TitleSubmissionReceipt`.** The receipt
+  is embedded INSIDE the title context, so the existing `title_context_hash` and
+  `title_bundle_hash` cover it. Substituting or mutating a receipt post-export fails
+  `verifyTitleEvidenceBundle()` — proven by the new tamper-detection test.
+- **+7 new tests** (`title.test.ts` now 22/22, up from 15/15) covering: missing-authz
+  refusal, unconsumed-warrant refusal, jurisdiction / transaction-type mismatch,
+  demonstration-only block, hash-bound receipt, transport rejection + exception
+  handling, evidence-bundle binding with tamper detection.
+- **Docs.** New "Outbound submission adapter (demonstration)" section in
+  `docs/title.md` documenting the binding chain and the explicit production-onboarding
+  checklist (per-state credentials, payload format, certification environment,
+  counsel review, transport promotion).
+- **No new dependencies.** Reuses existing `sha256` + `stableStringify` from index.ts.
+- **No regressions.** governance-core suite 75/75, title vertical 22/22.
+- All jurisdiction rule presets remain DEMONSTRATION ONLY. The transport contract is
+  stable; only per-jurisdiction transport implementations change for production use.
+
 ## v0.1.40 - Aristotle Verified Title Transaction Layer (vehicle title / registration / ELT)
 - **Vehicle title transaction governance vertical.** New
   `shared/execution-control-runtime/src/title.ts` governs consequential title, lien,

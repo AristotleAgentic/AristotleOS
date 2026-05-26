@@ -5,9 +5,14 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   type AuthorityEnvelope,
+  type TitleEvidenceContext,
   type TitleRuntimeSnapshot,
+  type TitleSubmissionAuthorization,
+  type TitleSubmissionPacket,
+  type TitleSubmissionTransport,
   type WardManifest,
   ApprovalStore,
+  DemonstrationTitleSubmissionTransport,
   digitalSignatureToAction,
   dmvSubmissionToAction,
   evaluateExecutionControl,
@@ -21,12 +26,14 @@ import {
   loadWardManifest,
   nmvtisToAction,
   registrationToAction,
+  submitTitlePacket,
   titleAdapterToAction,
   titleHistorianWriteToAction,
   titleSnapshotToRuntimeRegister,
   titleTransactionToAction,
   verifyEvidenceBundle,
-  verifyTitleEvidenceBundle
+  verifyTitleEvidenceBundle,
+  verifyTitleSubmissionReceipt
 } from "./index.js";
 
 const now = "2026-05-25T15:00:00.000Z";
@@ -435,4 +442,158 @@ test("sample title Ward and action fixtures load and drive the real gate", () =>
     assert.equal(r.decision, "REFUSE", `${label} should REFUSE`);
     assert.ok(r.reason_codes.includes("PHYSICAL_INVARIANT_FAILED"));
   }
+});
+
+// ============================================================================
+// Outbound title submission adapter tests (demonstration transport)
+// ============================================================================
+
+const SUBMIT_AUTHZ: TitleSubmissionAuthorization = {
+  warrant_id: "warrant:demo-MT-0007",
+  warrant_signature: "ed25519:demo-signature-not-real",
+  consumed: true,
+  consumed_at: "2026-05-25T15:00:00.500Z",
+  action_hash: "sha256:demo-action-hash-abc123",
+  jurisdiction: "MT",
+  transaction_type: "lien-release"
+};
+
+const SUBMIT_PACKET: TitleSubmissionPacket = {
+  packet_id: "pkt-MT-0007",
+  jurisdiction: "MT",
+  transaction_id: "TX-LIEN-MT-2026-05-25-001",
+  transaction_type: "lien-release",
+  vin: "1HGCM82633A123456",
+  channel: "demonstration-echo",
+  payload: { lien_release: true, lienholder_id: "lender:demo-bank-mt" },
+  redacted_fields: ["buyer_phone", "exact_address"]
+};
+
+test("submitTitlePacket refuses when authz is missing", async () => {
+  const transport = new DemonstrationTitleSubmissionTransport();
+  const outcome = await submitTitlePacket(SUBMIT_PACKET, undefined as unknown as TitleSubmissionAuthorization, transport, { allowDemonstrationTransport: true });
+  assert.equal(outcome.ok, false);
+  if (!outcome.ok) assert.equal(outcome.refusal.code, "MISSING_AUTHORIZATION");
+});
+
+test("submitTitlePacket refuses when warrant has not been consumed", async () => {
+  const transport = new DemonstrationTitleSubmissionTransport();
+  const authz = { ...SUBMIT_AUTHZ, consumed: false as unknown as true };
+  const outcome = await submitTitlePacket(SUBMIT_PACKET, authz, transport, { allowDemonstrationTransport: true });
+  assert.equal(outcome.ok, false);
+  if (!outcome.ok) assert.equal(outcome.refusal.code, "WARRANT_NOT_CONSUMED");
+});
+
+test("submitTitlePacket refuses on jurisdiction / transaction-type mismatch", async () => {
+  const transport = new DemonstrationTitleSubmissionTransport();
+  const wrongJurisdiction = await submitTitlePacket({ ...SUBMIT_PACKET, jurisdiction: "OR" }, SUBMIT_AUTHZ, transport, { allowDemonstrationTransport: true });
+  assert.equal(wrongJurisdiction.ok, false);
+  if (!wrongJurisdiction.ok) assert.equal(wrongJurisdiction.refusal.code, "JURISDICTION_MISMATCH");
+  const wrongType = await submitTitlePacket({ ...SUBMIT_PACKET, transaction_type: "registration-issue" }, SUBMIT_AUTHZ, transport, { allowDemonstrationTransport: true });
+  assert.equal(wrongType.ok, false);
+  if (!wrongType.ok) assert.equal(wrongType.refusal.code, "TRANSACTION_TYPE_MISMATCH");
+});
+
+test("submitTitlePacket refuses a demonstration transport unless explicitly opted in", async () => {
+  const transport = new DemonstrationTitleSubmissionTransport();
+  const blocked = await submitTitlePacket(SUBMIT_PACKET, SUBMIT_AUTHZ, transport);
+  assert.equal(blocked.ok, false);
+  if (!blocked.ok) assert.equal(blocked.refusal.code, "DEMONSTRATION_ONLY_BLOCKED");
+});
+
+test("submitTitlePacket through the demonstration transport returns a hash-bound receipt", async () => {
+  const transport = new DemonstrationTitleSubmissionTransport({ clock: () => "2026-05-25T15:00:01.000Z" });
+  const outcome = await submitTitlePacket(SUBMIT_PACKET, SUBMIT_AUTHZ, transport, { allowDemonstrationTransport: true });
+  assert.equal(outcome.ok, true);
+  if (!outcome.ok) return;
+  const { receipt } = outcome;
+  assert.equal(receipt.jurisdiction, "MT");
+  assert.equal(receipt.warrant_id, SUBMIT_AUTHZ.warrant_id);
+  assert.equal(receipt.action_hash, SUBMIT_AUTHZ.action_hash);
+  assert.equal(receipt.production_validated, false);
+  assert.match(receipt.remote_receipt_id, /^demo-MT-\d{6}$/);
+  assert.equal(verifyTitleSubmissionReceipt(receipt), true);
+  const mutated = { ...receipt, remote_receipt_id: "demo-MT-999999" };
+  assert.equal(verifyTitleSubmissionReceipt(mutated), false);
+});
+
+test("submitTitlePacket surfaces transport rejection and exception as typed refusals", async () => {
+  const rejectingTransport = new DemonstrationTitleSubmissionTransport({ reject: true });
+  const reject = await submitTitlePacket(SUBMIT_PACKET, SUBMIT_AUTHZ, rejectingTransport, { allowDemonstrationTransport: true });
+  assert.equal(reject.ok, false);
+  if (!reject.ok) assert.equal(reject.refusal.code, "TRANSPORT_REJECTED");
+
+  const throwingTransport: TitleSubmissionTransport = {
+    id: "throwing-demo",
+    production_validated: false,
+    async submit() { throw new Error("network down"); }
+  };
+  const thrown = await submitTitlePacket(SUBMIT_PACKET, SUBMIT_AUTHZ, throwingTransport, { allowDemonstrationTransport: true });
+  assert.equal(thrown.ok, false);
+  if (!thrown.ok) {
+    assert.equal(thrown.refusal.code, "TRANSPORT_UNREACHABLE");
+    assert.match(thrown.refusal.detail, /network down/);
+  }
+});
+
+test("Title Evidence Bundle binds the submission receipt and detects tampering", async () => {
+  const transport = new DemonstrationTitleSubmissionTransport({ clock: () => "2026-05-25T15:00:01.250Z" });
+  const submitted = await submitTitlePacket(SUBMIT_PACKET, SUBMIT_AUTHZ, transport, { allowDemonstrationTransport: true });
+  assert.equal(submitted.ok, true);
+  if (!submitted.ok) return;
+
+  const action = lienReleaseToAction(
+    { lender_id: "lender-prairie-credit", vin: snapshot.vin, operation: "release" },
+    ctx
+  );
+  const ledger = ledgerPath();
+  const decision = evaluateExecutionControl({
+    ward,
+    authorityEnvelope: envelope,
+    action,
+    ledgerPath: ledger,
+    now,
+    replayProtection: false,
+    runtimeRegister: titleSnapshotToRuntimeRegister(snapshot)
+  });
+  assert.equal(decision.decision, "ALLOW");
+  assert.ok(decision.warrant, "decision should carry a warrant");
+
+  const titleCtx: TitleEvidenceContext = {
+    actor_id: snapshot.actor_id,
+    organization_id: snapshot.organization_id,
+    organization_kind: snapshot.organization_kind,
+    jurisdiction: snapshot.jurisdiction,
+    state_rule_version: snapshot.state_rule_version,
+    transaction_id: snapshot.transaction_id,
+    transaction_type: snapshot.transaction_type,
+    vin: snapshot.vin,
+    title_state: snapshot.title_state,
+    controller_id: "controller:title-orchestrator-mt",
+    fraud_risk_score: snapshot.fraud_risk_score,
+    identity_confidence_score: snapshot.identity_confidence_score,
+    regulatory_evidence_profile: ["STATE_ELT", "STATE_TITLE_STATUTES", "NMVTIS"],
+    rule_validation_state: "demonstration",
+    pre_checks: [{ name: "nmvtis", ok: true }, { name: "signer authorized", ok: true }],
+    redacted_fields: ["buyer_phone"],
+    submission_receipt: submitted.receipt
+  };
+
+  const bundle = exportTitleEvidenceBundle({
+    ledgerPath: ledger,
+    ward,
+    authorityEnvelope: envelope,
+    recordId: decision.gel_record.record_id,
+    warrant: decision.warrant,
+    exportedAt: now,
+    title: titleCtx
+  });
+  assert.equal(bundle.verification.ok, true, `expected bundle ok, got failures=${bundle.verification.failures.join(";")}`);
+  assert.equal(bundle.title.submission_receipt?.warrant_id, SUBMIT_AUTHZ.warrant_id);
+
+  const tampered = JSON.parse(JSON.stringify(bundle)) as typeof bundle;
+  if (tampered.title.submission_receipt) tampered.title.submission_receipt.remote_receipt_id = "demo-MT-999999";
+  const tamperedVerification = verifyTitleEvidenceBundle(tampered);
+  assert.equal(tamperedVerification.ok, false);
+  assert.ok(tamperedVerification.failures.some((f) => f.includes("title context hash")));
 });

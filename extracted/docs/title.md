@@ -89,6 +89,33 @@ Plus a 18-condition refuse sweep, hard interlock test, `warrant.reuse_attempt` r
 
 `exportTitleEvidenceBundle()` wraps the signed execution Evidence Bundle with title context (actor, organization kind, jurisdiction, state-rule version, transaction id/type/VIN/title-state, fraud + identity scores, regulatory evidence profile, rule_validation_state, pre/post checks, redacted fields). `verifyTitleEvidenceBundle()` re-verifies it offline. See [title-ward-templates.md](title-ward-templates.md) and [title-threat-model.md](title-threat-model.md).
 
+## Outbound submission adapter (demonstration)
+
+AristotleOS gates the action; the outbound adapter actually delivers the resulting packet to the state ELT hub, DMV portal, or dealer system. The runtime ships a `TitleSubmissionTransport` interface and a `DemonstrationTitleSubmissionTransport` reference implementation.
+
+Cryptographic binding chain:
+
+1. The Commit Gate ALLOWs the canonical action and emits a single-use Warrant signed over the canonical action hash.
+2. The orchestrator consumes the Warrant and produces a `TitleSubmissionAuthorization` carrying `warrant_id`, `action_hash`, `consumed=true`, `jurisdiction`, and `transaction_type`.
+3. `submitTitlePacket(packet, authz, transport, opts)` enforces defense-in-depth before the transport is invoked:
+   - refuses `MISSING_AUTHORIZATION` if authz is null
+   - refuses `WARRANT_NOT_CONSUMED` unless `authz.consumed === true`
+   - refuses `JURISDICTION_MISMATCH` / `TRANSACTION_TYPE_MISMATCH` if authz scope does not match the packet
+   - refuses `DEMONSTRATION_ONLY_BLOCKED` unless `transport.production_validated === true` OR the caller passes `allowDemonstrationTransport: true`
+   - surfaces transport exceptions as `TRANSPORT_UNREACHABLE` rather than throwing
+4. The transport produces a `TitleSubmissionReceipt` whose `receipt_hash` covers `warrant_id` + `action_hash` + `remote_receipt_id` + ack metadata.
+5. The receipt is embedded inside `TitleEvidenceContext.submission_receipt` before `exportTitleEvidenceBundle()` is called. The bundle's `title_context_hash` covers the receipt, so substituting or mutating a receipt after export fails `verifyTitleEvidenceBundle()`.
+
+**Demonstration only.** `DemonstrationTitleSubmissionTransport` is deterministic, never touches the network, and returns `production_validated: false`. The orchestrator refuses to hand it a packet unless the caller explicitly opts in — this is intentional, so a demonstration receipt cannot end up in a real evidence bundle by accident. Real Montana / Oregon / California / Texas / Florida ELT or DMV integration requires:
+
+- per-state credential and signing-key onboarding;
+- the state's required payload format (XML / JSON / EDI) and envelope signing;
+- end-to-end test against the state's certification environment;
+- counsel review of every jurisdiction rule preset referenced by the action;
+- promotion of the transport to `production_validated: true` ONLY after the above.
+
+The contract is stable; only the transport implementation changes per jurisdiction.
+
 ## Product positioning
 
 > *Aristotle Verified Title Transaction Layer governs consequential title, lien, registration, and DMV document actions before they execute. Each transaction must carry valid authority, satisfy jurisdiction-specific rules, bind required fraud and title checks, and produce a warrant-backed evidence record. The result is faster digital vehicle transactions with stronger proof of authorization, compliance, and auditability.*
