@@ -61,6 +61,9 @@ Docs:
 - [Water Utility Operator Pilot Guide](docs/water-operator-pilot-guide.md)
 - [Water execution-control path](docs/water.md)
 - [Water threat model addendum](docs/water-threat-model.md)
+- [Aviation / UAV / eVTOL execution-control path](docs/aviation.md)
+- [Aviation Ward templates](docs/aviation-ward-templates.md)
+- [Aviation threat model addendum](docs/aviation-threat-model.md)
 - [Defense readiness roadmap](docs/defense-readiness.md)
 - [Crypto posture](docs/crypto-posture.md)
 - [Commercial adoption path](docs/commercial-adoption-path.md)
@@ -259,6 +262,37 @@ fail-closed refusals; blast initiation, tailings decant, and hoist movement are
 dual-control. See [docs/mining.md](docs/mining.md),
 [docs/mining-ward-templates.md](docs/mining-ward-templates.md), and
 [docs/mining-threat-model.md](docs/mining-threat-model.md).
+
+## Aviation / UAV / eVTOL Readiness
+
+AristotleOS includes an aviation pilot path for governed UAV and eVTOL operations.
+UTM/USS, flight-control/autopilot, geofence, payload, detect-and-avoid, C2-link, Remote
+ID, and vertiport requests become typed adapter boundaries (`AVIATION_ADAPTER_CATALOG`)
+and execute only after Ward resolution, Authority Envelope validation, Aviation Safety
+Invariant checks (altitude AGL ceiling, groundspeed, battery RTL reserve, wind/visibility/
+ceiling, airspace class/volume/state, geofence active, Remote ID broadcasting, DAA active,
+C2 link healthy, airspace authorization, no active TFR, VLOS/waiver, RTL available,
+weather within limits, RPIC certificated), Commit Gate admission, Warrant verification,
+and GEL commit. It is built to meet and exceed 14 CFR Part 107/108/91/135, Part 89 (Remote
+ID), LAANC, ASTM F3548 (UTM), and SORA.
+
+```bash
+npm run test:aviation
+npm run aristotle -- execution-control evaluate \
+  --ward examples/aviation/ward.bvlos_corridor.yaml \
+  --envelope examples/aviation/authority_envelope.rpic.yaml \
+  --action examples/aviation/actions/waypoint_flight.json \
+  --ledger ./.tmp/aviation.gel.jsonl \
+  --now 2026-05-25T15:00:00.000Z
+```
+
+`refuse_altitude_ceiling.json`, `refuse_active_tfr.json`, and
+`refuse_geofence_inactive.json` demonstrate fail-closed refusals; takeoff, payload
+release, eVTOL vertiport clearance, and UTM authorization are dual-control. See
+[docs/aviation.md](docs/aviation.md),
+[docs/aviation-ward-templates.md](docs/aviation-ward-templates.md), and
+[docs/aviation-threat-model.md](docs/aviation-threat-model.md).
+
 ## Maritime Port Readiness
 
 AristotleOS now includes a maritime port pilot path for governed terminal operations. Terminal Operating System, Port Community / EDI, customs hold, VTS/AIS/PNT, crane automation, gate OCR/access, yard tractor, reefer, weighbridge/VGM, shore-power, and bunkering/hazmat surfaces become typed adapter boundaries. They execute only after Ward resolution, Authority Envelope validation, Port Safety Invariant checks, Commit Gate admission, Warrant verification, and GEL commit.

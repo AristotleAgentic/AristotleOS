@@ -85,6 +85,7 @@ export * from "./pipeline.js";
 export * from "./mining.js";
 export * from "./port.js";
 export * from "./water.js";
+export * from "./aviation.js";
 
 export {
   type AristotleSigner,
@@ -332,6 +333,30 @@ export interface PhysicalBounds {
   require_valve_interlock_clear?: boolean;
   require_discharge_permit_window?: boolean;
   require_no_bypass_active?: boolean;
+  // Aviation / UAV / eVTOL bounds. asset types reuse permitted_asset_types, telemetry
+  // freshness reuses max_telemetry_age_ms, RPIC certification reuses require_operator_qualified.
+  permitted_airspace_id?: string;
+  permitted_airspace_classes?: string[];
+  permitted_operation_volumes?: string[];
+  permitted_flight_states?: string[];
+  max_altitude_agl_ft?: number;
+  max_groundspeed_kts?: number;
+  min_battery_soc_pct?: number;
+  max_wind_speed_kts?: number;
+  min_visibility_sm?: number;
+  min_ceiling_ft?: number;
+  max_payload_kg?: number;
+  require_geofence_active?: boolean;
+  require_remote_id_broadcasting?: boolean;
+  require_daa_active?: boolean;
+  require_c2_link_healthy?: boolean;
+  require_airspace_authorization?: boolean;
+  require_no_active_tfr?: boolean;
+  require_vlos_or_waiver?: boolean;
+  require_rtl_available?: boolean;
+  require_vertiport_clearance?: boolean;
+  require_weather_within_limits?: boolean;
+  require_ops_over_people_authorized?: boolean;
 }
 
 export interface PhysicalInvariantResult {
@@ -737,6 +762,25 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
     action.action_type === "wastewater.bypass.force_open"
   ) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard water safety interlock violation` };
+  }
+  if (
+    action.action_type === "uas.disable_geofence" ||
+    action.action_type === "geofence.disable" ||
+    action.action_type === "uas.disable_detect_and_avoid" ||
+    action.action_type === "daa.disable" ||
+    action.action_type === "uas.disable_remote_id" ||
+    action.action_type === "remote_id.disable" ||
+    action.action_type === "uas.override_airspace_authorization" ||
+    action.action_type === "airspace.override" ||
+    action.action_type === "uas.disable_return_to_home" ||
+    action.action_type === "rtl.disable" ||
+    action.action_type === "failsafe.disable" ||
+    action.action_type === "uas.override_c2_link_loss_failsafe" ||
+    action.action_type === "uas.enter_active_tfr" ||
+    action.action_type === "tfr.override" ||
+    action.action_type === "evtol.disable_flight_envelope_protection"
+  ) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard aviation safety interlock violation` };
   }
   const altitude = numericParam(action, "altitude_m");
   if (bounds.max_altitude_m !== undefined && altitude !== undefined && altitude > bounds.max_altitude_m) {
@@ -1263,6 +1307,84 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
   }
   if (bounds.require_no_bypass_active && booleanParam(action, "bypass_active") === true) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "active bypass prevents this water action" };
+  }
+  // -- aviation / UAV / eVTOL invariants ---------------------------------------
+  const airspaceId = stringParam(action, "airspace_id");
+  if (bounds.permitted_airspace_id && airspaceId && airspaceId !== bounds.permitted_airspace_id) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `airspace_id ${airspaceId} does not match ${bounds.permitted_airspace_id}` };
+  }
+  const airspaceClass = stringParam(action, "airspace_class");
+  if (bounds.permitted_airspace_classes?.length && airspaceClass && !bounds.permitted_airspace_classes.includes(airspaceClass)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `airspace_class ${airspaceClass} is outside permitted airspace classes` };
+  }
+  const operationVolume = stringParam(action, "operation_volume_id");
+  if (bounds.permitted_operation_volumes?.length && operationVolume && !bounds.permitted_operation_volumes.includes(operationVolume)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `operation_volume_id ${operationVolume} is outside permitted operation volumes` };
+  }
+  const flightState = stringParam(action, "flight_state");
+  if (bounds.permitted_flight_states?.length && flightState && !bounds.permitted_flight_states.includes(flightState)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `flight_state ${flightState} is outside permitted flight states` };
+  }
+  const altitudeAgl = numericParam(action, "altitude_agl_ft");
+  if (bounds.max_altitude_agl_ft !== undefined && altitudeAgl !== undefined && altitudeAgl > bounds.max_altitude_agl_ft) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `altitude_agl_ft ${altitudeAgl} exceeds max_altitude_agl_ft ${bounds.max_altitude_agl_ft}` };
+  }
+  const groundspeed = numericParam(action, "groundspeed_kts");
+  if (bounds.max_groundspeed_kts !== undefined && groundspeed !== undefined && groundspeed > bounds.max_groundspeed_kts) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `groundspeed_kts ${groundspeed} exceeds max_groundspeed_kts ${bounds.max_groundspeed_kts}` };
+  }
+  const batterySoc = numericParam(action, "battery_soc_pct");
+  if (bounds.min_battery_soc_pct !== undefined && batterySoc !== undefined && batterySoc < bounds.min_battery_soc_pct) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `battery_soc_pct ${batterySoc} below min_battery_soc_pct ${bounds.min_battery_soc_pct} (RTL reserve)` };
+  }
+  const windSpeedKts = numericParam(action, "wind_speed_kts");
+  if (bounds.max_wind_speed_kts !== undefined && windSpeedKts !== undefined && windSpeedKts > bounds.max_wind_speed_kts) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `wind_speed_kts ${windSpeedKts} exceeds max_wind_speed_kts ${bounds.max_wind_speed_kts}` };
+  }
+  const visibility = numericParam(action, "visibility_sm");
+  if (bounds.min_visibility_sm !== undefined && visibility !== undefined && visibility < bounds.min_visibility_sm) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `visibility_sm ${visibility} below min_visibility_sm ${bounds.min_visibility_sm}` };
+  }
+  const ceiling = numericParam(action, "ceiling_ft");
+  if (bounds.min_ceiling_ft !== undefined && ceiling !== undefined && ceiling < bounds.min_ceiling_ft) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `ceiling_ft ${ceiling} below min_ceiling_ft ${bounds.min_ceiling_ft}` };
+  }
+  const payloadKg = numericParam(action, "payload_kg");
+  if (bounds.max_payload_kg !== undefined && payloadKg !== undefined && payloadKg > bounds.max_payload_kg) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `payload_kg ${payloadKg} exceeds max_payload_kg ${bounds.max_payload_kg}` };
+  }
+  if (bounds.require_geofence_active && booleanParam(action, "geofence_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "geofence must be active before this flight action" };
+  }
+  if (bounds.require_remote_id_broadcasting && booleanParam(action, "remote_id_broadcasting") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "Remote ID must be broadcasting before this flight action" };
+  }
+  if (bounds.require_daa_active && booleanParam(action, "daa_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "detect-and-avoid must be active before this flight action" };
+  }
+  if (bounds.require_c2_link_healthy && booleanParam(action, "c2_link_healthy") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "C2 link must be healthy before this flight action" };
+  }
+  if (bounds.require_airspace_authorization && booleanParam(action, "airspace_authorization_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "airspace authorization (LAANC/ATC) is required before this flight action" };
+  }
+  if (bounds.require_no_active_tfr && booleanParam(action, "no_active_tfr") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "an active TFR prohibits this flight action" };
+  }
+  if (bounds.require_vlos_or_waiver && booleanParam(action, "vlos_or_waiver") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "visual line of sight or a BVLOS waiver is required before this flight action" };
+  }
+  if (bounds.require_rtl_available && booleanParam(action, "rtl_available") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "return-to-launch failsafe must be available before this flight action" };
+  }
+  if (bounds.require_vertiport_clearance && booleanParam(action, "vertiport_clearance") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "vertiport clearance is required before this eVTOL action" };
+  }
+  if (bounds.require_weather_within_limits && booleanParam(action, "weather_within_limits") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "weather must be within limits before this flight action" };
+  }
+  if (bounds.require_ops_over_people_authorized && booleanParam(action, "ops_over_people_authorized") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "operations over people authorization is required for this action" };
   }
   return { ok: true, reason_codes: [], detail: "physical invariants satisfied" };
 }

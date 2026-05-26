@@ -1,0 +1,66 @@
+ward_id: ward-aviation-bvlos-corridor
+name: BVLOS Corridor Operations NYC
+sovereignty_context: operator-bvlos-authority
+authority_domain: aviation-bvlos-ops
+policy_version: 0.1.0
+evidence_ledger_path: .aristotle/aviation-bvlos-corridor.gel.jsonl
+permitted_subjects:
+  - agent:flight-ops-orchestrator
+  - agent:uas-edge-autopilot
+physical_bounds:
+  permitted_airspace_id: airspace-knyc-volume
+  permitted_airspace_classes:
+    - G
+    - E
+  permitted_operation_volumes:
+    - vol-corridor-7
+    - vol-inspection-a
+  permitted_asset_types:
+    - multirotor
+    - fixed-wing
+    - vtol
+  permitted_flight_states:
+    - preflight
+    - armed
+    - in-flight
+    - rtl
+    - landing
+    - landed
+  max_altitude_agl_ft: 400
+  max_groundspeed_kts: 87
+  min_battery_soc_pct: 30
+  max_wind_speed_kts: 25
+  min_visibility_sm: 3
+  min_ceiling_ft: 1000
+  max_payload_kg: 5
+  max_telemetry_age_ms: 3000
+  require_geofence_active: true
+  require_remote_id_broadcasting: true
+  require_daa_active: true
+  require_c2_link_healthy: true
+  require_airspace_authorization: true
+  require_no_active_tfr: true
+  require_vlos_or_waiver: true
+  require_rtl_available: true
+  require_weather_within_limits: true
+  require_operator_qualified: true
+metadata:
+  aviation_domain: bvlos
+  regulatory_evidence_profile:
+    - PART_107
+    - PART_108_BVLOS
+    - PART_89_REMOTE_ID
+    - LAANC
+    - ASTM_F3548_UTM
+    - DETECT_AND_AVOID
+    - SORA
+  protected_scope:
+    - flight-control
+    - geofence
+    - detect-and-avoid
+    - payload
+criticality: safety_critical
+classification:
+  level: CUI
+  caveats:
+    - AVIATION_OPS

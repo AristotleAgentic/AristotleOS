@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.1.35 - Aviation / UAV / eVTOL execution-control vertical
+- **Aviation pilot path**: typed adapters (UTM/USS, flight-control/autopilot,
+  geofence, payload, vertiport, detect-and-avoid, C2-link, Remote ID, ground
+  control station, historian) -> Canonical Governed Actions; aviation physical
+  invariants enforced at the gate (airspace id/class/operation-volume/flight-state,
+  altitude AGL ceiling, groundspeed, battery RTL reserve, wind/visibility/ceiling,
+  payload mass, fresh telemetry, and readiness flags for geofence, Remote ID,
+  detect-and-avoid, C2 link health, airspace authorization, no-active-TFR,
+  VLOS/waiver, RTL availability, vertiport clearance, weather, RPIC qualification)
+  plus hard interlocks (disable geofence / detect-and-avoid / Remote ID / return-to-
+  home, override airspace authorization / C2 link-loss failsafe / active-TFR, eVTOL
+  flight-envelope-protection disable); signed Aviation Evidence Bundles with a
+  regulatory profile and SORA risk class; `examples/aviation/` ward, envelope,
+  policy, and allow/refuse actions runnable via `execution-control evaluate`; docs
+  (overview, ward templates, threat model). Designed to meet and exceed 14 CFR Part
+  107/108/91/135, Part 89 (Remote ID), LAANC, ASTM F3548 (UTM), and SORA.
+
 ## v0.1.34 - Mining execution-control vertical
 - **Mining pilot path**: typed adapters (autonomous-haulage/AHS, ventilation,
   blasting, tailings/TSF, gas-monitoring, hoist, Modbus, DNP3, OPC-UA, historian)

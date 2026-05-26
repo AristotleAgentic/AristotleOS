@@ -1,0 +1,64 @@
+envelope_id: ae-aviation-operations-001
+ward_id: ward-aviation-bvlos-corridor
+subject: agent:flight-ops-orchestrator
+allowed_actions:
+  - uas.flight.authorize
+  - uas.deconfliction.submit
+  - flight.arm
+  - flight.takeoff
+  - flight.waypoint.set
+  - flight.hold
+  - flight.land
+  - flight.rtl
+  - geofence.set
+  - geofence.update
+  - payload.release
+  - payload.gimbal.set
+  - vertiport.takeoff.clear
+  - daa.maneuver.execute
+  - c2.switch
+  - remote_id.session.set
+  - historian.record.write
+denied_actions:
+  - uas.disable_geofence
+  - uas.disable_detect_and_avoid
+  - uas.disable_remote_id
+  - uas.override_airspace_authorization
+  - uas.disable_return_to_home
+  - uas.override_c2_link_loss_failsafe
+  - uas.enter_active_tfr
+  - evtol.disable_flight_envelope_protection
+constraints:
+  required_runtime_registers:
+    - telemetry.asset_id
+    - telemetry.airspace_id
+    - telemetry.operation_volume_id
+    - telemetry.altitude_agl_ft
+    - telemetry.battery_soc_pct
+    - telemetry.geofence_active
+    - telemetry.remote_id_broadcasting
+    - telemetry.daa_active
+    - telemetry.c2_link_healthy
+    - telemetry.airspace_authorization_active
+    - telemetry.no_active_tfr
+    - telemetry.rtl_available
+    - telemetry.operator_qualified
+    - telemetry.operator_id
+  permitted_airspace_id: airspace-knyc-volume
+  dual_control:
+    actions:
+      - flight.takeoff
+      - payload.release
+      - vertiport.takeoff.clear
+      - uas.flight.authorize
+    required: 2
+    ttl_ms: 600000
+  budget:
+    maxCallsPerWindow: 400
+    windowMs: 3600000
+expires_at: 2026-12-31T23:59:59Z
+issuer: aristotle-aviation-ops-root
+classification:
+  level: CUI
+  caveats:
+    - AVIATION_OPS
