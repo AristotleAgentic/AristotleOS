@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aristotle-pydantic-ai"
+version = "0.1.0"
+description = "Govern Pydantic AI tool calls with AristotleOS. Drop-in wrappers that route every tool invocation through the execution-control Commit Gate before it runs."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.9"
+authors = [{ name = "AristotleAgentic" }]
+keywords = ["aristotle", "aristotleos", "pydantic-ai", "ai-governance", "agent-governance", "tool-call-gate", "commit-gate"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Typing :: Typed",
+]
+dependencies = ["aristotle-os-sdk>=0.1.0"]
+
+[project.optional-dependencies]
+pydantic-ai = ["pydantic-ai>=0.0.20,<2.0", "pydantic>=2.0"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "pydantic>=2.0"]
+
+[project.urls]
+Homepage = "https://github.com/AristotleAgentic/AristotleOS"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aristotle_pydantic_ai"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
