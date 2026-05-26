@@ -1,5 +1,101 @@
 # Changelog
 
+## v0.1.52 - LangGraph integration (aristotle-langgraph, Python)
+- **Sixth agent-framework integration ships, SECOND Python adapter.**
+  Faramesh framework coverage now 6/14 explicit (Claude Agent SDK,
+  LangChain.js, OpenAI Agents SDK, CrewAI, Vercel AI SDK, LangGraph) +
+  1 via MCP. Gap -8 -> -7. Python side now 2 adapters (CrewAI + LangGraph)
+  alongside 4 TS adapters.
+- **`aristotle_tool_call_wrapper(client=..., ward_id=..., subject=..., ...)
+  -> Callable`** builds a sync ``wrap_tool_call`` middleware suitable for
+  LangGraph's ``ToolNode``. Plug it straight into
+  ``ToolNode(tools=[...], wrap_tool_call=aristotle_gate)`` — no
+  monkey-patching, no shadow tools. Uses LangGraph 0.2.x's FIRST-CLASS
+  middleware seam.
+- **`aristotle_atool_call_wrapper(client=AsyncAristotleClient, ...) ->
+  Callable[..., Awaitable]`** is the async counterpart for
+  ``awrap_tool_call``. Both gate call and inner ``execute(request)`` are
+  awaited.
+- **Type signatures verified against the installed langgraph package**
+  (langgraph.prebuilt.tool_node):
+  - ``ToolCallRequest`` fields: ``tool_call`` (langchain ToolCall dict),
+    ``tool`` (BaseTool | None), ``state`` (Any), ``runtime``
+    (ToolRuntime).
+  - ``ToolCallWrapper`` signature: ``Callable[[ToolCallRequest,
+    Callable[[ToolCallRequest], ToolMessage | Command]], ToolMessage |
+    Command]`` — confirmed by reading the runtime ``_CallableGenericAlias``.
+  - ``AsyncToolCallWrapper`` signature: same shape with awaitables.
+  - ``interrupt()`` from ``langgraph.types`` for human-in-the-loop pause.
+- **Decision mapping**:
+  - ``ALLOW``     -> invokes ``execute(request)`` and returns its
+    ``ToolMessage`` / ``Command`` unchanged
+  - ``REFUSE``    -> returns a ``ToolMessage`` with ``status="error"``
+    and structured ``AristotleToolOutcome`` JSON in ``content`` (default)
+    OR raises ``GateRefusal`` with ``on_refuse="raise"``
+  - ``ESCALATE``  -> returns ``ToolMessage`` (default) OR calls
+    ``langgraph.types.interrupt()`` to pause the graph with
+    ``on_escalate="interrupt"`` (resume with ``{"approve": True}`` to
+    admit) OR raises ``GateEscalation`` with ``on_escalate="raise"``
+  - Gate unreachable -> raises the underlying exception (default,
+    fail-closed) OR returns ``ToolMessage`` with
+    ``on_error="tool_message"``
+- **`interrupt` mode** is the unique LangGraph-specific feature: ESCALATE
+  pauses graph execution and surfaces a payload to the host; the host
+  resumes with ``Command(resume={"approve": True})`` to admit the tool
+  call or anything else to refuse. Maps Aristotle's dual-control
+  semantics onto LangGraph's first-class human-in-the-loop primitive.
+- **`AristotleToolOutcome`** (new dataclass): ``kind`` ("REFUSE" |
+  "ESCALATE" | "GATE_UNREACHABLE"), ``tool_name``, ``reason_codes``,
+  ``message``, ``gel_record_id``, ``warrant_id``. Serializes to JSON for
+  inclusion in ``ToolMessage.content``.
+- **Errors**: ``AristotleLanggraphError`` base + ``GateRefusal``,
+  ``GateEscalation`` subclasses carrying ``tool_name``, ``reason_codes``,
+  ``gel_record_id``, and full decision dict.
+- **Customizable mapping identical to the other adapters**:
+  ``action_type_prefix``, ``action_type_for``, ``build_action``,
+  ``passthrough_tools``, ``on_decision``.
+- **Argument extraction**: reads ``tool_call`` structurally — both
+  langchain's ``ToolCall`` TypedDict (``{"name", "args", "id", "type"}``)
+  and a Pydantic model shape are supported.
+- **Tests (15/15 pass)**:
+  - ALLOW invokes inner execute and returns its output
+  - REFUSE returns ToolMessage with status="error" + structured outcome;
+    inner never runs
+  - REFUSE raises GateRefusal when ``on_refuse="raise"``
+  - ESCALATE returns ToolMessage by default with structured outcome
+  - ESCALATE raises GateEscalation when configured
+  - Gate-unreachable raises by default (fail-closed)
+  - Gate-unreachable returns ToolMessage when ``on_error="tool_message"``
+  - ``passthrough_tools`` skips the gate entirely
+  - ``action_type_for`` routes specific tools into vertical namespace
+  - ``build_action`` overrides the canonical action shape
+  - ``on_decision`` telemetry fires with elapsed_ms and verdict
+  - Constructor refuses missing required options
+  - Async: ALLOW awaits inner execute
+  - Async: REFUSE returns ToolMessage by default
+  - Async: REFUSE raises when configured
+  All tests run WITHOUT installing langgraph or langchain-core — they
+  use a structural dict fallback for ToolMessage that the wrapper
+  produces when langchain isn't importable.
+- **Packaging**:
+  - dependencies: aristotle-os-sdk>=0.1.0
+  - optional-dependencies.langgraph: langgraph>=0.2,<2.0,
+    langchain-core>=0.3,<1.0
+  - LICENSE + NOTICE via PEP 639 license-files
+  - py.typed marker
+  - Wheel: 8 entries, LICENSE + NOTICE under dist-info/licenses/
+- **README**: install + quickstart + decision-mapping table + canonical
+  mapping table + async section + three recipes (interrupt-mode HIL
+  approval; vertical routing; telemetry) + API reference + notes +
+  Apache-2.0 footer.
+- **Cross-runtime symmetry strengthened**: same options surface across
+  4 TS adapters + 2 Python adapters. The pattern is proven generic.
+- **No regressions**: governance-core 51/51, execution-control 75/75,
+  TS os-sdk 15/15, claude-agents 13/13, langchain 14/14, openai-agents
+  13/13, vercel-ai 13/13 = 194 TS tests. Python: os-sdk 20/20 + crewai
+  24/24 + langgraph 15/15 = 59 Python tests.
+  **Total 275/275 across all suites on the branch.**
+
 ## v0.1.51 - Vercel AI SDK integration (@aristotle/vercel-ai)
 - **Fifth agent-framework integration ships, third TS adapter, fourth
   active framework on the JS side.** Faramesh framework coverage now
