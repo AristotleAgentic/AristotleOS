@@ -131,7 +131,50 @@ export const VERTICAL_REGISTRY: Record<VerticalId, VerticalConfig> = {
     presets: { label: "Fleet operations regions", states: ["US-MT", "US-CA", "EU-DE", "JP"] },
     testSurface: { tests: 75, suite: "execution-control-runtime" },
     hasDedicatedConsole: true,
-    dedicatedSectionId: "fleet"
+    dedicatedSectionId: "fleet",
+    workflow: [
+      { id: "mission", label: "Fleet mission intake (vehicle, ODD, route)", owner: "Fleet operator", state: "complete", evidence: "Canonical Governed Action recorded" },
+      { id: "authority", label: "Authority Envelope resolved (ODD + region)", owner: "Authority service", state: "complete", evidence: "Envelope unrevoked, signer authorized" },
+      { id: "preflight", label: "Pre-dispatch checks (sensors, V2X, SOTIF, DBW)", owner: "Vehicle adapters", state: "complete", evidence: "Sensor + DBW health pinned" },
+      { id: "commit", label: "Commit Gate decision", owner: "Commit Gate", state: "active", evidence: "Decision bound to ODD rule-set" },
+      { id: "warrant", label: "Single-use Mission Warrant issued (Ed25519)", owner: "Warrant service", state: "pending", evidence: "Warrant consumed before DBW commands" },
+      { id: "execute", label: "Drive-by-wire dispatch to vehicle", owner: "DBW gateway", state: "pending", evidence: "Adapter receipt bound" },
+      { id: "evidence", label: "Automotive Evidence Bundle exported", owner: "GEL exporter", state: "pending", evidence: "aristotle.automotive-evidence.v1, signed + hash-chained" }
+    ],
+    safetyDrills: [
+      { id: "odd", label: "Operational Design Domain (ODD)", posture: "green", current: "Inside ODD: urban, daylight, dry, 35 mph max", invariant: "require_inside_odd: true", evidence: "ODD parameters in GEL" },
+      { id: "sensors", label: "Sensor health (camera, radar, lidar)", posture: "green", current: "All sensors nominal; degraded-mode unused", invariant: "require_sensor_fusion_healthy: true", evidence: "Health snapshot pinned at commit" },
+      { id: "v2x", label: "V2X / connectivity", posture: "amber", current: "V2X latency 95ms (limit 200ms)", invariant: "max_v2x_latency_ms: 200", evidence: "Connectivity state captured" },
+      { id: "sotif", label: "SOTIF FMEA / triggering condition coverage", posture: "green", current: "0 unresolved triggering conditions for this ODD", invariant: "require_sotif_residual_risk_acceptable: true", evidence: "FMEA version bound" }
+    ],
+    evidenceSample: {
+      bundleVersion: "aristotle.automotive-evidence.v1",
+      fields: [
+        { k: "Operator", v: "operator:demo-fleet-co" },
+        { k: "Vehicle", v: "vehicle:demo-av-018", mono: true },
+        { k: "Mission", v: "MSN-DEMO-MT-2026-05-26-014", mono: true },
+        { k: "ODD profile", v: "urban-daylight-dry-35mph" },
+        { k: "Region", v: "US-MT" },
+        { k: "Bundle hash", v: "0x7e8f9a0b...1c2d", mono: true }
+      ],
+      profile: ["aristotle.automotive-evidence.v1", "NHTSA", "ISO-21448-SOTIF", "UN-R155", "ISO-26262", "aristotle.evidence-base.v1"],
+      redactedFields: ["passenger_ids", "exact_origin_destination"],
+      bundleHash: "0x7e8f9a0b...1c2d",
+      verification: "ok"
+    },
+    boundaryChainLabels: ["Intent", "Ward", "ODD checks", "Adapter", "GEL"],
+    failClosedRule: {
+      description:
+        "Vehicle outside ODD, sensor stack degraded, V2X latency above limit, missing SOTIF residual-risk sign-off, region not permitted, or attempt to disable collision avoidance / lane constraints — prevents Warrant issuance before any DBW command leaves the gate.",
+      chips: ["NHTSA", "ISO 21448", "UN R155", "ISO 26262", "ODD", "SOTIF"]
+    },
+    scenarios: [
+      { id: "clean", label: "Clean urban-daylight dispatch", expected: "ALLOW", rationale: "ODD, sensors, V2X, region, signer all green." },
+      { id: "out-of-odd", label: "Heavy rain triggers ODD breach", expected: "REFUSE", rationale: "require_inside_odd bound fails." },
+      { id: "sensor-fail", label: "Lidar degraded mid-mission", expected: "REFUSE", rationale: "Sensor health bound fails; vehicle must hand off." },
+      { id: "takeover", label: "Remote teleop takeover requested", expected: "ESCALATE", rationale: "Dual-control: fleet supervisor + safety operator." },
+      { id: "region-block", label: "Cross-border into ungoverned region", expected: "REFUSE", rationale: "Region not in permitted_regions; envelope refuses." }
+    ]
   },
   aviation: {
     id: "aviation",
@@ -212,7 +255,50 @@ export const VERTICAL_REGISTRY: Record<VerticalId, VerticalConfig> = {
     presets: { label: "Balancing authorities", states: ["MISO", "PJM", "ERCOT", "CAISO", "NYISO"] },
     testSurface: { tests: 75, suite: "execution-control-runtime (grid slice)" },
     hasDedicatedConsole: true,
-    dedicatedSectionId: "grid"
+    dedicatedSectionId: "grid",
+    workflow: [
+      { id: "intent", label: "Operator intent (breaker, setpoint, DERMS)", owner: "Control room", state: "complete", evidence: "Canonical Governed Action recorded" },
+      { id: "authority", label: "Authority Envelope resolved (substation + role)", owner: "Authority service", state: "complete", evidence: "Envelope unrevoked, operator authorized" },
+      { id: "preflight", label: "Bound checks (sync, freq, voltage, relay coord)", owner: "Pre-commit adapters", state: "complete", evidence: "Bounds pinned at commit time" },
+      { id: "commit", label: "Commit Gate decision", owner: "Commit Gate", state: "active", evidence: "Decision bound to rule-set" },
+      { id: "warrant", label: "Single-use Operations Warrant issued", owner: "Warrant service", state: "pending", evidence: "Warrant consumed before field write" },
+      { id: "execute", label: "Outbound to SCADA / RTU / DERMS", owner: "Grid adapter", state: "pending", evidence: "Adapter receipt bound" },
+      { id: "evidence", label: "Grid Evidence Bundle exported", owner: "GEL exporter", state: "pending", evidence: "aristotle.grid-evidence.v1, signed + hash-chained" }
+    ],
+    safetyDrills: [
+      { id: "freq", label: "Frequency (60 Hz)", posture: "green", current: "59.98 Hz (limit ±0.05)", invariant: "freq_within_tolerance: true", evidence: "PMU snapshot at commit" },
+      { id: "voltage", label: "Voltage profile", posture: "green", current: "1.02 pu at substation 14", invariant: "voltage_within_tolerance: true", evidence: "Voltage telemetry pinned" },
+      { id: "sync", label: "Synchrocheck", posture: "green", current: "Sync ok: Δf 0.02 Hz, Δθ 8°, ΔV 0.5%", invariant: "require_synchrocheck: true", evidence: "Sync state captured" },
+      { id: "relay", label: "Relay coordination", posture: "amber", current: "1 relay overdue for setting verification", invariant: "require_relay_setting_current: true", evidence: "Relay setting hash in bundle" }
+    ],
+    evidenceSample: {
+      bundleVersion: "aristotle.grid-evidence.v1",
+      fields: [
+        { k: "Operator", v: "operator:demo-balancing-auth" },
+        { k: "System", v: "grid-demo-zone-A", mono: true },
+        { k: "Substation", v: "SS-14 (115/12.5 kV)" },
+        { k: "Action", v: "grid.breaker.close", mono: true },
+        { k: "Balancing authority", v: "MISO" },
+        { k: "Bundle hash", v: "0x4d5e6f70...8192", mono: true }
+      ],
+      profile: ["aristotle.grid-evidence.v1", "NERC-CIP-002-to-014", "IEC-61850", "IEEE-1547", "aristotle.evidence-base.v1"],
+      redactedFields: ["customer_meter_data", "substation_employee_ids"],
+      bundleHash: "0x4d5e6f70...8192",
+      verification: "ok"
+    },
+    boundaryChainLabels: ["Intent", "Ward", "Bounds", "Adapter", "GEL"],
+    failClosedRule: {
+      description:
+        "Sync-check fails, frequency or voltage outside tolerance, relay setting expired, NERC CIP role unverified, or attempt to disable relay protection — prevents Warrant issuance before any breaker, setpoint, or DERMS command reaches the substation.",
+      chips: ["NERC CIP", "FERC", "IEC 61850", "IEEE 1547", "synchrocheck"]
+    },
+    scenarios: [
+      { id: "clean", label: "Clean breaker close after synccheck", expected: "ALLOW", rationale: "All bounds within tolerance, role verified." },
+      { id: "no-sync", label: "Close attempt without sync check", expected: "REFUSE", rationale: "require_synchrocheck bound fails." },
+      { id: "disable-relay", label: "Operator attempts to disable relay protection", expected: "REFUSE", rationale: "Hard interlock: grid.disable_relay_protection." },
+      { id: "derms", label: "DERMS dispatch under reliability event", expected: "ESCALATE", rationale: "Dual control: balancing authority + transmission operator." },
+      { id: "off-freq", label: "Frequency excursion outside limit", expected: "REFUSE", rationale: "freq_within_tolerance bound fails." }
+    ]
   },
   healthcare: {
     id: "healthcare",
@@ -231,7 +317,50 @@ export const VERTICAL_REGISTRY: Record<VerticalId, VerticalConfig> = {
     presets: { label: "Care settings", states: ["acute", "ambulatory", "telehealth", "long-term"] },
     testSurface: { tests: 75, suite: "execution-control-runtime (healthcare slice)" },
     hasDedicatedConsole: true,
-    dedicatedSectionId: "healthcare"
+    dedicatedSectionId: "healthcare",
+    workflow: [
+      { id: "intent", label: "Clinical intent (order, write, device, claim)", owner: "Clinician / care team", state: "complete", evidence: "Canonical Governed Action recorded" },
+      { id: "authority", label: "Authority Envelope (TPO basis, role, privilege)", owner: "Authority service", state: "complete", evidence: "Envelope unrevoked, clinician privilege current" },
+      { id: "preflight", label: "Clinical checks (allergy, dose, identity, consent)", owner: "Clinical adapters", state: "complete", evidence: "All checks passed; PHI-min applied" },
+      { id: "commit", label: "Commit Gate decision", owner: "Commit Gate", state: "active", evidence: "Decision bound to rule-set + TPO basis" },
+      { id: "warrant", label: "Single-use Clinical Warrant issued", owner: "Warrant service", state: "pending", evidence: "Warrant consumed before EHR / Rx / device write" },
+      { id: "execute", label: "Adapter dispatch (EHR / pharmacy / device / claims)", owner: "Clinical adapter", state: "pending", evidence: "Adapter receipt bound" },
+      { id: "evidence", label: "Healthcare Evidence Bundle exported", owner: "GEL exporter", state: "pending", evidence: "aristotle.healthcare-evidence.v1, PHI-minimized + signed" }
+    ],
+    safetyDrills: [
+      { id: "allergy", label: "Allergy / interaction check", posture: "green", current: "No allergy match; 0 dangerous interactions", invariant: "require_allergy_check_passed: true", evidence: "Check result pinned" },
+      { id: "dose", label: "Dose limit (per weight / age / renal)", posture: "amber", current: "Dose 80% of upper limit (renal-adjusted)", invariant: "max_dose_pct: 100", evidence: "Calculation pinned" },
+      { id: "consent", label: "TPO basis / consent", posture: "green", current: "Treatment TPO basis on file", invariant: "require_tpo_basis_present: true", evidence: "Basis ref in bundle" },
+      { id: "alarm", label: "Device alarm posture", posture: "green", current: "Pump alarms armed; thresholds set", invariant: "require_device_alarms_armed: true", evidence: "Device state captured" }
+    ],
+    evidenceSample: {
+      bundleVersion: "aristotle.healthcare-evidence.v1",
+      fields: [
+        { k: "Facility", v: "facility:demo-health-network" },
+        { k: "Unit", v: "ICU 7-North" },
+        { k: "Encounter", v: "ENC-DEMO-2026-05-26-0042", mono: true },
+        { k: "Patient context hash", v: "0x...phi-minimized...", mono: true },
+        { k: "Action family", v: "healthcare.rx.order" },
+        { k: "Bundle hash", v: "0x5a6b7c8d...e0f1", mono: true }
+      ],
+      profile: ["aristotle.healthcare-evidence.v1", "HIPAA-Security", "HIPAA-Privacy", "21-CFR-Part-11", "FHIR-R4", "aristotle.evidence-base.v1"],
+      redactedFields: ["patient_mrn", "patient_dob", "exact_address"],
+      bundleHash: "0x5a6b7c8d...e0f1",
+      verification: "ok"
+    },
+    boundaryChainLabels: ["Intent", "Ward", "Patient Ctx", "Adapter", "GEL"],
+    failClosedRule: {
+      description:
+        "Missing patient context, stale clinical state, absent TPO basis, inactive clinician privilege, allergy conflict, medication interaction risk, PHI overreach, disabled device alarm, unsafe device command, unapproved research export, or unsupported claim attestation — prevents Warrant issuance before patient consequence.",
+      chips: ["HIPAA", "TPO", "FDA 21 CFR 11", "FHIR", "device alarm"]
+    },
+    scenarios: [
+      { id: "clean", label: "Clean Rx order with TPO basis + dose ok", expected: "ALLOW", rationale: "Allergy, dose, consent, identity, privilege all pass." },
+      { id: "allergy", label: "Order matches patient allergy", expected: "REFUSE", rationale: "Hard interlock: healthcare.bypass_allergy_check / allergy_check fails." },
+      { id: "dose-over", label: "Dose above upper limit (renal-adjusted)", expected: "ESCALATE", rationale: "Dual control: prescriber + pharmacist." },
+      { id: "no-tpo", label: "Action attempted without TPO basis", expected: "REFUSE", rationale: "require_tpo_basis_present bound fails." },
+      { id: "alarm-disable", label: "Operator attempts to disable device alarm", expected: "REFUSE", rationale: "Hard interlock: healthcare.disable_dose_limit / alarm." }
+    ]
   },
   logistics: {
     id: "logistics",
@@ -250,7 +379,50 @@ export const VERTICAL_REGISTRY: Record<VerticalId, VerticalConfig> = {
     presets: { label: "Freight lanes", states: ["LTL", "FTL", "intermodal", "cross-border-MX", "cross-border-CA"] },
     testSurface: { tests: 75, suite: "execution-control-runtime (logistics slice)" },
     hasDedicatedConsole: true,
-    dedicatedSectionId: "logistics"
+    dedicatedSectionId: "logistics",
+    workflow: [
+      { id: "intent", label: "Dispatch intent (load tender, route, driver, fuel)", owner: "Dispatcher", state: "complete", evidence: "Canonical Governed Action recorded" },
+      { id: "authority", label: "Authority Envelope (carrier / role / lane)", owner: "Authority service", state: "complete", evidence: "Envelope unrevoked, dispatcher authorized" },
+      { id: "preflight", label: "Pre-dispatch checks (HOS, cargo, seal, fuel)", owner: "ELD / TMS adapters", state: "complete", evidence: "HOS + ELD freshness pinned" },
+      { id: "commit", label: "Commit Gate decision", owner: "Commit Gate", state: "active", evidence: "Decision bound to rule-set" },
+      { id: "warrant", label: "Single-use Dispatch Warrant issued", owner: "Warrant service", state: "pending", evidence: "Warrant consumed before tender accept" },
+      { id: "execute", label: "Outbound (TMS / yard / fuel network)", owner: "Logistics adapter", state: "pending", evidence: "Adapter receipt bound" },
+      { id: "evidence", label: "Logistics Evidence Bundle exported", owner: "GEL exporter", state: "pending", evidence: "aristotle.logistics-evidence.v1, signed + hash-chained" }
+    ],
+    safetyDrills: [
+      { id: "hos", label: "Hours-of-Service (49 CFR 395)", posture: "green", current: "Driver D-117: 6h drive / 14h on-duty remaining", invariant: "require_hos_compliant: true", evidence: "ELD snapshot pinned" },
+      { id: "eld", label: "ELD freshness", posture: "green", current: "Last ELD ping 8s ago (limit 60s)", invariant: "max_eld_age_s: 60", evidence: "ELD age captured" },
+      { id: "seal", label: "Cargo seal integrity", posture: "green", current: "Seal SLR-887234 unbroken; C-TPAT compliant", invariant: "require_seal_intact: true", evidence: "Seal state captured" },
+      { id: "fuel", label: "Fuel card authorization", posture: "amber", current: "Fuel card auth limit 75% spent for cycle", invariant: "max_fuel_card_pct: 100", evidence: "Auth ledger reference" }
+    ],
+    evidenceSample: {
+      bundleVersion: "aristotle.logistics-evidence.v1",
+      fields: [
+        { k: "Carrier", v: "operator:demo-carrier-co" },
+        { k: "Dispatcher", v: "actor:dispatcher-007" },
+        { k: "Load", v: "LD-DEMO-2026-05-26-014", mono: true },
+        { k: "Driver", v: "driver:D-117 (CDL-A)", mono: true },
+        { k: "Lane", v: "MT-WA (FTL)" },
+        { k: "Bundle hash", v: "0xbeefcafe...1234", mono: true }
+      ],
+      profile: ["aristotle.logistics-evidence.v1", "49-CFR-Part-395-HOS", "49-CFR-Part-390-to-399", "PIP-C-TPAT", "aristotle.evidence-base.v1"],
+      redactedFields: ["driver_personal_info", "exact_route_polyline"],
+      bundleHash: "0xbeefcafe...1234",
+      verification: "ok"
+    },
+    boundaryChainLabels: ["Intent", "Ward", "HOS + cargo", "Adapter", "GEL"],
+    failClosedRule: {
+      description:
+        "HOS exceeded, ELD stale, cargo seal broken, fuel card over limit, driver credentials expired, cross-border without PIP / C-TPAT, or attempt to bypass HOS or break seal — prevents Warrant issuance before tender, fuel, or cargo-release dispatch.",
+      chips: ["FMCSA", "49 CFR 395 HOS", "ELD", "C-TPAT", "PIP"]
+    },
+    scenarios: [
+      { id: "clean", label: "Clean LTL tender accept", expected: "ALLOW", rationale: "HOS + ELD + seal + fuel + credentials all green." },
+      { id: "hos-bust", label: "Driver about to exceed 11-hour drive limit", expected: "REFUSE", rationale: "require_hos_compliant bound fails." },
+      { id: "seal-break", label: "Operator attempts to override seal break", expected: "REFUSE", rationale: "Hard interlock: logistics.override_seal_break." },
+      { id: "cross-border", label: "Cross-border MX without PIP on file", expected: "ESCALATE", rationale: "Dual control: dispatcher + compliance officer." },
+      { id: "expired-cdl", label: "Driver CDL expired", expected: "REFUSE", rationale: "Credential check fails." }
+    ]
   },
   mining: {
     id: "mining",
@@ -393,7 +565,50 @@ export const VERTICAL_REGISTRY: Record<VerticalId, VerticalConfig> = {
     presets: { label: "Port operations", states: ["USCG-Sector-Houston", "USCG-Sector-LA-LB", "Rotterdam", "Singapore"] },
     testSurface: { tests: 75, suite: "execution-control-runtime (port slice)" },
     hasDedicatedConsole: true,
-    dedicatedSectionId: "port"
+    dedicatedSectionId: "port",
+    workflow: [
+      { id: "intent", label: "Terminal / gate / crane intent", owner: "Port operator", state: "complete", evidence: "Canonical Governed Action recorded" },
+      { id: "authority", label: "Authority Envelope (operator + terminal role)", owner: "Authority service", state: "complete", evidence: "Envelope unrevoked, signer authorized" },
+      { id: "preflight", label: "Pre-dispatch checks (customs, MARSEC, VTS, crane)", owner: "Port adapters", state: "complete", evidence: "Status pinned" },
+      { id: "commit", label: "Commit Gate decision", owner: "Commit Gate", state: "active", evidence: "Decision bound to rule-set" },
+      { id: "warrant", label: "Single-use Operations Warrant issued", owner: "Warrant service", state: "pending", evidence: "Warrant consumed before TOS write" },
+      { id: "execute", label: "Outbound to TOS / gate / crane / VTS", owner: "Port adapter", state: "pending", evidence: "Adapter receipt bound" },
+      { id: "evidence", label: "Port Evidence Bundle exported", owner: "GEL exporter", state: "pending", evidence: "aristotle.port-evidence.v1, signed + hash-chained" }
+    ],
+    safetyDrills: [
+      { id: "customs", label: "Customs hold status", posture: "green", current: "No active customs hold; CBP entry filed", invariant: "require_no_customs_hold: true", evidence: "Customs status pinned" },
+      { id: "marsec", label: "MARSEC level", posture: "green", current: "MARSEC 1 (normal operations)", invariant: "max_marsec_level: 1", evidence: "USCG status reference" },
+      { id: "vts", label: "VTS clearance", posture: "amber", current: "VTS coordinating outbound vessel (window 13:40-14:10)", invariant: "require_vts_clearance: true", evidence: "VTS reference in bundle" },
+      { id: "crane", label: "Quay-crane safety", posture: "green", current: "Anti-collision + load-moment indicator armed", invariant: "require_crane_safety_armed: true", evidence: "Crane state captured" }
+    ],
+    evidenceSample: {
+      bundleVersion: "aristotle.port-evidence.v1",
+      fields: [
+        { k: "Operator", v: "operator:demo-terminal-co" },
+        { k: "Terminal", v: "terminal:T-DEMO-001", mono: true },
+        { k: "Vessel", v: "vessel:DEMO-VESSEL (IMO 9123456)", mono: true },
+        { k: "Action", v: "port.crane.move" },
+        { k: "USCG sector", v: "USCG-Sector-Houston" },
+        { k: "Bundle hash", v: "0x33445566...77a8", mono: true }
+      ],
+      profile: ["aristotle.port-evidence.v1", "33-CFR-Part-105-MTSA", "IMO-ISPS", "USCG-Sector-authority", "aristotle.evidence-base.v1"],
+      redactedFields: ["crew_manifest", "shipper_consignee"],
+      bundleHash: "0x33445566...77a8",
+      verification: "ok"
+    },
+    boundaryChainLabels: ["Intent", "Ward", "Security + customs", "Adapter", "GEL"],
+    failClosedRule: {
+      description:
+        "Active customs hold, MARSEC level escalation without recertification, missing VTS clearance, crane safety disarmed, restricted-flag vessel without sector approval, or attempt to bypass customs hold / crane collision safety — prevents Warrant issuance before any TOS, gate, crane, or VTS command.",
+      chips: ["MTSA", "ISPS", "USCG", "MARSEC", "CBP"]
+    },
+    scenarios: [
+      { id: "clean", label: "Clean yard move under MARSEC 1", expected: "ALLOW", rationale: "Customs, MARSEC, VTS, crane all green." },
+      { id: "customs-hold", label: "Customs hold present", expected: "REFUSE", rationale: "require_no_customs_hold bound fails." },
+      { id: "marsec-3", label: "MARSEC escalates to 3 mid-shift", expected: "ESCALATE", rationale: "Dual control: terminal manager + USCG sector liaison." },
+      { id: "crane-safety", label: "Operator attempts to disable crane collision safety", expected: "REFUSE", rationale: "Hard interlock: port.disable_collision_safety." },
+      { id: "restricted-flag", label: "Restricted-flag vessel arrival", expected: "ESCALATE", rationale: "Dual control + sector commander review." }
+    ]
   },
   rail: {
     id: "rail",
@@ -412,7 +627,50 @@ export const VERTICAL_REGISTRY: Record<VerticalId, VerticalConfig> = {
     presets: { label: "Operating jurisdictions", states: ["Class-I-US", "Class-II-US", "Short-line-US", "VIA-Canada"] },
     testSurface: { tests: 75, suite: "execution-control-runtime (rail slice)" },
     hasDedicatedConsole: true,
-    dedicatedSectionId: "rail"
+    dedicatedSectionId: "rail",
+    workflow: [
+      { id: "intent", label: "Dispatch intent (movement, switch, signal)", owner: "Dispatcher", state: "complete", evidence: "Canonical Governed Action recorded" },
+      { id: "authority", label: "Authority Envelope (territory + role)", owner: "Authority service", state: "complete", evidence: "Envelope unrevoked, dispatcher certified" },
+      { id: "preflight", label: "Pre-dispatch checks (PTC, track circuit, switch position)", owner: "Wayside / PTC adapters", state: "complete", evidence: "Field state pinned" },
+      { id: "commit", label: "Commit Gate decision", owner: "Commit Gate", state: "active", evidence: "Decision bound to rule-set" },
+      { id: "warrant", label: "Single-use Movement Authority Warrant issued", owner: "Warrant service", state: "pending", evidence: "Warrant consumed before authority release" },
+      { id: "execute", label: "Outbound to PTC back-office / wayside CTC", owner: "Rail adapter", state: "pending", evidence: "Adapter receipt bound" },
+      { id: "evidence", label: "Rail Evidence Bundle exported", owner: "GEL exporter", state: "pending", evidence: "aristotle.rail-evidence.v1, signed + hash-chained" }
+    ],
+    safetyDrills: [
+      { id: "ptc", label: "PTC enforcement", posture: "green", current: "PTC armed; train T-117 in compliance", invariant: "require_ptc_enforcing: true", evidence: "PTC state pinned" },
+      { id: "track-circuit", label: "Track circuit integrity", posture: "green", current: "All blocks reporting; 0 shunts active", invariant: "require_track_circuit_clear: true", evidence: "Block status captured" },
+      { id: "switch", label: "Switch position + lock", posture: "green", current: "SW-42 normal + locked", invariant: "require_switch_locked_in_intended_position: true", evidence: "Interlocking state pinned" },
+      { id: "signal", label: "Signal aspect coordination", posture: "amber", current: "Approach aspect at S-19 (limit absolute)", invariant: "require_signal_aspect_appropriate: true", evidence: "Signal state captured" }
+    ],
+    evidenceSample: {
+      bundleVersion: "aristotle.rail-evidence.v1",
+      fields: [
+        { k: "Operator", v: "operator:demo-railroad" },
+        { k: "Subdivision", v: "subdivision:demo-mountain", mono: true },
+        { k: "Train", v: "train:T-117 (manifest)" },
+        { k: "Action", v: "rail.movement.authorize" },
+        { k: "Territory class", v: "Class-I-US" },
+        { k: "Bundle hash", v: "0x11aa22bb...33cc", mono: true }
+      ],
+      profile: ["aristotle.rail-evidence.v1", "49-CFR-Part-236-PTC", "49-CFR-Part-234", "AAR-Rule-49", "FRA-orders", "aristotle.evidence-base.v1"],
+      redactedFields: ["crew_personal_info", "exact_lat_lon"],
+      bundleHash: "0x11aa22bb...33cc",
+      verification: "ok"
+    },
+    boundaryChainLabels: ["Intent", "Ward", "PTC + interlocking", "Adapter", "GEL"],
+    failClosedRule: {
+      description:
+        "PTC not enforcing, track circuit failure, switch out of intended position or unlocked, signal aspect incompatible with movement, dispatcher not certified for territory, dark territory without manual block authority, or PTC bypass attempt — prevents Warrant issuance before movement authority release.",
+      chips: ["49 CFR 236 PTC", "FRA", "AAR Rule 49", "interlocking"]
+    },
+    scenarios: [
+      { id: "clean", label: "Clean movement authority on Class I subdivision", expected: "ALLOW", rationale: "PTC, track circuit, switch, signal, dispatcher cert all green." },
+      { id: "ptc-bypass", label: "Operator attempts PTC bypass", expected: "REFUSE", rationale: "Hard interlock: rail.bypass_ptc." },
+      { id: "switch-wrong", label: "Switch reported in unintended position", expected: "REFUSE", rationale: "Interlocking bound fails." },
+      { id: "dispatcher-override", label: "Dispatcher emergency override mid-movement", expected: "ESCALATE", rationale: "Dual control: dispatcher + chief dispatcher." },
+      { id: "dark-territory", label: "Dark territory authority request", expected: "ESCALATE", rationale: "Manual block authority requires extra approval." }
+    ]
   },
   robotics: {
     id: "robotics",
@@ -624,7 +882,50 @@ export const VERTICAL_REGISTRY: Record<VerticalId, VerticalConfig> = {
     presets: { label: "Operating tiers", states: ["Tier-1", "Tier-2", "Tier-3", "MVNO"] },
     testSurface: { tests: 75, suite: "execution-control-runtime (telecom slice)" },
     hasDedicatedConsole: true,
-    dedicatedSectionId: "noc"
+    dedicatedSectionId: "noc",
+    workflow: [
+      { id: "intent", label: "Change intent (config push, failover, RAN tune)", owner: "NOC operator", state: "complete", evidence: "Canonical Governed Action recorded" },
+      { id: "authority", label: "Authority Envelope (NOC role + change ticket)", owner: "Authority service", state: "complete", evidence: "Envelope unrevoked, ticket linked" },
+      { id: "preflight", label: "Pre-change checks (window, E911 path, deps, rollback)", owner: "NMS adapters", state: "complete", evidence: "Status pinned" },
+      { id: "commit", label: "Commit Gate decision", owner: "Commit Gate", state: "active", evidence: "Decision bound to rule-set" },
+      { id: "warrant", label: "Single-use Change Warrant issued", owner: "Warrant service", state: "pending", evidence: "Warrant consumed before NMS push" },
+      { id: "execute", label: "Outbound to NMS / OAM / orchestrator", owner: "Telecom adapter", state: "pending", evidence: "Adapter receipt bound" },
+      { id: "evidence", label: "Telecom Evidence Bundle exported", owner: "GEL exporter", state: "pending", evidence: "aristotle.telecom-evidence.v1, signed + hash-chained" }
+    ],
+    safetyDrills: [
+      { id: "window", label: "Change window", posture: "green", current: "Inside maintenance window 02:00-04:00 UTC", invariant: "require_inside_change_window: true", evidence: "Window state pinned" },
+      { id: "e911", label: "E911 path integrity", posture: "green", current: "E911 path verified across NSI-1 and NSI-2", invariant: "require_e911_path_clear: true", evidence: "Path verification reference" },
+      { id: "deps", label: "Dependency health", posture: "amber", current: "1 dependent service at degraded tier (non-critical)", invariant: "require_no_critical_dep_outage: true", evidence: "Dependency snapshot" },
+      { id: "rollback", label: "Rollback armed", posture: "green", current: "Snapshot taken; rollback < 30s ETA", invariant: "require_rollback_armed: true", evidence: "Rollback ref in bundle" }
+    ],
+    evidenceSample: {
+      bundleVersion: "aristotle.telecom-evidence.v1",
+      fields: [
+        { k: "Carrier", v: "operator:demo-telco" },
+        { k: "Network tier", v: "Tier-1" },
+        { k: "Change ticket", v: "CHG-2026-05-26-0091", mono: true },
+        { k: "Site", v: "site:DEN-RAN-014", mono: true },
+        { k: "Action", v: "telecom.config.push" },
+        { k: "Bundle hash", v: "0xc0c0fefe...d1ce", mono: true }
+      ],
+      profile: ["aristotle.telecom-evidence.v1", "FCC-Part-76", "NIIF-guidelines", "3GPP-TS-33.501", "aristotle.evidence-base.v1"],
+      redactedFields: ["customer_imei", "subscriber_records"],
+      bundleHash: "0xc0c0fefe...d1ce",
+      verification: "ok"
+    },
+    boundaryChainLabels: ["Intent", "Ward", "Change checks", "Adapter", "GEL"],
+    failClosedRule: {
+      description:
+        "Outside change window, E911 path at risk, critical dependency unhealthy, missing rollback snapshot, change ticket revoked, or attempt to disable E911 path / bypass change window — prevents Warrant issuance before any NMS push.",
+      chips: ["FCC Part 76", "NIIF", "3GPP TS 33.501", "change window", "E911"]
+    },
+    scenarios: [
+      { id: "clean", label: "Clean config push in change window", expected: "ALLOW", rationale: "Window, E911, deps, rollback all green." },
+      { id: "outside-window", label: "Push attempted outside window", expected: "REFUSE", rationale: "require_inside_change_window bound fails." },
+      { id: "e911-risk", label: "Operator attempts to disable E911 path", expected: "REFUSE", rationale: "Hard interlock: telecom.disable_e911_path." },
+      { id: "ran-config", label: "RAN cell config change at peak hours", expected: "ESCALATE", rationale: "Dual control: NOC supervisor + RAN engineer." },
+      { id: "no-rollback", label: "Push without rollback snapshot", expected: "REFUSE", rationale: "require_rollback_armed bound fails." }
+    ]
   },
   title: {
     id: "title",
@@ -653,7 +954,54 @@ export const VERTICAL_REGISTRY: Record<VerticalId, VerticalConfig> = {
     presets: { label: "Demonstration state presets", states: ["MT", "OR", "CA", "TX", "FL"] },
     testSurface: { tests: 22, suite: "title.test.ts" },
     hasDedicatedConsole: true,
-    dedicatedSectionId: "title"
+    dedicatedSectionId: "title",
+    workflow: [
+      { id: "tx-intake", label: "Transaction Intake (VIN, jurisdiction, parties)", owner: "Title agent", state: "complete", evidence: "Canonical Governed Action recorded" },
+      { id: "authority", label: "Authority Envelope resolved (lender / dealer / DMV)", owner: "Authority service", state: "complete", evidence: "Envelope unrevoked, signer authorized" },
+      { id: "checks", label: "Fraud / NMVTIS / theft / identity checks bound", owner: "Verification adapters", state: "complete", evidence: "All checks passed; scores recorded" },
+      { id: "commit", label: "Commit Gate decision (ALLOW / REFUSE / ESCALATE)", owner: "Commit Gate", state: "active", evidence: "Decision pinned to rule-set version" },
+      { id: "warrant", label: "Single-use Warrant issued (Ed25519 signed)", owner: "Warrant service", state: "pending", evidence: "Warrant consumed before receipt" },
+      { id: "submit", label: "DMV / ELT submission with bound evidence", owner: "DMV / ELT adapter", state: "pending", evidence: "State agency endpoint" },
+      { id: "evidence", label: "Title Evidence Bundle exported", owner: "GEL exporter", state: "pending", evidence: "aristotle.title-evidence.v1, signed + hash-chained" }
+    ],
+    safetyDrills: [
+      { id: "fraud", label: "Fraud score (state threshold)", posture: "green", current: "Score 0.18 (state threshold 0.35)", invariant: "max_fraud_risk_score: per-state", evidence: "Score pinned at commit" },
+      { id: "identity", label: "Identity confidence", posture: "green", current: "Confidence 0.92 (min 0.85)", invariant: "min_identity_confidence_score: per-state", evidence: "Identity provider receipt" },
+      { id: "nmvtis", label: "NMVTIS verification", posture: "green", current: "NMVTIS clear; no brand codes", invariant: "require_nmvtis_passed: true", evidence: "NMVTIS query reference" },
+      { id: "elt-participant", label: "Lender ELT participant", posture: "amber", current: "Lender active; ELT participation current", invariant: "require_lender_elt_participant: true", evidence: "Lender registry reference" }
+    ],
+    evidenceSample: {
+      bundleVersion: "aristotle.title-evidence.v1",
+      fields: [
+        { k: "Actor", v: "actor:lender-signer-jane" },
+        { k: "Organization", v: "org:demo-bank-mt (lender)" },
+        { k: "Jurisdiction", v: "MT" },
+        { k: "Rule version", v: "mt-demo-2026-05-25", mono: true },
+        { k: "Transaction", v: "TX-LIEN-MT-2026-05-25-001 / lien_release", mono: true },
+        { k: "VIN", v: "1HGCM82633A123456", mono: true },
+        { k: "Title state", v: "clear" },
+        { k: "Bundle hash", v: "0xa1b2c3d4e5f6...", mono: true }
+      ],
+      profile: ["aristotle.title-evidence.v1", "STATE_ELT", "NMVTIS", "ODOMETER_DISCLOSURE", "DIGITAL_SIGNATURE_ESIGN_UETA", "DLDV", "UCC_ARTICLE_9", "DEALER_LICENSING"],
+      redactedFields: ["buyer_phone", "exact_address"],
+      bundleHash: "0xa1b2c3d4e5f6...",
+      verification: "ok"
+    },
+    boundaryChainLabels: ["Intent", "Ward", "Checks", "Adapter", "GEL"],
+    failClosedRule: {
+      description:
+        "Unauthorized signer, revoked envelope, expired or untrusted ESIGN intent, fraud score above the jurisdiction threshold, missing NMVTIS query, stale title state, suspended dealer or lender license, missing odometer disclosure where required, missing out-of-state VIN inspection where required, dual-control approval not yet recorded, or warrant reuse attempt — block Warrant issuance before any DMV / ELT submission.",
+      chips: ["State ELT", "NMVTIS", "ESIGN / UETA", "49 CFR 580", "UCC 9", "DLDV"]
+    },
+    scenarios: [
+      { id: "clean-mt-lien", label: "Clean Montana lien release", expected: "ALLOW", rationale: "Authorized signer, unrevoked envelope, all checks pass, identity confidence above threshold." },
+      { id: "unauthorized-signer", label: "Unauthorized signer attempts release", expected: "REFUSE", rationale: "Signer not bound to lender envelope; authority service denies." },
+      { id: "interstate-transfer", label: "Out-of-state transfer requires VIN inspection", expected: "ESCALATE", rationale: "Jurisdiction requires VIN inspection record before transfer can ALLOW." },
+      { id: "revoked-envelope", label: "Authority envelope revoked mid-flow", expected: "REFUSE", rationale: "Envelope revocation list checked at commit; fail-closed." },
+      { id: "fraud-over-threshold", label: "Fraud score exceeds jurisdiction threshold", expected: "REFUSE", rationale: "Fraud check score above demo threshold; commit gate refuses." },
+      { id: "title-correction", label: "Title correction needs supervisor approval", expected: "ESCALATE", rationale: "Correction transactions require dual-control approval store entry." },
+      { id: "suspended-dealer", label: "Suspended dealer license submits sale", expected: "REFUSE", rationale: "Dealer license posture is not active in dealer registry." }
+    ]
   },
   water: {
     id: "water",
@@ -672,7 +1020,50 @@ export const VERTICAL_REGISTRY: Record<VerticalId, VerticalConfig> = {
     presets: { label: "Utility classes", states: ["municipal-large", "municipal-small", "wholesale", "industrial-permitted"] },
     testSurface: { tests: 75, suite: "execution-control-runtime (water slice)" },
     hasDedicatedConsole: true,
-    dedicatedSectionId: "water"
+    dedicatedSectionId: "water",
+    workflow: [
+      { id: "intent", label: "Operator intent (setpoint, pump, dosing, discharge)", owner: "Plant operator", state: "complete", evidence: "Canonical Governed Action recorded" },
+      { id: "authority", label: "Authority Envelope (operator + plant role)", owner: "Authority service", state: "complete", evidence: "Envelope unrevoked, operator certified" },
+      { id: "preflight", label: "Pre-action checks (Cl residual, CT, turbidity, discharge limit)", owner: "SCADA adapters", state: "complete", evidence: "Process values pinned at commit" },
+      { id: "commit", label: "Commit Gate decision", owner: "Commit Gate", state: "active", evidence: "Decision bound to rule-set" },
+      { id: "warrant", label: "Single-use Operations Warrant issued", owner: "Warrant service", state: "pending", evidence: "Warrant consumed before SCADA write" },
+      { id: "execute", label: "Outbound to plant SCADA / dosing controller", owner: "Water adapter", state: "pending", evidence: "Adapter receipt bound" },
+      { id: "evidence", label: "Water Evidence Bundle exported", owner: "GEL exporter", state: "pending", evidence: "aristotle.water-evidence.v1, signed + hash-chained" }
+    ],
+    safetyDrills: [
+      { id: "cl-residual", label: "Free chlorine residual", posture: "green", current: "0.6 mg/L (min 0.2 per SDWA)", invariant: "min_free_chlorine_mg_per_l: 0.2", evidence: "Residual analyzer telemetry" },
+      { id: "ct", label: "Disinfection CT (concentration × time)", posture: "green", current: "CT 0.94 (min 0.80 for current conditions)", invariant: "min_ct_value: dynamic", evidence: "CT computation pinned" },
+      { id: "turbidity", label: "Turbidity (filtered effluent)", posture: "amber", current: "0.18 NTU (LT2 limit 0.3)", invariant: "max_turbidity_ntu: 0.3", evidence: "Turbidimeter snapshot" },
+      { id: "discharge", label: "NPDES discharge limit", posture: "green", current: "TSS 12 mg/L (limit 30); BOD5 8 mg/L (limit 25)", invariant: "discharge_within_permit: true", evidence: "DMR reference attached" }
+    ],
+    evidenceSample: {
+      bundleVersion: "aristotle.water-evidence.v1",
+      fields: [
+        { k: "Utility", v: "operator:demo-water-utility" },
+        { k: "Plant", v: "plant:demo-wtp-001", mono: true },
+        { k: "Action", v: "water.dosing.set" },
+        { k: "Process", v: "primary disinfection" },
+        { k: "Permit class", v: "municipal-large" },
+        { k: "Bundle hash", v: "0xafafafaf...e0e0", mono: true }
+      ],
+      profile: ["aristotle.water-evidence.v1", "SDWA", "CWA-NPDES", "Lead-and-Copper-Rule", "AWIA-cybersecurity", "aristotle.evidence-base.v1"],
+      redactedFields: ["operator_employee_ids", "exact_intake_coords"],
+      bundleHash: "0xafafafaf...e0e0",
+      verification: "ok"
+    },
+    boundaryChainLabels: ["Intent", "Ward", "Process bounds", "Adapter", "GEL"],
+    failClosedRule: {
+      description:
+        "Free chlorine residual below SDWA minimum, CT value below required for current conditions, turbidity above LT2 limit, NPDES discharge limit exceeded, lead/copper sample exception unresolved, operator not certified, or attempt to bypass chlorine residual / override disinfection CT — prevents Warrant issuance before SCADA, pump, dosing, or discharge command.",
+      chips: ["SDWA", "CWA NPDES", "LT2", "Lead & Copper Rule", "AWIA"]
+    },
+    scenarios: [
+      { id: "clean", label: "Clean dosing setpoint change in nominal conditions", expected: "ALLOW", rationale: "Residual, CT, turbidity, discharge all within limits; operator certified." },
+      { id: "low-cl", label: "Free chlorine below SDWA minimum", expected: "REFUSE", rationale: "min_free_chlorine_mg_per_l bound fails." },
+      { id: "discharge-limit", label: "Operator attempts discharge above NPDES limit", expected: "ESCALATE", rationale: "Dual control: plant operator + compliance officer." },
+      { id: "bypass-cl", label: "Operator attempts to bypass chlorine residual check", expected: "REFUSE", rationale: "Hard interlock: water.bypass_chlorine_residual." },
+      { id: "lead-copper", label: "Lead/copper sample exceedance opened mid-shift", expected: "ESCALATE", rationale: "EPA Lead and Copper Rule action level exceeded; supervisor + state primacy notification." }
+    ]
   }
 };
 

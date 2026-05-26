@@ -1,5 +1,42 @@
 # Changelog
 
+## v0.1.59 - All 15 verticals fully populated in the registry
+- **Filled out workflow / safetyDrills / evidenceSample / boundaryChainLabels /
+  failClosedRule / scenarios for the 9 verticals that already had dedicated
+  *OpsConsoles**: automotive, grid, healthcare, logistics, port, rail,
+  telecom, title, water. Combined with the 6 from the previous commit
+  (aviation, mining, pipeline, robotics, space, swarm), the registry now
+  has uniform full data across all 15 verticals.
+- Per-vertical regulatory framing in each evidence profile (per-vertical
+  bundle versions: aristotle.automotive-evidence.v1, .grid-evidence.v1,
+  .healthcare-evidence.v1, .logistics-evidence.v1, .port-evidence.v1,
+  .rail-evidence.v1, .telecom-evidence.v1, .title-evidence.v1,
+  .water-evidence.v1).
+- Each vertical now has:
+  - 7-step workflow timeline matching the dedicated console's flow
+  - 4 invariant/safety cards with realistic values + bounds (e.g.
+    grid sync-check, water free chlorine, rail PTC enforcement,
+    healthcare allergy/dose/consent, port MARSEC, telecom change
+    window + E911, logistics HOS + seal, title fraud + NMVTIS,
+    automotive ODD + sensor fusion)
+  - Evidence bundle sample with operator / system / action / region
+    fields + redaction manifest + bundle hash
+  - Boundary chain labels for the identity panel
+  - Fail-closed rule description with chip taxonomy
+  - 5 demonstration scenarios mixing ALLOW / REFUSE / ESCALATE
+- **Effect on the UI**:
+  - Verticals registry landing page now shows uniform data quality
+    for all 15 cards (adapter counts, interlock counts, preset counts).
+  - The 6 registry-driven verticals continue to render via the rich
+    VerticalDetailConsole + WorkflowRunner.
+  - The 9 dedicated *OpsConsoles continue to drive the rail (no UI
+    breakage). The registry data is the canonical descriptor that the
+    Verticals landing page reads from, and remains available for any
+    future generic-detail switch.
+- **Verified**: console-ui tsc --noEmit clean; governance-core 41/41,
+  execution-control-runtime 75/75 (no regressions).
+- registry.ts now 1074 lines, 15 verticals.
+
 ## v0.1.58 - Generic WorkflowRunner for every vertical with a workflow defined
 - **New `WorkflowRunner` component** that does for every vertical with a
   `workflow` defined what `TitleSubmissionWalkthrough` does for Title:
