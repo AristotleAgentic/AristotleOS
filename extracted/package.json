@@ -2,7 +2,7 @@
   "name": "aristotle-autonomous-governance-os",
   "private": true,
   "version": "0.1.33",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "packageManager": "pnpm@10.32.1",
   "engines": {
     "node": ">=22.5",

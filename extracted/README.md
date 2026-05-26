@@ -694,3 +694,9 @@ Enterprise stack:
   - `restart: unless-stopped`
   - a containerized `console-ui` on `http://localhost:4173`
 - operational deployment and recovery guidance now lives in `docs/deployment-runbook.md`
+
+## License
+
+AristotleOS is licensed under the **Apache License, Version 2.0**. See [`LICENSE`](LICENSE) for the full license text and [`NOTICE`](NOTICE) for attribution and the demonstration-material disclaimer. Every workspace `package.json` declares `"license": "Apache-2.0"`.
+
+Demonstration material — including the Title vertical's MT/OR/CA/TX/FL `JURISDICTION_RULE_PRESETS`, the demonstration outbound submission transport, and sample APL policies under `examples/` — is explicitly labeled and is not validated for production use. Real deployments require counsel review and per-jurisdiction certification onboarding before promotion past `rule_validation_state: "demonstration"` or `production_validated: false`.

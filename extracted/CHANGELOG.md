@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.1.43 - License: Apache-2.0
+- **AristotleOS is now licensed under Apache License 2.0.** Replaces the
+  previous proprietary all-rights-reserved license. The Apache-2.0 license
+  is permissive, includes an explicit patent grant, and matches the license
+  posture commonly expected by enterprise adopters and OSS distributors.
+- **`LICENSE`** at the repo root now carries the canonical Apache-2.0 text
+  (the 2004 version, including the appendix boilerplate). The previous
+  proprietary file has been removed and is no longer in effect for any
+  AristotleOS-original material in this repository.
+- **`NOTICE`** (new) carries the Apache-2.0 attribution, a pointer to
+  third-party dependency manifests for transitive license info, and the
+  demonstration-material disclaimer (the Title vertical's MT/OR/CA/TX/FL
+  rule packs, demonstration outbound transport, and sample APL policies
+  remain explicitly labeled demonstration material and are not legal advice).
+- **Every workspace `package.json` declares `"license": "Apache-2.0"`** (19
+  manifests total: root + 3 apps + 1 packages + 8 services + 5 shared +
+  adapters/http-gateway). Three previously declared `"UNLICENSED"`; the
+  rest had no license field. All updated to `"Apache-2.0"` consistently.
+- **`README.md`** gains a "License" section pointing at LICENSE + NOTICE
+  and reiterating the demonstration-material caveat.
+- **`docs/release-checklist.md`** "License posture" item updated from
+  proprietary/UNLICENSED to Apache-2.0; CLI `private: true` flag note
+  preserved for accidental-publish guard.
+- **`packages/os-sdk/README.md`** footer updated from "Proprietary /
+  UNLICENSED" to "Licensed under Apache-2.0".
+- **No code, test, or runtime change.** governance-core 51/51,
+  execution-control 75/75, title 22/22, console-ui typecheck clean.
+
 ## v0.1.42 - Issuer→key binding (security hardening, all verticals)
 - **Closes the #1 security gap from `docs/security-review-followups.md`.**
   Before this change, `verifyObjectSignatures` accepted any signature whose `keyId`

@@ -38,4 +38,4 @@ if (decision.decision !== "ALLOW") throw new Error(`refused: ${decision.reason_c
 Auth: pass `token` (Bearer/OIDC) or `apiKey` (X-API-Key). Any non-2xx throws
 `AristotleApiError` carrying `.status` and the parsed `.body`.
 
-> Proprietary / UNLICENSED. Not yet published; consume via the workspace.
+> Licensed under Apache-2.0 (see top-level `LICENSE`). Not yet published to npm; consume via the workspace until a tagged release.

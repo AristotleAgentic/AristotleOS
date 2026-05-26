@@ -38,7 +38,7 @@
   "bugs": {
     "url": "https://github.com/AristotleAgentic/AristotleOS/issues"
   },
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "node build.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",

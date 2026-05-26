@@ -32,7 +32,7 @@ item has a concrete command and a clear pass condition. CI enforces the starred
 
 - [ ] ★ **Pack + packed smoke** — `npm run package:cli:check` → tarball contents correct + packed `aristotle pilot` passes
 - [ ] **No secrets/large files in tarball** — confirmed by `package:cli:check` (excludes src/tests/secrets)
-- [ ] **License posture** — AristotleOS is currently **proprietary**: `extracted/LICENSE` (all-rights-reserved), `license: "UNLICENSED"`, and the CLI is `"private": true` so it cannot be accidentally published. To publish `@aristotle/os-cli` publicly later, choose a real license, set it on the package, remove `private`, and re-add `publishConfig.access`.
+- [ ] **License posture** — AristotleOS is licensed under **Apache-2.0** (see top-level `LICENSE` and `NOTICE`). Every workspace `package.json` declares `"license": "Apache-2.0"`. The CLI may still carry `"private": true` until you intend to publish; when ready, remove `private` and add `publishConfig.access` as needed.
 - [ ] **Version bumped** — `apps/aristotle-cli/package.json` + root `package.json`
 - [ ] **Dry run** — `cd apps/aristotle-cli && npm publish --dry-run`
 
