@@ -1,5 +1,84 @@
 # Changelog
 
+## v0.1.48 - LangChain.js integration (@aristotle/langchain)
+- **Second agent-framework integration ships.** LangChain.js is the
+  single biggest agent framework in market; closing it after the
+  Claude Agent SDK was the highest-leverage next gap. The
+  Faramesh-style "14 framework integrations" coverage column moves
+  from 1/14 to 2/14, and the pattern is now demonstrably reusable
+  across frameworks (not Claude-specific).
+- **`governTool(tool, options)` + `governTools(tools, options)`** wrap
+  any LangChain.js tool (the value returned by `tool()`, a
+  `StructuredTool` subclass, or any `{ name, description, invoke }`)
+  with a governance check on `invoke()`. The original tool is NEVER
+  mutated; a new object is returned with the same shape and a wrapped
+  invoke method.
+- **Decision mapping** (proven by tests):
+  - `ALLOW` → underlying tool's `invoke(input, config)` runs with the
+    original input + config; warrant id available via `onDecision`
+  - `REFUSE` → throws `ToolGovernanceError` carrying `toolName`,
+    `action`, `reasonCodes`, `gelRecordId`; the underlying tool
+    NEVER runs
+  - `ESCALATE` → throws `ToolEscalationError` (default); or with
+    `onEscalate: "return"` returns a marker string so the agent
+    itself sees a structured response; the underlying tool NEVER runs
+  - Gate unreachable → `ToolGovernanceError` (fail-closed default);
+    opt into `onError: "escalate"` or `onError: "throw"` for other
+    behaviors
+- **Two exported error classes** so consumers can write idiomatic
+  `try { ... } catch (err) { if (err instanceof ToolEscalationError)
+  ... }` blocks at the AgentExecutor level:
+  - `ToolGovernanceError` (REFUSE; gate said no)
+  - `ToolEscalationError` (ESCALATE; route to dual-control)
+- **Customizable mapping** identical to the Claude adapter:
+  `actionTypePrefix`, `actionTypeFor(toolName)`, `buildAction({...})`,
+  `passthroughTools`, `onDecision({...})` telemetry callback.
+- **Input normalization**: LangChain tools accept string OR object
+  input; the adapter normalizes both into `params: Record<string,
+  unknown>` for the canonical action — string `"alice"` becomes
+  `params: { input: "alice" }` (proven by test).
+- **Vertical routing recipe**: `actionTypeFor: (n) => n ===
+  "transfer_title" ? "title.transfer" : "tool." + n.toLowerCase()`
+  routes specific tool calls into the Title vertical's
+  `JURISDICTION_RULE_PRESETS` + NMVTIS + dual-control gates with no
+  other code change — the same recipe `@aristotle/claude-agents`
+  exposes, now portable to LangChain.
+- **Packaging**:
+  - `dependencies`: `@aristotle/os-sdk` (workspace)
+  - `peerDependencies`: `@langchain/core` (>=0.3.0 <1.0.0), marked
+    `optional: true` because the adapter doesn't import from the
+    peer at compile time -- it defines a minimal `LangChainToolLike`
+    structural type locally
+  - LICENSE + NOTICE copied into the package
+  - `npm pack --dry-run`: 8 files, ~42 kB tarball — LICENSE, NOTICE,
+    README, dist/index.{js,d.ts} + maps, package.json
+  - `publishConfig.access: public`, `engines.node: >=18`,
+    `sideEffects: false`
+- **Tests (14/14 pass)**:
+  - ALLOW runs underlying tool with original input + config
+  - REFUSE throws ToolGovernanceError; underlying tool never runs
+  - ESCALATE throws ToolEscalationError by default; tool never runs
+  - `onEscalate: "return"` returns a marker string instead of throwing
+  - Default action_type is `tool.<lowercased>`
+  - Custom actionTypeFor routes into vertical namespaces
+  - buildAction overrides the full canonical-action shape
+  - passthroughTools skips the gate call entirely
+  - onDecision telemetry fires with elapsedMs and the verdict
+  - Gate-unreachable defaults to fail-closed deny
+  - `onError: "escalate"` raises ToolEscalationError on gate failure
+  - governTools maps an array preserving each tool's shape
+  - Original tool is not mutated; governTool returns a new object
+  - String input is normalized into `params: { input: "..." }`
+  - Constructor refuses missing required options
+- **README**: install + quickstart with a working `tool()` example +
+  decision-mapping table + canonical mapping table + four recipes
+  (vertical routing, passthrough read-only tools, catch escalations
+  in AgentExecutor, telemetry) + exports list + immutability note +
+  Apache-2.0 footer.
+- **No regressions**: governance-core 51/51, execution-control 75/75,
+  TS os-sdk 15/15, claude-agents 13/13, langchain 14/14 = 168/168.
+  Python SDK 20/20 unaffected.
+
 ## v0.1.47 - @aristotle/os-cli 0.2.0 (single-binary install, 30-second eval)
 - **Closes follow-up #4 from the Faramesh comparison: package the
   runtime as a single binary.** A user evaluating AristotleOS can now
