@@ -11,7 +11,7 @@
  *   if (decision.decision !== "ALLOW") throw new Error("not authorized");
  */
 
-export type ExecutionControlDecision = "ALLOW" | "REFUSE" | "ESCALATE";
+export type ExecutionControlDecision = "ALLOW" | "REFUSE" | "ESCALATE" | "EXPIRE";
 
 export interface CanonicalAction {
   action_id: string;
@@ -218,6 +218,84 @@ export class AristotleClient {
   /** Evaluate an action at the Commit Gate; ALLOW carries a signed Warrant. */
   evaluate(action: CanonicalAction, options: { runtime_register?: Record<string, unknown>; now?: string } = {}): Promise<EvaluateResponse> {
     return this.request<EvaluateResponse>("POST", "/v1/execution-control/evaluate", { action, ...options });
+  }
+
+  /**
+   * Ergonomic warrant-request helper.
+   *
+   *   const warrant = await aos.requestWarrant({
+   *     action: "release_funds",
+   *     authority: "treasury_ops",
+   *     subject: "agent:payments",
+   *     ward: "ward-finance",
+   *     params: { amount: 5000, currency: "USD" },
+   *     jurisdiction: "US-MT",
+   *     risk: "medium"
+   *   });
+   *
+   * Internally builds a CanonicalAction and calls evaluate(). On non-ALLOW
+   * throws AristotleApiError with the gate's reason codes so callers can
+   * use a try/catch flow rather than a discriminated-union check.
+   * Returns the warrant on ALLOW. Use evaluate() directly when you need
+   * the full EvaluateResponse + gel_record on every decision.
+   */
+  async requestWarrant(req: {
+    action: string;
+    /** Subject the action runs as (envelope subject). */
+    subject: string;
+    /** Ward id the action falls under. */
+    ward: string;
+    /** Optional human-readable authority hint -- carried as telemetry. */
+    authority?: string;
+    /** Optional action params bound into the warrant via parameters_hash. */
+    params?: Record<string, unknown>;
+    /** Optional jurisdiction / region / scope hints carried as params. */
+    jurisdiction?: string;
+    risk?: "low" | "medium" | "high" | "critical";
+    /** Optional action id; one is generated otherwise. */
+    actionId?: string;
+    runtime_register?: Record<string, unknown>;
+    now?: string;
+  }): Promise<{ warrant_id: string; canonical_action_hash: string; gel_record_id: string; full: EvaluateResponse }> {
+    const params: Record<string, unknown> = { ...(req.params ?? {}) };
+    if (req.jurisdiction) params.jurisdiction = req.jurisdiction;
+    if (req.risk) params.risk = req.risk;
+    const action: CanonicalAction = {
+      action_id: req.actionId ?? `act-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      ward_id: req.ward,
+      subject: req.subject,
+      action_type: req.action,
+      params,
+      requested_at: new Date().toISOString(),
+      telemetry: req.authority ? { authority: req.authority } : undefined
+    };
+    const verdict = await this.evaluate(action, { runtime_register: req.runtime_register, now: req.now });
+    if (verdict.decision === "ALLOW") {
+      const wid = verdict.warrant?.warrant_id;
+      if (!wid) throw new AristotleApiError(500, "AristotleOS ALLOW returned without warrant", verdict);
+      return {
+        warrant_id: wid,
+        canonical_action_hash: verdict.canonical_action_hash,
+        gel_record_id: verdict.gel_record?.record_id ?? "",
+        full: verdict
+      };
+    }
+    throw new AristotleApiError(
+      verdict.decision === "REFUSE" ? 403 : verdict.decision === "EXPIRE" ? 410 : 202,
+      `AristotleOS ${verdict.decision}: ${verdict.reason_codes.join(", ")}`,
+      verdict
+    );
+  }
+
+  /** Replay a historical decision against current policy (counterfactual).
+   *  Returns the same EvaluateResponse shape but with `replay: true`. */
+  replay(input: { record_id: string; now?: string }): Promise<EvaluateResponse & { replay: true }> {
+    return this.request<EvaluateResponse & { replay: true }>("POST", "/v1/execution-control/replay", input);
+  }
+
+  /** Export a signed Evidence Bundle for the given record range. */
+  exportEvidence(input: { from_seq?: number; to_seq?: number; format?: "json" | "bundle"; exportedAt?: string }): Promise<{ bundle: unknown; bundle_hash: string }> {
+    return this.request<{ bundle: unknown; bundle_hash: string }>("POST", "/v1/execution-control/evidence/export", input);
   }
 
   /** Govern-and-forward: only proxies the upstream call on ALLOW + verified Warrant. */

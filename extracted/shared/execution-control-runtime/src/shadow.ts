@@ -112,7 +112,7 @@ export function profileShadowMode(input: ShadowModeInput): ShadowReport {
   const ledger = LedgerStore.memory();
 
   const traces: ShadowDecisionRecord[] = [];
-  const decisions: Record<ExecutionControlDecision, number> = { ALLOW: 0, REFUSE: 0, ESCALATE: 0 };
+  const decisions: Record<ExecutionControlDecision, number> = { ALLOW: 0, REFUSE: 0, ESCALATE: 0, EXPIRE: 0 };
   const reasonCodes: Record<string, number> = {};
 
   for (const { action, runtimeRegister } of input.actions) {

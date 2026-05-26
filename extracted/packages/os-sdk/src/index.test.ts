@@ -228,3 +228,85 @@ test("AristotleClient.titleAction builds a typed title action with namespaced pa
   assert.equal(a.params?.transaction_type, "lien-release");
   assert.equal(a.params?.lienholder_id, "lender:demo-bank-mt");
 });
+
+// --- New v0.3 surfaces: requestWarrant, replay, exportEvidence -------------
+
+test("requestWarrant returns the warrant id on ALLOW and carries the canonical_action_hash", async () => {
+  const { fn } = mockFetch(() => ({
+    status: 200,
+    body: {
+      decision: "ALLOW",
+      reason_codes: [],
+      canonical_action_hash: "sha256:bound-by-gate",
+      warrant: { warrant_id: "warrant:from-gate" },
+      gel_record: { record_id: "rec-7", record_hash: "rh" }
+    }
+  }));
+  const aos = new AristotleClient({ baseUrl: "https://gate.internal/", token: "t", fetch: fn });
+  const w = await aos.requestWarrant({
+    action: "release_funds",
+    subject: "agent:payments",
+    ward: "ward-finance",
+    authority: "treasury_ops",
+    params: { amount: 5000, currency: "USD" },
+    jurisdiction: "US-MT",
+    risk: "medium"
+  });
+  assert.equal(w.warrant_id, "warrant:from-gate");
+  assert.equal(w.canonical_action_hash, "sha256:bound-by-gate");
+  assert.equal(w.gel_record_id, "rec-7");
+});
+
+test("requestWarrant on REFUSE throws AristotleApiError with status 403", async () => {
+  const { fn } = mockFetch(() => ({
+    status: 200,
+    body: { decision: "REFUSE", reason_codes: ["ACTION_DENIED"], canonical_action_hash: "h", gel_record: { record_id: "rec-1", record_hash: "rh" } }
+  }));
+  const aos = new AristotleClient({ baseUrl: "https://gate.internal/", token: "t", fetch: fn });
+  let caught: unknown;
+  try {
+    await aos.requestWarrant({ action: "x", subject: "s", ward: "w" });
+  } catch (e) { caught = e; }
+  assert.ok(caught instanceof AristotleApiError);
+  if (caught instanceof AristotleApiError) {
+    assert.equal(caught.status, 403);
+    assert.match(caught.message, /ACTION_DENIED/);
+  }
+});
+
+test("requestWarrant on EXPIRE throws AristotleApiError with status 410", async () => {
+  const { fn } = mockFetch(() => ({
+    status: 200,
+    body: { decision: "EXPIRE", reason_codes: ["warrant-expired"], canonical_action_hash: "h", gel_record: { record_id: "rec-1", record_hash: "rh" } }
+  }));
+  const aos = new AristotleClient({ baseUrl: "https://gate.internal/", token: "t", fetch: fn });
+  let caught: AristotleApiError | undefined;
+  try {
+    await aos.requestWarrant({ action: "x", subject: "s", ward: "w" });
+  } catch (e) { if (e instanceof AristotleApiError) caught = e; }
+  assert.ok(caught);
+  assert.equal(caught!.status, 410);
+});
+
+test("replay POSTs to /v1/execution-control/replay and parses the result", async () => {
+  const { fn, calls } = mockFetch(() => ({
+    status: 200,
+    body: { decision: "ALLOW", reason_codes: [], canonical_action_hash: "h", warrant: { warrant_id: "wr-replay" }, gel_record: { record_id: "rec-1", record_hash: "rh" }, replay: true }
+  }));
+  const aos = new AristotleClient({ baseUrl: "https://gate.internal/", token: "t", fetch: fn });
+  const r = await aos.replay({ record_id: "rec-1" });
+  assert.equal(r.decision, "ALLOW");
+  assert.equal(r.replay, true);
+  assert.equal(calls[0].url, "https://gate.internal/v1/execution-control/replay");
+});
+
+test("exportEvidence POSTs to /v1/execution-control/evidence/export and returns the bundle hash", async () => {
+  const { fn, calls } = mockFetch(() => ({
+    status: 200,
+    body: { bundle: { hash_chained: true }, bundle_hash: "0xabc" }
+  }));
+  const aos = new AristotleClient({ baseUrl: "https://gate.internal/", token: "t", fetch: fn });
+  const r = await aos.exportEvidence({ from_seq: 100, to_seq: 200, format: "bundle" });
+  assert.equal(r.bundle_hash, "0xabc");
+  assert.equal(calls[0].url, "https://gate.internal/v1/execution-control/evidence/export");
+});

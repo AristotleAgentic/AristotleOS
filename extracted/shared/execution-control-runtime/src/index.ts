@@ -108,7 +108,44 @@ export {
   verifyEd25519
 } from "./signing.js";
 
-export type ExecutionControlDecision = "ALLOW" | "REFUSE" | "ESCALATE";
+/**
+ * Commit Gate decision space.
+ *
+ * - ALLOW    — admit the action; gate emits a single-use Warrant.
+ * - REFUSE   — refuse the action (policy / invariant / interlock failure).
+ * - ESCALATE — defer to dual-control / human authority.
+ * - EXPIRE   — refused specifically because something timed out
+ *              (envelope expiry, warrant expiry, Fluidity Token TTL,
+ *              presentation-skew window). Separated from REFUSE so callers
+ *              can distinguish "this is no longer admissible" from "this
+ *              policy refuses this action."
+ */
+export type ExecutionControlDecision = "ALLOW" | "REFUSE" | "ESCALATE" | "EXPIRE";
+
+/** Reason codes that cause a REFUSE to be re-classified as EXPIRE. */
+export const EXPIRE_REASON_CODES: ReadonlySet<string> = new Set([
+  "warrant-expired",
+  "warrant-not-yet-valid",
+  "envelope-expired",
+  "envelope-not-yet-effective",
+  "ward-expired",
+  "ward-not-yet-effective",
+  "mae-expired",
+  "mae-not-yet-effective",
+  "warrant-presented-after-expiry",
+  "commit-presentation-stale"
+]);
+
+/** Re-classify a REFUSE decision as EXPIRE when at least one reason code is
+ *  in the EXPIRE_REASON_CODES set. Used at the runtime adapter layer so
+ *  callers can branch on EXPIRE explicitly. */
+export function reclassifyExpire<T extends { decision: ExecutionControlDecision; reason_codes: string[] }>(decision: T): T {
+  if (decision.decision !== "REFUSE") return decision;
+  if (decision.reason_codes.some((r) => EXPIRE_REASON_CODES.has(r))) {
+    return { ...decision, decision: "EXPIRE" };
+  }
+  return decision;
+}
 
 export type ExecutionControlReasonCode =
   | "WARD_NOT_FOUND"
@@ -2985,7 +3022,7 @@ export function evaluateExecutionControl(input: EvaluateExecutionControlInput): 
       ? input.ledger.append({ ward: input.ward!, action: input.action, decision, warrant, now: input.now, signer, actor: input.actor, trace_context: input.trace_context })
       : appendGelRecord({ ledgerPath: input.ledgerPath, ward: input.ward!, action: input.action, decision, warrant, now: input.now, signer, actor: input.actor, trace_context: input.trace_context })));
     span.setAttribute("aristotle.decision", decision.decision);
-    return {
+    const raw = {
       decision: decision.decision,
       reason_codes: decision.reason_codes,
       canonical_action_hash: decision.canonical_action_hash,
@@ -2993,6 +3030,7 @@ export function evaluateExecutionControl(input: EvaluateExecutionControlInput): 
       gel_record,
       ledger_verification: input.ledger ? input.ledger.verification() : verifyGelChain(input.ledgerPath)
     };
+    return reclassifyExpire(raw);
   });
 }
 
@@ -3018,14 +3056,14 @@ export async function evaluateExecutionControlAsync(input: EvaluateExecutionCont
   recordBudget(input, budget, decision.decision);
   if (dual) openDualControlRequest(input, canonical, dual, decision);
   const gel_record = await input.ledger.append({ ward: input.ward, action: input.action, decision, warrant, now: input.now, signer, actor: input.actor, trace_context: input.trace_context });
-  return {
+  return reclassifyExpire({
     decision: decision.decision,
     reason_codes: decision.reason_codes,
     canonical_action_hash: decision.canonical_action_hash,
     warrant,
     gel_record,
     ledger_verification: input.ledger.verification()
-  };
+  });
 }
 
 export function loadWardManifest(file: string): WardManifest {

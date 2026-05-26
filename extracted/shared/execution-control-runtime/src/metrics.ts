@@ -11,7 +11,7 @@ import type { ExecutionControlDecision, ExecutionControlReasonCode } from "./ind
 const DEFAULT_LATENCY_BUCKETS_MS = [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500];
 
 export class RuntimeMetrics {
-  readonly decisions: Record<ExecutionControlDecision, number> = { ALLOW: 0, REFUSE: 0, ESCALATE: 0 };
+  readonly decisions: Record<ExecutionControlDecision, number> = { ALLOW: 0, REFUSE: 0, ESCALATE: 0, EXPIRE: 0 };
   readonly reasonCodes: Record<string, number> = {};
   warrantsIssued = 0;
   warrantFailures = 0;
