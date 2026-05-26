@@ -373,6 +373,12 @@ importers:
 
   shared/schemas: {}
 
+  shared/tenant-onboarding:
+    dependencies:
+      '@aristotle/governance-core':
+        specifier: workspace:*
+        version: link:../governance-core
+
   shared/time-machine:
     dependencies:
       '@aristotle/execution-control-runtime':
