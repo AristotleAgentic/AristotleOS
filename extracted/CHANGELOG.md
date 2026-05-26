@@ -1,5 +1,103 @@
 # Changelog
 
+## v0.1.51 - Vercel AI SDK integration (@aristotle/vercel-ai)
+- **Fifth agent-framework integration ships, third TS adapter, fourth
+  active framework on the JS side.** Faramesh framework coverage now
+  5/14 explicit (Claude Agent SDK, LangChain.js, OpenAI Agents SDK,
+  CrewAI, Vercel AI SDK) + 1 via MCP. Gap −9 -> −8.
+- **`governTool(name, tool, options)` and `governTools(tools, options)`**:
+  wrap a single tool or an entire `tools` record passed to `generateText`
+  / `streamText` / `Agent`. The wrapper replaces `tool.execute` so every
+  invocation routes through the Aristotle Commit Gate before running.
+  Pure tools (no `execute`, e.g. provider-defined ones) are passed
+  through unchanged. Every other field on the tool (`description`,
+  `title`, `inputSchema`, `metadata`, `providerOptions`, `needsApproval`,
+  `toModelOutput`) is preserved.
+- **Vercel-AI-specific design choice**: in the Vercel AI SDK the tool's
+  NAME comes from the record key in `tools: { name: tool({...}) }`,
+  NOT from a field on the tool itself. `governTool` therefore takes
+  the name as the first argument; `governTools` extracts it from the
+  record keys automatically — almost all users want the second.
+- **Decision mapping**:
+  - `ALLOW`    -> invokes the wrapped `execute` and returns its output
+  - `REFUSE`   -> returns `AristotleToolOutcome` (default) or throws
+    `AristotleGateError("REFUSE", ...)` with `onRefuse: "throw"`
+  - `ESCALATE` -> returns `AristotleToolOutcome` (default) or throws
+    `AristotleGateError("ESCALATE", ...)` with `onEscalate: "throw"`
+  - Gate unreachable -> throws `AristotleGateError("GATE_UNREACHABLE", ...)`
+    (default, fail-closed -- prevents a downed gate from letting the
+    model invent its own answer) or returns outcome with
+    `onError: "return-error"`
+  - The default for `onRefuse` / `onEscalate` is `return-error` because
+    the AI SDK serializes the returned outcome back to the model as a
+    structured `tool-result` part, which the model can reason about
+    more usefully than a generic `tool-error`. The default for
+    `onError` is `throw` so a downed gate fails closed instead.
+- **AristotleToolOutcome** (new type returned on REFUSE/ESCALATE/error
+  by default): discriminated union with `__aristotle: "REFUSE" |
+  "ESCALATE" | "GATE_UNREACHABLE"`, `toolName`, `reasonCodes`,
+  `message`, `gelRecordId`, `warrantId`. Lets the agent's reply code
+  detect Aristotle decisions explicitly.
+- **AristotleGateError** (new error class for throw mode): carries
+  `kind`, `toolName`, `reasonCodes`, `gelRecordId`, the full
+  `EvaluateResponse`. Surfaced via the SDK's `tool-error` part.
+- **Customizable mapping identical to the other four adapters**:
+  `actionTypePrefix`, `actionTypeFor(name)`, `buildAction({...})`,
+  `passthroughTools`, `onDecision({...})`.
+- **Type signatures verified against installed @ai-sdk/provider-utils
+  d.ts files**: `Tool<INPUT, OUTPUT>` with `description?`, `title?`,
+  `inputSchema`, `execute?`, `needsApproval?`, `toModelOutput?`,
+  `metadata?`, `providerOptions?`, plus `ToolExecutionOptions` with
+  `toolCallId`, `messages`, `abortSignal`, `experimental_context`.
+  Adapter defines structural types locally so it compiles without `ai`
+  installed -- forward-compatible with the documented public surface.
+- **Tests (13/13 pass)**:
+  - ALLOW invokes inner and returns its output unchanged
+  - REFUSE returns a structured AristotleToolOutcome by default;
+    inner execute never runs
+  - REFUSE throws AristotleGateError when onRefuse:'throw'
+  - ESCALATE returns outcome by default; throws when configured
+  - Gate-unreachable throws by default (fail-closed);
+    onError:'return-error' returns outcome instead
+  - passthroughTools returns the original tool unchanged (gate not
+    called); the wrapper's identity check confirms it's the SAME
+    object, so SDK identity comparisons keep working
+  - actionTypeFor routes specific tools into a vertical namespace
+  - buildAction takes full control over the canonical action shape
+  - onDecision telemetry fires with verdict and elapsedMs
+  - Non-object input (string, number) normalizes into
+    `params: { input: value }` (matches CrewAI's normalization)
+  - governTools wraps every tool in the record using the same options
+  - A tool with no execute (e.g. provider-defined) is returned
+    unchanged
+  - Constructor refuses missing required options
+- **Packaging**:
+  - `dependencies`: `@aristotle/os-sdk` (workspace)
+  - `peerDependencies`: `ai` (>=5.0.0 <7.0.0, optional)
+  - LICENSE + NOTICE copied into the package
+  - `npm pack --dry-run`: 8 files, ~45 kB tarball
+    (LICENSE, NOTICE, README, dist/index.{js,d.ts} + source maps,
+    package.json)
+  - `publishConfig.access: public`, `engines.node: >=18`,
+    `sideEffects: false`
+- **README**: install + 2 quickstarts (wrap the whole tools record;
+  wrap a single tool) + decision-mapping table + canonical mapping
+  table + four recipes (vertical routing, handling outcomes in the
+  agent's reply, telemetry, streaming + agent loops) + exports +
+  notes + Apache-2.0 footer.
+- **Cross-language symmetry now stronger**: 4 TS adapters
+  (claude-agents, langchain, openai-agents, vercel-ai) + 1 Python
+  adapter (crewai), all sharing the same options surface
+  (`client`, `wardId`, `subject`, `actionTypeFor`, `buildAction`,
+  `passthroughTools`, `onDecision`, plus per-adapter
+  `on{Refuse,Escalate,Error}` defaults that match each SDK's
+  idiomatic error model).
+- **No regressions**: governance-core 51/51, execution-control 75/75,
+  TS os-sdk 15/15, claude-agents 13/13, langchain 14/14,
+  openai-agents 13/13, vercel-ai 13/13 = 194 TS tests.
+  Python: os-sdk 20/20 + crewai 24/24 = 44 Python tests.
+  **Total 238/238 across all suites on the branch.**
+
 ## v0.1.50 - CrewAI integration (aristotle-crewai, Python)
 - **Fourth agent-framework integration ships, and the FIRST Python adapter.**
   Faramesh framework coverage now 4/14 explicit (Claude Agent SDK, LangChain.js,
