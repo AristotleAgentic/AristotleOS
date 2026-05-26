@@ -37,6 +37,7 @@ export type SectionId =
   | "rail"
   | "port"
   | "water"
+  | "logistics"
   | "conflicts"
   | "adoption"
   | "failure"

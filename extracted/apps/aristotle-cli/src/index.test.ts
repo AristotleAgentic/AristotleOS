@@ -665,6 +665,118 @@ test("cli water commands expose utility templates, adapters, and evidence export
   }
 });
 
+test("cli logistics commands expose trucking templates, adapters, and evidence export", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
+  try {
+    const examples = path.resolve(process.cwd(), "examples", "logistics");
+    cpSync(examples, path.join(dir, "logistics"), { recursive: true });
+
+    const templates = await capture(["logistics", "templates"], dir);
+    assert.equal(templates.code, 0, templates.stderr);
+    assert.match(templates.stdout, /ward.network_west.yaml/);
+    assert.match(templates.stdout, /allow_load_dispatch.json/);
+
+    const adapters = await capture(["logistics", "adapters"], dir);
+    assert.equal(adapters.code, 0, adapters.stderr);
+    assert.match(adapters.stdout, /tms-dispatch/);
+    assert.match(adapters.stdout, /eld-hos/);
+
+    const allowed = await capture([
+      "execution-control",
+      "evaluate",
+      "--ward",
+      "logistics/ward.network_west.yaml",
+      "--envelope",
+      "logistics/authority_envelope.dispatch_orchestrator.yaml",
+      "--action",
+      "logistics/actions/allow_load_dispatch.json",
+      "--ledger",
+      ".tmp/logistics.gel.jsonl",
+      "--now",
+      "2026-05-25T15:00:00.000Z"
+    ], dir);
+    assert.equal(allowed.code, 0, allowed.stderr);
+    assert.match(allowed.stdout, /decision=ALLOW/);
+
+    const refused = await capture([
+      "execution-control",
+      "evaluate",
+      "--ward",
+      "logistics/ward.network_west.yaml",
+      "--envelope",
+      "logistics/authority_envelope.dispatch_orchestrator.yaml",
+      "--action",
+      "logistics/actions/refuse_hos_overrun.json",
+      "--ledger",
+      ".tmp/logistics-refuse.gel.jsonl",
+      "--now",
+      "2026-05-25T15:00:00.000Z"
+    ], dir);
+    assert.equal(refused.code, 0, refused.stderr);
+    assert.match(refused.stdout, /decision=REFUSE/);
+
+    const bundle = await capture([
+      "logistics",
+      "evidence",
+      "export",
+      "--ward",
+      "logistics/ward.network_west.yaml",
+      "--envelope",
+      "logistics/authority_envelope.dispatch_orchestrator.yaml",
+      "--ledger",
+      ".tmp/logistics-refuse.gel.jsonl",
+      "--out",
+      ".tmp/logistics-evidence.json",
+      "--network",
+      "west-freight-network",
+      "--ops-center",
+      "west-dispatch",
+      "--domain",
+      "cold-chain",
+      "--load",
+      "LOAD-8821",
+      "--shipment",
+      "SHP-5521",
+      "--trip",
+      "TRIP-2026-0525-77",
+      "--carrier",
+      "carrier:clearline",
+      "--broker",
+      "broker:atlas",
+      "--shipper",
+      "shipper:alpine-foods",
+      "--driver",
+      "driver:diaz",
+      "--tractor",
+      "TRAC-4482",
+      "--trailer",
+      "TRL-9012",
+      "--route",
+      "route-i70-west-safe",
+      "--origin",
+      "dc-denver",
+      "--destination",
+      "store-salt-lake",
+      "--cargo-class",
+      "reefer",
+      "--commodity",
+      "frozen food",
+      "--temperature-controlled",
+      "--cargo-value",
+      "74000",
+      "--gross-weight",
+      "62100",
+      "--redact",
+      "driver_phone"
+    ], dir);
+    assert.equal(bundle.code, 0, bundle.stderr);
+    assert.match(bundle.stdout, /verification=ok/);
+    assert.equal(existsSync(path.join(dir, ".tmp", "logistics-evidence.json")), true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("cli run governs a child agent process and writes a verifiable ledger", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
   try {

@@ -1,0 +1,81 @@
+ward_id: ward-logistics-network-west
+name: West Freight Network Operations
+sovereignty_context: shipper-carrier-broker-network-west
+authority_domain: trucking-logistics-dispatch
+policy_version: 0.1.0
+evidence_ledger_path: ./.tmp/logistics-west.gel.jsonl
+permitted_subjects:
+  - agent:logistics-dispatch-orchestrator
+physical_bounds:
+  permitted_logistics_network_id: west-freight-network
+  permitted_logistics_facility_ids:
+    - dc-denver
+    - store-salt-lake
+    - yard-denver
+  permitted_route_ids:
+    - route-i70-west-safe
+    - route-i25-north-safe
+  permitted_geofence_ids:
+    - western-corridor-a
+  permitted_carrier_ids:
+    - carrier:clearline
+  permitted_driver_ids:
+    - driver:diaz
+  permitted_cargo_classes:
+    - reefer
+    - general
+    - hazmat
+  permitted_logistics_hazmat_classes:
+    - none
+    - "3"
+    - "8"
+  permitted_trailer_types:
+    - reefer
+    - dry-van
+  permitted_cdl_classes:
+    - A
+  max_gross_weight_lbs: 80000
+  max_cargo_value_usd: 250000
+  max_fuel_advance_usd: 750
+  max_accessorial_amount_usd: 1200
+  max_fraud_score: 0.35
+  max_double_broker_risk_score: 0.2
+  max_eld_event_age_ms: 300000
+  max_telematics_age_ms: 120000
+  max_route_deviation_km: 5
+  min_remaining_drive_minutes: 120
+  min_remaining_duty_minutes: 240
+  min_reefer_temp_c: -25
+  max_reefer_temp_c: 8
+  require_driver_qualified: true
+  require_medical_card_valid: true
+  require_carrier_authority_active: true
+  require_carrier_insurance_valid: true
+  require_broker_authority_active: true
+  require_hos_available: true
+  require_eld_fresh: true
+  require_route_permitted: true
+  require_restricted_area_clear: true
+  require_vehicle_maintenance_clear: true
+  require_dvir_clear: true
+  require_trailer_seal_intact: true
+  require_cargo_secured: true
+  require_temperature_in_range: true
+  require_logistics_hazmat_endorsement: true
+  require_customs_clearance: false
+  require_logistics_appointment_valid: true
+  require_dock_available: true
+  require_yard_gate_access: true
+  require_fuel_card_active: true
+  require_manual_fallback_ready: true
+  require_logistics_dispatcher_identity: true
+  require_operator_identity: true
+  require_no_double_broker_risk: true
+criticality: safety_critical
+classification:
+  level: CUI
+  caveats:
+    - LOGISTICS_OPS
+metadata:
+  pilot: west-freight-network
+  doctrine: authority-before-logistics-consequence

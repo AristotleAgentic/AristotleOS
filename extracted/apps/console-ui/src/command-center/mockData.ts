@@ -21,6 +21,10 @@ import type {
   GovernanceMissionTemplate,
   InterlockEvent,
   LedgerRecord,
+  LogisticsAdapterSurface,
+  LogisticsEvidenceExport,
+  LogisticsOpsStep,
+  LogisticsSafetyDrill,
   MeshLink,
   MeshNode,
   PhysicalChannel,
@@ -1036,6 +1040,118 @@ export const WATER_SAFETY_DRILLS: WaterSafetyDrill[] = [
   { id: "backflow", label: "Backflow clear", invariant: "backflow_risk_clear == true", current: "clear", posture: "green", evidence: "Backflow-sensitive valve movement fails closed before distribution consequence." },
   { id: "disinfection", label: "Disinfection active", invariant: "disinfection_active && uv_intensity_pct >= 85", current: "active / 91%", posture: "green", evidence: "Disable-disinfection is a hard interlock violation even if mistakenly allowed." },
   { id: "dual", label: "Dual-control chemistry", invariant: "2-of-N approval before Warrant", current: "pending", posture: "amber", evidence: "Chemical, PLC, valve, disinfection, and discharge changes require plural approval." }
+];
+
+export const LOGISTICS_OPS_WORKFLOW: LogisticsOpsStep[] = [
+  { id: "logistics-mission", label: "Create governed load mission", owner: "Dispatch operations", state: "complete", evidence: "Ward ward-logistics-network-west binds network, carrier, driver, facilities, route, cargo, HOS, and payment authority." },
+  { id: "logistics-registers", label: "Bind logistics runtime registers", owner: "TMS / ELD / telematics / WMS", state: "complete", evidence: "HOS, ELD age, carrier authority, insurance, driver qualification, route, seal, temperature, fraud, and double-broker posture attached." },
+  { id: "logistics-shadow", label: "Profile dispatch in Shadow Mode", owner: "Safety / operations", state: "complete", evidence: "Safe dispatch admits; HOS overrun, double-broker risk, missing ELD, and payment force-release remain REFUSE or ESCALATE." },
+  { id: "logistics-approval", label: "Dual-control money and tender", owner: "Dispatch supervisor / carrier pay", state: "active", evidence: "Fuel, accessorial, tender, carrier payment, hazmat, and cold-chain changes require 2-of-N approval before Warrant issuance." },
+  { id: "logistics-gate", label: "Logistics Commit Gate", owner: "Governance kernel", state: "pending", evidence: "ALLOW mints a single-use Warrant scoped to the canonical load action hash." },
+  { id: "logistics-execute", label: "Execute logistics adapter", owner: "TMS / WMS / YMS / payment boundary", state: "pending", evidence: "Dispatch, tender, release, fuel, payment, route, cold-chain, and DVIR adapters execute only after Warrant verification." },
+  { id: "logistics-export", label: "Export logistics evidence", owner: "Compliance / claims / finance", state: "pending", evidence: "Logistics Evidence Bundle includes load context, HOS/ELD, carrier, route, cargo, GEL record, Warrant, and redaction manifest." }
+];
+
+export const LOGISTICS_ADAPTERS: LogisticsAdapterSurface[] = [
+  {
+    id: "tms",
+    label: "TMS Dispatch",
+    standard: "TMS",
+    actionTypes: ["tms.load.dispatch", "tms.trip.assign"],
+    requiredRegisters: ["load_id", "driver_id", "remaining_drive_minutes", "eld_event_age_ms"],
+    boundary: "Load dispatch cannot proceed until HOS, ELD freshness, equipment, route, and cargo registers are bound.",
+    posture: "green"
+  },
+  {
+    id: "broker",
+    label: "Broker / Carrier Tender",
+    standard: "Broker",
+    actionTypes: ["broker.load.tender", "carrier.load.accept"],
+    requiredRegisters: ["carrier_authority_active", "carrier_insurance_valid", "double_broker_risk_score"],
+    boundary: "Freight tendering binds carrier identity, insurance, fraud posture, and double-broker risk before rate confirmation.",
+    posture: "amber"
+  },
+  {
+    id: "eld",
+    label: "ELD / HOS",
+    standard: "ELD/HOS",
+    actionTypes: ["eld.hos.attest", "hos.dispatch.clear"],
+    requiredRegisters: ["hos_available", "remaining_drive_minutes", "remaining_duty_minutes", "eld_fresh"],
+    boundary: "HOS state is an execution prerequisite, not a post-dispatch compliance note.",
+    posture: "red"
+  },
+  {
+    id: "telematics",
+    label: "Telematics / Route",
+    standard: "Telematics",
+    actionTypes: ["route.reroute.authorize", "telematics.location.attest"],
+    requiredRegisters: ["route_id", "route_permitted", "restricted_area_clear", "telematics_age_ms"],
+    boundary: "Reroute and geofence decisions bind route permission, freshness, and restricted-area clearance.",
+    posture: "green"
+  },
+  {
+    id: "wms-yms",
+    label: "WMS / YMS Release",
+    standard: "WMS",
+    actionTypes: ["wms.cargo.release", "yms.dock.assign", "yard.gate.release"],
+    requiredRegisters: ["shipment_id", "trailer_seal_intact", "appointment_valid", "dock_available"],
+    boundary: "Cargo release, dock assignment, and yard gate movement require appointment, seal, securement, and facility state.",
+    posture: "green"
+  },
+  {
+    id: "money",
+    label: "Fuel / Accessorial / Payment",
+    standard: "Payment",
+    actionTypes: ["fuel.advance.authorize", "accessorial.approve", "payment.carrier.release"],
+    requiredRegisters: ["fuel_card_active", "fraud_score", "pod_verified"],
+    boundary: "Cash-equivalent actions require bounded amounts, fraud posture, and plural authority.",
+    posture: "amber"
+  },
+  {
+    id: "cold-hazmat",
+    label: "Cold Chain / Hazmat",
+    standard: "Cold Chain",
+    actionTypes: ["coldchain.setpoint.update", "hazmat.route.authorize"],
+    requiredRegisters: ["cargo_temperature_c", "temperature_in_range", "hazmat_endorsement_valid"],
+    boundary: "Food, pharma, reefer, and hazmat changes bind temperature, route, endorsement, and restricted-area evidence.",
+    posture: "amber"
+  },
+  {
+    id: "dvir-customs",
+    label: "DVIR / Cross-Border",
+    standard: "DVIR",
+    actionTypes: ["dvir.vehicle.release", "customs.entry.submit"],
+    requiredRegisters: ["dvir_clear", "vehicle_maintenance_clear", "customs_clearance_present"],
+    boundary: "Vehicle release and border movement preserve maintenance, customs, and route authority before consequence.",
+    posture: "green"
+  }
+];
+
+export const LOGISTICS_EVIDENCE_EXPORT: LogisticsEvidenceExport = {
+  bundleVersion: "aristotle.logistics-evidence.v1",
+  networkId: "west-freight-network",
+  operationsCenter: "west-dispatch",
+  loadId: "LOAD-8821",
+  shipmentId: "SHP-5521",
+  tripId: "TRIP-2026-0525-77",
+  carrierId: "carrier:clearline",
+  driverId: "driver:diaz",
+  tractorId: "TRAC-4482",
+  trailerId: "TRL-9012",
+  routeId: "route-i70-west-safe",
+  profiles: ["FMCSA_HOS", "ELD", "DOT_SAFETY", "FSMA_SANITARY_TRANSPORT", "NIST_CSF"],
+  redactedFields: ["driver_phone", "customer_contract", "exact_customer_location"],
+  bundleHash: shortHash("logistics-evidence-bundle-load-8821", 24),
+  verification: "ok"
+};
+
+export const LOGISTICS_SAFETY_DRILLS: LogisticsSafetyDrill[] = [
+  { id: "hos", label: "HOS / ELD", invariant: "required_drive_minutes <= remaining_drive_minutes && eld_event_age_ms <= 300000", current: "180 <= 420 / 900 ms", posture: "green", evidence: "HOS overrun returns PHYSICAL_INVARIANT_FAILED and no Warrant." },
+  { id: "carrier", label: "Carrier authority", invariant: "authority_active && insurance_valid", current: "active / valid", posture: "green", evidence: "Unverified carrier handoff refuses before tender or dispatch consequence." },
+  { id: "double-broker", label: "Double-broker risk", invariant: "risk_score <= 0.2 && double_broker_flag == false", current: "0.04 / clear", posture: "green", evidence: "Double-broker flagged loads are refused before tender or payment." },
+  { id: "route", label: "Route and geofence", invariant: "route_permitted && route_deviation_km <= 5", current: "permitted / 1.1 km", posture: "green", evidence: "Reroute outside Ward routes fails closed before telematics or TMS mutation." },
+  { id: "cold", label: "Cold-chain integrity", invariant: "-25 <= cargo_temperature_c <= 8 && temperature_in_range", current: "-18 C / in range", posture: "green", evidence: "Temperature alarm override is a hard interlock violation." },
+  { id: "money", label: "Money controls", invariant: "fuel <= 750 && accessorial <= 1200 && 2-of-N approval", current: "pending", posture: "amber", evidence: "Fuel, accessorial, and payment actions require plural approval before Warrant issuance." }
 ];
 
 export const POLICY_HARNESS: PolicyHarnessCase[] = [

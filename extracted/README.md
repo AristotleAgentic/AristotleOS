@@ -67,6 +67,10 @@ Docs:
 - [Robotics / humanoid execution-control path](docs/robotics.md)
 - [Robotics Ward templates](docs/robotics-ward-templates.md)
 - [Robotics threat model addendum](docs/robotics-threat-model.md)
+- [Trucking and Logistics Operator Pilot Guide](docs/logistics-operator-pilot-guide.md)
+- [Logistics execution-control path](docs/logistics.md)
+- [Logistics Ward templates](docs/logistics-ward-templates.md)
+- [Logistics threat model addendum](docs/logistics-threat-model.md)
 - [Defense readiness roadmap](docs/defense-readiness.md)
 - [Crypto posture](docs/crypto-posture.md)
 - [Commercial adoption path](docs/commercial-adoption-path.md)
@@ -366,6 +370,26 @@ npm run aristotle -- execution-control evaluate \
 ```
 
 The Command Center includes a Water workflow from "create governed treatment mission" to "admitted execution" to "water Evidence Bundle export." See [docs/water-operator-pilot-guide.md](docs/water-operator-pilot-guide.md), [docs/water.md](docs/water.md), and [docs/water-ward-templates.md](docs/water-ward-templates.md).
+
+## Trucking and Logistics Readiness
+
+AristotleOS now includes a trucking and logistics pilot path for governed freight operations. TMS dispatch, broker/carrier tender, ELD/HOS, telematics route changes, WMS release, YMS dock/gate, fuel advances, accessorial/payment approval, cold-chain, hazmat routing, DVIR, and cross-border workflows become typed adapter boundaries. They execute only after Ward resolution, Authority Envelope validation, Logistics Safety Invariant checks, Commit Gate admission, Warrant verification, and GEL commit.
+
+Run the logistics slice:
+
+```bash
+npm run test:logistics
+npm run aristotle -- logistics templates
+npm run aristotle -- logistics adapters
+npm run aristotle -- execution-control evaluate \
+  --ward examples/logistics/ward.network_west.yaml \
+  --envelope examples/logistics/authority_envelope.dispatch_orchestrator.yaml \
+  --action examples/logistics/actions/allow_load_dispatch.json \
+  --ledger ./.tmp/logistics.gel.jsonl \
+  --now 2026-05-25T15:00:00.000Z
+```
+
+The Command Center includes a Logistics workflow from "create governed load mission" to "admitted dispatch" to "logistics Evidence Bundle export." See [docs/logistics-operator-pilot-guide.md](docs/logistics-operator-pilot-guide.md), [docs/logistics.md](docs/logistics.md), and [docs/logistics-ward-templates.md](docs/logistics-ward-templates.md).
 
 ## Ward/Warrant Execution-Control Path
 

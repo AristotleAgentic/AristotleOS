@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.1.37 - Trucking and logistics execution-control vertical
+- **Logistics pilot path**: typed adapters (TMS dispatch, broker/carrier tender,
+  carrier vetting, ELD/HOS, telematics route, WMS release, YMS dock/gate, fuel
+  advance, accessorial/payment, cold-chain, hazmat routing, DVIR, customs /
+  cross-border) -> Canonical Governed Actions; logistics physical and operational
+  invariants enforced at the gate (HOS/ELD freshness, carrier authority,
+  insurance, driver qualification, route/geofence, trailer seal, cargo securement,
+  temperature range, appointment/dock/gate state, fuel/payment caps, fraud score,
+  double-broker risk); Logistics Evidence Bundles; a Logistics Ops console
+  workflow; `aristotle logistics` CLI; `examples/logistics/` + docs (overview,
+  threat model, pilot guide, ward templates).
+- **Freight safety and fraud hardening**: dispatch-over-HOS, ELD disable, carrier
+  or driver qualification override, hazmat route override, cold-chain alarm
+  override, forced POD/payment release, unbounded fuel advance, forced yard gate,
+  double-broker override, and telematics spoof override are hard-refused even when
+  an envelope is misconfigured; tender, fuel, payment, hazmat, and cold-chain
+  actions require dual control and fail closed when approval state is unavailable.
+
 ## v0.1.36 - Robotics / humanoid execution-control vertical
 - **Robotics pilot path**: typed adapters (motion-control, manipulation, mobile-base,
   humanoid-locomotion, teleoperation, human-robot-interaction, safety-config, fleet,

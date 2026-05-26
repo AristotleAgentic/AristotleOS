@@ -27,6 +27,8 @@ import {
   type GridEvidenceContext,
   type PortDomain,
   type PortEvidenceContext,
+  type LogisticsDomain,
+  type LogisticsEvidenceContext,
   type RailDomain,
   type RailEvidenceContext,
   type TelecomDomain,
@@ -71,6 +73,7 @@ import {
   exportAutomotiveEvidenceBundle,
   exportEvidenceBundle,
   exportGridEvidenceBundle,
+  exportLogisticsEvidenceBundle,
   exportWaterEvidenceBundle,
   exportPortEvidenceBundle,
   exportRailEvidenceBundle,
@@ -87,6 +90,7 @@ import {
   ApprovalStore,
   AUTOMOTIVE_ADAPTER_CATALOG,
   GRID_ADAPTER_CATALOG,
+  LOGISTICS_ADAPTER_CATALOG,
   PORT_ADAPTER_CATALOG,
   RAIL_ADAPTER_CATALOG,
   TELECOM_ADAPTER_CATALOG,
@@ -109,6 +113,7 @@ import {
   verifyEvidenceBundle,
   verifyAutomotiveEvidenceBundle,
   verifyGridEvidenceBundle,
+  verifyLogisticsEvidenceBundle,
   verifyWaterEvidenceBundle,
   verifyPortEvidenceBundle,
   verifyRailEvidenceBundle,
@@ -578,6 +583,9 @@ Commands:
   water templates                   List water utility Ward templates, policies, and sample actions
   water adapters                    List typed SCADA / PLC / pump / valve / dosing / discharge surfaces
   water evidence export             Export a water infrastructure Evidence Bundle
+  logistics templates               List trucking/logistics Ward templates, policies, and sample actions
+  logistics adapters                List typed TMS / ELD / telematics / WMS / YMS / payment surfaces
+  logistics evidence export         Export a trucking/logistics Evidence Bundle
   keys generate        Generate an Ed25519 Warrant signing keypair
   kill engage|release  Engage/release the sovereign-halt kill switch
   revoke key|envelope|warrant <id>   Revoke a compromised trust root
@@ -1758,6 +1766,110 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
       }
 
       throw new Error("usage: aristotle water <templates|adapters|evidence export> ...");
+    }
+
+    if (command === "logistics") {
+      if (subcommand === "templates") {
+        const base = "examples/logistics";
+        const templates = [
+          `${base}/ward.network_west.yaml`,
+          `${base}/authority_envelope.dispatch_orchestrator.yaml`,
+          `${base}/policy/network_west.apl`
+        ];
+        const actions = [
+          `${base}/actions/allow_load_dispatch.json`,
+          `${base}/actions/refuse_hos_overrun.json`,
+          `${base}/actions/refuse_double_broker_risk.json`,
+          `${base}/actions/escalate_missing_eld_state.json`,
+          `${base}/actions/refuse_payment_force_release.json`
+        ];
+        if (json) printJson(out, { templates, actions }, true);
+        else {
+          out("AristotleOS trucking and logistics pilot templates\n");
+          for (const file of [...templates, ...actions]) out(`  ${file}\n`);
+        }
+        return 0;
+      }
+
+      if (subcommand === "adapters") {
+        if (json) printJson(out, { adapters: LOGISTICS_ADAPTER_CATALOG }, true);
+        else {
+          out("Typed trucking and logistics adapter surfaces\n");
+          for (const adapter of LOGISTICS_ADAPTER_CATALOG) {
+            out(`\n${adapter.kind} - ${adapter.label}\n`);
+            out(`  Boundary: ${adapter.consequenceBoundary}\n`);
+            out(`  Actions: ${adapter.actionExamples.join(", ")}\n`);
+            out(`  Registers: ${adapter.requiredRuntimeRegisters.join(", ")}\n`);
+          }
+        }
+        return 0;
+      }
+
+      if (subcommand === "evidence" && rest[0] === "export") {
+        const outPath = requiredOption(rest, "--out");
+        const warrantPath = optionValue(rest, "--warrant");
+        const profiles = optionValues(rest, "--profile");
+        const preChecks = optionValues(rest, "--pre-check").map((item) => {
+          const [name, raw = "true", detail] = item.split(":");
+          return { name, ok: raw !== "false" && raw !== "fail", ...(detail ? { detail } : {}) };
+        });
+        const postChecks = optionValues(rest, "--post-check").map((item) => {
+          const [name, raw = "true", detail] = item.split(":");
+          return { name, ok: raw !== "false" && raw !== "fail", ...(detail ? { detail } : {}) };
+        });
+        const numericOption = (name: string) => {
+          const value = optionValue(rest, name);
+          return value === undefined ? undefined : Number(value);
+        };
+        const cargoValue = numericOption("--cargo-value");
+        const grossWeight = numericOption("--gross-weight");
+        const logistics: LogisticsEvidenceContext = {
+          logistics_network_id: requiredOption(rest, "--network"),
+          operations_center: requiredOption(rest, "--ops-center"),
+          logistics_domain: (optionValue(rest, "--domain") ?? "truckload-fleet") as LogisticsDomain,
+          load_id: requiredOption(rest, "--load"),
+          shipment_id: requiredOption(rest, "--shipment"),
+          trip_id: requiredOption(rest, "--trip"),
+          carrier_id: requiredOption(rest, "--carrier"),
+          broker_id: optionValue(rest, "--broker"),
+          shipper_id: requiredOption(rest, "--shipper"),
+          driver_id: requiredOption(rest, "--driver"),
+          tractor_id: requiredOption(rest, "--tractor"),
+          trailer_id: requiredOption(rest, "--trailer"),
+          route_id: requiredOption(rest, "--route"),
+          origin_facility_id: requiredOption(rest, "--origin"),
+          destination_facility_id: requiredOption(rest, "--destination"),
+          cargo_profile: {
+            cargo_class: optionValue(rest, "--cargo-class") ?? "general",
+            commodity: optionValue(rest, "--commodity") ?? "freight",
+            hazmat_class: optionValue(rest, "--hazmat"),
+            temperature_controlled: rest.includes("--temperature-controlled"),
+            ...(cargoValue !== undefined ? { cargo_value_usd: cargoValue } : {}),
+            ...(grossWeight !== undefined ? { gross_weight_lbs: grossWeight } : {})
+          },
+          compliance_profile: (profiles.length ? profiles : ["FMCSA_HOS", "ELD", "DOT_SAFETY", "FSMA_SANITARY_TRANSPORT", "NIST_CSF", "LOCAL_SOP"]) as LogisticsEvidenceContext["compliance_profile"],
+          pre_checks: preChecks.length ? preChecks : [{ name: "HOS, ELD, carrier, route, and cargo checks evaluated", ok: true }],
+          ...(postChecks.length ? { post_checks: postChecks } : {}),
+          redacted_fields: optionValues(rest, "--redact"),
+          retained_fields: optionValues(rest, "--retain")
+        };
+        const bundle = exportLogisticsEvidenceBundle({
+          ledgerPath: path.resolve(cwd, requiredOption(rest, "--ledger")),
+          ward: loadWardManifest(path.resolve(cwd, requiredOption(rest, "--ward"))),
+          authorityEnvelope: loadAuthorityEnvelope(path.resolve(cwd, requiredOption(rest, "--envelope"))),
+          recordId: optionValue(rest, "--record-id"),
+          warrant: warrantPath ? JSON.parse(readFileSync(path.resolve(cwd, warrantPath), "utf8")) : undefined,
+          exportedAt: optionValue(rest, "--now"),
+          logistics
+        });
+        writeJson(path.resolve(cwd, outPath), bundle);
+        const verification = verifyLogisticsEvidenceBundle(bundle);
+        if (json) printJson(out, bundle, true);
+        else out(`logistics_evidence_bundle=${outPath}\nbundle_hash=${bundle.hashes.logistics_bundle_hash}\nverification=${verification.ok ? "ok" : `failed:${verification.failures.join(";")}`}\nload=${logistics.load_id}\ncarrier=${logistics.carrier_id}\n`);
+        return verification.ok ? 0 : 1;
+      }
+
+      throw new Error("usage: aristotle logistics <templates|adapters|evidence export> ...");
     }
 
     if (command === "execution-control" && subcommand === "shadow") {

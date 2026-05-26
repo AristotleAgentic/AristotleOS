@@ -89,14 +89,25 @@ export function validateWardManifest(value: unknown): ValidationResult {
         "max_sensor_age_ms",
         "max_lab_sample_age_min",
         "max_flow_mgd",
-        "min_uv_intensity_pct"
+        "min_uv_intensity_pct",
+        "max_gross_weight_lbs",
+        "max_cargo_value_usd",
+        "max_fuel_advance_usd",
+        "max_accessorial_amount_usd",
+        "max_fraud_score",
+        "max_double_broker_risk_score",
+        "max_eld_event_age_ms",
+        "max_telematics_age_ms",
+        "max_route_deviation_km",
+        "min_remaining_drive_minutes",
+        "min_remaining_duty_minutes"
       ]) {
         const v = value.physical_bounds[numKey];
         if (v !== undefined && (typeof v !== "number" || !Number.isFinite(v))) {
           issues.push({ path: `ward.physical_bounds.${numKey}`, message: "must be a finite number when present" });
         }
       }
-      for (const strKey of ["permitted_boundary_id", "permitted_odd_id", "permitted_topology_model_id", "permitted_territory_id", "permitted_port_id", "permitted_terminal_id", "permitted_water_system_id", "permitted_facility_id"]) {
+      for (const strKey of ["permitted_boundary_id", "permitted_odd_id", "permitted_topology_model_id", "permitted_territory_id", "permitted_port_id", "permitted_terminal_id", "permitted_water_system_id", "permitted_facility_id", "permitted_logistics_network_id"]) {
         const v = value.physical_bounds[strKey];
         if (v !== undefined && (typeof v !== "string" || v.trim() === "")) {
           issues.push({ path: `ward.physical_bounds.${strKey}`, message: "must be a non-empty string when present" });
@@ -122,7 +133,16 @@ export function validateWardManifest(value: unknown): ValidationResult {
         "permitted_pressure_zones",
         "permitted_process_areas",
         "permitted_water_asset_types",
-        "permitted_discharge_permit_ids"
+        "permitted_discharge_permit_ids",
+        "permitted_logistics_facility_ids",
+        "permitted_route_ids",
+        "permitted_geofence_ids",
+        "permitted_carrier_ids",
+        "permitted_driver_ids",
+        "permitted_cargo_classes",
+        "permitted_logistics_hazmat_classes",
+        "permitted_trailer_types",
+        "permitted_cdl_classes"
       ]) {
         const v = value.physical_bounds[arrKey];
         if (v !== undefined && (!Array.isArray(v) || !v.every((item) => typeof item === "string" && item.trim() !== ""))) {
@@ -173,7 +193,29 @@ export function validateWardManifest(value: unknown): ValidationResult {
         "require_pump_available",
         "require_valve_interlock_clear",
         "require_discharge_permit_window",
-        "require_no_bypass_active"
+        "require_no_bypass_active",
+        "require_driver_qualified",
+        "require_medical_card_valid",
+        "require_carrier_authority_active",
+        "require_carrier_insurance_valid",
+        "require_broker_authority_active",
+        "require_hos_available",
+        "require_eld_fresh",
+        "require_route_permitted",
+        "require_restricted_area_clear",
+        "require_vehicle_maintenance_clear",
+        "require_dvir_clear",
+        "require_trailer_seal_intact",
+        "require_cargo_secured",
+        "require_temperature_in_range",
+        "require_logistics_hazmat_endorsement",
+        "require_customs_clearance",
+        "require_logistics_appointment_valid",
+        "require_dock_available",
+        "require_yard_gate_access",
+        "require_fuel_card_active",
+        "require_logistics_dispatcher_identity",
+        "require_no_double_broker_risk"
       ]) {
         const v = value.physical_bounds[boolKey];
         if (v !== undefined && typeof v !== "boolean") {

@@ -87,6 +87,7 @@ export * from "./port.js";
 export * from "./water.js";
 export * from "./aviation.js";
 export * from "./robotics.js";
+export * from "./logistics.js";
 
 export {
   type AristotleSigner,
@@ -381,6 +382,52 @@ export interface PhysicalBounds {
   require_fall_protection_armed?: boolean;
   require_collaborative_mode_when_human_present?: boolean;
   require_teleop_link_healthy?: boolean;
+  // Trucking / logistics bounds. Temperature reuses min_reefer_temp_c and
+  // max_reefer_temp_c; telemetry freshness can reuse max_telemetry_age_ms where
+  // the action is not ELD-specific.
+  permitted_logistics_network_id?: string;
+  permitted_logistics_facility_ids?: string[];
+  permitted_route_ids?: string[];
+  permitted_geofence_ids?: string[];
+  permitted_carrier_ids?: string[];
+  permitted_driver_ids?: string[];
+  permitted_cargo_classes?: string[];
+  permitted_logistics_hazmat_classes?: string[];
+  permitted_trailer_types?: string[];
+  permitted_cdl_classes?: string[];
+  max_gross_weight_lbs?: number;
+  max_cargo_value_usd?: number;
+  max_fuel_advance_usd?: number;
+  max_accessorial_amount_usd?: number;
+  max_fraud_score?: number;
+  max_double_broker_risk_score?: number;
+  max_eld_event_age_ms?: number;
+  max_telematics_age_ms?: number;
+  max_route_deviation_km?: number;
+  min_remaining_drive_minutes?: number;
+  min_remaining_duty_minutes?: number;
+  require_driver_qualified?: boolean;
+  require_medical_card_valid?: boolean;
+  require_carrier_authority_active?: boolean;
+  require_carrier_insurance_valid?: boolean;
+  require_broker_authority_active?: boolean;
+  require_hos_available?: boolean;
+  require_eld_fresh?: boolean;
+  require_route_permitted?: boolean;
+  require_restricted_area_clear?: boolean;
+  require_vehicle_maintenance_clear?: boolean;
+  require_dvir_clear?: boolean;
+  require_trailer_seal_intact?: boolean;
+  require_cargo_secured?: boolean;
+  require_temperature_in_range?: boolean;
+  require_logistics_hazmat_endorsement?: boolean;
+  require_customs_clearance?: boolean;
+  require_logistics_appointment_valid?: boolean;
+  require_dock_available?: boolean;
+  require_yard_gate_access?: boolean;
+  require_fuel_card_active?: boolean;
+  require_logistics_dispatcher_identity?: boolean;
+  require_no_double_broker_risk?: boolean;
 }
 
 export interface PhysicalInvariantResult {
@@ -827,6 +874,22 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
     action.action_type === "humanoid.disable_fall_protection"
   ) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard robotics safety interlock violation` };
+  }
+  if (
+    action.action_type === "logistics.dispatch_over_hos" ||
+    action.action_type === "eld.disable" ||
+    action.action_type === "carrier.vetting.override" ||
+    action.action_type === "driver.qualification.override" ||
+    action.action_type === "hazmat.route.override" ||
+    action.action_type === "coldchain.temp_alarm.override" ||
+    action.action_type === "pod.force_accept" ||
+    action.action_type === "payment.force_release" ||
+    action.action_type === "fuel.unbounded_advance" ||
+    action.action_type === "yard.force_gate_open" ||
+    action.action_type === "load.double_broker.override" ||
+    action.action_type === "telematics.spoof_override"
+  ) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard logistics safety and fraud interlock violation` };
   }
   const altitude = numericParam(action, "altitude_m");
   if (bounds.max_altitude_m !== undefined && altitude !== undefined && altitude > bounds.max_altitude_m) {
@@ -1510,6 +1573,174 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
     stringParam(action, "operating_mode") !== "collaborative"
   ) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "a human is present but the robot is not in collaborative mode (ISO/TS 15066)" };
+  }
+  // -- trucking / logistics invariants -----------------------------------------
+  const logisticsNetworkId = stringParam(action, "logistics_network_id");
+  if (bounds.permitted_logistics_network_id && logisticsNetworkId && logisticsNetworkId !== bounds.permitted_logistics_network_id) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `logistics_network_id ${logisticsNetworkId} does not match ${bounds.permitted_logistics_network_id}` };
+  }
+  const originFacilityId = stringParam(action, "origin_facility_id");
+  const destinationFacilityId = stringParam(action, "destination_facility_id");
+  const currentFacilityId = stringParam(action, "current_facility_id");
+  if (bounds.permitted_logistics_facility_ids?.length) {
+    for (const [label, value] of [["origin_facility_id", originFacilityId], ["destination_facility_id", destinationFacilityId], ["current_facility_id", currentFacilityId]] as const) {
+      if (value && !bounds.permitted_logistics_facility_ids.includes(value)) {
+        return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${label} ${value} is outside permitted logistics facilities` };
+      }
+    }
+  }
+  const routeId = stringParam(action, "route_id");
+  if (bounds.permitted_route_ids?.length && routeId && !bounds.permitted_route_ids.includes(routeId)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `route_id ${routeId} is outside permitted routes` };
+  }
+  const geofenceId = stringParam(action, "geofence_id");
+  if (bounds.permitted_geofence_ids?.length && geofenceId && !bounds.permitted_geofence_ids.includes(geofenceId)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `geofence_id ${geofenceId} is outside permitted geofences` };
+  }
+  const carrierId = stringParam(action, "carrier_id");
+  if (bounds.permitted_carrier_ids?.length && carrierId && !bounds.permitted_carrier_ids.includes(carrierId)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `carrier_id ${carrierId} is outside permitted carriers` };
+  }
+  const driverId = stringParam(action, "driver_id");
+  if (bounds.permitted_driver_ids?.length && driverId && !bounds.permitted_driver_ids.includes(driverId)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `driver_id ${driverId} is outside permitted drivers` };
+  }
+  const cargoClass = stringParam(action, "cargo_class") ?? stringParam(action, "cargo_type");
+  if (bounds.permitted_cargo_classes?.length && cargoClass && !bounds.permitted_cargo_classes.includes(cargoClass)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `cargo_class ${cargoClass} is outside permitted cargo classes` };
+  }
+  const logisticsHazmatClass = stringParam(action, "hazmat_class");
+  if (bounds.permitted_logistics_hazmat_classes?.length && logisticsHazmatClass && !bounds.permitted_logistics_hazmat_classes.includes(logisticsHazmatClass)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `hazmat_class ${logisticsHazmatClass} is outside permitted logistics hazmat classes` };
+  }
+  const trailerType = stringParam(action, "trailer_type");
+  if (bounds.permitted_trailer_types?.length && trailerType && !bounds.permitted_trailer_types.includes(trailerType)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `trailer_type ${trailerType} is outside permitted trailer types` };
+  }
+  const cdlClass = stringParam(action, "cdl_class");
+  if (bounds.permitted_cdl_classes?.length && cdlClass && !bounds.permitted_cdl_classes.includes(cdlClass)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `cdl_class ${cdlClass} is outside permitted CDL classes` };
+  }
+  const grossWeight = numericParam(action, "gross_weight_lbs");
+  if (bounds.max_gross_weight_lbs !== undefined && grossWeight !== undefined && grossWeight > bounds.max_gross_weight_lbs) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `gross_weight_lbs ${grossWeight} exceeds max_gross_weight_lbs ${bounds.max_gross_weight_lbs}` };
+  }
+  const cargoValue = numericParam(action, "cargo_value_usd");
+  if (bounds.max_cargo_value_usd !== undefined && cargoValue !== undefined && cargoValue > bounds.max_cargo_value_usd) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `cargo_value_usd ${cargoValue} exceeds max_cargo_value_usd ${bounds.max_cargo_value_usd}` };
+  }
+  const fuelAdvance = numericParam(action, "fuel_advance_usd");
+  if (bounds.max_fuel_advance_usd !== undefined && fuelAdvance !== undefined && fuelAdvance > bounds.max_fuel_advance_usd) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `fuel_advance_usd ${fuelAdvance} exceeds max_fuel_advance_usd ${bounds.max_fuel_advance_usd}` };
+  }
+  const accessorialAmount = numericParam(action, "accessorial_amount_usd");
+  if (bounds.max_accessorial_amount_usd !== undefined && accessorialAmount !== undefined && accessorialAmount > bounds.max_accessorial_amount_usd) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `accessorial_amount_usd ${accessorialAmount} exceeds max_accessorial_amount_usd ${bounds.max_accessorial_amount_usd}` };
+  }
+  const fraudScore = numericParam(action, "fraud_score");
+  if (bounds.max_fraud_score !== undefined && fraudScore !== undefined && fraudScore > bounds.max_fraud_score) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `fraud_score ${fraudScore} exceeds max_fraud_score ${bounds.max_fraud_score}` };
+  }
+  const doubleBrokerRisk = numericParam(action, "double_broker_risk_score");
+  if (bounds.max_double_broker_risk_score !== undefined && doubleBrokerRisk !== undefined && doubleBrokerRisk > bounds.max_double_broker_risk_score) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `double_broker_risk_score ${doubleBrokerRisk} exceeds max_double_broker_risk_score ${bounds.max_double_broker_risk_score}` };
+  }
+  const eldAge = numericParam(action, "eld_event_age_ms");
+  if (bounds.max_eld_event_age_ms !== undefined && eldAge !== undefined && eldAge > bounds.max_eld_event_age_ms) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `eld_event_age_ms ${eldAge} exceeds max_eld_event_age_ms ${bounds.max_eld_event_age_ms}` };
+  }
+  const telematicsAge = numericParam(action, "telematics_age_ms");
+  if (bounds.max_telematics_age_ms !== undefined && telematicsAge !== undefined && telematicsAge > bounds.max_telematics_age_ms) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `telematics_age_ms ${telematicsAge} exceeds max_telematics_age_ms ${bounds.max_telematics_age_ms}` };
+  }
+  const routeDeviation = numericParam(action, "route_deviation_km");
+  if (bounds.max_route_deviation_km !== undefined && routeDeviation !== undefined && routeDeviation > bounds.max_route_deviation_km) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `route_deviation_km ${routeDeviation} exceeds max_route_deviation_km ${bounds.max_route_deviation_km}` };
+  }
+  const remainingDrive = numericParam(action, "remaining_drive_minutes");
+  const requiredDrive = numericParam(action, "required_drive_minutes");
+  if (bounds.min_remaining_drive_minutes !== undefined && remainingDrive !== undefined && remainingDrive < bounds.min_remaining_drive_minutes) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `remaining_drive_minutes ${remainingDrive} below minimum ${bounds.min_remaining_drive_minutes}` };
+  }
+  if (requiredDrive !== undefined && remainingDrive !== undefined && requiredDrive > remainingDrive) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `required_drive_minutes ${requiredDrive} exceeds remaining_drive_minutes ${remainingDrive}` };
+  }
+  const remainingDuty = numericParam(action, "remaining_duty_minutes");
+  if (bounds.min_remaining_duty_minutes !== undefined && remainingDuty !== undefined && remainingDuty < bounds.min_remaining_duty_minutes) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `remaining_duty_minutes ${remainingDuty} below minimum ${bounds.min_remaining_duty_minutes}` };
+  }
+  const logisticsTemp = numericParam(action, "cargo_temperature_c") ?? numericParam(action, "reefer_temperature_c");
+  if (bounds.min_reefer_temp_c !== undefined && logisticsTemp !== undefined && logisticsTemp < bounds.min_reefer_temp_c) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `cargo temperature ${logisticsTemp} below min_reefer_temp_c ${bounds.min_reefer_temp_c}` };
+  }
+  if (bounds.max_reefer_temp_c !== undefined && logisticsTemp !== undefined && logisticsTemp > bounds.max_reefer_temp_c) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `cargo temperature ${logisticsTemp} exceeds max_reefer_temp_c ${bounds.max_reefer_temp_c}` };
+  }
+  if (bounds.require_driver_qualified && booleanParam(action, "driver_qualified") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "driver qualification is required before this logistics action" };
+  }
+  if (bounds.require_medical_card_valid && booleanParam(action, "medical_card_valid") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "driver medical card must be valid before this logistics action" };
+  }
+  if (bounds.require_carrier_authority_active && booleanParam(action, "carrier_authority_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "carrier authority must be active before this logistics action" };
+  }
+  if (bounds.require_carrier_insurance_valid && booleanParam(action, "carrier_insurance_valid") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "carrier insurance must be valid before this logistics action" };
+  }
+  if (bounds.require_broker_authority_active && booleanParam(action, "broker_authority_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "broker authority must be active before this logistics action" };
+  }
+  if (bounds.require_hos_available && booleanParam(action, "hos_available") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "HOS availability must be proven before dispatch" };
+  }
+  if (bounds.require_eld_fresh && booleanParam(action, "eld_fresh") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "fresh ELD state is required before this logistics action" };
+  }
+  if (bounds.require_route_permitted && booleanParam(action, "route_permitted") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "route must be permitted before this logistics action" };
+  }
+  if (bounds.require_restricted_area_clear && booleanParam(action, "restricted_area_clear") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "restricted area clearance is required before this logistics action" };
+  }
+  if (bounds.require_vehicle_maintenance_clear && booleanParam(action, "vehicle_maintenance_clear") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "vehicle maintenance clearance is required before this logistics action" };
+  }
+  if (bounds.require_dvir_clear && booleanParam(action, "dvir_clear") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "DVIR must be clear before this logistics action" };
+  }
+  if (bounds.require_trailer_seal_intact && booleanParam(action, "trailer_seal_intact") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "trailer seal must be intact before this logistics action" };
+  }
+  if (bounds.require_cargo_secured && booleanParam(action, "cargo_secured") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "cargo securement must be proven before this logistics action" };
+  }
+  if (bounds.require_temperature_in_range && booleanParam(action, "temperature_in_range") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "temperature must be in range before this logistics action" };
+  }
+  if (bounds.require_logistics_hazmat_endorsement && logisticsHazmatClass && logisticsHazmatClass !== "none" && booleanParam(action, "hazmat_endorsement_valid") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "hazmat endorsement is required before this logistics action" };
+  }
+  if (bounds.require_customs_clearance && booleanParam(action, "customs_clearance_present") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "customs clearance is required before this logistics action" };
+  }
+  if (bounds.require_logistics_appointment_valid && booleanParam(action, "appointment_valid") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "valid appointment is required before this logistics action" };
+  }
+  if (bounds.require_dock_available && booleanParam(action, "dock_available") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "dock availability is required before this logistics action" };
+  }
+  if (bounds.require_yard_gate_access && booleanParam(action, "yard_gate_access_granted") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "yard gate access must be granted before this logistics action" };
+  }
+  if (bounds.require_fuel_card_active && booleanParam(action, "fuel_card_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "fuel card must be active before this logistics action" };
+  }
+  if (bounds.require_logistics_dispatcher_identity && !stringParam(action, "dispatcher_id")) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "dispatcher identity is required before this logistics action" };
+  }
+  if (bounds.require_no_double_broker_risk && booleanParam(action, "double_broker_flag") === true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "double-broker risk flag prevents this logistics action" };
   }
   return { ok: true, reason_codes: [], detail: "physical invariants satisfied" };
 }

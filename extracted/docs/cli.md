@@ -228,4 +228,40 @@ aristotle water evidence export \
   --flow 12.4
 ```
 
+## Logistics pilot commands
+
+- `aristotle logistics templates`: list trucking/logistics Ward, Authority Envelope, APL, and sample action fixtures
+- `aristotle logistics adapters`: list typed TMS, broker/carrier, ELD/HOS, telematics, WMS, YMS, fuel, payment, cold-chain, hazmat, DVIR, and customs boundaries
+- `aristotle logistics evidence export`: export a Logistics Evidence Bundle with load, shipment, trip, carrier, driver, equipment, route, cargo, GEL, and Warrant material
+
+Example:
+
+```bash
+aristotle logistics evidence export \
+  --ward examples/logistics/ward.network_west.yaml \
+  --envelope examples/logistics/authority_envelope.dispatch_orchestrator.yaml \
+  --ledger ./.tmp/logistics.gel.jsonl \
+  --out ./.tmp/logistics-evidence.json \
+  --network west-freight-network \
+  --ops-center west-dispatch \
+  --domain cold-chain \
+  --load LOAD-8821 \
+  --shipment SHP-5521 \
+  --trip TRIP-2026-0525-77 \
+  --carrier carrier:clearline \
+  --broker broker:atlas \
+  --shipper shipper:alpine-foods \
+  --driver driver:diaz \
+  --tractor TRAC-4482 \
+  --trailer TRL-9012 \
+  --route route-i70-west-safe \
+  --origin dc-denver \
+  --destination store-salt-lake \
+  --cargo-class reefer \
+  --commodity "frozen food" \
+  --temperature-controlled \
+  --cargo-value 74000 \
+  --gross-weight 62100
+```
+
 The CLI is intentionally deterministic. It does not call an LLM in the enforcement path.

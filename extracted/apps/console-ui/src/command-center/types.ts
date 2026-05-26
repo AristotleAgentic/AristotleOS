@@ -586,6 +586,51 @@ export interface WaterSafetyDrill {
   evidence: string;
 }
 
+export interface LogisticsOpsStep {
+  id: string;
+  label: string;
+  owner: string;
+  state: "complete" | "active" | "blocked" | "pending";
+  evidence: string;
+}
+
+export interface LogisticsAdapterSurface {
+  id: string;
+  label: string;
+  standard: "TMS" | "Broker" | "Carrier" | "ELD/HOS" | "Telematics" | "WMS" | "YMS" | "Fuel" | "Payment" | "Cold Chain" | "Hazmat" | "DVIR" | "Customs";
+  actionTypes: string[];
+  requiredRegisters: string[];
+  boundary: string;
+  posture: Posture;
+}
+
+export interface LogisticsEvidenceExport {
+  bundleVersion: string;
+  networkId: string;
+  operationsCenter: string;
+  loadId: string;
+  shipmentId: string;
+  tripId: string;
+  carrierId: string;
+  driverId: string;
+  tractorId: string;
+  trailerId: string;
+  routeId: string;
+  profiles: string[];
+  redactedFields: string[];
+  bundleHash: string;
+  verification: "ok" | "blocked";
+}
+
+export interface LogisticsSafetyDrill {
+  id: string;
+  label: string;
+  invariant: string;
+  current: string;
+  posture: Posture;
+  evidence: string;
+}
+
 export interface WardMarshalFinding {
   id: string;
   subject: string;

@@ -19,6 +19,7 @@ import {
   RadioTower,
   Siren,
   ShieldAlert,
+  Truck,
   UserCheck,
   Workflow,
   TriangleAlert,
@@ -36,6 +37,7 @@ import { FailureModeConsole } from "./FailureModeConsole.js";
 import { GovernanceBuilderConsole } from "./GovernanceBuilderConsole.js";
 import { GridControlConsole } from "./GridControlConsole.js";
 import { LedgerExplorer } from "./LedgerExplorer.js";
+import { LogisticsOpsConsole } from "./LogisticsOpsConsole.js";
 import { MeshNodeDetail, MeshView } from "./MeshView.js";
 import { OperatorActionBar } from "./OperatorActionBar.js";
 import { PhysicalInvariantPanel } from "./PhysicalInvariantPanel.js";
@@ -65,6 +67,7 @@ const NAV: Array<{ id: SectionId; label: string; icon: LucideIcon }> = [
   { id: "rail", label: "Rail", icon: Landmark },
   { id: "port", label: "Port", icon: Anchor },
   { id: "water", label: "Water", icon: Droplets },
+  { id: "logistics", label: "Freight", icon: Truck },
   { id: "adoption", label: "Adopt", icon: ClipboardCheck },
   { id: "failure", label: "Failure", icon: ShieldAlert },
   { id: "marshal", label: "Marshal", icon: Crosshair },
@@ -90,6 +93,7 @@ const SECTION_META: Record<SectionId, { title: string; sub: string }> = {
   rail: { title: "Railroad Operations", sub: "Govern dispatch, PTC, wayside, switch, and movement authority before rail consequence" },
   port: { title: "Maritime Port Operations", sub: "Govern terminal, gate, crane, VTS, customs, and shore-power actions before port consequence" },
   water: { title: "Water Infrastructure", sub: "Govern SCADA, PLC, pump, valve, dosing, and discharge actions before utility consequence" },
+  logistics: { title: "Trucking and Logistics", sub: "Govern dispatch, tender, HOS, route, cargo release, fuel, and payment before freight consequence" },
   adoption: { title: "Commercial Adoption Path", sub: "From sandbox to shadow to enforcement to evidence export" },
   failure: { title: "Failure Mode Console", sub: "Partitions, stale authority, witness disagreement, and replay divergence" },
   marshal: { title: "Ward Marshal", sub: "Rogue-agent census and warrant-backed interdiction" },
@@ -134,6 +138,8 @@ function SectionBody({ section }: { section: SectionId }) {
       return <PortOpsConsole />;
     case "water":
       return <WaterOpsConsole />;
+    case "logistics":
+      return <LogisticsOpsConsole />;
     case "conflicts":
       return <ConflictInboxConsole />;
     case "adoption":
