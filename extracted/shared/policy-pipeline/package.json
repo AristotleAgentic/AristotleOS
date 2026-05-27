@@ -1,0 +1,18 @@
+{
+  "name": "@aristotle/policy-pipeline",
+  "version": "0.1.0",
+  "description": "Build pipeline for Aristotle Policy Language (APL). Wraps the existing APL compiler with provenance, deterministic signing, reproducibility verification, and a structured diff between policy versions. Produces signed .aplbundle artifacts that downstream Wards / Gates can content-address and verify offline.",
+  "license": "Apache-2.0",
+  "private": false,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@aristotle/execution-control-runtime": "workspace:*",
+    "@aristotle/governance-core": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test src/index.test.ts"
+  }
+}

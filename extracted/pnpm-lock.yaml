@@ -365,6 +365,15 @@ importers:
 
   shared/mesh-runtime: {}
 
+  shared/policy-pipeline:
+    dependencies:
+      '@aristotle/execution-control-runtime':
+        specifier: workspace:*
+        version: link:../execution-control-runtime
+      '@aristotle/governance-core':
+        specifier: workspace:*
+        version: link:../governance-core
+
   shared/scenario-engine:
     dependencies:
       '@aristotle/mesh-runtime':
