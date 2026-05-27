@@ -1,5 +1,91 @@
 # Changelog
 
+## v0.1.63 - Ultimate-mode batch 3: Modbus + link-quality + sweep CLI + published replay artifact
+
+Four more substrate items advanced; the audit is now ≥85% on every item that's been actively worked, and #12 ("one ruthlessly real scenario") closes to 100%.
+
+### #7 Hardware adapter (90% → 95%) — `@aristotle/modbus-adapter`
+- Fifth hardware-governance adapter. Govern Modbus TCP register +
+  coil writes through the Commit Gate as `ot.modbus.<kind>`.
+- Covers FC 5/6/15/16: `write_single_coil`,
+  `write_single_register`, `write_multiple_coils`,
+  `write_multiple_registers`.
+- Preflight refuses `ADDRESS_OUTSIDE_AUTHZ`, `VALUE_OVER_LIMIT`,
+  `MALFORMED_OPERATION` before any wire bytes.
+- `ModbusShimTransport` delegates to a caller-supplied sender so
+  existing `jsmodbus` / `modbus-serial` / `pymodbus` stacks plug in.
+- 14/14 tests pass.
+- Catalog now spans aerospace (MAVLink/PX4), robotics (ROS2),
+  process control (OPC-UA), grid SCADA (DNP3), Kubernetes
+  admission, and legacy industrial PLC/RTU (Modbus).
+
+### #2 Simulator (70% → 85%) — scenario-engine link-quality model
+- New `transient_partition` step kind: severs an edge ↔ peer link
+  for `durationMs`, then heals; outage window captured in the trace
+  for downstream assertions.
+- New `assert_decision` step kind: walks back to the most recent
+  evaluate / inject_spoof and asserts decision + optional
+  reason_code. Lets scenarios encode their expectations inline; the
+  trace becomes self-checking.
+- 11/11 tests pass.
+
+### #9 Time Machine (70% → 85%) — sweep serialization + helpers
+- `serializeSweep` / `loadSweep` with `SWEEP_ARTIFACT_FORMAT` tag
+  for portable counterfactual results.
+- `summarizeSweep(result)` — single-line CI-friendly summary.
+- `compareSweeps([result, …])` — comparison table of N candidate
+  policy worlds, sorted by `flipped` count descending.
+- 11/11 tests pass.
+
+### #12 One real scenario (80% → **100%**) — published replay artifact
+- New package `@aristotle/replay-artifact`:
+  - `buildReplayArtifact({scenario_id, scenario_version, inputs,
+    report, provenance})` — content-addressed bundle with
+    `report_hash` + `artifact_hash`.
+  - `verifyReplayArtifact(artifact, {rerun, localScenarioVersion?})`
+    — four independent gates: artifact_hash internal consistency,
+    report_hash internal consistency, scenario_version match, and
+    the strongest signal, scenario_reproducible (locally re-run the
+    scenario; same inputs must yield byte-identical report bytes).
+  - `loadReplayArtifact` / `summarizeReplayArtifact`.
+  - 10/10 tests pass.
+- `examples/mesh/publish-replay-artifact.ts` runs the 40-asset
+  disconnected-swarm scenario and produces a real signed artifact:
+  - `examples/mesh/published.replay.json` (checked in)
+  - scenario_id: `swarm-partition-40-asset`, version: 1.0.0
+  - report_hash: `sha256:8b379ea5…d952ce2`
+- `examples/mesh/published.replay.test.ts` re-loads the artifact,
+  re-runs the scenario, and asserts all four verification gates
+  pass. 3/3 tests pass.
+- A third party clones this repo, runs the verify test, and
+  observes the same scenario report bytes — `reconstructable
+  authority state` is now substantiated, not just claimed.
+
+### Canonicalization fix
+`stableStringify` in both `@aristotle/policy-pipeline` and
+`@aristotle/replay-artifact` now skips `undefined` values to match
+`JSON.stringify` drop-then-restore semantics — so signed bundles
+written to disk verify on re-read.
+
+### Post-batch substrate scoreboard
+| # | Item | v0.1.60 | v0.1.61 | v0.1.62 | v0.1.63 |
+|---|---|---|---|---|---|
+| 1 | Commit Gate | 95% | 100% | 100% | 100% |
+| 2 | Simulator | 30% | 70% | 70% | **85%** |
+| 3 | Warrants | 95% | 95% | 95% | 95% |
+| 4 | Governance Mesh | 85% | 95% | 95% | 95% |
+| 5 | GEL | 85% | 100% | 100% | 100% |
+| 6 | Chaos / failure | 50% | 85% | 95% | 95% |
+| 7 | Hardware adapter | 50% | 90% | 90% | **95%** |
+| 8 | Policy compilation | 60% | 60% | 85% | 85% |
+| 9 | Time Machine | 35% | 70% | 70% | **85%** |
+|10 | Multi-tenant CP | 40% | 75% | 90% | 90% |
+|11 | APIs | 95% | 95% | 95% | 95% |
+|12 | One real scenario | 80% | 80% | 80% | **100%** |
+
+No regressions in governance-core, execution-control-runtime,
+mesh-runtime, or any of the now-six hardware adapters. Apache-2.0.
+
 ## v0.1.62 - Ultimate-mode batch 2: policy pipeline + tenant lifecycle + extended chaos
 
 Three more substrate items moved out of the "<80%" band:
