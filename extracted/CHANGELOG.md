@@ -1,5 +1,78 @@
 # Changelog
 
+## v0.1.62 - Ultimate-mode batch 2: policy pipeline + tenant lifecycle + extended chaos
+
+Three more substrate items moved out of the "<80%" band:
+
+### #8 Policy compilation (60% → 85%) — `@aristotle/policy-pipeline`
+- Wraps the existing APL `compilePolicy()` with a build pipeline:
+  `buildPolicyBundle(source, opts)` -> `PolicyBundle | SignedPolicyBundle`.
+- Embedded provenance: builder identity, `PIPELINE_VERSION`,
+  `source_hash`, `built_at`, optional `source_ref` (git commit / OCI
+  digest) and `notes`.
+- Content-addressed `bundle_hash` over the canonical stable
+  stringification of the bundle minus the hash field.
+- Optional signing via the existing `Keyring`; produces a
+  `SignedPolicyBundle` whose signature is over `bundle_hash`.
+- `verifyPolicyBundle(signed, keyring)` runs three independent gates:
+  signature, hash recomputation, and source-reproducibility (re-compile
+  and check every `manifest_hash`). Any tamper to source, manifests,
+  or provenance flips the relevant gate.
+- `diffPolicyBundles(before, after)` per-ward structured diff with
+  rolled-up `total_changes` and `weakening_changes` counts.
+- 13/13 tests pass.
+
+### #10 Multi-tenant Control Plane (75% → 90%) — lifecycle primitives
+Added to `@aristotle/tenant-onboarding`:
+- `rotateTenantKey({tenant_id, oldKeyId, newKeyId, ...})` — adds the
+  new key to `mae.signing_keys` and re-seals the MAE; keeps the old
+  key for in-flight grace.
+- `pruneRetiredTenantKey({tenant_id, activeKeyId, retiredKeyId, ...})`
+  — removes the retired key; re-signs under the active key; refuses
+  to prune the active key itself.
+- `suspendTenant({tenant_id, reason, ...})` — latches `suspended_at`
+  on Wards + `revocation_state=suspended` on Envelopes; idempotent.
+- `revokeTenant({tenant_id, reason, ...})` — terminal: `revoked_at`
+  on Wards + `revocation_state=revoked` on Envelopes.
+- `exportTenantSnapshot({tenant_id, store})` /
+  `importTenantSnapshot({snapshot, store, overwrite?})` — portable
+  tenant migration between control-plane stores; refuses collision
+  by default.
+- 20/20 tests pass (10 bootstrap + 10 lifecycle).
+
+### #6 Failure / chaos (85% → 95%) — three more scenarios
+Added to `@aristotle/chaos-harness`:
+- `runReplayAttemptScenario` — same action_id replayed N times;
+  every replay yields a distinct warrant_id (single-use semantics
+  hold under volume replay).
+- `runClockSkewScenario` — edge's local clock advances past a
+  Fluidity Token's TTL while disconnected; first action ALLOWs,
+  later action returns EXPIRE.
+- `runWitnessFlapScenario` — edge partitioned from both root +
+  witness; root revokes while offline; after heal + operator
+  re-broadcast, next evaluate refuses with ENVELOPE_REVOKED.
+- `runAllChaosScenarios()` now runs 8 scenarios. 9/9 tests pass
+  (8 individual + the aggregate).
+
+### Post-batch substrate scoreboard
+| # | Item | v0.1.60 | v0.1.61 | v0.1.62 |
+|---|---|---|---|---|
+| 1 | Commit Gate | 95% | **100%** | 100% |
+| 2 | Simulator | 30% | **70%** | 70% |
+| 3 | Warrants | 95% | 95% | 95% |
+| 4 | Governance Mesh | 85% | **95%** | 95% |
+| 5 | GEL | 85% | **100%** | 100% |
+| 6 | Chaos / failure | 50% | **85%** | **95%** |
+| 7 | Hardware adapter | 50% | **90%** | 90% |
+| 8 | Policy compilation | 60% | 60% | **85%** |
+| 9 | Time Machine | 35% | **70%** | 70% |
+|10 | Multi-tenant CP | 40% | **75%** | **90%** |
+|11 | APIs | 95% | 95% | 95% |
+|12 | One real scenario | 80% | 80% | 80% |
+
+No regressions in governance-core, execution-control-runtime,
+mesh-runtime, or any of the hardware adapters. Apache-2.0.
+
 ## v0.1.61 - Ultimate-mode substrate batch: the 12-item audit closes to 80–100% per item
 
 This release is one push against the 12-item substrate audit. Each
