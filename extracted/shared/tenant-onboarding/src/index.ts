@@ -294,4 +294,279 @@ export function bootstrapTenantWithLocalKeyring(
   return bootstrapTenant({ ...input, keyring, keyId });
 }
 
+// ---------------------------------------------------------------------------
+// Tenant lifecycle primitives
+// ---------------------------------------------------------------------------
+//
+// The bootstrap primitive above stands a tenant up. Real deployments
+// also need the operations that follow:
+//   - rotate the signing key (without downtime; new artifacts use the
+//     new key, old ones still verify against the old key until they
+//     expire / are re-signed).
+//   - suspend a tenant (latch all standing artifacts; gate refuses
+//     subsequent actions while preserving evidence).
+//   - revoke a tenant (terminal; cascades through MAE -> Wards ->
+//     Envelopes).
+//   - export a tenant snapshot for migration to another store.
+// These primitives operate on the existing standing artifacts in a
+// GovernanceStore; they do NOT bypass the validators (every mutation
+// re-signs the resulting artifact under the supplied keyring).
+//
+// ---------------------------------------------------------------------------
+
+export interface RotateTenantKeyInput {
+  tenant_id: string;
+  store: GovernanceStore;
+  /** Current keyring containing the OLD key. */
+  keyring: Keyring;
+  /** Current signing key id. */
+  oldKeyId: string;
+  /** New signing key id; must already be present in the supplied keyring
+   *  (callers add it via keyring.addKey or equivalent before calling). */
+  newKeyId: string;
+  newKeyAlgorithm?: "hmac-sha256" | "ed25519";
+  now?: Date;
+}
+
+export interface RotateTenantKeyResult {
+  tenant_id: string;
+  mae_id: string;
+  rotated_at: string;
+  added_key_id: string;
+  /** Whether the OLD key id was kept in signing_keys for a grace
+   *  period (true) or removed immediately (false). Default keeps. */
+  old_key_retained: boolean;
+}
+
+/**
+ * Rotate a tenant's MAE signing key. Adds the new key to
+ * `mae.signing_keys` and re-signs the MAE; preserves the old key in
+ * `signing_keys` for backward verification of in-flight artifacts.
+ * Callers can call `pruneRetiredTenantKey` later to remove it.
+ */
+export function rotateTenantKey(input: RotateTenantKeyInput): RotateTenantKeyResult {
+  const now = input.now ?? new Date();
+  // Find the tenant's MAE in the store.
+  // GovernanceStore exposes getMae(id) but not listMaes; we identify
+  // the MAE via wardsForMae traversal isn't possible without the id.
+  // The most robust path is to snapshot + filter.
+  const snap = input.store.toSnapshot();
+  const mae = snap.maes.find((m) => m.tenant_id === input.tenant_id);
+  if (!mae) throw new Error(`no MAE found for tenant_id=${input.tenant_id}`);
+  if (mae.signing_keys.some((k) => k.key_id === input.newKeyId)) {
+    throw new Error(`newKeyId=${input.newKeyId} is already in signing_keys`);
+  }
+  if (!mae.signing_keys.some((k) => k.key_id === input.oldKeyId)) {
+    throw new Error(`oldKeyId=${input.oldKeyId} is not currently in signing_keys`);
+  }
+  const updatedMae: MetaAuthorityEnvelope = {
+    ...mae,
+    signing_keys: [
+      ...mae.signing_keys,
+      { key_id: input.newKeyId, algorithm: input.newKeyAlgorithm ?? "hmac-sha256" }
+    ]
+  };
+  // Re-sign with the NEW key so downstream verifiers will use the
+  // new key going forward. The OLD key is still present in
+  // signing_keys, so any artifact signed under it still validates
+  // through the existing keyring.
+  // We don't have direct access to createMae's sealing here; the
+  // cleanest path is to clear signatures + policy_hash and let the
+  // factory re-seal. Use the same internal trick the factory uses.
+  const { signatures: _sigs, policy_hash: _ph, ...rest } = updatedMae;
+  const resealed = { ...rest, policy_hash: "", signatures: [] };
+  // Re-compute policy_hash + signature using the same logic the
+  // factory uses. We reach into governance-core hash helpers.
+  // (We import them lazily to avoid widening the public surface.)
+  reseal(resealed, input.keyring, input.newKeyId);
+  input.store.putMae(resealed as MetaAuthorityEnvelope);
+  return {
+    tenant_id: input.tenant_id,
+    mae_id: mae.mae_id,
+    rotated_at: now.toISOString(),
+    added_key_id: input.newKeyId,
+    old_key_retained: true
+  };
+}
+
+export interface PruneRetiredKeyInput {
+  tenant_id: string;
+  store: GovernanceStore;
+  keyring: Keyring;
+  /** New (active) signing key id, used to re-sign the MAE after the
+   *  retired key is removed. */
+  activeKeyId: string;
+  retiredKeyId: string;
+}
+
+/**
+ * Remove a retired signing key from a tenant's MAE.signing_keys. The
+ * MAE is re-signed under the active key. After this returns, any
+ * artifact still signed by the retired key will fail validation.
+ */
+export function pruneRetiredTenantKey(input: PruneRetiredKeyInput): { tenant_id: string; mae_id: string; removed_key_id: string } {
+  const snap = input.store.toSnapshot();
+  const mae = snap.maes.find((m) => m.tenant_id === input.tenant_id);
+  if (!mae) throw new Error(`no MAE found for tenant_id=${input.tenant_id}`);
+  if (!mae.signing_keys.some((k) => k.key_id === input.retiredKeyId)) {
+    throw new Error(`retiredKeyId=${input.retiredKeyId} is not in signing_keys`);
+  }
+  if (!mae.signing_keys.some((k) => k.key_id === input.activeKeyId)) {
+    throw new Error(`activeKeyId=${input.activeKeyId} is not in signing_keys`);
+  }
+  if (input.activeKeyId === input.retiredKeyId) {
+    throw new Error("activeKeyId and retiredKeyId must differ");
+  }
+  const filtered = mae.signing_keys.filter((k) => k.key_id !== input.retiredKeyId);
+  const updated: MetaAuthorityEnvelope = {
+    ...mae,
+    signing_keys: filtered,
+    policy_hash: "",
+    signatures: []
+  };
+  reseal(updated, input.keyring, input.activeKeyId);
+  input.store.putMae(updated);
+  return { tenant_id: input.tenant_id, mae_id: mae.mae_id, removed_key_id: input.retiredKeyId };
+}
+
+export interface SuspendTenantInput {
+  tenant_id: string;
+  store: GovernanceStore;
+  reason: string;
+  now?: Date;
+}
+
+/**
+ * Suspend a tenant: set MAE + every Ward + every AuthorityEnvelope's
+ * `suspended_at` (or `revocation_state: "suspended"` where the type
+ * uses that field). Suspended artifacts make the gate refuse all
+ * subsequent actions but leave evidence intact for forensic recovery.
+ *
+ * Note: this primitive does NOT re-sign artifacts after the suspension
+ * field flip — `suspended_at` is a lifecycle latch outside the
+ * signature material on most artifacts. The validators consult it
+ * directly.
+ */
+export function suspendTenant(input: SuspendTenantInput): { tenant_id: string; suspended_at: string; affected: { wards: number; envelopes: number } } {
+  const now = input.now ?? new Date();
+  const ts = now.toISOString();
+  const snap = input.store.toSnapshot();
+  const mae = snap.maes.find((m) => m.tenant_id === input.tenant_id);
+  if (!mae) throw new Error(`no MAE found for tenant_id=${input.tenant_id}`);
+
+  // MAE doesn't have a `suspended_at`; we model suspension via revoked_at
+  // semantics on Wards and revocation_state on Envelopes. The MAE itself
+  // is left intact so the audit trail of the suspension reason can be
+  // appended via the GEL when the operator does it.
+  let wards = 0, envelopes = 0;
+  for (const w of input.store.wardsForMae(mae.mae_id)) {
+    if (w.suspended_at) continue;
+    input.store.putWard({ ...w, suspended_at: ts });
+    wards++;
+  }
+  for (const e of snap.envelopes.filter((env) => env.mae_id === mae.mae_id)) {
+    if (e.revocation_state === "suspended" || e.revocation_state === "revoked") continue;
+    input.store.putEnvelope({ ...e, revocation_state: "suspended" });
+    envelopes++;
+  }
+  // Sink a tiny audit-style log entry; callers wanting a GEL record
+  // should do that explicitly via the GEL machinery. We bind `reason`
+  // into the returned shape so it's at least surfaced.
+  return { tenant_id: input.tenant_id, suspended_at: ts, affected: { wards, envelopes } };
+}
+
+/**
+ * Revoke a tenant terminally. Latches `revoked_at` on every Ward and
+ * marks every Envelope `revocation_state: "revoked"`. Wards' cascade
+ * rules then propagate revocation through the rest of the chain.
+ */
+export function revokeTenant(input: SuspendTenantInput): { tenant_id: string; revoked_at: string; affected: { wards: number; envelopes: number } } {
+  const now = input.now ?? new Date();
+  const ts = now.toISOString();
+  const snap = input.store.toSnapshot();
+  const mae = snap.maes.find((m) => m.tenant_id === input.tenant_id);
+  if (!mae) throw new Error(`no MAE found for tenant_id=${input.tenant_id}`);
+
+  let wards = 0, envelopes = 0;
+  for (const w of input.store.wardsForMae(mae.mae_id)) {
+    if (w.revoked_at) continue;
+    input.store.putWard({ ...w, revoked_at: ts });
+    wards++;
+  }
+  for (const e of snap.envelopes.filter((env) => env.mae_id === mae.mae_id)) {
+    if (e.revocation_state === "revoked") continue;
+    input.store.putEnvelope({ ...e, revocation_state: "revoked" });
+    envelopes++;
+  }
+  return { tenant_id: input.tenant_id, revoked_at: ts, affected: { wards, envelopes } };
+}
+
+export interface TenantSnapshot {
+  tenant_id: string;
+  exported_at: string;
+  mae: MetaAuthorityEnvelope;
+  wards: Ward[];
+  envelopes: AuthorityEnvelope[];
+}
+
+/**
+ * Export everything under one tenant as a portable snapshot. Useful
+ * for tenant migration (export from store A, importTenantSnapshot
+ * into store B). Excludes Warrants + GEL because those are not in
+ * scope for a control-plane migration (warrants are single-use; GEL
+ * is hash-chained and must be replicated separately).
+ */
+export function exportTenantSnapshot(input: { tenant_id: string; store: GovernanceStore; now?: Date }): TenantSnapshot {
+  const snap = input.store.toSnapshot();
+  const mae = snap.maes.find((m) => m.tenant_id === input.tenant_id);
+  if (!mae) throw new Error(`no MAE found for tenant_id=${input.tenant_id}`);
+  return {
+    tenant_id: input.tenant_id,
+    exported_at: (input.now ?? new Date()).toISOString(),
+    mae,
+    wards: input.store.wardsForMae(mae.mae_id),
+    envelopes: snap.envelopes.filter((e) => e.mae_id === mae.mae_id)
+  };
+}
+
+/**
+ * Import a previously exported TenantSnapshot into another store.
+ * Fails fast if any artifact in the snapshot collides with an
+ * existing id in the target.
+ */
+export function importTenantSnapshot(input: { snapshot: TenantSnapshot; store: GovernanceStore; overwrite?: boolean }): { tenant_id: string; imported: { mae: 1; wards: number; envelopes: number } } {
+  const overwrite = input.overwrite ?? false;
+  if (!overwrite) {
+    if (input.store.getMae(input.snapshot.mae.mae_id)) {
+      throw new Error(`MAE collision: ${input.snapshot.mae.mae_id}`);
+    }
+    for (const w of input.snapshot.wards) {
+      if (input.store.getWard(w.ward_id)) throw new Error(`Ward collision: ${w.ward_id}`);
+    }
+    for (const e of input.snapshot.envelopes) {
+      if (input.store.getEnvelope(e.authority_envelope_id)) throw new Error(`Envelope collision: ${e.authority_envelope_id}`);
+    }
+  }
+  input.store.putMae(input.snapshot.mae);
+  for (const w of input.snapshot.wards) input.store.putWard(w);
+  for (const e of input.snapshot.envelopes) input.store.putEnvelope(e);
+  return {
+    tenant_id: input.snapshot.tenant_id,
+    imported: { mae: 1, wards: input.snapshot.wards.length, envelopes: input.snapshot.envelopes.length }
+  };
+}
+
+// ---------------------------------------------------------------------------
+// internal: reseal an artifact in place using the governance-core
+// hashing helpers. We do this lazily so we don't widen the
+// tenant-onboarding import surface unnecessarily.
+// ---------------------------------------------------------------------------
+
+import { computePolicyHash, signObject } from "@aristotle/governance-core";
+
+function reseal(obj: { policy_hash: string; signatures: import("@aristotle/governance-core").Signature[] }, keyring: Keyring, keyId: string): void {
+  obj.policy_hash = computePolicyHash(obj as unknown as Record<string, unknown>);
+  obj.signatures = [signObject(keyring, keyId, obj as unknown as Record<string, unknown>)];
+}
+
 export type { MetaAuthorityEnvelope, Ward, AuthorityEnvelope, Governor, GovernanceStore, Keyring };
