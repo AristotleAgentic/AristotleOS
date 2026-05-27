@@ -361,6 +361,8 @@ importers:
         specifier: workspace:*
         version: link:../mesh-runtime
 
+  shared/event-stream: {}
+
   shared/execution-control-runtime:
     devDependencies:
       '@electric-sql/pglite':
@@ -405,6 +407,12 @@ importers:
   shared/trial-engine: {}
 
   shared/types: {}
+
+  shared/warrant-verifier:
+    dependencies:
+      '@aristotle/execution-control-runtime':
+        specifier: workspace:*
+        version: link:../execution-control-runtime
 
 packages:
 
