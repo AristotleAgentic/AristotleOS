@@ -585,6 +585,145 @@ export async function runWitnessFlapScenario(): Promise<ChaosScorecard> {
 }
 
 // ---------------------------------------------------------------------------
+// Scenario: gossip_storm
+//
+// Root re-emits the SAME revocation many times in rapid succession.
+// The edge's cachedRevocations is a Map keyed by revocation_id, so
+// duplicates are silently deduplicated and the cache size stays 1.
+// The next evaluate must refuse with ENVELOPE_REVOKED exactly once
+// (not zero times due to corruption, not many times due to
+// duplication). This exercises idempotency of the gossip protocol.
+// ---------------------------------------------------------------------------
+
+export async function runGossipStormScenario(opts: { storms?: number } = {}): Promise<ChaosScorecard> {
+  const storms = opts.storms ?? 50;
+  const report = defaultReport("gossip_storm");
+  const mesh = bringUpMesh({ edgeCount: 1 });
+  try {
+    const edge = mesh.edges[0];
+    mesh.root.issueEnvelope({
+      envelope_id: `env-${edge.getId()}`,
+      mae_id: "mae-chaos",
+      ward_id: "ward-chaos",
+      subject: `agent:${edge.getId()}`,
+      allowed_action_types: ["chaos.do"],
+      expires_at: new Date(Date.now() + 3600_000).toISOString(),
+      version: 1
+    });
+    await new Promise((r) => setTimeout(r, 30));
+    const tok = mesh.root.issueFluidityToken({
+      edge_id: edge.getId(),
+      envelope_id: `env-${edge.getId()}`,
+      ttl_ms: 60_000
+    });
+    edge.receiveFluidityToken(tok);
+
+    // Revoke ONCE.
+    const rev = await mesh.root.revoke(`env-${edge.getId()}`, "envelope", "storm-base");
+    bump(report, "revocations_issued");
+    await new Promise((r) => setTimeout(r, 30));
+
+    // Re-emit the SAME revocation N times rapidly.
+    const promises: Promise<void>[] = [];
+    for (let i = 0; i < storms; i++) {
+      promises.push(mesh.root.gossipRevocation(rev));
+    }
+    await Promise.all(promises);
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Cache must contain exactly ONE revocation (dedup by revocation_id).
+    const cacheSize = edge.cachedRevocationCount();
+    expect(report, "edge cached exactly one revocation despite N storms", 1, cacheSize);
+
+    // Next evaluate must refuse with ENVELOPE_REVOKED.
+    const d = await edge.evaluate(reqFor(edge.getId(), 1));
+    if (d.decision === "REFUSE" && d.reason_codes.includes("ENVELOPE_REVOKED")) bump(report, "post_storm_refused");
+    expect(report, "evaluate post-storm refuses with ENVELOPE_REVOKED", 1, report.counters["post_storm_refused"] ?? 0);
+    expect(report, "no spurious decision other than refuse", "REFUSE", d.decision);
+  } finally {
+    mesh.unbind();
+  }
+  return report;
+}
+
+// ---------------------------------------------------------------------------
+// Scenario: envelope_version_downgrade
+//
+// Root issues envelope v1, then v2 (tighter — same envelope_id, higher
+// version). An attacker tries to replay the v1 envelope to the edge.
+// The edge's PROPAGATE_ENVELOPE handler enforces `version >=
+// existing.version`, so the v1 replay is silently rejected (no
+// downgrade, no spam log entries that confuse responders). Subsequent
+// evaluate uses v2's tighter allowed_action_types.
+// ---------------------------------------------------------------------------
+
+export async function runEnvelopeVersionDowngradeScenario(): Promise<ChaosScorecard> {
+  const report = defaultReport("envelope_version_downgrade");
+  const mesh = bringUpMesh({ edgeCount: 1 });
+  try {
+    const edge = mesh.edges[0];
+    // v1 (looser) — allows chaos.do AND chaos.exfil
+    const envV1 = mesh.root.issueEnvelope({
+      envelope_id: `env-${edge.getId()}`,
+      mae_id: "mae-chaos",
+      ward_id: "ward-chaos",
+      subject: `agent:${edge.getId()}`,
+      allowed_action_types: ["chaos.do", "chaos.exfil"],
+      expires_at: new Date(Date.now() + 3600_000).toISOString(),
+      version: 1
+    });
+    await new Promise((r) => setTimeout(r, 30));
+    // v2 (tighter) — only chaos.do
+    mesh.root.issueEnvelope({
+      envelope_id: `env-${edge.getId()}`,
+      mae_id: "mae-chaos",
+      ward_id: "ward-chaos",
+      subject: `agent:${edge.getId()}`,
+      allowed_action_types: ["chaos.do"],
+      expires_at: new Date(Date.now() + 3600_000).toISOString(),
+      version: 2
+    });
+    await new Promise((r) => setTimeout(r, 30));
+    bump(report, "envelope_versions_issued");
+    bump(report, "envelope_versions_issued");
+
+    // Replay v1 (lower version). Use propagateEnvelope which honors
+    // the existing signed v1 envelope object.
+    await mesh.root.propagateEnvelope(envV1);
+    await new Promise((r) => setTimeout(r, 30));
+
+    // Fluidity token for the edge.
+    const tok = mesh.root.issueFluidityToken({
+      edge_id: edge.getId(),
+      envelope_id: `env-${edge.getId()}`,
+      ttl_ms: 60_000
+    });
+    edge.receiveFluidityToken(tok);
+
+    // chaos.exfil — must REFUSE under v2 (downgrade rejected).
+    const exfil = await edge.evaluate({
+      action_id: `act-${edge.getId()}-exfil`,
+      action_type: "chaos.exfil",
+      envelope_id: `env-${edge.getId()}`,
+      subject: `agent:${edge.getId()}`,
+      params: {},
+      presented_at: new Date().toISOString()
+    });
+    if (exfil.decision === "REFUSE" && exfil.reason_codes.includes("ACTION_OUTSIDE_ENVELOPE")) bump(report, "exfil_refused_under_v2");
+
+    // chaos.do — must still ALLOW (in both v1 and v2).
+    const ok = await edge.evaluate(reqFor(edge.getId(), 1));
+    if (ok.decision === "ALLOW") bump(report, "chaos_do_still_allowed");
+
+    expect(report, "v1 downgrade rejected: chaos.exfil refused under v2", 1, report.counters["exfil_refused_under_v2"] ?? 0);
+    expect(report, "chaos.do still allowed under v2 (envelope intact)", 1, report.counters["chaos_do_still_allowed"] ?? 0);
+  } finally {
+    mesh.unbind();
+  }
+  return report;
+}
+
+// ---------------------------------------------------------------------------
 // runAllChaosScenarios — convenience for CI
 // ---------------------------------------------------------------------------
 
@@ -601,7 +740,9 @@ export async function runAllChaosScenarios(): Promise<{
     await runQuotaExhaustionScenario(),
     await runReplayAttemptScenario(),
     await runClockSkewScenario(),
-    await runWitnessFlapScenario()
+    await runWitnessFlapScenario(),
+    await runGossipStormScenario(),
+    await runEnvelopeVersionDowngradeScenario()
   ];
   let passed = 0, failed = 0;
   for (const sc of scorecards) {

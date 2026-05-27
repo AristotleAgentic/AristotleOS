@@ -9,6 +9,8 @@ import {
   runReplayAttemptScenario,
   runClockSkewScenario,
   runWitnessFlapScenario,
+  runGossipStormScenario,
+  runEnvelopeVersionDowngradeScenario,
   runAllChaosScenarios
 } from "./index.js";
 
@@ -68,9 +70,22 @@ test("witness_flap: envelope revocation reaches edge after witness recovers", as
   assert.equal(sc.counters.post_flap_refused, 1);
 });
 
-test("runAllChaosScenarios: every scenario in the deck passes (8 scenarios)", async () => {
+test("gossip_storm: 50 rapid re-emissions of the same revocation; cache stays at 1; post-storm refuses ENVELOPE_REVOKED", async () => {
+  const sc = await runGossipStormScenario({ storms: 50 });
+  assert.equal(sc.passed, true, `expectations: ${JSON.stringify(sc.expectations.filter((e) => !e.ok), null, 2)}`);
+  assert.equal(sc.counters.post_storm_refused, 1);
+});
+
+test("envelope_version_downgrade: v1 replay rejected; v2 tighter rules enforced", async () => {
+  const sc = await runEnvelopeVersionDowngradeScenario();
+  assert.equal(sc.passed, true, `expectations: ${JSON.stringify(sc.expectations.filter((e) => !e.ok), null, 2)}`);
+  assert.equal(sc.counters.exfil_refused_under_v2, 1);
+  assert.equal(sc.counters.chaos_do_still_allowed, 1);
+});
+
+test("runAllChaosScenarios: every scenario in the deck passes (10 scenarios)", async () => {
   const { scorecards, passed, failed } = await runAllChaosScenarios();
-  assert.equal(scorecards.length, 8);
+  assert.equal(scorecards.length, 10);
   assert.equal(failed, 0, `failed scenarios: ${scorecards.filter((s) => !s.passed).map((s) => s.scenario).join(", ")}`);
-  assert.equal(passed, 8);
+  assert.equal(passed, 10);
 });
