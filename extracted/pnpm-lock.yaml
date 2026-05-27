@@ -107,6 +107,12 @@ importers:
         specifier: ^5.4.11
         version: 5.4.21(@types/node@22.19.15)
 
+  packages/bacnet-adapter:
+    dependencies:
+      '@aristotle/os-sdk':
+        specifier: workspace:*
+        version: link:../os-sdk
+
   packages/bedrock:
     dependencies:
       '@aristotle/os-sdk':
