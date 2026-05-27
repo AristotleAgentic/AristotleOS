@@ -1,5 +1,42 @@
 # Changelog
 
+## v0.1.65 - The reviewer: 20-minute end-to-end verification
+
+The substrate is at 100% across all 12 audit items (v0.1.64). The remaining gap is human: a skeptical technical reviewer who clones the repo and has 20 minutes to decide whether the AristotleOS claim is real. This release ships the entry point.
+
+### `examples/reviewer/` — single entry point
+
+- **`REVIEWER.md`** — the only document the reviewer needs to read. ~200 lines. Explains the claim, the four stages of verification, the exact commands, expected output, and where to find the source for every individual claim.
+- **`verify.ts`** — one executable. Runs four stages in series:
+  - Stage 1: Commit Gate (4 checks — ALLOW path, two REFUSE paths, warrant binds to canonical_action_hash).
+  - Stage 2: Public Warrant Verifier (5 checks — happy path, signature tamper, untrusted key, action-hash mismatch, HTTP handler 200).
+  - Stage 3: 40-asset swarm scenario (5 checks — phase counters, sha256 stability).
+  - Stage 4: Published replay artifact (4 checks — file parses, hash matches, all four `verifyReplayArtifact` gates pass, field-by-field equality with local re-run).
+  - Emits a structured `ReviewerReport` (format tag `aristotle.reviewer-report.v1`) to stdout; human summary to stderr; exits 0 / 1 on PASS / FAIL.
+  - Runs in **~500–900 ms wall-clock** on a 2024-class laptop.
+- **`verify.test.ts`** — same logic exposed via `node --test` so CI can assert on every individual check independently. Uses a single shared `produceReport()` call so the scenario runs once per file.
+- **`README.md`** — short pointer to REVIEWER.md.
+
+### What a reviewer can verify in 20 minutes
+
+1. Clone the repo, install dependencies (~5–10 min).
+2. Read `examples/reviewer/REVIEWER.md` (~5 min).
+3. Run `node --import tsx examples/reviewer/verify.ts` (~1 min including the bundle load).
+4. Inspect the structured JSON output. If exit code is 0 and `totals.failed: 0`, eighteen independent checks against the actual source have just confirmed the core AristotleOS claim is real and reproducible.
+
+### What the reviewer flow does NOT prove (documented in REVIEWER.md)
+
+- It doesn't validate APL policy compilation correctness (that's the 75-test `@aristotle/execution-control-runtime` suite).
+- It doesn't validate the hardware adapters' wire protocols (separate per-adapter test suites).
+- It doesn't validate the multi-tenant lifecycle (`@aristotle/tenant-onboarding`'s 29-test suite).
+- Honest scope: the reviewer flow proves the **core authority chain** is real, signed, partition-tolerant, and reproducibly auditable. Everything else builds on that.
+
+### Test posture
+
+`368 tests green` across 19 production packages plus the reviewer flow itself. Pre-existing flaky UDP timing in mavlink-px4 passes on retry (the only known intermittent test; unrelated to this work).
+
+Apache-2.0.
+
 ## v0.1.64 - The closer: every substrate audit item at 100%
 
 Nine items advanced to 100%. The substrate audit, started in v0.1.60, closes here: every one of the 12 items is at 100%.
