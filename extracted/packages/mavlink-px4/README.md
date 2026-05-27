@@ -1,6 +1,8 @@
 # @aristotle/mavlink-px4
 
-**Govern PX4 / ArduPilot flight commands with AristotleOS.** Real wire-level MAVLink transport that emits only on Warrant verification. The first real hardware-governance adapter in the catalog.
+**Govern PX4 / ArduPilot flight commands with AristotleOS.** Protocol-level governance adapter for MAVLink v2 `COMMAND_LONG` framing. Emits only on Warrant verification.
+
+Status: the UDP transport is tested against a `node:dgram` socket listener in the test process — **not against a real autopilot or PX4 SITL**. `productionValidated: false` by default; flips to `true` only after operator integration + range/counsel sign-off. See `docs/ADAPTER_VALIDATION.md` for the validation matrix.
 
 ```sh
 npm install @aristotle/mavlink-px4 @aristotle/os-sdk
