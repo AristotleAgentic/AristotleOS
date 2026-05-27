@@ -1,0 +1,24 @@
+{
+  "name": "@aristotle/modbus-adapter",
+  "version": "0.1.0",
+  "description": "Govern Modbus TCP register and coil writes with AristotleOS. The hardware-governance pattern applied to legacy industrial PLC / RTU communication.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "files": ["dist", "README.md", "LICENSE", "NOTICE"],
+  "keywords": ["aristotle", "modbus", "modbus-tcp", "plc", "scada", "ot", "agent-governance"],
+  "homepage": "https://github.com/AristotleAgentic/aristotle-os",
+  "repository": { "type": "git", "url": "https://github.com/AristotleAgentic/aristotle-os.git", "directory": "packages/modbus-adapter" },
+  "bugs": { "url": "https://github.com/AristotleAgentic/aristotle-os/issues" },
+  "publishConfig": { "access": "public" },
+  "engines": { "node": ">=18" },
+  "sideEffects": false,
+  "dependencies": { "@aristotle/os-sdk": "workspace:*" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test src/index.test.ts",
+    "prepublishOnly": "npm run build"
+  }
+}

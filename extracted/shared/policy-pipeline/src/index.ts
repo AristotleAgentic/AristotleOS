@@ -113,10 +113,13 @@ export interface BuildPolicyBundleOptions {
 // ---------------------------------------------------------------------------
 
 function stableStringify(value: unknown): string {
+  if (value === undefined) return "null"; // match JSON.stringify drop-then-restore semantics
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return "[" + value.map(stableStringify).join(",") + "]";
   const obj = value as Record<string, unknown>;
-  const keys = Object.keys(obj).sort();
+  // Skip keys whose value is undefined — JSON.stringify drops them,
+  // so we must too to survive a write/parse roundtrip.
+  const keys = Object.keys(obj).filter((k) => obj[k] !== undefined).sort();
   return "{" + keys.map((k) => JSON.stringify(k) + ":" + stableStringify(obj[k])).join(",") + "}";
 }
 

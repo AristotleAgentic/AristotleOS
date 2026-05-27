@@ -158,6 +158,12 @@ importers:
         specifier: workspace:*
         version: link:../os-sdk
 
+  packages/modbus-adapter:
+    dependencies:
+      '@aristotle/os-sdk':
+        specifier: workspace:*
+        version: link:../os-sdk
+
   packages/opcua-adapter:
     dependencies:
       '@aristotle/os-sdk':
@@ -373,6 +379,8 @@ importers:
       '@aristotle/governance-core':
         specifier: workspace:*
         version: link:../governance-core
+
+  shared/replay-artifact: {}
 
   shared/scenario-engine:
     dependencies:
