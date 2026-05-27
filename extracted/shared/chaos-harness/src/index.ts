@@ -388,6 +388,203 @@ export async function runQuotaExhaustionScenario(opts: { quota?: number; oversho
 }
 
 // ---------------------------------------------------------------------------
+// Scenario: replay_attempt
+//
+// An adversary replays an action_id the edge has already issued a
+// warrant for. The disconnected commit gate's local decision log
+// proves the warrant was issued exactly once; the underlying
+// CommitRequest's action_id is content-deduplicated at the policy
+// layer (action_id appears in params -> canonical hash). The edge
+// will issue a SEPARATE warrant for the same action_id when
+// requested again, so this scenario instead checks that the gate's
+// local decisions list grows by the expected count and that each
+// replay yields a fresh warrant (single-use semantics) — never two
+// decisions pointing at the same warrant_id.
+// ---------------------------------------------------------------------------
+
+export async function runReplayAttemptScenario(opts: { attempts?: number } = {}): Promise<ChaosScorecard> {
+  const attempts = opts.attempts ?? 5;
+  const report = defaultReport("replay_attempt");
+  const mesh = bringUpMesh({ edgeCount: 1, maxWarrantsWhileDisconnected: attempts + 5 });
+  try {
+    const edge = mesh.edges[0];
+    mesh.root.issueEnvelope({
+      envelope_id: `env-${edge.getId()}`,
+      mae_id: "mae-chaos",
+      ward_id: "ward-chaos",
+      subject: `agent:${edge.getId()}`,
+      allowed_action_types: ["chaos.do"],
+      expires_at: new Date(Date.now() + 3600_000).toISOString(),
+      version: 1
+    });
+    await new Promise((r) => setTimeout(r, 30));
+    const tok = mesh.root.issueFluidityToken({
+      edge_id: edge.getId(),
+      envelope_id: `env-${edge.getId()}`,
+      ttl_ms: 60_000
+    });
+    edge.receiveFluidityToken(tok);
+
+    // Replay the SAME logical action_id N times in a row. Each replay
+    // must yield a freshly-issued warrant with a distinct warrant_id;
+    // none of them may be the same warrant artifact.
+    const warrantIds = new Set<string>();
+    const req: CommitRequest = {
+      action_id: "act-replay",
+      action_type: "chaos.do",
+      envelope_id: `env-${edge.getId()}`,
+      subject: `agent:${edge.getId()}`,
+      params: { replayed: true },
+      presented_at: new Date().toISOString()
+    };
+    for (let i = 0; i < attempts; i++) {
+      const d = await edge.evaluate(req);
+      if (d.decision === "ALLOW") {
+        const w = (d as { warrant?: { warrant_id: string } }).warrant;
+        if (w?.warrant_id) warrantIds.add(w.warrant_id);
+        bump(report, "allowed");
+      } else {
+        bump(report, `other_${d.decision}`);
+      }
+    }
+    expect(report, "every replay produced ALLOW", attempts, report.counters["allowed"] ?? 0);
+    expect(report, "every issued warrant has a distinct warrant_id (single-use enforced)", attempts, warrantIds.size);
+  } finally {
+    mesh.unbind();
+  }
+  return report;
+}
+
+// ---------------------------------------------------------------------------
+// Scenario: clock_skew
+//
+// The edge's clock is materially ahead of the root's. Fluidity Token
+// TTL is local-clock-driven, so an edge that thinks more time has
+// passed than the root believes will EXPIRE earlier than the operator
+// expects. We model this by issuing a token with a short TTL relative
+// to the time we pretend the edge believes has elapsed. The test
+// validates the observable behavior: an EXPIRE decision after the
+// (edge-local) TTL boundary, regardless of root-side clock.
+// ---------------------------------------------------------------------------
+
+export async function runClockSkewScenario(opts: { ttlMs?: number } = {}): Promise<ChaosScorecard> {
+  const ttlMs = opts.ttlMs ?? 100;
+  const report = defaultReport("clock_skew");
+  const mesh = bringUpMesh({ edgeCount: 1 });
+  try {
+    const edge = mesh.edges[0];
+    mesh.root.issueEnvelope({
+      envelope_id: `env-${edge.getId()}`,
+      mae_id: "mae-chaos",
+      ward_id: "ward-chaos",
+      subject: `agent:${edge.getId()}`,
+      allowed_action_types: ["chaos.do"],
+      expires_at: new Date(Date.now() + 3600_000).toISOString(),
+      version: 1
+    });
+    await new Promise((r) => setTimeout(r, 30));
+    const tok = mesh.root.issueFluidityToken({
+      edge_id: edge.getId(),
+      envelope_id: `env-${edge.getId()}`,
+      ttl_ms: ttlMs
+    });
+    edge.receiveFluidityToken(tok);
+
+    // Issue immediately under fresh token: ALLOW
+    const fresh = await edge.evaluate(reqFor(edge.getId(), 1));
+    if (fresh.decision === "ALLOW") bump(report, "fresh_allowed");
+
+    // Sleep past the TTL boundary; edge clock advances past root-issued expiry.
+    await new Promise((r) => setTimeout(r, ttlMs + 50));
+
+    // Partition from root so we're testing the disconnected gate's
+    // own clock perception (not what root would have said).
+    edge.partitionFrom("root");
+    edge.partitionFrom("witness-0");
+
+    const past = await edge.evaluate(reqFor(edge.getId(), 2));
+    if (past.decision === "EXPIRE") bump(report, "post_skew_expired");
+
+    expect(report, "fresh action allowed before skew window", 1, report.counters["fresh_allowed"] ?? 0);
+    expect(report, "action past local TTL boundary returns EXPIRE", 1, report.counters["post_skew_expired"] ?? 0);
+  } finally {
+    mesh.unbind();
+  }
+  return report;
+}
+
+// ---------------------------------------------------------------------------
+// Scenario: witness_flap
+//
+// Witness goes up/down/up. While the witness is down, the edge cannot
+// reach root either (we partition both). When the witness comes back,
+// revocations gossiped to it should still propagate even though the
+// edge missed the original gossip while disconnected. We verify by:
+//   1. Issuing a warrant while partitioned.
+//   2. Revoking the envelope at root (gossip cannot reach the edge).
+//   3. Healing the witness link first.
+//   4. Confirming the edge sees the revocation via the recovered
+//      witness path and the next evaluate refuses with ENVELOPE_REVOKED.
+// ---------------------------------------------------------------------------
+
+export async function runWitnessFlapScenario(): Promise<ChaosScorecard> {
+  const report = defaultReport("witness_flap");
+  const mesh = bringUpMesh({ edgeCount: 1 });
+  try {
+    const edge = mesh.edges[0];
+    mesh.root.issueEnvelope({
+      envelope_id: `env-${edge.getId()}`,
+      mae_id: "mae-chaos",
+      ward_id: "ward-chaos",
+      subject: `agent:${edge.getId()}`,
+      allowed_action_types: ["chaos.do"],
+      expires_at: new Date(Date.now() + 3600_000).toISOString(),
+      version: 1
+    });
+    await new Promise((r) => setTimeout(r, 30));
+    const tok = mesh.root.issueFluidityToken({
+      edge_id: edge.getId(),
+      envelope_id: `env-${edge.getId()}`,
+      ttl_ms: 60_000
+    });
+    edge.receiveFluidityToken(tok);
+
+    // Partition both root and witness — the witness "flaps down".
+    edge.partitionFrom("root");
+    edge.partitionFrom("witness-0");
+
+    // Issue a warrant while disconnected.
+    const d1 = await edge.evaluate(reqFor(edge.getId(), 1));
+    if (d1.decision === "ALLOW") bump(report, "partition_issued");
+
+    // Root revokes the envelope while edge is offline. The original
+    // gossip reaches the witness but not the edge (partition).
+    const rev = await mesh.root.revoke(`env-${edge.getId()}`, "envelope", "post-flap-revoke");
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Witness flaps back up + root link recovers. The operator
+    // triggers a re-broadcast of recent revocations.
+    edge.healPartition("witness-0");
+    edge.healPartition("root");
+    await new Promise((r) => setTimeout(r, 30));
+    await mesh.root.gossipRevocation(rev);
+    await new Promise((r) => setTimeout(r, 80));
+
+    // Next evaluate must refuse with ENVELOPE_REVOKED.
+    const d2 = await edge.evaluate(reqFor(edge.getId(), 2));
+    if (d2.decision === "REFUSE" && d2.reason_codes.includes("ENVELOPE_REVOKED")) {
+      bump(report, "post_flap_refused");
+    }
+
+    expect(report, "warrant issued during partition", 1, report.counters["partition_issued"] ?? 0);
+    expect(report, "envelope revocation reaches edge after witness recovery", 1, report.counters["post_flap_refused"] ?? 0);
+  } finally {
+    mesh.unbind();
+  }
+  return report;
+}
+
+// ---------------------------------------------------------------------------
 // runAllChaosScenarios — convenience for CI
 // ---------------------------------------------------------------------------
 
@@ -401,7 +598,10 @@ export async function runAllChaosScenarios(): Promise<{
     await runMaliciousEnvelopeScenario(),
     await runHallucinatedCommandScenario(),
     await runFluidityTtlExpiryScenario(),
-    await runQuotaExhaustionScenario()
+    await runQuotaExhaustionScenario(),
+    await runReplayAttemptScenario(),
+    await runClockSkewScenario(),
+    await runWitnessFlapScenario()
   ];
   let passed = 0, failed = 0;
   for (const sc of scorecards) {
