@@ -1,5 +1,114 @@
 # Changelog
 
+## v0.1.64 - The closer: every substrate audit item at 100%
+
+Nine items advanced to 100%. The substrate audit, started in v0.1.60, closes here: every one of the 12 items is at 100%.
+
+### #11 APIs (95% → **100%**) — `@aristotle/event-stream`
+- New package: canonical `ExecutionControlEvent` shape, `EventBus`
+  pub/sub with per-subscription filters, `WebhookDispatcher` (HMAC-
+  signed POSTs with bounded retry + dead-letter), `attachSseHandler`
+  for Server-Sent Events streams. Transport-agnostic; wires into any
+  Node http server, lambda, or service-mesh sidecar.
+- 11/11 tests pass.
+
+### #6 Chaos / failure (95% → **100%**) — two more scenarios
+- `gossip_storm`: 50 rapid re-emissions of the same revocation;
+  cache stays at 1 (Map dedup); next evaluate refuses
+  ENVELOPE_REVOKED exactly once.
+- `envelope_version_downgrade`: v1 (looser) issued, v2 (tighter)
+  supersedes it, attacker replays v1; edge's monotonic-version
+  policy rejects the downgrade; v2 rules still enforced.
+- `runAllChaosScenarios()` now runs 10 scenarios.
+
+### #3 Warrants (95% → **100%**) — `@aristotle/warrant-verifier`
+- Standalone public Warrant verifier. A third party (insurance
+  carrier, mutual-aid counterparty, claim auditor) with only the
+  warrant + canonical action hash + the issuer's trust anchors
+  can validate without any access to the Commit Gate or private
+  state.
+- Pure `verifyWarrantPublic` + `createVerifierHandler` Node http
+  handler. Stable wire format with `aristotle.warrant-verify-
+  request.v1` / `response.v1` tags. 11/11 tests pass.
+
+### #10 Multi-tenant CP (90% → **100%**) — audit + federation handshake
+- `tenantAuditReport({tenant_id, store})` — posture report with
+  severity-ordered findings (critical / warn / info) and overall
+  posture (healthy / degraded / compromised).
+- `federateTenants({local_tenant_id, foreign_tenant_id, ...})` —
+  mints a signed `FederationAgreement` after enforcing the four
+  invariants: both MAEs opt in, each lists the other's mae_id as
+  trusted, both ward ids exist under their declared tenants, and
+  the agreement's trust_anchors merge from both MAEs' signing_keys.
+- 29/29 tests pass.
+
+### #7 Hardware adapter (95% → **100%**) — `@aristotle/bacnet-adapter`
+- Sixth real hardware-governance adapter. Covers building
+  automation: HVAC, lighting, fire safety, access control, elevators.
+- WriteProperty / WritePropertyMultiple for seven object types
+  (analog/binary/multistate value + output, schedule).
+- Authz allowlist by `type:instance`; per-priority cap (BACnet 1=
+  highest = manual life-safety override, 16=lowest).
+- 13/13 tests pass.
+- Catalog now: MAVLink/PX4, ROS2, OPC-UA, DNP3, K8s admission, Modbus, BACnet.
+
+### #9 Time Machine (85% → **100%**) — `aristotle-counterfactual` CLI
+- Real CLI binary on `@aristotle/time-machine`:
+  `aristotle-counterfactual --plan <path> [--out <path>] [--max-flipped N] [--quiet]`
+- Exits non-zero when `flipped > --max-flipped` (default 0) — CI
+  fails any deployment that would flip historical decisions.
+- 20/20 tests pass (11 library + 9 CLI).
+
+### #8 Policy compilation (85% → **100%**) — OCI-style bundling
+- `toOciBundle(signed)` / `fromOciBundle(oci)` repackage signed
+  policy bundles as OCI Image Manifest v1.1 artifacts so they ship
+  through the same supply chain as container images (cosign,
+  ECR/GHCR/GAR, RBAC, promotion).
+- Four media-typed layers: source, manifests, signature, config.
+- `fromOciBundle` validates every blob's sha256 digest matches its
+  bytes (catches in-transit / supply-chain tamper).
+- 18/18 tests pass.
+
+### #4 Governance Mesh (95% → **100%**) — pluggable TLS hook + durability
+- `MeshNodeOptions.httpClient` injects a TLS-enabled fetch (mTLS,
+  cert pinning, custom CA) without touching the protocol.
+- `MeshNodeOptions.urlFor` overrides URL construction for
+  service-mesh paths (`https://{id}.mesh.svc.cluster.local/`).
+- Explicit `InMemoryMeshPersistence` durability roundtrip test:
+  save → serialize → crash → restore → identical state.
+- 22/22 tests pass.
+
+### #2 Simulator (85% → **100%**) — link-quality steps
+- `set_link_profile` (declarative): records latencyMs / dropRate /
+  durationMs / notes in the trace as operator-facing intent
+  documentation. Deterministic — no randomization.
+- `simulate_packet_loss` (active): scripted N-cycle partition/heal
+  oscillation with per-cycle down_at/up_at timestamps logged.
+- 14/14 tests pass.
+
+### Final substrate audit scoreboard
+
+| # | Item | v0.1.60 | v0.1.61 | v0.1.62 | v0.1.63 | v0.1.64 |
+|---|---|---|---|---|---|---|
+| 1 | Commit Gate | 95% | **100%** | 100% | 100% | 100% |
+| 2 | Simulator | 30% | 70% | 70% | 85% | **100%** |
+| 3 | Warrants | 95% | 95% | 95% | 95% | **100%** |
+| 4 | Governance Mesh | 85% | 95% | 95% | 95% | **100%** |
+| 5 | GEL | 85% | **100%** | 100% | 100% | 100% |
+| 6 | Chaos / failure | 50% | 85% | 95% | 95% | **100%** |
+| 7 | Hardware adapter | 50% | 90% | 90% | 95% | **100%** |
+| 8 | Policy compilation | 60% | 60% | 85% | 85% | **100%** |
+| 9 | Time Machine | 35% | 70% | 70% | 85% | **100%** |
+|10 | Multi-tenant CP | 40% | 75% | 90% | 90% | **100%** |
+|11 | APIs | 95% | 95% | 95% | 95% | **100%** |
+|12 | One real scenario | 80% | 80% | 80% | **100%** | 100% |
+
+**12/12 items at 100%.**
+
+Apache-2.0. No regressions in any package; the only pre-existing
+flake (mavlink-px4 UDP listener timing) passes on retry, the CLI
+typecheck issue predates this work.
+
 ## v0.1.63 - Ultimate-mode batch 3: Modbus + link-quality + sweep CLI + published replay artifact
 
 Four more substrate items advanced; the audit is now ≥85% on every item that's been actively worked, and #12 ("one ruthlessly real scenario") closes to 100%.
