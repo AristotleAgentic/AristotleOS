@@ -562,11 +562,210 @@ export function importTenantSnapshot(input: { snapshot: TenantSnapshot; store: G
 // tenant-onboarding import surface unnecessarily.
 // ---------------------------------------------------------------------------
 
-import { computePolicyHash, signObject } from "@aristotle/governance-core";
+import {
+  computePolicyHash,
+  signObject,
+  createFederationAgreement,
+  type FederationAgreement,
+  type FederationAgreementInput
+} from "@aristotle/governance-core";
 
 function reseal(obj: { policy_hash: string; signatures: import("@aristotle/governance-core").Signature[] }, keyring: Keyring, keyId: string): void {
   obj.policy_hash = computePolicyHash(obj as unknown as Record<string, unknown>);
   obj.signatures = [signObject(keyring, keyId, obj as unknown as Record<string, unknown>)];
 }
 
-export type { MetaAuthorityEnvelope, Ward, AuthorityEnvelope, Governor, GovernanceStore, Keyring };
+// ---------------------------------------------------------------------------
+// Tenant audit report
+// ---------------------------------------------------------------------------
+
+export interface TenantAuditReport {
+  tenant_id: string;
+  generated_at: string;
+  /** True when the MAE itself is in a healthy state (no revoked_at). */
+  mae_healthy: boolean;
+  /** Counts of artifacts under this tenant. */
+  counts: {
+    wards: number;
+    wards_revoked: number;
+    wards_suspended: number;
+    envelopes: number;
+    envelopes_revoked: number;
+    envelopes_suspended: number;
+    signing_keys: number;
+    federation_agreements: number;
+  };
+  /** Severity-ordered posture findings. */
+  findings: Array<{
+    severity: "info" | "warn" | "critical";
+    code: string;
+    message: string;
+  }>;
+  /** Overall posture: "healthy" / "degraded" / "compromised". Derived from
+   *  the findings: critical -> compromised, any warn -> degraded, else healthy. */
+  posture: "healthy" | "degraded" | "compromised";
+}
+
+export function tenantAuditReport(input: { tenant_id: string; store: GovernanceStore; now?: Date }): TenantAuditReport {
+  const snap = input.store.toSnapshot();
+  const mae = snap.maes.find((m) => m.tenant_id === input.tenant_id);
+  if (!mae) {
+    throw new Error(`no MAE found for tenant_id=${input.tenant_id}`);
+  }
+  const wards = input.store.wardsForMae(mae.mae_id);
+  const envelopes = snap.envelopes.filter((e) => e.mae_id === mae.mae_id);
+  const agreements = snap.agreements.filter((a) => a.local_mae_id === mae.mae_id || a.foreign_mae_id === mae.mae_id);
+
+  const wardsRevoked = wards.filter((w) => !!w.revoked_at).length;
+  const wardsSuspended = wards.filter((w) => !!w.suspended_at && !w.revoked_at).length;
+  const envelopesRevoked = envelopes.filter((e) => e.revocation_state === "revoked").length;
+  const envelopesSuspended = envelopes.filter((e) => e.revocation_state === "suspended").length;
+
+  const findings: TenantAuditReport["findings"] = [];
+  if (mae.revoked_at) {
+    findings.push({ severity: "critical", code: "MAE_REVOKED", message: `MAE revoked at ${mae.revoked_at}` });
+  }
+  if (mae.signing_keys.length === 0) {
+    findings.push({ severity: "critical", code: "NO_SIGNING_KEYS", message: "MAE has no signing_keys (cross-tenant forge gap)" });
+  }
+  if (wards.length === 0) {
+    findings.push({ severity: "warn", code: "NO_WARDS", message: "tenant has no Wards" });
+  }
+  if (envelopes.length === 0) {
+    findings.push({ severity: "warn", code: "NO_ENVELOPES", message: "tenant has no AuthorityEnvelopes — no agent can act" });
+  }
+  if (wardsRevoked > 0 && wardsRevoked === wards.length) {
+    findings.push({ severity: "critical", code: "ALL_WARDS_REVOKED", message: "every Ward is revoked — tenant effectively terminated" });
+  }
+  if (wardsSuspended > 0) {
+    findings.push({ severity: "warn", code: "WARDS_SUSPENDED", message: `${wardsSuspended} Ward(s) suspended` });
+  }
+  if (envelopesSuspended + envelopesRevoked === envelopes.length && envelopes.length > 0) {
+    findings.push({ severity: "warn", code: "ALL_ENVELOPES_LATCHED", message: "every Envelope is suspended or revoked — no agent can act under this tenant" });
+  }
+  if (mae.signing_keys.length > 4) {
+    findings.push({ severity: "warn", code: "MANY_SIGNING_KEYS", message: `MAE has ${mae.signing_keys.length} signing keys — consider pruning retired keys` });
+  }
+  if (mae.signing_keys.length === 1) {
+    findings.push({ severity: "info", code: "SINGLE_KEY", message: "MAE has only one signing key — rotate before retiring" });
+  }
+
+  const hasCritical = findings.some((f) => f.severity === "critical");
+  const hasWarn = findings.some((f) => f.severity === "warn");
+  const posture: TenantAuditReport["posture"] = hasCritical ? "compromised" : hasWarn ? "degraded" : "healthy";
+
+  return {
+    tenant_id: input.tenant_id,
+    generated_at: (input.now ?? new Date()).toISOString(),
+    mae_healthy: !mae.revoked_at,
+    counts: {
+      wards: wards.length,
+      wards_revoked: wardsRevoked,
+      wards_suspended: wardsSuspended,
+      envelopes: envelopes.length,
+      envelopes_revoked: envelopesRevoked,
+      envelopes_suspended: envelopesSuspended,
+      signing_keys: mae.signing_keys.length,
+      federation_agreements: agreements.length
+    },
+    findings,
+    posture
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Federation handshake
+// ---------------------------------------------------------------------------
+
+export interface FederationHandshakeInput {
+  /** Local tenant initiating the federation. */
+  local_tenant_id: string;
+  /** Foreign tenant being federated with (must already exist in the same store). */
+  foreign_tenant_id: string;
+  /** Ward id under the local tenant the agreement scopes to. */
+  local_ward_id: string;
+  /** Ward id under the foreign tenant the agreement scopes to. */
+  foreign_ward_id: string;
+  /** Shared resource scope (e.g., joint mission grid). */
+  shared_resource_scope: string[];
+  /** Optional jurisdiction rules (e.g., altitude / authority caps). */
+  jurisdiction_rules?: FederationAgreementInput["jurisdiction_rules"];
+  /** Action classes both sides recognize. */
+  shared_action_classes: string[];
+  /** Whether evidence can flow across the trust boundary. */
+  evidence_exportable?: boolean;
+  /** Effective-from / expires-at timestamps; default effective_from = now. */
+  effective_from?: string;
+  expires_at?: string;
+  /** Both MAEs must have federation_rules.federation_allowed=true AND
+   *  each must list the OTHER's mae_id in trusted_mae_ids; this primitive
+   *  refuses the handshake otherwise. */
+  store: GovernanceStore;
+  /** Keyring + key id used to sign the FederationAgreement (must be a
+   *  key authorized under one of the participating MAEs). */
+  keyring: Keyring;
+  keyId: string;
+  now?: Date;
+}
+
+export interface FederationHandshakeResult {
+  agreement: FederationAgreement;
+  local_mae_id: string;
+  foreign_mae_id: string;
+}
+
+/**
+ * Mint a FederationAgreement between two tenants. Refuses the
+ * handshake unless both MAEs explicitly opted into federation AND
+ * trust each other's mae_id. This is the audit trail of
+ * "cross-organization trust" — every consequential cross-tenant
+ * action later traces back to this signed agreement.
+ */
+export function federateTenants(input: FederationHandshakeInput): FederationHandshakeResult {
+  const snap = input.store.toSnapshot();
+  const local = snap.maes.find((m) => m.tenant_id === input.local_tenant_id);
+  const foreign = snap.maes.find((m) => m.tenant_id === input.foreign_tenant_id);
+  if (!local) throw new Error(`no MAE found for local_tenant_id=${input.local_tenant_id}`);
+  if (!foreign) throw new Error(`no MAE found for foreign_tenant_id=${input.foreign_tenant_id}`);
+  if (!local.federation_rules.federation_allowed) {
+    throw new Error(`local tenant '${input.local_tenant_id}' has federation_allowed=false`);
+  }
+  if (!foreign.federation_rules.federation_allowed) {
+    throw new Error(`foreign tenant '${input.foreign_tenant_id}' has federation_allowed=false`);
+  }
+  if (!local.federation_rules.trusted_mae_ids.includes(foreign.mae_id)) {
+    throw new Error(`local tenant does not list foreign MAE ${foreign.mae_id} as trusted`);
+  }
+  if (!foreign.federation_rules.trusted_mae_ids.includes(local.mae_id)) {
+    throw new Error(`foreign tenant does not list local MAE ${local.mae_id} as trusted`);
+  }
+  const localWard = input.store.getWard(input.local_ward_id);
+  const foreignWard = input.store.getWard(input.foreign_ward_id);
+  if (!localWard || localWard.mae_id !== local.mae_id) {
+    throw new Error(`local_ward_id ${input.local_ward_id} is not a Ward under the local tenant`);
+  }
+  if (!foreignWard || foreignWard.mae_id !== foreign.mae_id) {
+    throw new Error(`foreign_ward_id ${input.foreign_ward_id} is not a Ward under the foreign tenant`);
+  }
+  const effectiveFrom = input.effective_from ?? (input.now ?? new Date()).toISOString();
+  const agreement = createFederationAgreement(input.store, input.keyring, input.keyId, {
+    local_mae_id: local.mae_id,
+    foreign_mae_id: foreign.mae_id,
+    local_ward_id: input.local_ward_id,
+    foreign_ward_id: input.foreign_ward_id,
+    shared_resource_scope: input.shared_resource_scope,
+    jurisdiction_rules: input.jurisdiction_rules ?? [],
+    trust_anchors: [...new Set([...local.signing_keys.map((k) => k.key_id), ...foreign.signing_keys.map((k) => k.key_id)])],
+    envelope_compatibility: { shared_action_classes: input.shared_action_classes },
+    evidence_exportable: input.evidence_exportable ?? local.federation_rules.exportable_evidence,
+    effective_from: effectiveFrom,
+    expires_at: input.expires_at
+  });
+  return {
+    agreement,
+    local_mae_id: local.mae_id,
+    foreign_mae_id: foreign.mae_id
+  };
+}
+
+export type { MetaAuthorityEnvelope, Ward, AuthorityEnvelope, Governor, GovernanceStore, Keyring, FederationAgreement };

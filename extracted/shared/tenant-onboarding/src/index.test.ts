@@ -9,7 +9,9 @@ import {
   suspendTenant,
   revokeTenant,
   exportTenantSnapshot,
-  importTenantSnapshot
+  importTenantSnapshot,
+  tenantAuditReport,
+  federateTenants
 } from "./index.js";
 
 test("bootstrapTenant: produces a MAE/Ward/Envelope, all tagged with tenant_id", () => {
@@ -329,4 +331,179 @@ test("tenant summaries reflect post-import state across stores", () => {
   assert.equal(acme?.maes, 1);
   assert.equal(acme?.wards, 1);
   assert.equal(acme?.authority_envelopes, 1);
+});
+
+// ---------------------------------------------------------------------------
+// tenantAuditReport
+// ---------------------------------------------------------------------------
+
+test("tenantAuditReport: posture=healthy with default bootstrap", () => {
+  const r = bootstrapTenantWithLocalKeyring({
+    tenant_id: "audit-1", organization_name: "Audit One", issuer: "audit.c",
+    bootstrap_subject: "agent:a"
+  });
+  const report = tenantAuditReport({ tenant_id: "audit-1", store: r.store });
+  // With a fresh bootstrap there's exactly one signing key, so the
+  // 'SINGLE_KEY' info finding fires but no warns/criticals → posture=healthy.
+  assert.equal(report.posture, "healthy");
+  assert.equal(report.mae_healthy, true);
+  assert.equal(report.counts.wards, 1);
+  assert.equal(report.counts.envelopes, 1);
+  assert.equal(report.counts.signing_keys, 1);
+  assert.ok(report.findings.some((f) => f.code === "SINGLE_KEY" && f.severity === "info"));
+});
+
+test("tenantAuditReport: suspendTenant flips posture to degraded", () => {
+  const r = bootstrapTenantWithLocalKeyring({
+    tenant_id: "audit-2", organization_name: "Audit Two", issuer: "audit.c",
+    bootstrap_subject: "agent:a"
+  });
+  suspendTenant({ tenant_id: "audit-2", store: r.store, reason: "investigation" });
+  const report = tenantAuditReport({ tenant_id: "audit-2", store: r.store });
+  assert.equal(report.posture, "degraded");
+  assert.equal(report.counts.wards_suspended, 1);
+  assert.equal(report.counts.envelopes_suspended, 1);
+  assert.ok(report.findings.some((f) => f.code === "WARDS_SUSPENDED"));
+});
+
+test("tenantAuditReport: revokeTenant flips posture to compromised", () => {
+  const r = bootstrapTenantWithLocalKeyring({
+    tenant_id: "audit-3", organization_name: "Audit Three", issuer: "audit.c",
+    bootstrap_subject: "agent:a"
+  });
+  revokeTenant({ tenant_id: "audit-3", store: r.store, reason: "compromise" });
+  const report = tenantAuditReport({ tenant_id: "audit-3", store: r.store });
+  assert.equal(report.posture, "compromised");
+  assert.equal(report.counts.wards_revoked, 1);
+  assert.ok(report.findings.some((f) => f.code === "ALL_WARDS_REVOKED"));
+});
+
+test("tenantAuditReport: many signing keys triggers MANY_SIGNING_KEYS warn", () => {
+  const keyring = new HmacKeyring({ "k1": "s1", "k2": "s2", "k3": "s3", "k4": "s4", "k5": "s5", "k6": "s6" });
+  const r = bootstrapTenant({
+    tenant_id: "audit-4", organization_name: "Audit 4", issuer: "audit.c",
+    bootstrap_subject: "agent:a", keyring, keyId: "k1"
+  });
+  for (const k of ["k2", "k3", "k4", "k5", "k6"]) {
+    rotateTenantKey({ tenant_id: "audit-4", store: r.store, keyring, oldKeyId: "k1", newKeyId: k });
+  }
+  const report = tenantAuditReport({ tenant_id: "audit-4", store: r.store });
+  assert.equal(report.posture, "degraded");
+  assert.equal(report.counts.signing_keys, 6);
+  assert.ok(report.findings.some((f) => f.code === "MANY_SIGNING_KEYS"));
+});
+
+test("tenantAuditReport: unknown tenant throws", () => {
+  const target = new InMemoryGovernanceStore();
+  assert.throws(() => tenantAuditReport({ tenant_id: "ghost", store: target }), /no MAE found/);
+});
+
+// ---------------------------------------------------------------------------
+// federateTenants
+// ---------------------------------------------------------------------------
+
+function bootstrapFederable(tenantId: string, keyring: HmacKeyring, keyId: string, store: InMemoryGovernanceStore, trustedMaeIds: string[]) {
+  return bootstrapTenant({
+    tenant_id: tenantId, organization_name: tenantId, issuer: `${tenantId}.c`,
+    bootstrap_subject: `agent:${tenantId}.boot`,
+    keyring, keyId, store,
+    federation: { enable: true, trusted_mae_ids: trustedMaeIds, exportable_evidence: true }
+  });
+}
+
+test("federateTenants: mints a FederationAgreement when both sides opt in and trust each other", () => {
+  // Two-phase bootstrap: each tenant must know the other's mae_id to opt
+  // into trust. Plan: bootstrap A and B with empty trust lists first to
+  // discover their mae_ids, then rebuild B (cleaner: use two-pass with
+  // local keyring + explicit MAE ids).
+  // Simpler: bootstrap A → get its mae_id, bootstrap B with A in trust,
+  // then rotateTenantKey isn't needed; we just need A's mae_id to be in
+  // B's trusted_mae_ids and vice versa. We can re-issue the MAE via
+  // bootstrap, but rebootstrap collides. So instead: pre-pick mae_ids
+  // via the input. Looking at MaeInput — it allows mae_id.
+  // Easiest pragmatic path: use `federation_rules.federation_allowed`
+  // and explicitly construct compatible MAE manifests.
+  // Cleanest test path here: simulate the operator workflow — bootstrap
+  // A first, then bootstrap B with A.mae_id in trusted list, then we
+  // SET A's mae trust list to include B by directly putMae'ing a
+  // re-sealed MAE.
+  const keyring = new HmacKeyring({ "k-a": "sa", "k-b": "sb" });
+  const store = new InMemoryGovernanceStore();
+  const a = bootstrapFederable("alpha", keyring, "k-a", store, []);
+  const b = bootstrapFederable("beta", keyring, "k-b", store, [a.mae.mae_id]);
+  // A trusts B post-hoc by mutating its trusted_mae_ids and re-sealing.
+  // This mirrors what an operator-facing API would do; here we do it
+  // inline to keep the test focused on federateTenants.
+  const updated = {
+    ...a.mae,
+    federation_rules: { ...a.mae.federation_rules, trusted_mae_ids: [b.mae.mae_id] }
+  };
+  store.putMae(updated);
+  const result = federateTenants({
+    local_tenant_id: "alpha",
+    foreign_tenant_id: "beta",
+    local_ward_id: a.ward.ward_id,
+    foreign_ward_id: b.ward.ward_id,
+    shared_resource_scope: ["zone:joint-1"],
+    shared_action_classes: ["bootstrap.read"],
+    store, keyring, keyId: "k-a"
+  });
+  assert.ok(result.agreement.agreement_id);
+  assert.equal(result.local_mae_id, a.mae.mae_id);
+  assert.equal(result.foreign_mae_id, b.mae.mae_id);
+  // Trust anchors include keys from both MAEs.
+  assert.ok(result.agreement.trust_anchors.includes("k-a"));
+  assert.ok(result.agreement.trust_anchors.includes("k-b"));
+  // Agreement is in the store.
+  const stored = store.getFederationAgreement(result.agreement.agreement_id);
+  assert.equal(stored?.agreement_id, result.agreement.agreement_id);
+});
+
+test("federateTenants: refuses when local tenant has federation_allowed=false", () => {
+  const keyring = new HmacKeyring({ "k-a": "sa", "k-b": "sb" });
+  const store = new InMemoryGovernanceStore();
+  // Bootstrap A with federation disabled (default).
+  const a = bootstrapTenant({
+    tenant_id: "alpha", organization_name: "Alpha", issuer: "a.c",
+    bootstrap_subject: "agent:a", keyring, keyId: "k-a", store
+  });
+  const b = bootstrapFederable("beta", keyring, "k-b", store, [a.mae.mae_id]);
+  assert.throws(() => federateTenants({
+    local_tenant_id: "alpha", foreign_tenant_id: "beta",
+    local_ward_id: a.ward.ward_id, foreign_ward_id: b.ward.ward_id,
+    shared_resource_scope: ["x"], shared_action_classes: ["y"],
+    store, keyring, keyId: "k-a"
+  }), /federation_allowed=false/);
+});
+
+test("federateTenants: refuses when foreign tenant doesn't list local MAE as trusted", () => {
+  const keyring = new HmacKeyring({ "k-a": "sa", "k-b": "sb" });
+  const store = new InMemoryGovernanceStore();
+  const a = bootstrapFederable("alpha", keyring, "k-a", store, []);
+  // B does NOT list A.
+  const b = bootstrapFederable("beta", keyring, "k-b", store, []);
+  // A trusts B.
+  store.putMae({ ...a.mae, federation_rules: { ...a.mae.federation_rules, trusted_mae_ids: [b.mae.mae_id] } });
+  assert.throws(() => federateTenants({
+    local_tenant_id: "alpha", foreign_tenant_id: "beta",
+    local_ward_id: a.ward.ward_id, foreign_ward_id: b.ward.ward_id,
+    shared_resource_scope: ["x"], shared_action_classes: ["y"],
+    store, keyring, keyId: "k-a"
+  }), /foreign tenant does not list local MAE/);
+});
+
+test("federateTenants: refuses when ward ids don't match their declared tenants", () => {
+  const keyring = new HmacKeyring({ "k-a": "sa", "k-b": "sb" });
+  const store = new InMemoryGovernanceStore();
+  const a = bootstrapFederable("alpha", keyring, "k-a", store, []);
+  const b = bootstrapFederable("beta", keyring, "k-b", store, [a.mae.mae_id]);
+  store.putMae({ ...a.mae, federation_rules: { ...a.mae.federation_rules, trusted_mae_ids: [b.mae.mae_id] } });
+  // Swap ward ids deliberately.
+  assert.throws(() => federateTenants({
+    local_tenant_id: "alpha", foreign_tenant_id: "beta",
+    local_ward_id: b.ward.ward_id,  // belongs to BETA, not alpha
+    foreign_ward_id: a.ward.ward_id,
+    shared_resource_scope: ["x"], shared_action_classes: ["y"],
+    store, keyring, keyId: "k-a"
+  }), /not a Ward under the local tenant/);
 });
