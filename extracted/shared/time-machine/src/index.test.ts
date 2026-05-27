@@ -7,7 +7,15 @@ import {
   type GelRecord,
   type WardManifest
 } from "@aristotle/execution-control-runtime";
-import { runCounterfactual, runCounterfactualSweep } from "./index.js";
+import {
+  runCounterfactual,
+  runCounterfactualSweep,
+  serializeSweep,
+  loadSweep,
+  summarizeSweep,
+  compareSweeps,
+  SWEEP_ARTIFACT_FORMAT
+} from "./index.js";
 
 const WARD_PERMISSIVE: WardManifest = {
   ward_id: "ward-test",
@@ -218,4 +226,61 @@ test("runCounterfactualSweep: unresolved actions counted but not evaluated", asy
   assert.equal(sweep.resolved_records, 0);
   assert.equal(sweep.unresolved_records, 3);
   assert.equal(sweep.flipped.length, 0);
+});
+
+test("serializeSweep + loadSweep: round-trip preserves content and format tag", () => {
+  const sweep = runCounterfactualSweep({
+    records: [mkHistoricalRecord(mkAction())],
+    resolveAction: () => mkAction(),
+    resolveOriginal: () => ({ ward: WARD_PERMISSIVE, envelope: ENVELOPE_PERMISSIVE }),
+    counterfactual: { name: "stricter", ward: WARD_PERMISSIVE, envelope: ENVELOPE_STRICTER }
+  });
+  const artifact = serializeSweep(sweep, "2026-05-26T20:00:00.000Z");
+  assert.equal(artifact.format, SWEEP_ARTIFACT_FORMAT);
+  assert.equal(artifact.generated_at, "2026-05-26T20:00:00.000Z");
+  // Round-trip through JSON
+  const json = JSON.stringify(artifact);
+  const parsed = loadSweep(JSON.parse(json));
+  assert.equal(parsed.format, SWEEP_ARTIFACT_FORMAT);
+  assert.equal(parsed.result.name, "stricter");
+  assert.equal(parsed.result.flipped.length, 1);
+});
+
+test("loadSweep: rejects artifacts without the expected format tag", () => {
+  assert.throws(() => loadSweep({ format: "wrong.format.v1", result: {} }), /unexpected sweep format/);
+  assert.throws(() => loadSweep(null), /sweep artifact is not an object/);
+  assert.throws(() => loadSweep({ format: SWEEP_ARTIFACT_FORMAT }), /missing 'result'/);
+});
+
+test("summarizeSweep: produces a single-line CI-friendly string", () => {
+  const records = [mkHistoricalRecord(mkAction({ action_id: "a1" }), { record_id: "r1" })];
+  const map = new Map([["r1", mkAction({ action_id: "a1" })]]);
+  const sweep = runCounterfactualSweep({
+    records,
+    resolveAction: (r) => map.get(r.record_id) ?? null,
+    resolveOriginal: () => ({ ward: WARD_PERMISSIVE, envelope: ENVELOPE_PERMISSIVE }),
+    counterfactual: { name: "v2", ward: WARD_PERMISSIVE, envelope: ENVELOPE_STRICTER }
+  });
+  const line = summarizeSweep(sweep);
+  assert.match(line, /counterfactual 'v2'/);
+  assert.match(line, /1\/1 resolved records flipped/);
+  assert.match(line, /ALLOW_to_REFUSE: 1/);
+});
+
+test("compareSweeps: rows sorted by flipped descending; total_resolved_records is the max", () => {
+  const sweepA: ReturnType<typeof runCounterfactualSweep> = {
+    name: "small-change", total_records: 10, resolved_records: 10, unresolved_records: 0,
+    flipped: [{ record_id: "r1", historical_decision: "ALLOW", counterfactual_decision: "REFUSE" }],
+    transitions: { ALLOW_to_REFUSE: 1 }
+  };
+  const sweepB: ReturnType<typeof runCounterfactualSweep> = {
+    name: "big-change", total_records: 10, resolved_records: 10, unresolved_records: 0,
+    flipped: [1, 2, 3, 4, 5].map((i) => ({ record_id: `r${i}`, historical_decision: "ALLOW" as const, counterfactual_decision: "REFUSE" as const })),
+    transitions: { ALLOW_to_REFUSE: 5 }
+  };
+  const cmp = compareSweeps([sweepA, sweepB]);
+  assert.equal(cmp.total_resolved_records, 10);
+  assert.equal(cmp.rows[0].name, "big-change");
+  assert.equal(cmp.rows[0].flipped, 5);
+  assert.equal(cmp.rows[1].name, "small-change");
 });

@@ -262,6 +262,74 @@ export function runCounterfactualSweep(input: CounterfactualSweepInput): Counter
 }
 
 // ---------------------------------------------------------------------------
+// Serialization + summary
+// ---------------------------------------------------------------------------
+
+/** Format identifier embedded in serialized sweep artifacts. */
+export const SWEEP_ARTIFACT_FORMAT = "aristotle.counterfactual-sweep.v1";
+
+export interface SerializedSweep {
+  format: typeof SWEEP_ARTIFACT_FORMAT;
+  generated_at: string;
+  result: CounterfactualSweepResult;
+}
+
+export function serializeSweep(result: CounterfactualSweepResult, now?: string): SerializedSweep {
+  return {
+    format: SWEEP_ARTIFACT_FORMAT,
+    generated_at: now ?? new Date().toISOString(),
+    result
+  };
+}
+
+export function loadSweep(artifact: unknown): SerializedSweep {
+  if (!artifact || typeof artifact !== "object") throw new Error("sweep artifact is not an object");
+  const o = artifact as Record<string, unknown>;
+  if (o.format !== SWEEP_ARTIFACT_FORMAT) {
+    throw new Error(`unexpected sweep format: ${String(o.format)} (expected ${SWEEP_ARTIFACT_FORMAT})`);
+  }
+  if (!o.result || typeof o.result !== "object") throw new Error("sweep artifact missing 'result'");
+  // We don't deep-validate the result body — the format tag is the
+  // contract; tighter parsing belongs to a caller that has a schema.
+  return o as unknown as SerializedSweep;
+}
+
+/** Human-readable single-line summary for a sweep result. Suitable
+ *  for CI logs, dashboards, slack pings. Pure formatting — no I/O. */
+export function summarizeSweep(result: CounterfactualSweepResult): string {
+  const transitions = Object.entries(result.transitions).sort(([a], [b]) => a.localeCompare(b));
+  const transitionBits = transitions.map(([k, v]) => `${k}: ${v}`);
+  const transitionsText = transitionBits.length ? ` [${transitionBits.join(", ")}]` : "";
+  return `counterfactual '${result.name}': ${result.flipped.length}/${result.resolved_records} resolved records flipped` +
+    (result.unresolved_records > 0 ? ` (${result.unresolved_records} unresolved)` : "") +
+    transitionsText;
+}
+
+/** Aggregate multiple counterfactual sweeps (e.g., one per candidate
+ *  policy world) into a comparison table. */
+export interface SweepComparison {
+  total_resolved_records: number;
+  /** Sorted by flipped count descending. */
+  rows: Array<{
+    name: string;
+    flipped: number;
+    resolved_records: number;
+    transitions: Record<string, number>;
+  }>;
+}
+
+export function compareSweeps(sweeps: CounterfactualSweepResult[]): SweepComparison {
+  const totalResolved = sweeps.length ? Math.max(...sweeps.map((s) => s.resolved_records)) : 0;
+  const rows = sweeps.map((s) => ({
+    name: s.name,
+    flipped: s.flipped.length,
+    resolved_records: s.resolved_records,
+    transitions: s.transitions
+  })).sort((a, b) => b.flipped - a.flipped);
+  return { total_resolved_records: totalResolved, rows };
+}
+
+// ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
 
