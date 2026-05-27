@@ -1,0 +1,30 @@
+{
+  "format": "aristotle.replay-artifact.v1",
+  "scenario_id": "swarm-partition-40-asset",
+  "scenario_version": "1.0.0",
+  "inputs": {
+    "assetCount": 40,
+    "fluidityTtlMs": 1500
+  },
+  "report": {
+    "total_assets": 40,
+    "phase1_allow": 40,
+    "phase1_other": 0,
+    "phase2_allow": 40,
+    "phase2_refuse": 0,
+    "phase2_expire": 0,
+    "phase3_witness_half_refused": 0,
+    "phase3_isolated_half_allowed": 10,
+    "phase4_reconciled_clean": 30,
+    "phase4_reconciled_conflicts": 10,
+    "total_warrants_issued": 90,
+    "total_revocations": 10
+  },
+  "report_hash": "sha256:8b379ea543a8b72aad81b8c4be37bc3c054209dfd8bd04e15e03c51a9d952ce2",
+  "provenance": {
+    "producer": "aristotle-os.release.publish",
+    "produced_at": "2026-05-27T00:42:31.180Z",
+    "notes": "v0.1.63 published replay artifact: 40-asset disconnected-swarm partition scenario"
+  },
+  "artifact_hash": "sha256:5e1adb1b303f66f300a43d24d4e2cdd1601c68cc3b4e823227100e1b1d2620c1"
+}
