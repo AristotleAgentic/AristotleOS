@@ -166,6 +166,21 @@ export interface MeshNodeOptions {
    *  exists in governance-core. Kept symmetric here for clarity. */
   secret: string;
   peers?: NodeId[];
+  /**
+   * Pluggable HTTP client used for inter-node calls. Defaults to the global
+   * `fetch`. Production deployments inject a TLS-enabled fetch (mTLS, peer
+   * cert pinning, custom CA bundle) — e.g. a wrapper that uses
+   * undici.Agent({ connect: { ca, cert, key, rejectUnauthorized: true } }).
+   * The mesh uses this for cross-process traffic only; in-process tests use
+   * the bindRegistry fast-path and never hit the network.
+   */
+  httpClient?: typeof fetch;
+  /**
+   * Pluggable URL builder. Defaults to `http://${target.host}:${target.port}/`.
+   * Production deployments override to inject `https://` and/or a service-mesh
+   * path prefix (e.g. `https://${target.id}.mesh.svc.cluster.local/`).
+   */
+  urlFor?: (target: NodeId) => string;
 }
 
 export abstract class MeshNode {
@@ -175,6 +190,8 @@ export abstract class MeshNode {
   protected readonly secret: string;
   protected peers: NodeId[];
   protected server: Server | null = null;
+  protected readonly httpClient: typeof fetch;
+  protected readonly urlFor: (target: NodeId) => string;
   /** Node ids this node will refuse traffic to/from (partition simulation). */
   public readonly partitions: Set<string> = new Set();
   /** Callable for testing in-process — bypasses HTTP. */
@@ -188,6 +205,8 @@ export abstract class MeshNode {
     this.port = opts.port;
     this.secret = opts.secret;
     this.peers = opts.peers ?? [];
+    this.httpClient = opts.httpClient ?? fetch;
+    this.urlFor = opts.urlFor ?? ((t: NodeId) => `http://${t.host}:${t.port}/`);
   }
 
   setPeers(peers: NodeId[]): void {
@@ -253,8 +272,8 @@ export abstract class MeshNode {
       if (node.partitions.has(this.id)) throw new Error(`partitioned-from:${this.id}`);
       return node.handle(msg);
     }
-    const url = `http://${target.host}:${target.port}/`;
-    const res = await fetch(url, { method: "POST", body: JSON.stringify(msg), headers: { "content-type": "application/json" } });
+    const url = this.urlFor(target);
+    const res = await this.httpClient(url, { method: "POST", body: JSON.stringify(msg), headers: { "content-type": "application/json" } });
     if (!res.ok) throw new Error(`${target.id} returned ${res.status}`);
     return res.json();
   }
