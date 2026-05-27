@@ -48,7 +48,29 @@ export type ScenarioStep =
   | { kind: "wait"; ms: number }
   | { kind: "inject_spoof"; edgeId: string; actionType: string; falseSubject: string; params?: Record<string, unknown>; envelopeId?: string }
   | { kind: "transient_partition"; edgeId: string; from: string; durationMs: number }
-  | { kind: "assert_decision"; expect_decision: "ALLOW" | "REFUSE" | "EXPIRE" | "ESCALATE"; expect_reason_code?: string };
+  | { kind: "assert_decision"; expect_decision: "ALLOW" | "REFUSE" | "EXPIRE" | "ESCALATE"; expect_reason_code?: string }
+  | {
+      kind: "set_link_profile";
+      edgeId: string;
+      from: string;
+      /** Declarative link quality: latency, drop rate, planned window.
+       *  The engine records the profile in the trace but does NOT
+       *  randomize behavior — scenarios stay deterministic. Use
+       *  `simulate_packet_loss` for an actively-modeled outage pattern. */
+      latencyMs?: number;
+      dropRate?: number;
+      durationMs?: number;
+      notes?: string;
+    }
+  | {
+      kind: "simulate_packet_loss";
+      edgeId: string;
+      from: string;
+      /** Scripted oscillation: N cycles of (down for downMs, up for upMs). */
+      cycles: number;
+      downMs: number;
+      upMs: number;
+    };
 
 export interface ScenarioStepResult {
   step_index: number;
@@ -229,6 +251,44 @@ export async function runScenario(opts: ScenarioOptions, steps: ScenarioStep[]):
               durationMs: step.durationMs,
               down_at: downAt,
               up_at: new Date().toISOString()
+            };
+            break;
+          }
+          case "set_link_profile": {
+            // Declarative: record the profile in the trace as intent
+            // documentation. Deterministic — no actual randomization.
+            // Scenarios that need active outage modeling use
+            // simulate_packet_loss below.
+            result.payload = {
+              from: step.from,
+              latencyMs: step.latencyMs ?? null,
+              dropRate: step.dropRate ?? null,
+              durationMs: step.durationMs ?? null,
+              notes: step.notes ?? null
+            };
+            break;
+          }
+          case "simulate_packet_loss": {
+            const edge = edgeById.get(step.edgeId);
+            if (!edge) { result.ok = false; result.payload = { error: "unknown-edge" }; break; }
+            // Scripted partition/heal oscillation. Each cycle:
+            // partition for downMs, then heal for upMs.
+            const cycleLog: Array<{ cycle: number; down_at: string; up_at: string }> = [];
+            for (let c = 0; c < step.cycles; c++) {
+              const downAt = new Date().toISOString();
+              edge.partitionFrom(step.from);
+              await new Promise((r) => setTimeout(r, step.downMs));
+              edge.healPartition(step.from);
+              const upAt = new Date().toISOString();
+              cycleLog.push({ cycle: c, down_at: downAt, up_at: upAt });
+              if (c < step.cycles - 1) await new Promise((r) => setTimeout(r, step.upMs));
+            }
+            result.payload = {
+              from: step.from,
+              cycles: step.cycles,
+              downMs: step.downMs,
+              upMs: step.upMs,
+              cycles_log: cycleLog
             };
             break;
           }

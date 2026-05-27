@@ -157,3 +157,49 @@ test("assert_decision: ok=false when there is no prior evaluate to assert agains
   assert.equal(trace.steps[0].ok, false);
   assert.match((payload(trace.steps[0]).error as string), /no prior evaluate/);
 });
+
+test("set_link_profile: declarative — records profile in trace without affecting determinism", async () => {
+  const trace = await runScenario(
+    { scenarioId: "link-prof", edgeIds: ["e1"] },
+    [
+      { kind: "issue_envelope", edgeId: "e1", allowedActionTypes: ["x.do"] },
+      { kind: "issue_fluidity", edgeId: "e1" },
+      { kind: "set_link_profile", edgeId: "e1", from: "root", latencyMs: 250, dropRate: 0.05, durationMs: 5000, notes: "marginal cellular" },
+      { kind: "evaluate", edgeId: "e1", actionType: "x.do" }
+    ]
+  );
+  const profile = payload(trace.steps[2]);
+  assert.equal(profile.from, "root");
+  assert.equal(profile.latencyMs, 250);
+  assert.equal(profile.dropRate, 0.05);
+  assert.equal(profile.durationMs, 5000);
+  assert.equal(profile.notes, "marginal cellular");
+  // The evaluate after set_link_profile still allows (the step doesn't randomize behavior).
+  assert.equal(payload(trace.steps[3]).decision, "ALLOW");
+});
+
+test("simulate_packet_loss: N partition/heal cycles are scripted into the trace", async () => {
+  const trace = await runScenario(
+    { scenarioId: "pkt-loss", edgeIds: ["e1"] },
+    [
+      { kind: "issue_envelope", edgeId: "e1", allowedActionTypes: ["x.do"] },
+      { kind: "issue_fluidity", edgeId: "e1" },
+      { kind: "simulate_packet_loss", edgeId: "e1", from: "root", cycles: 3, downMs: 20, upMs: 10 },
+      { kind: "evaluate", edgeId: "e1", actionType: "x.do" }
+    ]
+  );
+  const pkt = payload(trace.steps[2]);
+  assert.equal(pkt.cycles, 3);
+  assert.equal((pkt.cycles_log as Array<unknown>).length, 3);
+  // After the oscillation ends, the link is healed and the next eval ALLOWs.
+  assert.equal(payload(trace.steps[3]).decision, "ALLOW");
+});
+
+test("simulate_packet_loss: ok=false when edge is unknown", async () => {
+  const trace = await runScenario(
+    { scenarioId: "pkt-no-edge", edgeIds: ["other"] },
+    [{ kind: "simulate_packet_loss", edgeId: "missing", from: "root", cycles: 1, downMs: 5, upMs: 5 }]
+  );
+  assert.equal(trace.steps[0].ok, false);
+  assert.equal(payload(trace.steps[0]).error, "unknown-edge");
+});
