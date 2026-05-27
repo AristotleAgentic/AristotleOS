@@ -340,3 +340,18 @@ export function buildPolicyBundleWithLocalKeyring(
 
 export { compilePolicy, compileGovernanceManifest, diffGovernanceManifests };
 export type { GovernanceDraft, GovernanceManifest, GovernanceDiffEntry };
+
+export {
+  toOciBundle,
+  fromOciBundle,
+  OCI_MEDIA_TYPE_MANIFEST,
+  OCI_MEDIA_TYPE_POLICY_CONFIG,
+  OCI_MEDIA_TYPE_POLICY_SOURCE,
+  OCI_MEDIA_TYPE_POLICY_MANIFESTS,
+  OCI_MEDIA_TYPE_POLICY_SIGNATURE,
+  OCI_ARTIFACT_TYPE,
+  type OciDescriptor,
+  type OciManifest,
+  type OciPolicyBundle,
+  type OciBundleReadResult
+} from "./oci.js";
