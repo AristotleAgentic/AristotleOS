@@ -46,7 +46,9 @@ export type ScenarioStep =
   | { kind: "revoke"; targetEnvelopeId: string; reason?: string }
   | { kind: "reconcile"; edgeId: string }
   | { kind: "wait"; ms: number }
-  | { kind: "inject_spoof"; edgeId: string; actionType: string; falseSubject: string; params?: Record<string, unknown>; envelopeId?: string };
+  | { kind: "inject_spoof"; edgeId: string; actionType: string; falseSubject: string; params?: Record<string, unknown>; envelopeId?: string }
+  | { kind: "transient_partition"; edgeId: string; from: string; durationMs: number }
+  | { kind: "assert_decision"; expect_decision: "ALLOW" | "REFUSE" | "EXPIRE" | "ESCALATE"; expect_reason_code?: string };
 
 export interface ScenarioStepResult {
   step_index: number;
@@ -208,6 +210,53 @@ export async function runScenario(opts: ScenarioOptions, steps: ScenarioStep[]):
               decision: d.decision,
               reason_codes: (d as { reason_codes?: string[] }).reason_codes ?? [],
               false_subject: step.falseSubject
+            };
+            break;
+          }
+          case "transient_partition": {
+            // Deterministic packet-loss model: sever the link, wait
+            // durationMs, then heal. The result records the exact
+            // window the link was down — useful for asserting
+            // gate-side behavior under bounded outages.
+            const edge = edgeById.get(step.edgeId);
+            if (!edge) { result.ok = false; result.payload = { error: "unknown-edge" }; break; }
+            const downAt = new Date().toISOString();
+            edge.partitionFrom(step.from);
+            await new Promise((r) => setTimeout(r, step.durationMs));
+            edge.healPartition(step.from);
+            result.payload = {
+              from: step.from,
+              durationMs: step.durationMs,
+              down_at: downAt,
+              up_at: new Date().toISOString()
+            };
+            break;
+          }
+          case "assert_decision": {
+            // Walk back to the most recent evaluate / inject_spoof
+            // step and assert its decision matches the expectation.
+            let prior: ScenarioStepResult | undefined;
+            for (let j = trace.steps.length - 1; j >= 0; j--) {
+              const s = trace.steps[j];
+              if (s.kind === "evaluate" || s.kind === "inject_spoof") { prior = s; break; }
+            }
+            if (!prior) {
+              result.ok = false;
+              result.payload = { error: "no prior evaluate to assert against" };
+              break;
+            }
+            const observedDecision = prior.payload.decision as string;
+            const observedReasons = (prior.payload.reason_codes as string[] | undefined) ?? [];
+            const decisionOk = observedDecision === step.expect_decision;
+            const reasonOk = !step.expect_reason_code || observedReasons.includes(step.expect_reason_code);
+            result.ok = decisionOk && reasonOk;
+            result.payload = {
+              expected_decision: step.expect_decision,
+              expected_reason_code: step.expect_reason_code,
+              observed_decision: observedDecision,
+              observed_reason_codes: observedReasons,
+              decision_ok: decisionOk,
+              reason_code_ok: reasonOk
             };
             break;
           }

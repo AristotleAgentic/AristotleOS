@@ -89,3 +89,71 @@ test("unknown edge in evaluate marks step !ok with error", async () => {
   assert.equal(trace.steps[0].ok, false);
   assert.equal(payload(trace.steps[0]).error, "unknown-edge");
 });
+
+test("transient_partition: link is severed for durationMs then healed automatically", async () => {
+  const trace = await runScenario(
+    { scenarioId: "transient", edgeIds: ["e1"] },
+    [
+      { kind: "issue_envelope", edgeId: "e1", allowedActionTypes: ["x.do"] },
+      { kind: "issue_fluidity", edgeId: "e1" },
+      { kind: "transient_partition", edgeId: "e1", from: "root", durationMs: 50 },
+      { kind: "evaluate", edgeId: "e1", actionType: "x.do" }
+    ]
+  );
+  // Step 2 is the partition step.
+  const tp = payload(trace.steps[2]);
+  assert.equal(tp.from, "root");
+  assert.equal(tp.durationMs, 50);
+  // Step 3 is the evaluate after heal — should ALLOW.
+  assert.equal(payload(trace.steps[3]).decision, "ALLOW");
+});
+
+test("assert_decision: passes when previous evaluate matches expected decision", async () => {
+  const trace = await runScenario(
+    { scenarioId: "assert-pass", edgeIds: ["e1"] },
+    [
+      { kind: "issue_envelope", edgeId: "e1", allowedActionTypes: ["x.do"] },
+      { kind: "issue_fluidity", edgeId: "e1" },
+      { kind: "evaluate", edgeId: "e1", actionType: "x.do" },
+      { kind: "assert_decision", expect_decision: "ALLOW" }
+    ]
+  );
+  assert.equal(trace.steps[3].ok, true);
+  assert.equal(payload(trace.steps[3]).decision_ok, true);
+});
+
+test("assert_decision: fails (ok=false) when previous evaluate does NOT match expected", async () => {
+  const trace = await runScenario(
+    { scenarioId: "assert-fail", edgeIds: ["e1"] },
+    [
+      { kind: "issue_envelope", edgeId: "e1", allowedActionTypes: ["x.do"] },
+      { kind: "issue_fluidity", edgeId: "e1" },
+      { kind: "evaluate", edgeId: "e1", actionType: "x.do" },
+      { kind: "assert_decision", expect_decision: "REFUSE" }
+    ]
+  );
+  assert.equal(trace.steps[3].ok, false);
+  assert.equal(payload(trace.steps[3]).observed_decision, "ALLOW");
+  assert.equal(payload(trace.steps[3]).expected_decision, "REFUSE");
+});
+
+test("assert_decision: checks reason_code when supplied", async () => {
+  const trace = await runScenario(
+    { scenarioId: "assert-reason", edgeIds: ["e1"] },
+    [
+      // No envelope => UNKNOWN_ENVELOPE
+      { kind: "evaluate", edgeId: "e1", actionType: "x.do" },
+      { kind: "assert_decision", expect_decision: "REFUSE", expect_reason_code: "UNKNOWN_ENVELOPE" }
+    ]
+  );
+  assert.equal(trace.steps[1].ok, true);
+});
+
+test("assert_decision: ok=false when there is no prior evaluate to assert against", async () => {
+  const trace = await runScenario(
+    { scenarioId: "assert-empty", edgeIds: ["e1"] },
+    [{ kind: "assert_decision", expect_decision: "ALLOW" }]
+  );
+  assert.equal(trace.steps[0].ok, false);
+  assert.match((payload(trace.steps[0]).error as string), /no prior evaluate/);
+});
