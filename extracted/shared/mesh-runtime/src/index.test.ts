@@ -247,8 +247,8 @@ test("envelope EXPIRED returns the distinct EXPIRE decision (not REFUSE)", async
 
 test("live HTTP transport: root and edge can talk over real TCP sockets", async () => {
   const secret = "live-secret";
-  const root = new RootNode({ id: "root-live", host: "127.0.0.1", port: 21041, secret });
-  const edge = new EdgeNode({ id: "edge-live", host: "127.0.0.1", port: 21042, secret });
+  const root = new RootNode({ id: "root-live", host: "127.0.0.1", port: 21041, secret, suppressDemoSecretWarning: true });
+  const edge = new EdgeNode({ id: "edge-live", host: "127.0.0.1", port: 21042, secret, suppressDemoSecretWarning: true });
   const ids: NodeId[] = [root.asNodeId(), edge.asNodeId()];
   root.setPeers([edge.asNodeId()]);
   edge.setPeers([root.asNodeId()]);

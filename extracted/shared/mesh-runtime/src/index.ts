@@ -205,6 +205,26 @@ export interface MeshVerifier {
 }
 
 /**
+ * Set of HMAC secrets known to be shipped as defaults / examples in this
+ * repo. A MeshNode constructed with any of these will log a one-time
+ * WARN to stderr unless the operator explicitly opts out via
+ * MeshNodeOptions.suppressDemoSecretWarning. Defends against the silent-
+ * deployment-with-demo-secret failure mode.
+ *
+ * Add new known-demo strings here if they ever appear in docs / examples.
+ */
+export const KNOWN_DEMO_MESH_SECRETS: ReadonlySet<string> = new Set([
+  "demo-mesh-secret",
+  "aos-demo-mesh-secret",
+  "aristotle-demo-secret",
+  "test-secret",
+  "live-secret"
+]);
+
+/** Track which demo secrets have already warned, to keep stderr clean. */
+const _warnedDemoSecrets: Set<string> = new Set();
+
+/**
  * Build a signer + verifier pair from a single shared HMAC secret.
  * This is the legacy / demo path. Every node calling this with the same
  * secret will trust every other node's signatures. Suitable for tests
@@ -258,6 +278,81 @@ export function createEd25519MeshSigner(opts: { signerId: string; privateKeyPem:
 export interface Ed25519MeshVerifier extends MeshVerifier {
   addTrustAnchor(signerId: string, publicKeyPem: string): void;
   removeTrustAnchor(signerId: string): void;
+}
+
+// ---------------------------------------------------------------------------
+// Mesh anti-replay cache
+//
+// Defends against capture-and-replay of a legitimate mesh message. A
+// reasonable threat: an attacker who can observe network traffic between
+// two nodes captures a signed PROPAGATE_ENVELOPE or GOSSIP_REVOCATION
+// and re-emits it later (or floods it) to try to confuse caches /
+// timing-dependent state. Signature alone would let the replay through;
+// the cache rejects it as a duplicate.
+//
+// The cache hashes (signer_id || sha256(body_bytes)) and rejects an
+// inbound request whose hash is already in the window. TTL bounds memory
+// and lets stale entries fall out.
+//
+// Opt-in via MeshNodeOptions.replayCache. Default mesh stays exactly as
+// it was — no behavior change unless an operator wires a cache in.
+// ---------------------------------------------------------------------------
+
+export interface MeshReplayCache {
+  /**
+   * Record an inbound message hash. Returns `true` if it was already
+   * seen within the window (caller should reject as replay), `false` if
+   * newly recorded.
+   */
+  seen(messageHash: string): boolean;
+  /** Number of entries currently held (post-eviction). */
+  size(): number;
+}
+
+export interface MeshReplayCacheOptions {
+  /** TTL for each entry in ms. Default 60_000. */
+  ttlMs?: number;
+  /** Max entries; oldest get evicted past this. Default 10_000. */
+  maxSize?: number;
+  /** Clock for tests. Defaults to Date.now. */
+  now?: () => number;
+}
+
+export function createMeshReplayCache(opts: MeshReplayCacheOptions = {}): MeshReplayCache {
+  const ttlMs = opts.ttlMs ?? 60_000;
+  const maxSize = opts.maxSize ?? 10_000;
+  const now = opts.now ?? Date.now;
+  const entries: Map<string, number> = new Map(); // hash -> addedAt
+  function evictExpired(cutoff: number): void {
+    // Map preserves insertion order; sweep oldest first.
+    for (const [hash, at] of entries) {
+      if (at <= cutoff) entries.delete(hash); else break;
+    }
+  }
+  return {
+    seen(messageHash: string): boolean {
+      const t = now();
+      evictExpired(t - ttlMs);
+      const existing = entries.get(messageHash);
+      if (existing !== undefined && existing > t - ttlMs) return true;
+      entries.set(messageHash, t);
+      // Cap memory.
+      if (entries.size > maxSize) {
+        const drop = entries.size - maxSize;
+        const it = entries.keys();
+        for (let i = 0; i < drop; i++) {
+          const k = it.next().value as string | undefined;
+          if (k === undefined) break;
+          entries.delete(k);
+        }
+      }
+      return false;
+    },
+    size(): number {
+      evictExpired(now() - ttlMs);
+      return entries.size;
+    }
+  };
 }
 
 export function createEd25519MeshVerifier(opts: {
@@ -324,6 +419,43 @@ export interface MeshNodeOptions {
   signer?: MeshSigner;
   /** Per-node verifier with trust anchors. Defaults to HMAC built from `secret`. */
   verifier?: MeshVerifier;
+  /**
+   * Production-mode lockdown. When true:
+   *   - constructing with `secret` (HMAC) throws — production must use
+   *     explicit signer + verifier.
+   *   - signer alg must NOT be "hmac-sha256".
+   *   - demo-secret WARN is irrelevant because HMAC is rejected outright.
+   * Defaults to false so existing demos / tests keep working.
+   */
+  productionMode?: boolean;
+  /**
+   * Suppress the one-time stderr WARN that fires when the constructed
+   * signer is HMAC using a known demo secret. Useful in tests that
+   * intentionally use a demo secret and want clean stderr.
+   */
+  suppressDemoSecretWarning?: boolean;
+  /**
+   * Optional anti-replay cache. Every inbound mesh request that carries
+   * a signer-tagged signature is hashed; duplicate hashes within the
+   * cache's TTL are rejected with HTTP 409. Defends against
+   * capture-and-replay of legitimate mesh messages on the wire. Defaults
+   * to no anti-replay (backwards compat); opt in with createMeshReplayCache(...).
+   */
+  replayCache?: MeshReplayCache;
+  /**
+   * Maximum request body size in bytes accepted by the HTTP ingress.
+   * Defaults to 1 MiB. Oversized requests are rejected with HTTP 413
+   * (Payload Too Large) before any signature work. Defends against DoS
+   * via giant payloads.
+   */
+  maxRequestBodyBytes?: number;
+  /**
+   * If true (default), the HTTP ingress rejects any request whose
+   * content-type is not `application/json` (or absent on simple POSTs)
+   * with HTTP 415. Set to false ONLY when proxying through a layer that
+   * strips content-type.
+   */
+  requireJsonContentType?: boolean;
   peers?: NodeId[];
   /**
    * Pluggable HTTP client used for inter-node calls. Defaults to the global
@@ -354,6 +486,9 @@ export abstract class MeshNode {
   protected readonly secret: string;
   protected readonly signer: MeshSigner;
   protected readonly verifier: MeshVerifier;
+  protected readonly replayCache: MeshReplayCache | null;
+  protected readonly maxRequestBodyBytes: number;
+  protected readonly requireJsonContentType: boolean;
   protected peers: NodeId[];
   protected server: Server | null = null;
   protected readonly httpClient: typeof fetch;
@@ -375,18 +510,44 @@ export abstract class MeshNode {
     //   3. opts.secret AND signer/verifier -> use signer/verifier; secret
     //      is retained only for legacy this.secret reads
     if (opts.signer && opts.verifier) {
+      if (opts.productionMode && opts.signer.alg === "hmac-sha256") {
+        throw new Error(
+          "MeshNode: productionMode=true forbids the HMAC signer. Use createEd25519MeshSigner / createEd25519MeshVerifier."
+        );
+      }
       this.signer = opts.signer;
       this.verifier = opts.verifier;
       this.secret = opts.secret ?? "";
     } else if (opts.signer || opts.verifier) {
       throw new Error("MeshNode: signer and verifier must be provided together");
     } else if (opts.secret !== undefined) {
+      if (opts.productionMode) {
+        throw new Error(
+          "MeshNode: productionMode=true forbids the shared-HMAC `secret` constructor path. Provide explicit { signer, verifier } using createEd25519MeshSigner / createEd25519MeshVerifier."
+        );
+      }
+      // Demo / legacy path. Warn on known demo secrets unless suppressed.
+      if (
+        !opts.suppressDemoSecretWarning
+        && KNOWN_DEMO_MESH_SECRETS.has(opts.secret)
+        && !_warnedDemoSecrets.has(opts.secret)
+      ) {
+        _warnedDemoSecrets.add(opts.secret);
+        console.warn(
+          `[aristotle/mesh-runtime] WARNING: MeshNode "${opts.id}" constructed with a known demo HMAC secret. ` +
+          `This is not safe for production. Use createEd25519MeshSigner + createEd25519MeshVerifier and pass { signer, verifier } to the MeshNode constructor. ` +
+          `See ROADMAP_TO_100.md Category 1 and LIMITATIONS.md.`
+        );
+      }
       this.signer = createHmacMeshSigner({ signerId: opts.id, secret: opts.secret });
       this.verifier = createHmacMeshVerifier({ secret: opts.secret });
       this.secret = opts.secret;
     } else {
       throw new Error("MeshNode: must provide either { secret } or { signer, verifier }");
     }
+    this.replayCache = opts.replayCache ?? null;
+    this.maxRequestBodyBytes = opts.maxRequestBodyBytes ?? 1024 * 1024; // 1 MiB
+    this.requireJsonContentType = opts.requireJsonContentType ?? true;
     this.peers = opts.peers ?? [];
     this.httpClient = opts.httpClient ?? fetch;
     this.urlFor = opts.urlFor ?? ((t: NodeId) => `http://${t.host}:${t.port}/`);
@@ -415,19 +576,78 @@ export abstract class MeshNode {
   }
 
   protected async onRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    // (1) Content-type check — reject anything not application/json.
+    if (this.requireJsonContentType) {
+      const ct = (req.headers["content-type"] ?? "").toString().toLowerCase();
+      // Allow `application/json` with optional charset; allow empty CT only on GET.
+      const isJson = ct.startsWith("application/json");
+      if (req.method === "POST" && !isJson) {
+        res.statusCode = 415;
+        res.setHeader("content-type", "application/json");
+        res.end(JSON.stringify({ ok: false, reason: "unsupported-media-type" }));
+        return;
+      }
+    }
+    // (2) Stream body with hard size cap. As soon as we'd exceed the
+    // configured maximum, return 413 and stop reading. Defends against
+    // single-request DoS via huge payloads.
     const chunks: Buffer[] = [];
-    for await (const c of req) chunks.push(c as Buffer);
+    let totalBytes = 0;
+    try {
+      for await (const c of req) {
+        const buf = c as Buffer;
+        totalBytes += buf.length;
+        if (totalBytes > this.maxRequestBodyBytes) {
+          res.statusCode = 413;
+          res.setHeader("content-type", "application/json");
+          res.end(JSON.stringify({
+            ok: false,
+            reason: "payload-too-large",
+            limit_bytes: this.maxRequestBodyBytes
+          }));
+          // Best-effort: drain remaining bytes silently to avoid client
+          // hangs on partial reads.
+          try { req.destroy(); } catch { /* ignore */ }
+          return;
+        }
+        chunks.push(buf);
+      }
+    } catch {
+      res.statusCode = 400;
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ ok: false, reason: "body-read-error" }));
+      return;
+    }
     const body = chunks.length ? Buffer.concat(chunks).toString("utf8") : "";
+    // (3) JSON parse with structured error.
     let parsed: MeshMessage;
     try {
       parsed = JSON.parse(body);
     } catch {
-      res.statusCode = 400; res.end("bad json"); return;
+      res.statusCode = 400;
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ ok: false, reason: "bad-json" }));
+      return;
     }
+    // (4) Partition simulation — unchanged from before.
     if (parsed.from && this.partitions.has(parsed.from)) {
-      // Simulate partition: silently drop.
-      res.statusCode = 504; res.end("partitioned"); return;
+      res.statusCode = 504;
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ ok: false, reason: "partitioned" }));
+      return;
     }
+    // (5) Anti-replay — opt-in. Hash (signer || body); reject if seen.
+    if (this.replayCache) {
+      const senderId = parsed.from ?? "";
+      const replayHash = sha256Hex(senderId + ":" + body);
+      if (this.replayCache.seen(replayHash)) {
+        res.statusCode = 409;
+        res.setHeader("content-type", "application/json");
+        res.end(JSON.stringify({ ok: false, reason: "replay-detected" }));
+        return;
+      }
+    }
+    // (6) Dispatch.
     try {
       const out = await this.handle(parsed);
       res.statusCode = 200;
@@ -435,7 +655,8 @@ export abstract class MeshNode {
       res.end(JSON.stringify(out));
     } catch (err) {
       res.statusCode = 500;
-      res.end((err as Error).message);
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ ok: false, reason: "handler-error", detail: (err as Error).message }));
     }
   }
 

@@ -30,6 +30,9 @@ Five categories. Each lists the current gap, the concrete actions to close it, a
 | ~~Add cross-adapter refusal-before-emission test~~ — shipped at `tests/cross-adapter/src/refusal-before-emission.test.ts` | `@aristotle/tests-cross-adapter` | ✅ done |
 | ~~Replace shared-HMAC mesh trust with per-node Ed25519 keypairs gated by MAE signing-key allowlist~~ — partially closed: `MeshSigner` + `MeshVerifier` interfaces + `createEd25519MeshSigner` / `createEd25519MeshVerifier` factories ship; per-node Ed25519 is opt-in via MeshNode options. Shared HMAC stays as default for backwards compat. Covered by 8 tests in `ed25519-mesh.test.ts`. | `shared/mesh-runtime` | ✅ done (opt-in) |
 | GEL chain mutation-resistance property tests (M1 record-hash, M2 previous-hash, M3 reorder, M4 insertion, M5 signature strip, M6 signature forgery) | `shared/execution-control-runtime/src/gel.mutation.test.ts` | ✅ done |
+| Default-secret detection + `productionMode` lockdown on MeshNode (refuses HMAC entirely when productionMode=true; one-time WARN on known demo secrets in non-production mode) | `shared/mesh-runtime/src/index.ts` + `ingress-hardening.test.ts` | ✅ done |
+| Mesh HTTP ingress hardening (1 MiB body cap configurable, content-type enforcement, structured JSON errors) | `shared/mesh-runtime/src/index.ts` + `ingress-hardening.test.ts` | ✅ done |
+| Mesh anti-replay cache (opt-in `createMeshReplayCache({ ttlMs, maxSize })`; rejects exact-body replays within window with HTTP 409) | `shared/mesh-runtime/src/index.ts` + `ingress-hardening.test.ts` | ✅ done |
 | Integrate Sigstore (or RFC 3161 TSA) for GEL root anchoring | extension to `appendGelRecord` | Medium |
 | Add OpenTelemetry tracing through the gate + adapter layers | shared instrumentation | Medium |
 | Add benchmarks under sustained concurrent load (1000 req/s, 10K req/s) with regression tracking | `bench/` directory | Medium |

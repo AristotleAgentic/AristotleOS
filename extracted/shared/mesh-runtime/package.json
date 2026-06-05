@@ -10,6 +10,6 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "prepare": "tsc -p tsconfig.json",
-    "test": "node --import tsx --test src/index.test.ts src/quorum-routing.test.ts src/ed25519-mesh.test.ts"
+    "test": "node --import tsx --test src/index.test.ts src/quorum-routing.test.ts src/ed25519-mesh.test.ts src/ingress-hardening.test.ts"
   }
 }
