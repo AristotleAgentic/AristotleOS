@@ -110,6 +110,7 @@
     "test:protocol-adapters": "corepack pnpm@10.32.1 --filter @aristotle/mavlink-px4 --filter @aristotle/ros2-bridge --filter @aristotle/opcua-adapter --filter @aristotle/dnp3-adapter --filter @aristotle/modbus-adapter --filter @aristotle/bacnet-adapter --filter @aristotle/k8s-admission test",
     "test:refusal-before-emission": "corepack pnpm@10.32.1 --filter @aristotle/tests-cross-adapter test",
     "test:nonce-store": "corepack pnpm@10.32.1 --filter @aristotle/nonce-store test",
+    "test:px4-sitl": "corepack pnpm@10.32.1 --filter @aristotle/tests-px4-sitl test",
     "test:framework-adapters": "tsx examples/framework-adapters/govern.test.ts",
     "test:reviewer": "node --import tsx --test examples/reviewer/verify.test.ts examples/mesh/published.replay.test.ts",
     "test:mesh": "corepack pnpm@10.32.1 --filter @aristotle/mesh-runtime --filter @aristotle/chaos-harness --filter @aristotle/scenario-engine test",

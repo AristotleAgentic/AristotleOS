@@ -75,6 +75,17 @@ export interface Revocation {
   /** ISO timestamp the root authoritatively revoked at. */
   revoked_at: string;
   issued_by: string;
+  /**
+   * Optional witness co-signatures. When edges are configured with
+   * `requireRevocationQuorum: N`, a revocation is only cached / acted on
+   * after N distinct witness signatures from the configured witness set
+   * verify. Defends against a single compromised root authority issuing
+   * arbitrary revocations.
+   *
+   * Field is optional and unset by `root.revoke()` (backwards compat);
+   * `root.revokeWithQuorum()` populates it.
+   */
+  signing_quorum?: QuorumSignature[];
   signature: string;
 }
 
@@ -743,6 +754,69 @@ export class RootNode extends MeshNode {
     return partial;
   }
 
+  /**
+   * Issue a revocation backed by N witness co-signatures.
+   *
+   * Defends against a single compromised root authority issuing
+   * arbitrary revocations. With requireRevocationQuorum: N set on
+   * downstream edges, a revocation under quorum requires the attacker
+   * to compromise the root AND collude with N distinct witnesses.
+   *
+   * The pre-quorum revocation is signed by root (same as `revoke()`).
+   * Each witness signs `(quorum:revocation, revocation_id, target_id,
+   * root_signature)` so the witness's signature binds to the exact
+   * revocation it co-signed — substituting a different revocation under
+   * the same revocation_id invalidates the witness sigs.
+   *
+   * Throws if fewer than `requiredQuorum` valid witness signatures can
+   * be collected.
+   */
+  async revokeWithQuorum(args: {
+    target_id: string;
+    kind: Revocation["kind"];
+    reason: string;
+    /** Witness MeshSigners that will co-sign. Pass at least requiredQuorum of them. */
+    witnesses: MeshSigner[];
+    /** How many distinct witness co-signatures are required. */
+    requiredQuorum: number;
+  }): Promise<Revocation> {
+    if (args.requiredQuorum < 1) {
+      throw new Error("revokeWithQuorum: requiredQuorum must be >= 1");
+    }
+    if (args.witnesses.length < args.requiredQuorum) {
+      throw new Error(
+        `revokeWithQuorum: only ${args.witnesses.length} witnesses provided, need ${args.requiredQuorum}`
+      );
+    }
+    // Build the base revocation signed by root.
+    const partial: Revocation = {
+      revocation_id: newId("rev"),
+      target_id: args.target_id,
+      kind: args.kind,
+      reason: args.reason,
+      revoked_at: nowIso(),
+      issued_by: this.id,
+      signature: ""
+    };
+    partial.signature = this.signer.sign({ ...partial, signature: "" });
+    // Collect witness co-signatures, deduping by witness_id.
+    const collectedBy: Map<string, QuorumSignature> = new Map();
+    for (const witness of args.witnesses) {
+      if (collectedBy.has(witness.signerId)) continue;
+      collectedBy.set(witness.signerId, witnessCoSignRevocation(witness, partial));
+      if (collectedBy.size >= args.requiredQuorum) break;
+    }
+    if (collectedBy.size < args.requiredQuorum) {
+      throw new Error(
+        `revokeWithQuorum: collected ${collectedBy.size} distinct witness signatures, need ${args.requiredQuorum}`
+      );
+    }
+    partial.signing_quorum = [...collectedBy.values()];
+    this.revocations.set(partial.revocation_id, partial);
+    await this.gossipRevocation(partial);
+    return partial;
+  }
+
   issueFluidityToken(args: {
     edge_id: string; envelope_id: string; ttl_ms: number; max_revocation_age_ms?: number;
   }): FluidityToken {
@@ -854,11 +928,21 @@ export class WitnessNode extends MeshNode {
       }
       case "GOSSIP_REVOCATION": {
         const rev = msg.revocation;
-        if (!this.verifier.verify({ ...rev, signature: "" }, rev.signature, rev.issued_by)) {
+        // Strip both `signature` (so it doesn't appear in its own preimage)
+        // and `signing_quorum` (which witnesses add AFTER root signs).
+        // Using destructuring instead of `{ ...rev, signing_quorum: undefined }`
+        // because the latter leaves an explicit-undefined key that
+        // stableStringify mangles into a different preimage than what
+        // root actually signed over.
+        const { signing_quorum: _quorum, signature: _sig, ...rootSigMaterial } = rev;
+        const rootSigPayload = { ...rootSigMaterial, signature: "" };
+        if (!this.verifier.verify(rootSigPayload, rev.signature, rev.issued_by)) {
           return { ok: false, reason: "bad-signature" };
         }
         this.cachedRevocations.set(rev.revocation_id, rev);
-        // Forward to edge peers.
+        // Forward to edge peers. Quorum enforcement happens at edges,
+        // not witnesses (witnesses pass-through the revocation including
+        // its signing_quorum so edges can verify locally).
         for (const peer of this.peers) {
           if (peer.role === "edge") {
             try { await this.sendTo(peer, { kind: "GOSSIP_REVOCATION", revocation: rev }); } catch {}
@@ -891,6 +975,22 @@ export class WitnessNode extends MeshNode {
 export interface EdgeOptions extends MeshNodeOptions {
   /** Cap on warrants the edge will issue before requiring root reachability. */
   maxWarrantsWhileDisconnected?: number;
+  /**
+   * Minimum number of distinct, valid witness co-signatures required
+   * before this edge will cache a Revocation. Defaults to 0 (no quorum
+   * requirement — backwards compat). When > 0, edges refuse revocations
+   * that don't carry enough valid witness sigs from peers the verifier
+   * trusts.
+   *
+   * Production deployments using `productionMode: true` should set this
+   * to at least 1 (typically ceil(witnesses/2) + 1 for byzantine
+   * tolerance).
+   *
+   * Revocations failing the quorum check are dropped silently from
+   * gossip and counted as `rejected` from pullRevocations(). The reason
+   * is surfaced in the HTTP response body when gossip is the path.
+   */
+  requireRevocationQuorum?: number;
 }
 
 export class EdgeNode extends MeshNode {
@@ -909,10 +1009,15 @@ export class EdgeNode extends MeshNode {
   // Counter for how many auto-pulls have fired since boot. Useful as a
   // testable signal that the post-heal pull path activated.
   private autoPullCount: number = 0;
+  /** Minimum distinct valid witness sigs required on a Revocation. 0 = no quorum. */
+  private readonly requireRevocationQuorum: number;
+  /** Count of revocations rejected for failing the quorum check. */
+  private quorumRejectedCount: number = 0;
 
   constructor(opts: EdgeOptions) {
     super(opts);
     this.maxWarrantsDisconnected = opts.maxWarrantsWhileDisconnected ?? 100;
+    this.requireRevocationQuorum = opts.requireRevocationQuorum ?? 0;
   }
 
   receiveFluidityToken(token: FluidityToken): void {
@@ -1037,9 +1142,25 @@ export class EdgeNode extends MeshNode {
     try {
       const resp = (await this.sendTo(root, { kind: "QUERY_REVOCATIONS", since_ms })) as { revocations?: Revocation[] };
       for (const rev of resp.revocations ?? []) {
-        if (!this.verifier.verify({ ...rev, signature: "" }, rev.signature, rev.issued_by)) {
+        // Strip both `signature` (so it doesn't appear in its own preimage)
+        // and `signing_quorum` (which witnesses add AFTER root signs).
+        // Using destructuring instead of `{ ...rev, signing_quorum: undefined }`
+        // because the latter leaves an explicit-undefined key that
+        // stableStringify mangles into a different preimage than what
+        // root actually signed over.
+        const { signing_quorum: _quorum, signature: _sig, ...rootSigMaterial } = rev;
+        const rootSigPayload = { ...rootSigMaterial, signature: "" };
+        if (!this.verifier.verify(rootSigPayload, rev.signature, rev.issued_by)) {
           rejected++;
           continue;
+        }
+        if (this.requireRevocationQuorum > 0) {
+          const validCount = countValidRevocationQuorum(this.verifier, rev);
+          if (validCount < this.requireRevocationQuorum) {
+            rejected++;
+            this.quorumRejectedCount++;
+            continue;
+          }
         }
         if (!this.cachedRevocations.has(rev.revocation_id)) {
           this.cachedRevocations.set(rev.revocation_id, rev);
@@ -1055,6 +1176,9 @@ export class EdgeNode extends MeshNode {
 
   /** Test/operator hook: number of times pullRevocations has completed. */
   getAutoPullCount(): number { return this.autoPullCount; }
+
+  /** Test/operator hook: revocations dropped for failing the quorum check. */
+  getQuorumRejectedCount(): number { return this.quorumRejectedCount; }
 
   /** Reconcile local decisions with root. Returns conflict list. */
   async reconcile(): Promise<Array<{ warrant_id: string; conflict: unknown }>> {
@@ -1089,8 +1213,32 @@ export class EdgeNode extends MeshNode {
       }
       case "GOSSIP_REVOCATION": {
         const rev = msg.revocation;
-        if (!this.verifier.verify({ ...rev, signature: "" }, rev.signature, rev.issued_by)) {
+        // Verify root signature over the revocation. Strip signing_quorum
+        // so adding witness sigs after root signs doesn't invalidate
+        // the root sig.
+        // Strip both `signature` (so it doesn't appear in its own preimage)
+        // and `signing_quorum` (which witnesses add AFTER root signs).
+        // Using destructuring instead of `{ ...rev, signing_quorum: undefined }`
+        // because the latter leaves an explicit-undefined key that
+        // stableStringify mangles into a different preimage than what
+        // root actually signed over.
+        const { signing_quorum: _quorum, signature: _sig, ...rootSigMaterial } = rev;
+        const rootSigPayload = { ...rootSigMaterial, signature: "" };
+        if (!this.verifier.verify(rootSigPayload, rev.signature, rev.issued_by)) {
           return { ok: false, reason: "bad-signature" };
+        }
+        // Enforce witness quorum if configured.
+        if (this.requireRevocationQuorum > 0) {
+          const validCount = countValidRevocationQuorum(this.verifier, rev);
+          if (validCount < this.requireRevocationQuorum) {
+            this.quorumRejectedCount++;
+            return {
+              ok: false,
+              reason: "quorum-insufficient",
+              required: this.requireRevocationQuorum,
+              observed: validCount
+            };
+          }
         }
         this.cachedRevocations.set(rev.revocation_id, rev);
         return { ok: true };
@@ -1122,6 +1270,14 @@ export interface QuorumSignature {
   witness_id: string;
   signature: string;
   signed_at: string;
+  /**
+   * Which artifact this signature attests to. Optional with default
+   * "warrant" for backwards compat — the original quorum scheme only
+   * covered Warrants. `revocation` is the new path used by
+   * RootNode.revokeWithQuorum() so revocation quorum sigs can't be
+   * confused with warrant quorum sigs at verify time.
+   */
+  artifact_kind?: "warrant" | "revocation";
 }
 
 export class QuorumCollector {
@@ -1147,6 +1303,81 @@ export function witnessCoSign(secret: string, witness_id: string, warrant: Warra
   const signed_at = nowIso();
   const sig = sha256Hex(secret + ":quorum:" + witness_id + ":" + sha256Hex(stableStringify(warrant)));
   return { witness_id, signature: sig, signed_at };
+}
+
+/**
+ * Have a witness co-sign a Revocation. The signing material binds to
+ * the revocation_id AND the root's signature, so a witness can never
+ * be tricked into co-signing a substituted revocation under the same
+ * revocation_id. Uses the witness's MeshSigner — same key infrastructure
+ * the rest of the mesh trust uses.
+ *
+ * Used by RootNode.revokeWithQuorum() to collect the N signatures it
+ * needs before gossiping. Edges configured with requireRevocationQuorum
+ * call verifyRevocationQuorumSignature() to verify each one.
+ */
+export function witnessCoSignRevocation(signer: MeshSigner, revocation: Revocation): QuorumSignature {
+  const payload = {
+    kind: "quorum:revocation" as const,
+    revocation_id: revocation.revocation_id,
+    target_id: revocation.target_id,
+    root_signature: revocation.signature
+  };
+  return {
+    witness_id: signer.signerId,
+    signature: signer.sign(payload),
+    signed_at: nowIso(),
+    artifact_kind: "revocation"
+  };
+}
+
+/**
+ * Verify a single quorum signature against a Revocation. Uses the
+ * passed MeshVerifier to look up the witness's trust anchor by
+ * witness_id and verify the signature.
+ *
+ * Returns false on:
+ *   - signature mismatch
+ *   - witness_id not in the verifier's trust anchor set
+ *   - signature was issued over a different revocation
+ *   - artifact_kind is not "revocation" (defends against confusing a
+ *     warrant quorum sig for a revocation quorum sig)
+ */
+export function verifyRevocationQuorumSignature(
+  verifier: MeshVerifier,
+  revocation: Revocation,
+  sig: QuorumSignature
+): boolean {
+  if (sig.artifact_kind !== "revocation") return false;
+  const payload = {
+    kind: "quorum:revocation" as const,
+    revocation_id: revocation.revocation_id,
+    target_id: revocation.target_id,
+    root_signature: revocation.signature
+  };
+  return verifier.verify(payload, sig.signature, sig.witness_id);
+}
+
+/**
+ * Count distinct, valid witness signatures on a Revocation. Strips
+ * duplicates by witness_id so an attacker can't pad the count by
+ * re-submitting the same witness's signature.
+ *
+ * Returns 0 for revocations without a signing_quorum or whose witnesses
+ * aren't in the verifier's trust anchor set.
+ */
+export function countValidRevocationQuorum(
+  verifier: MeshVerifier,
+  revocation: Revocation
+): number {
+  const sigs = revocation.signing_quorum ?? [];
+  const witnesses = new Set<string>();
+  for (const sig of sigs) {
+    if (witnesses.has(sig.witness_id)) continue;
+    if (!verifyRevocationQuorumSignature(verifier, revocation, sig)) continue;
+    witnesses.add(sig.witness_id);
+  }
+  return witnesses.size;
 }
 
 /** Verify a quorum signature. */

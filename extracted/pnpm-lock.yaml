@@ -516,6 +516,15 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ros2-bridge
 
+  tests/px4-sitl:
+    dependencies:
+      '@aristotle/mavlink-px4':
+        specifier: workspace:*
+        version: link:../../packages/mavlink-px4
+      '@aristotle/os-sdk':
+        specifier: workspace:*
+        version: link:../../packages/os-sdk
+
 packages:
 
   '@a2a-js/sdk@0.3.13':
