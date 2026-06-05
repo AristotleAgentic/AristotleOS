@@ -50,6 +50,20 @@ export async function freePort() {
  * function.
  *
  * Waits up to `readyTimeoutMs` for GET /health to return 200.
+ *
+ * Options:
+ *  - port: pre-allocated TCP port (otherwise freePort() picks one)
+ *  - env: extra env vars layered on top of process.env. The harness
+ *    always sets PORT + PORT_<SERVICE_UPPER>; pass any additional
+ *    port aliases (e.g. PORT_GATEWAY for http-gateway) here.
+ *  - entryPath: relative-from-repo-root path to the service entry. Defaults
+ *    to "services/<name>/src/index.ts". Use this to spawn services that
+ *    live under adapters/ (e.g. "adapters/http-gateway/src/index.ts").
+ *    Accepts a string (with "/" separators) or an array of path segments.
+ *  - readyTimeoutMs: how long to wait for GET /health to return 200.
+ *  - captureOutput: pipe child stderr so failures surface its logs.
+ *  - get/post helpers accept an optional `headers` object on the second
+ *    arg (post) or first arg (get) — handy for RBAC tests.
  */
 export async function startService(serviceName, opts = {}) {
   const port = opts.port ?? (await freePort());
@@ -60,7 +74,10 @@ export async function startService(serviceName, opts = {}) {
     SERVICE_DISCOVERY_MODE: "local",
     ...(opts.env ?? {})
   };
-  const entry = path.join(REPO_ROOT, "services", serviceName, "src", "index.ts");
+  const entrySegments = opts.entryPath
+    ? (Array.isArray(opts.entryPath) ? opts.entryPath : opts.entryPath.split("/"))
+    : ["services", serviceName, "src", "index.ts"];
+  const entry = path.join(REPO_ROOT, ...entrySegments);
   const child = spawn(process.execPath, ["--import", "tsx", entry], {
     cwd: REPO_ROOT,
     env,
@@ -84,14 +101,14 @@ export async function startService(serviceName, opts = {}) {
     base,
     child,
     healthBody: ready,
-    async get(p) {
-      const r = await fetch(`${base}${p}`);
+    async get(p, headers) {
+      const r = await fetch(`${base}${p}`, headers ? { headers } : undefined);
       return { status: r.status, body: await safeJson(r) };
     },
-    async post(p, body) {
+    async post(p, body, headers) {
       const r = await fetch(`${base}${p}`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...(headers ?? {}) },
         body: JSON.stringify(body ?? {})
       });
       return { status: r.status, body: await safeJson(r) };
