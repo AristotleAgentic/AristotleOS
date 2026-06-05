@@ -7,9 +7,10 @@ have to reverse-engineer the rationale from the code.
 
 Format: a lightweight variant of [Michael Nygard's ADR template](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions).
 
-Closes the in-repo portion of [ROADMAP_TO_100.md](../../ROADMAP_TO_100.md)
-Category 3 *"Author ADRs for the top 15 design decisions"*. 10 of the
-15 ship here; ADRs 11–15 are tracked as a follow-up.
+Closes [ROADMAP_TO_100.md](../../ROADMAP_TO_100.md) Category 3
+*"Author ADRs for the top 15 design decisions"*. All 15 ship.
+Future ADRs document new design decisions as they're made; the
+next number to use is 0016.
 
 ## Index
 
@@ -25,6 +26,11 @@ Category 3 *"Author ADRs for the top 15 design decisions"*. 10 of the
 | [0008](0008-oci-policy-bundles.md) | OCI-style signed policy bundles | Accepted |
 | [0009](0009-evidence-bundle-format.md) | Evidence bundle format for offline verification | Accepted |
 | [0010](0010-productionmode-lockdown.md) | `productionMode: true` constructor lockdown | Accepted |
+| [0011](0011-http-gateway-only-network-boundary.md) | HTTP gateway is the only network boundary | Accepted |
+| [0012](0012-replay-artifact-third-party-verifiable.md) | Replay artifact as third-party-verifiable evidence | Accepted |
+| [0013](0013-no-substrate-ui.md) | The substrate ships no UI | Accepted |
+| [0014](0014-adapter-production-validated-default-false.md) | Adapters default `production_validated: false` | Accepted |
+| [0015](0015-one-package-per-substrate-concept.md) | One package per substrate concept | Accepted |
 
 ## Conventions
 

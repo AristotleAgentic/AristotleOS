@@ -28,7 +28,8 @@
 
 import { createSocket, type Socket } from "node:dgram";
 import { createHash } from "node:crypto";
-import { AristotleApiError, AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
+import { governThroughAdapter } from "@aristotle/adapter-sdk";
+import { AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
 
 // ---------------------------------------------------------------------------
 // Flight command primitives
@@ -387,61 +388,46 @@ export async function governFlightCommand(
   transport: FlightControlTransport,
   options: GovernFlightCommandOptions
 ): Promise<GovernFlightCommandResult> {
-  const actionType = options.actionTypeFor
-    ? options.actionTypeFor(command.command)
-    : `aviation.flight.${command.command.toLowerCase()}`;
-
-  const action: CanonicalAction = {
-    action_id: `flight-${options.aircraftId}-${Date.now().toString(16)}`,
-    ward_id: options.wardId,
-    subject: options.subject,
-    action_type: actionType,
-    params: {
-      aircraft_id: options.aircraftId,
-      command: command.command,
-      target_system: command.target_system,
-      target_component: command.target_component,
-      ...command.params
-    },
-    requested_at: command.requested_at,
-    telemetry: { agent_runtime: "px4-mavlink" }
-  };
-
-  let decision: EvaluateResponse;
-  try {
-    decision = await options.client.evaluate(action);
-  } catch (err) {
-    if (err instanceof AristotleApiError) {
-      return { ok: false, refusal: { code: `GATE_HTTP_${err.status}`, detail: err.message } };
+  const result = await governThroughAdapter<FlightCommand, FlightAuthorization>(command, {
+    client: options.client,
+    transport,
+    allowDemonstrationTransport: options.allowDemonstrationTransport,
+    buildAction: (operation): CanonicalAction => ({
+      action_id: `flight-${options.aircraftId}-${Date.now().toString(16)}`,
+      ward_id: options.wardId,
+      subject: options.subject,
+      action_type: options.actionTypeFor
+        ? options.actionTypeFor(operation.command)
+        : `aviation.flight.${operation.command.toLowerCase()}`,
+      params: {
+        aircraft_id: options.aircraftId,
+        command: operation.command,
+        target_system: operation.target_system,
+        target_component: operation.target_component,
+        ...operation.params
+      },
+      requested_at: operation.requested_at,
+      telemetry: { agent_runtime: "px4-mavlink" }
+    }),
+    buildAuthorization: (decision, operation): FlightAuthorization => {
+      const warrant = decision.warrant!;
+      return {
+        warrant_id: warrant.warrant_id,
+        warrant_signature: (warrant.signature as string) ?? "ed25519:opaque",
+        consumed: true,
+        consumed_at: new Date().toISOString(),
+        action_hash: decision.canonical_action_hash,
+        aircraft_id: options.aircraftId,
+        permitted_commands: [operation.command]
+      };
     }
-    return { ok: false, refusal: { code: "GATE_UNREACHABLE", detail: err instanceof Error ? err.message : String(err) } };
-  }
-
-  if (decision.decision !== "ALLOW") {
-    return { ok: false, decision, refusal: { code: decision.decision, detail: decision.reason_codes.join(", ") } };
-  }
-
-  // Build authorization from the warrant.
-  const warrant = decision.warrant;
-  if (!warrant) {
-    return { ok: false, decision, refusal: { code: "MISSING_WARRANT", detail: "gate returned ALLOW but no warrant" } };
-  }
-  const authz: FlightAuthorization = {
-    warrant_id: warrant.warrant_id,
-    warrant_signature: (warrant.signature as string) ?? "ed25519:opaque",
-    consumed: true,
-    consumed_at: new Date().toISOString(),
-    action_hash: decision.canonical_action_hash,
-    aircraft_id: options.aircraftId,
-    permitted_commands: [command.command]
+  });
+  return {
+    ok: result.ok,
+    decision: result.decision,
+    outcome: result.outcome as FlightSubmissionOutcome | undefined,
+    refusal: result.refusal
   };
-
-  if (!transport.production_validated && !options.allowDemonstrationTransport) {
-    return { ok: false, decision, refusal: { code: "DEMONSTRATION_ONLY_BLOCKED", detail: `transport ${transport.id} is not production-validated` } };
-  }
-
-  const outcome = await transport.emit(command, authz);
-  return { ok: outcome.ok, decision, outcome };
 }
 
 export { AristotleClient, AristotleApiError } from "@aristotle/os-sdk";

@@ -16,6 +16,7 @@
   "engines": { "node": ">=18" },
   "sideEffects": false,
   "dependencies": {
+    "@aristotle/adapter-sdk": "workspace:*",
     "@aristotle/os-sdk": "workspace:*"
   },
   "scripts": {

@@ -14,7 +14,8 @@
  */
 
 import { createHash } from "node:crypto";
-import { AristotleApiError, AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
+import { governThroughAdapter } from "@aristotle/adapter-sdk";
+import { AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
 
 export interface RosMessage {
   /** "publish" -> publishes to a topic; "call_service" -> service call. */
@@ -211,48 +212,46 @@ export async function governRosMessage(
   transport: RosControlTransport,
   options: GovernRosMessageOptions
 ): Promise<{ ok: boolean; decision?: EvaluateResponse; outcome?: RosSubmissionOutcome; refusal?: { code: string; detail: string } }> {
-  const actionType = options.actionTypeFor
-    ? options.actionTypeFor(msg)
-    : `ros.${msg.kind}.${msg.target.replace(/^\/+/, "").replace(/\//g, ".")}`;
-  const action: CanonicalAction = {
-    action_id: `ros-${options.nodeId}-${Date.now().toString(16)}`,
-    ward_id: options.wardId,
-    subject: options.subject,
-    action_type: actionType,
-    params: { node_id: options.nodeId, kind: msg.kind, target: msg.target, msg_type: msg.msg_type, data: msg.data },
-    requested_at: msg.requested_at,
-    telemetry: { agent_runtime: "ros2-rosbridge" }
+  const result = await governThroughAdapter<RosMessage, RosAuthorization>(msg, {
+    client: options.client,
+    transport,
+    allowDemonstrationTransport: options.allowDemonstrationTransport,
+    buildAction: (operation): CanonicalAction => ({
+      action_id: `ros-${options.nodeId}-${Date.now().toString(16)}`,
+      ward_id: options.wardId,
+      subject: options.subject,
+      action_type: options.actionTypeFor
+        ? options.actionTypeFor(operation)
+        : `ros.${operation.kind}.${operation.target.replace(/^\/+/, "").replace(/\//g, ".")}`,
+      params: {
+        node_id: options.nodeId,
+        kind: operation.kind,
+        target: operation.target,
+        msg_type: operation.msg_type,
+        data: operation.data
+      },
+      requested_at: operation.requested_at,
+      telemetry: { agent_runtime: "ros2-rosbridge" }
+    }),
+    buildAuthorization: (decision, operation): RosAuthorization => {
+      const warrant = decision.warrant!;
+      return {
+        warrant_id: warrant.warrant_id,
+        warrant_signature: (warrant.signature as string) ?? "ed25519:opaque",
+        consumed: true,
+        consumed_at: new Date().toISOString(),
+        action_hash: decision.canonical_action_hash,
+        node_id: options.nodeId,
+        permitted_targets: [operation.target]
+      };
+    }
+  });
+  return {
+    ok: result.ok,
+    decision: result.decision,
+    outcome: result.outcome as RosSubmissionOutcome | undefined,
+    refusal: result.refusal
   };
-
-  let decision: EvaluateResponse;
-  try {
-    decision = await options.client.evaluate(action);
-  } catch (err) {
-    if (err instanceof AristotleApiError) return { ok: false, refusal: { code: `GATE_HTTP_${err.status}`, detail: err.message } };
-    return { ok: false, refusal: { code: "GATE_UNREACHABLE", detail: err instanceof Error ? err.message : String(err) } };
-  }
-
-  if (decision.decision !== "ALLOW") {
-    return { ok: false, decision, refusal: { code: decision.decision, detail: decision.reason_codes.join(", ") } };
-  }
-  const warrant = decision.warrant;
-  if (!warrant) return { ok: false, decision, refusal: { code: "MISSING_WARRANT", detail: "gate returned ALLOW but no warrant" } };
-
-  const authz: RosAuthorization = {
-    warrant_id: warrant.warrant_id,
-    warrant_signature: (warrant.signature as string) ?? "ed25519:opaque",
-    consumed: true,
-    consumed_at: new Date().toISOString(),
-    action_hash: decision.canonical_action_hash,
-    node_id: options.nodeId,
-    permitted_targets: [msg.target]
-  };
-
-  if (!transport.production_validated && !options.allowDemonstrationTransport) {
-    return { ok: false, decision, refusal: { code: "DEMONSTRATION_ONLY_BLOCKED", detail: `transport ${transport.id} is not production-validated` } };
-  }
-  const outcome = await transport.emit(msg, authz);
-  return { ok: outcome.ok, decision, outcome };
 }
 
 export { AristotleClient, AristotleApiError } from "@aristotle/os-sdk";

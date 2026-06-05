@@ -10,7 +10,8 @@
  */
 
 import { createHash } from "node:crypto";
-import { AristotleApiError, AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
+import { governThroughAdapter } from "@aristotle/adapter-sdk";
+import { AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
 
 export type Dnp3ControlKind =
   | "binary_output_select_then_operate"  // CROB (object group 12)
@@ -168,48 +169,45 @@ export async function governDnp3Control(
   transport: Dnp3ControlTransport,
   options: GovernDnp3Options
 ): Promise<{ ok: boolean; decision?: EvaluateResponse; outcome?: Dnp3SubmissionOutcome; refusal?: { code: string; detail: string } }> {
-  const actionType = options.actionTypeFor ? options.actionTypeFor(req) : `grid.dnp3.${req.kind}`;
-  const action: CanonicalAction = {
-    action_id: `dnp3-${Date.now().toString(16)}`,
-    ward_id: options.wardId,
-    subject: options.subject,
-    action_type: actionType,
-    params: {
-      outstation_id: options.outstationId,
-      kind: req.kind,
-      point_index: req.point_index,
-      operation: req.operation,
-      value: req.value,
-      point_label: req.point_label
-    },
-    requested_at: req.requested_at,
-    telemetry: { agent_runtime: "dnp3" }
+  const result = await governThroughAdapter<Dnp3ControlRequest, Dnp3Authorization>(req, {
+    client: options.client,
+    transport,
+    allowDemonstrationTransport: options.allowDemonstrationTransport,
+    buildAction: (operation): CanonicalAction => ({
+      action_id: `dnp3-${Date.now().toString(16)}`,
+      ward_id: options.wardId,
+      subject: options.subject,
+      action_type: options.actionTypeFor ? options.actionTypeFor(operation) : `grid.dnp3.${operation.kind}`,
+      params: {
+        outstation_id: options.outstationId,
+        kind: operation.kind,
+        point_index: operation.point_index,
+        operation: operation.operation,
+        value: operation.value,
+        point_label: operation.point_label
+      },
+      requested_at: operation.requested_at,
+      telemetry: { agent_runtime: "dnp3" }
+    }),
+    buildAuthorization: (decision, operation): Dnp3Authorization => {
+      const warrant = decision.warrant!;
+      return {
+        warrant_id: warrant.warrant_id,
+        warrant_signature: (warrant.signature as string) ?? "ed25519:opaque",
+        consumed: true,
+        consumed_at: new Date().toISOString(),
+        action_hash: decision.canonical_action_hash,
+        outstation_id: options.outstationId,
+        permitted_point_indexes: [operation.point_index]
+      };
+    }
+  });
+  return {
+    ok: result.ok,
+    decision: result.decision,
+    outcome: result.outcome as Dnp3SubmissionOutcome | undefined,
+    refusal: result.refusal
   };
-  let decision: EvaluateResponse;
-  try { decision = await options.client.evaluate(action); }
-  catch (err) {
-    if (err instanceof AristotleApiError) return { ok: false, refusal: { code: `GATE_HTTP_${err.status}`, detail: err.message } };
-    return { ok: false, refusal: { code: "GATE_UNREACHABLE", detail: err instanceof Error ? err.message : String(err) } };
-  }
-  if (decision.decision !== "ALLOW") {
-    return { ok: false, decision, refusal: { code: decision.decision, detail: decision.reason_codes.join(", ") } };
-  }
-  const warrant = decision.warrant;
-  if (!warrant) return { ok: false, decision, refusal: { code: "MISSING_WARRANT", detail: "ALLOW without warrant" } };
-  const authz: Dnp3Authorization = {
-    warrant_id: warrant.warrant_id,
-    warrant_signature: (warrant.signature as string) ?? "ed25519:opaque",
-    consumed: true,
-    consumed_at: new Date().toISOString(),
-    action_hash: decision.canonical_action_hash,
-    outstation_id: options.outstationId,
-    permitted_point_indexes: [req.point_index]
-  };
-  if (!transport.production_validated && !options.allowDemonstrationTransport) {
-    return { ok: false, decision, refusal: { code: "DEMONSTRATION_ONLY_BLOCKED", detail: `transport ${transport.id} is not production-validated` } };
-  }
-  const outcome = await transport.emit(req, authz);
-  return { ok: outcome.ok, decision, outcome };
 }
 
 export { AristotleClient, AristotleApiError } from "@aristotle/os-sdk";

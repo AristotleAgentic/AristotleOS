@@ -1,0 +1,172 @@
+name: Helm chart kind-cluster smoke
+
+# Brings up a kind cluster, builds the substrate's Docker images
+# locally, loads them into kind, helm-installs the chart with
+# values-kind-smoke.yaml, waits for readiness, and runs the smoke
+# script. Closes ROADMAP_TO_100.md Category 2 "Helm chart validation
+# against a real kind cluster in CI".
+#
+# WHY THIS IS A SEPARATE WORKFLOW (not in the default CI matrix):
+#   - 8-10 minute job (image builds + cluster spin-up + helm install +
+#     readiness wait).
+#   - 2-3 GB disk for images + node images.
+#   - Brittleness sources are operational (Docker daemon flake, kind
+#     image pull, k8s scheduler timing) and don't reflect substrate
+#     correctness — running on every PR would create false signal.
+#
+# WHEN IT RUNS:
+#   - On PRs that touch charts/, scripts/build-pilot-images.mjs,
+#     scripts/k8s-smoke-install.mjs, or this workflow.
+#   - On manual dispatch.
+#   - Nightly via the scheduled trigger (operators can rely on a
+#     fresh "did the chart still install" signal each morning).
+
+on:
+  pull_request:
+    branches: [ ward-warrant-execution-control, main ]
+    paths:
+      - 'extracted/charts/**'
+      - 'extracted/scripts/build-pilot-images.mjs'
+      - 'extracted/scripts/k8s-smoke-install.mjs'
+      - '.github/workflows/helm-kind.yml'
+  workflow_dispatch:
+  schedule:
+    # 06:00 UTC daily — nightly chart-still-installs check.
+    - cron: '0 6 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  helm-kind-smoke:
+    name: Helm + kind cluster smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - name: Enable corepack + pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.32.1 --activate
+
+      - name: Install workspace deps (frozen lockfile)
+        working-directory: ./extracted
+        run: corepack pnpm@10.32.1 install --frozen-lockfile
+
+      - name: Install kind
+        uses: helm/kind-action@v1
+        with:
+          install_only: true
+          version: v0.24.0
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.31.0
+
+      - name: Install helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.0
+
+      - name: Create kind cluster
+        run: |
+          kind create cluster \
+            --name aristotle-helm-ci \
+            --wait 2m
+          kubectl config use-context kind-aristotle-helm-ci
+
+      - name: Build all substrate service images locally
+        working-directory: ./extracted
+        run: |
+          # The build-pilot-images script tags as
+          # ghcr.io/aristotle-os/<service>:0.1.0 by default. We override
+          # the registry to a local-only tag so kind can load them
+          # without pulling.
+          node scripts/build-pilot-images.mjs \
+            --registry "localhost" \
+            --repository-prefix "aristotle-os" \
+            --tag "ci-${{ github.run_id }}"
+
+      - name: Load images into kind
+        working-directory: ./extracted
+        run: |
+          set -euo pipefail
+          services=(
+            http-gateway
+            governance-kernel
+            policy-compiler
+            evidence-ledger
+            meta-authority-registry
+            simulation-engine
+            authority-router
+            witness-service
+            execution-gate
+            agent-os
+          )
+          for svc in "${services[@]}"; do
+            img="localhost/aristotle-os/${svc}:ci-${{ github.run_id }}"
+            echo "Loading ${img} into kind..."
+            kind load docker-image "${img}" --name aristotle-helm-ci
+          done
+
+      - name: Helm install with kind-smoke values
+        working-directory: ./extracted
+        run: |
+          helm install aristotle-os \
+            ./charts/aristotle-governance-os \
+            --namespace aristotle-os \
+            --create-namespace \
+            --values ./charts/aristotle-governance-os/values-kind-smoke.yaml \
+            --set image.registry=localhost \
+            --set image.repository=aristotle-os \
+            --set image.tag=ci-${{ github.run_id }} \
+            --wait \
+            --timeout 5m
+
+      - name: Wait for all deployments to roll out
+        run: |
+          set -euo pipefail
+          kubectl -n aristotle-os get deployments
+          for dep in $(kubectl -n aristotle-os get deployments -o jsonpath='{.items[*].metadata.name}'); do
+            echo "Waiting for ${dep}..."
+            kubectl -n aristotle-os rollout status deployment/"${dep}" --timeout=3m
+          done
+
+      - name: Run the smoke script against the installed cluster
+        working-directory: ./extracted
+        run: |
+          node scripts/k8s-smoke-install.mjs \
+            --runtime kind \
+            --cluster aristotle-helm-ci \
+            --release aristotle-os \
+            --namespace aristotle-os \
+            --tag ci-${{ github.run_id }} \
+            --skip-install
+
+      - name: Dump diagnostics on failure
+        if: failure()
+        run: |
+          set +e
+          echo "=== Pods ==="
+          kubectl -n aristotle-os get pods -o wide
+          echo "=== Recent events ==="
+          kubectl -n aristotle-os get events --sort-by=.lastTimestamp | tail -50
+          echo "=== Logs (last 50 lines per pod) ==="
+          for pod in $(kubectl -n aristotle-os get pods -o jsonpath='{.items[*].metadata.name}'); do
+            echo "--- ${pod} ---"
+            kubectl -n aristotle-os logs "${pod}" --tail=50 --all-containers || true
+          done
+
+      - name: Tear down kind cluster
+        if: always()
+        run: |
+          kind delete cluster --name aristotle-helm-ci || true

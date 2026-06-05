@@ -127,6 +127,9 @@ importers:
 
   packages/bacnet-adapter:
     dependencies:
+      '@aristotle/adapter-sdk':
+        specifier: workspace:*
+        version: link:../../shared/adapter-sdk
       '@aristotle/os-sdk':
         specifier: workspace:*
         version: link:../os-sdk
@@ -148,6 +151,9 @@ importers:
 
   packages/dnp3-adapter:
     dependencies:
+      '@aristotle/adapter-sdk':
+        specifier: workspace:*
+        version: link:../../shared/adapter-sdk
       '@aristotle/os-sdk':
         specifier: workspace:*
         version: link:../os-sdk
@@ -178,6 +184,9 @@ importers:
 
   packages/mavlink-px4:
     dependencies:
+      '@aristotle/adapter-sdk':
+        specifier: workspace:*
+        version: link:../../shared/adapter-sdk
       '@aristotle/os-sdk':
         specifier: workspace:*
         version: link:../os-sdk
@@ -202,6 +211,9 @@ importers:
 
   packages/opcua-adapter:
     dependencies:
+      '@aristotle/adapter-sdk':
+        specifier: workspace:*
+        version: link:../../shared/adapter-sdk
       '@aristotle/os-sdk':
         specifier: workspace:*
         version: link:../os-sdk
@@ -219,6 +231,9 @@ importers:
 
   packages/ros2-bridge:
     dependencies:
+      '@aristotle/adapter-sdk':
+        specifier: workspace:*
+        version: link:../../shared/adapter-sdk
       '@aristotle/os-sdk':
         specifier: workspace:*
         version: link:../os-sdk
@@ -482,6 +497,12 @@ importers:
       '@aristotle/execution-control-runtime':
         specifier: workspace:*
         version: link:../execution-control-runtime
+
+  shared/gel-timestamp-rfc3161:
+    dependencies:
+      '@aristotle/gel-timestamp':
+        specifier: workspace:*
+        version: link:../gel-timestamp
 
   shared/governance-core: {}
 

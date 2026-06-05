@@ -20,7 +20,7 @@
 
 import { createHash } from "node:crypto";
 import { governThroughAdapter } from "@aristotle/adapter-sdk";
-import { AristotleApiError, AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
+import { AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
 
 export type ModbusOperationKind =
   | "write_single_register"

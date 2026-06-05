@@ -15,7 +15,10 @@
   "publishConfig": { "access": "public" },
   "engines": { "node": ">=18" },
   "sideEffects": false,
-  "dependencies": { "@aristotle/os-sdk": "workspace:*" },
+  "dependencies": {
+    "@aristotle/adapter-sdk": "workspace:*",
+    "@aristotle/os-sdk": "workspace:*"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "prepare": "tsc -p tsconfig.json",

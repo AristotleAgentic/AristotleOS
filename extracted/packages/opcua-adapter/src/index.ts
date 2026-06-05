@@ -15,7 +15,8 @@
  */
 
 import { createHash } from "node:crypto";
-import { AristotleApiError, AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
+import { governThroughAdapter } from "@aristotle/adapter-sdk";
+import { AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
 
 export interface OpcUaOperation {
   kind: "write" | "method_call";
@@ -195,42 +196,44 @@ export async function governOpcUaOperation(
   transport: OpcUaControlTransport,
   options: GovernOpcUaOptions
 ): Promise<{ ok: boolean; decision?: EvaluateResponse; outcome?: OpcUaSubmissionOutcome; refusal?: { code: string; detail: string } }> {
-  const actionType = options.actionTypeFor ? options.actionTypeFor(op) : `opcua.${op.kind}`;
-  const action: CanonicalAction = {
-    action_id: `opcua-${Date.now().toString(16)}`,
-    ward_id: options.wardId,
-    subject: options.subject,
-    action_type: actionType,
-    params: { endpoint_uri: options.endpointUri, kind: op.kind, node_id: op.node_id, data_type: op.data_type, value: op.value as unknown },
-    requested_at: op.requested_at,
-    telemetry: { agent_runtime: "opcua" }
+  const result = await governThroughAdapter<OpcUaOperation, OpcUaAuthorization>(op, {
+    client: options.client,
+    transport,
+    allowDemonstrationTransport: options.allowDemonstrationTransport,
+    buildAction: (operation): CanonicalAction => ({
+      action_id: `opcua-${Date.now().toString(16)}`,
+      ward_id: options.wardId,
+      subject: options.subject,
+      action_type: options.actionTypeFor ? options.actionTypeFor(operation) : `opcua.${operation.kind}`,
+      params: {
+        endpoint_uri: options.endpointUri,
+        kind: operation.kind,
+        node_id: operation.node_id,
+        data_type: operation.data_type,
+        value: operation.value as unknown
+      },
+      requested_at: operation.requested_at,
+      telemetry: { agent_runtime: "opcua" }
+    }),
+    buildAuthorization: (decision, operation): OpcUaAuthorization => {
+      const warrant = decision.warrant!;
+      return {
+        warrant_id: warrant.warrant_id,
+        warrant_signature: (warrant.signature as string) ?? "ed25519:opaque",
+        consumed: true,
+        consumed_at: new Date().toISOString(),
+        action_hash: decision.canonical_action_hash,
+        endpoint_uri: options.endpointUri,
+        permitted_node_ids: [operation.node_id]
+      };
+    }
+  });
+  return {
+    ok: result.ok,
+    decision: result.decision,
+    outcome: result.outcome as OpcUaSubmissionOutcome | undefined,
+    refusal: result.refusal
   };
-  let decision: EvaluateResponse;
-  try {
-    decision = await options.client.evaluate(action);
-  } catch (err) {
-    if (err instanceof AristotleApiError) return { ok: false, refusal: { code: `GATE_HTTP_${err.status}`, detail: err.message } };
-    return { ok: false, refusal: { code: "GATE_UNREACHABLE", detail: err instanceof Error ? err.message : String(err) } };
-  }
-  if (decision.decision !== "ALLOW") {
-    return { ok: false, decision, refusal: { code: decision.decision, detail: decision.reason_codes.join(", ") } };
-  }
-  const warrant = decision.warrant;
-  if (!warrant) return { ok: false, decision, refusal: { code: "MISSING_WARRANT", detail: "gate returned ALLOW but no warrant" } };
-  const authz: OpcUaAuthorization = {
-    warrant_id: warrant.warrant_id,
-    warrant_signature: (warrant.signature as string) ?? "ed25519:opaque",
-    consumed: true,
-    consumed_at: new Date().toISOString(),
-    action_hash: decision.canonical_action_hash,
-    endpoint_uri: options.endpointUri,
-    permitted_node_ids: [op.node_id]
-  };
-  if (!transport.production_validated && !options.allowDemonstrationTransport) {
-    return { ok: false, decision, refusal: { code: "DEMONSTRATION_ONLY_BLOCKED", detail: `transport ${transport.id} is not production-validated` } };
-  }
-  const outcome = await transport.emit(op, authz);
-  return { ok: outcome.ok, decision, outcome };
 }
 
 export { AristotleClient, AristotleApiError } from "@aristotle/os-sdk";

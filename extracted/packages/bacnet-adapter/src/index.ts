@@ -17,7 +17,8 @@
  */
 
 import { createHash } from "node:crypto";
-import { AristotleApiError, AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
+import { governThroughAdapter } from "@aristotle/adapter-sdk";
+import { AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
 
 /** BACnet object types we govern. Limited to the consequential write
  *  classes; read-only object types are out of scope. */
@@ -237,54 +238,51 @@ export async function governBacnetOperation(
   transport: BacnetControlTransport,
   options: GovernBacnetOptions
 ): Promise<{ ok: boolean; decision?: EvaluateResponse; outcome?: BacnetSubmissionOutcome; refusal?: { code: string; detail: string } }> {
-  const actionType = options.actionTypeFor ? options.actionTypeFor(op) : `ot.bacnet.${op.kind}`;
-  const action: CanonicalAction = {
-    action_id: `bacnet-${Date.now().toString(16)}`,
-    ward_id: options.wardId,
-    subject: options.subject,
-    action_type: actionType,
-    params: {
-      site_id: options.siteId,
-      kind: op.kind,
-      device_instance: op.device_instance,
-      writes: op.writes.map((w) => ({
-        object_type: w.object_id.type,
-        object_instance: w.object_id.instance,
-        property_id: w.property_id,
-        array_index: w.array_index,
-        value: w.value,
-        priority: w.priority
-      })),
-      label: op.label
-    },
-    requested_at: op.requested_at,
-    telemetry: { agent_runtime: "bacnet" }
+  const result = await governThroughAdapter<BacnetOperation, BacnetAuthorization>(op, {
+    client: options.client,
+    transport,
+    allowDemonstrationTransport: options.allowDemonstrationTransport,
+    buildAction: (operation): CanonicalAction => ({
+      action_id: `bacnet-${Date.now().toString(16)}`,
+      ward_id: options.wardId,
+      subject: options.subject,
+      action_type: options.actionTypeFor ? options.actionTypeFor(operation) : `ot.bacnet.${operation.kind}`,
+      params: {
+        site_id: options.siteId,
+        kind: operation.kind,
+        device_instance: operation.device_instance,
+        writes: operation.writes.map((w) => ({
+          object_type: w.object_id.type,
+          object_instance: w.object_id.instance,
+          property_id: w.property_id,
+          array_index: w.array_index,
+          value: w.value,
+          priority: w.priority
+        })),
+        label: operation.label
+      },
+      requested_at: operation.requested_at,
+      telemetry: { agent_runtime: "bacnet" }
+    }),
+    buildAuthorization: (decision, operation): BacnetAuthorization => {
+      const warrant = decision.warrant!;
+      return {
+        warrant_id: warrant.warrant_id,
+        warrant_signature: (warrant.signature as string) ?? "ed25519:opaque",
+        consumed: true,
+        consumed_at: new Date().toISOString(),
+        action_hash: decision.canonical_action_hash,
+        site_id: options.siteId,
+        permitted_object_ids: operation.writes.map((w) => objectIdKey(w.object_id))
+      };
+    }
+  });
+  return {
+    ok: result.ok,
+    decision: result.decision,
+    outcome: result.outcome as BacnetSubmissionOutcome | undefined,
+    refusal: result.refusal
   };
-  let decision: EvaluateResponse;
-  try { decision = await options.client.evaluate(action); }
-  catch (err) {
-    if (err instanceof AristotleApiError) return { ok: false, refusal: { code: `GATE_HTTP_${err.status}`, detail: err.message } };
-    return { ok: false, refusal: { code: "GATE_UNREACHABLE", detail: err instanceof Error ? err.message : String(err) } };
-  }
-  if (decision.decision !== "ALLOW") {
-    return { ok: false, decision, refusal: { code: decision.decision, detail: decision.reason_codes.join(", ") } };
-  }
-  const warrant = decision.warrant;
-  if (!warrant) return { ok: false, decision, refusal: { code: "MISSING_WARRANT", detail: "ALLOW without warrant" } };
-  const authz: BacnetAuthorization = {
-    warrant_id: warrant.warrant_id,
-    warrant_signature: (warrant.signature as string) ?? "ed25519:opaque",
-    consumed: true,
-    consumed_at: new Date().toISOString(),
-    action_hash: decision.canonical_action_hash,
-    site_id: options.siteId,
-    permitted_object_ids: op.writes.map((w) => objectIdKey(w.object_id))
-  };
-  if (!transport.production_validated && !options.allowDemonstrationTransport) {
-    return { ok: false, decision, refusal: { code: "DEMONSTRATION_ONLY_BLOCKED", detail: `transport ${transport.id} is not production-validated` } };
-  }
-  const outcome = await transport.emit(op, authz);
-  return { ok: outcome.ok, decision, outcome };
 }
 
 export { AristotleClient, AristotleApiError } from "@aristotle/os-sdk";
