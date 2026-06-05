@@ -9,7 +9,7 @@
     "build": "tsc -p tsconfig.json",
     "dev": "tsx watch src/index.ts",
     "start": "node src/index.js",
-    "test": "node --import tsx --test src/index.test.ts"
+    "test": "node --import tsx --test src/index.test.ts src/gel-chain.test.ts"
   },
   "dependencies": {
     "@aristotle/shared-types": "workspace:*",
