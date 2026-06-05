@@ -1,0 +1,48 @@
+{
+  "name": "@aristotle/sdk-anthropic",
+  "version": "0.1.0",
+  "description": "First-party Anthropic Claude SDK tool-wrapping adapter for AristotleOS. Govern @anthropic-ai/sdk Messages API tool_use blocks through the substrate's Commit Gate before the underlying handlers run.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }
+  },
+  "files": ["dist", "README.md", "LICENSE", "NOTICE"],
+  "keywords": [
+    "aristotle",
+    "anthropic",
+    "claude",
+    "claude-sdk",
+    "messages-api",
+    "tool-use",
+    "agent-governance",
+    "commit-gate"
+  ],
+  "homepage": "https://github.com/AristotleAgentic/aristotleOS",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AristotleAgentic/AristotleOS.git",
+    "directory": "packages/sdk-anthropic"
+  },
+  "bugs": { "url": "https://github.com/AristotleAgentic/AristotleOS/issues" },
+  "publishConfig": { "access": "public" },
+  "engines": { "node": ">=18" },
+  "sideEffects": false,
+  "dependencies": {
+    "@aristotle/os-sdk": "workspace:*"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": ">=0.30.0"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/sdk": { "optional": true }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test src/index.test.ts",
+    "prepublishOnly": "npm run build"
+  }
+}

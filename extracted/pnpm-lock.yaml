@@ -160,6 +160,9 @@ importers:
 
   packages/k8s-admission:
     dependencies:
+      '@aristotle/adapter-sdk':
+        specifier: workspace:*
+        version: link:../../shared/adapter-sdk
       '@aristotle/os-sdk':
         specifier: workspace:*
         version: link:../os-sdk
@@ -200,6 +203,18 @@ importers:
         specifier: workspace:*
         version: link:../os-sdk
 
+  packages/mcp-server-stdio:
+    dependencies:
+      '@aristotle/mcp-server':
+        specifier: workspace:*
+        version: link:../mcp-server
+      '@aristotle/os-sdk':
+        specifier: workspace:*
+        version: link:../os-sdk
+      '@modelcontextprotocol/sdk':
+        specifier: '>=1.0.0 <2'
+        version: 1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3)
+
   packages/modbus-adapter:
     dependencies:
       '@aristotle/adapter-sdk':
@@ -229,11 +244,36 @@ importers:
 
   packages/os-sdk: {}
 
+  packages/reviewer:
+    dependencies:
+      '@aristotle/execution-control-runtime':
+        specifier: workspace:*
+        version: link:../../shared/execution-control-runtime
+      '@aristotle/replay-artifact':
+        specifier: workspace:*
+        version: link:../../shared/replay-artifact
+      '@aristotle/warrant-verifier':
+        specifier: workspace:*
+        version: link:../../shared/warrant-verifier
+    devDependencies:
+      esbuild:
+        specifier: ^0.28.0
+        version: 0.28.0
+
   packages/ros2-bridge:
     dependencies:
       '@aristotle/adapter-sdk':
         specifier: workspace:*
         version: link:../../shared/adapter-sdk
+      '@aristotle/os-sdk':
+        specifier: workspace:*
+        version: link:../os-sdk
+
+  packages/sdk-anthropic:
+    dependencies:
+      '@anthropic-ai/sdk':
+        specifier: '>=0.30.0'
+        version: 0.98.0(zod@4.4.3)
       '@aristotle/os-sdk':
         specifier: workspace:*
         version: link:../os-sdk
@@ -504,6 +544,15 @@ importers:
         specifier: workspace:*
         version: link:../gel-timestamp
 
+  shared/gel-timestamp-rfc3161-verify:
+    dependencies:
+      '@aristotle/gel-timestamp':
+        specifier: workspace:*
+        version: link:../gel-timestamp
+      '@aristotle/gel-timestamp-rfc3161':
+        specifier: workspace:*
+        version: link:../gel-timestamp-rfc3161
+
   shared/governance-core: {}
 
   shared/kms-keyring:
@@ -549,6 +598,12 @@ importers:
   shared/schemas: {}
 
   shared/service-runtime: {}
+
+  shared/sigstore-rekor:
+    dependencies:
+      '@aristotle/gel-timestamp':
+        specifier: workspace:*
+        version: link:../gel-timestamp
 
   shared/tenant-onboarding:
     dependencies:

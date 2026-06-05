@@ -1,0 +1,18 @@
+{
+  "name": "@aristotle/gel-timestamp-rfc3161-verify",
+  "version": "0.1.0",
+  "description": "X.509 chain validation companion to @aristotle/gel-timestamp-rfc3161. Verifies the TimeStampToken embedded in a TimestampAnchor against a caller-supplied CA bundle, closing the verification loop the RFC 3161 client deliberately deferred. Uses Node's built-in crypto.X509Certificate (no library dependency); supports the most common chain validation cases.",
+  "license": "UNLICENSED",
+  "private": false,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test src/index.test.ts"
+  },
+  "dependencies": {
+    "@aristotle/gel-timestamp": "workspace:*",
+    "@aristotle/gel-timestamp-rfc3161": "workspace:*"
+  }
+}

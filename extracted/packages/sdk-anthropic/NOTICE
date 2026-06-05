@@ -1,0 +1,16 @@
+AristotleOS
+Copyright 2026 AristotleAgentic
+
+AristotleOS-original material is proprietary and confidential. No license or right is granted to use, copy, modify, publish, distribute, sublicense, or sell AristotleOS-original material except under a separate written agreement signed by the copyright holder.
+
+------------------------------------------------------------------------
+Third-party components
+------------------------------------------------------------------------
+
+AristotleOS uses third-party open-source dependencies, each governed by its own license. See dependency package metadata (`package.json`, `pyproject.toml`, etc.) and the generated SBOM (`sbom.json` if produced) for dependency terms. This NOTICE file applies to AristotleOS-original material only.
+
+------------------------------------------------------------------------
+Demonstration material disclaimer
+------------------------------------------------------------------------
+
+Several modules in this repository ship JURISDICTION_RULE_PRESETS, sample policy fixtures, and example actions explicitly marked as DEMONSTRATION ONLY. These materials illustrate the shape of deployable rule sets and transports; they are not legal advice and are not validated for production use against any regulator, government endpoint, safety authority, or external system. Real deployments require counsel review, safety review, cybersecurity review, and per-jurisdiction certification onboarding before any rule pack or transport may be promoted past demonstration status.

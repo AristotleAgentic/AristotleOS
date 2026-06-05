@@ -337,6 +337,126 @@ export async function governThroughAdapter<Op, Authz extends AdapterAuthorizatio
 }
 
 // ---------------------------------------------------------------------------
+// Response-shaped governance — for adapters that emit a response
+// object instead of calling a transport.
+//
+// Some adapters don't have a wire transport at the substrate's layer.
+// The Kubernetes admission webhook is the canonical example: the
+// adapter receives an AdmissionReviewRequest from the API server and
+// MUST return an AdmissionReviewResponse synchronously. There's no
+// "transport" to call after the gate ALLOWs; the response itself IS
+// the effect.
+//
+// `governThroughResponse` provides the response-shaped equivalent of
+// `governThroughAdapter`: same fail-closed pipeline, same closed-set
+// refusal codes, same decision -> ALLOW check + missing-Warrant
+// guard, but the operator supplies `buildAllowResponse` and
+// `buildRefusalResponse` callbacks instead of a transport.
+//
+// Third-party adapter authors with response-shaped use cases (custom
+// admission controllers, HTTP middleware, message broker handlers
+// that respond synchronously) get the same fail-closed pipeline
+// without re-deriving it.
+// ---------------------------------------------------------------------------
+
+export interface GovernThroughResponseInput<Req, Resp> {
+  /** AristotleClient pointed at the gate. */
+  client: AristotleClient;
+  /** Translate the request into a CanonicalAction the gate evaluates. */
+  buildAction: (request: Req) => CanonicalAction;
+  /**
+   * Build the success response on ALLOW. The warrant is guaranteed
+   * non-null at this point (the SDK rejects ALLOW-without-Warrant as
+   * MISSING_WARRANT before this callback runs).
+   */
+  buildAllowResponse: (
+    request: Req,
+    decision: EvaluateResponse,
+    warrant: NonNullable<EvaluateResponse["warrant"]>
+  ) => Resp;
+  /**
+   * Build the refusal response on any rejection. The callback decides
+   * how to map the substrate's refusal codes into the response
+   * vocabulary the wire protocol expects (HTTP status codes,
+   * AdmissionReviewResponse status objects, custom MQ NACK shapes,
+   * etc.).
+   */
+  buildRefusalResponse: (
+    request: Req,
+    refusal: ResponseRefusal
+  ) => Resp;
+}
+
+/** Refusal carried into buildRefusalResponse. */
+export interface ResponseRefusal {
+  code: AdapterRefusalCode;
+  detail: string;
+  /** EvaluateResponse when the rejection came AFTER a gate call (REFUSE / EXPIRE / ESCALATE). Absent when the gate itself was unreachable. */
+  decision?: EvaluateResponse;
+}
+
+/**
+ * Response-shaped governance pipeline. Mirrors governThroughAdapter
+ * step-for-step except the terminal effect is a response object the
+ * caller returns to whatever invoked them, instead of a transport
+ * emission.
+ *
+ * Pipeline:
+ *   1. buildAction(request) -> CanonicalAction.
+ *   2. client.evaluate(action) -> decision. HTTP error -> GATE_HTTP_<code>.
+ *      Network error -> GATE_UNREACHABLE.
+ *   3. If decision !== ALLOW: buildRefusalResponse with code GATE_REFUSED
+ *      + the decision passed through for callback inspection.
+ *   4. If decision.warrant missing: buildRefusalResponse with
+ *      MISSING_WARRANT (defensive).
+ *   5. buildAllowResponse(request, decision, warrant).
+ *
+ * The callback gets the FULL decision on refusal so it can map
+ * decision.decision ("REFUSE" vs "ESCALATE" vs "EXPIRE") and
+ * reason_codes into its protocol's response vocabulary.
+ */
+export async function governThroughResponse<Req, Resp>(
+  request: Req,
+  input: GovernThroughResponseInput<Req, Resp>
+): Promise<Resp> {
+  // (1) Build action.
+  const action = input.buildAction(request);
+  // (2) Evaluate.
+  let decision: EvaluateResponse;
+  try {
+    decision = await input.client.evaluate(action);
+  } catch (err) {
+    if (err instanceof AristotleApiError) {
+      const code = `GATE_HTTP_${err.status}` as AdapterRefusalCode;
+      return input.buildRefusalResponse(request, { code, detail: err.message });
+    }
+    return input.buildRefusalResponse(request, {
+      code: "GATE_UNREACHABLE",
+      detail: err instanceof Error ? err.message : String(err)
+    });
+  }
+  // (3) ALLOW check.
+  if (decision.decision !== "ALLOW") {
+    return input.buildRefusalResponse(request, {
+      code: "GATE_REFUSED",
+      detail: `${decision.decision}: ${decision.reason_codes.join(", ")}`,
+      decision
+    });
+  }
+  // (4) Warrant present.
+  const warrant = decision.warrant;
+  if (!warrant) {
+    return input.buildRefusalResponse(request, {
+      code: "MISSING_WARRANT",
+      detail: "gate ALLOWed without a Warrant",
+      decision
+    });
+  }
+  // (5) Build success response.
+  return input.buildAllowResponse(request, decision, warrant);
+}
+
+// ---------------------------------------------------------------------------
 // Re-exports so third-party adapters only need to import from this package.
 // ---------------------------------------------------------------------------
 

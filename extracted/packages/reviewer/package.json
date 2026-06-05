@@ -1,0 +1,47 @@
+{
+  "name": "@aristotle/reviewer",
+  "version": "0.1.0",
+  "description": "Reviewer CLI for AristotleOS. `npx @aristotle/reviewer verify <bundle.json>` verifies a substrate evidence bundle, warrant, or replay artifact end-to-end without cloning the source repo.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "aristotle-reviewer": "dist/index.js"
+  },
+  "files": ["dist", "README.md", "LICENSE", "NOTICE"],
+  "keywords": [
+    "aristotle",
+    "aristotleos",
+    "reviewer",
+    "audit",
+    "evidence",
+    "verifier",
+    "warrant",
+    "replay-artifact",
+    "cli"
+  ],
+  "homepage": "https://github.com/AristotleAgentic/AristotleOS",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AristotleAgentic/AristotleOS.git",
+    "directory": "packages/reviewer"
+  },
+  "bugs": { "url": "https://github.com/AristotleAgentic/AristotleOS/issues" },
+  "publishConfig": { "access": "public" },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "@aristotle/execution-control-runtime": "workspace:*",
+    "@aristotle/warrant-verifier": "workspace:*",
+    "@aristotle/replay-artifact": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepare": "node build.mjs",
+    "test": "node --import tsx --test src/index.test.ts",
+    "prepublishOnly": "node build.mjs"
+  }
+}

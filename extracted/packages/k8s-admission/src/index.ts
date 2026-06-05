@@ -18,7 +18,8 @@
  * admission webhooks. This package emits the JSON payload only.
  */
 
-import { AristotleApiError, AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
+import { governThroughResponse } from "@aristotle/adapter-sdk";
+import { AristotleClient, type CanonicalAction } from "@aristotle/os-sdk";
 
 /** Subset of the Kubernetes AdmissionReview v1 request we care about. */
 export interface AdmissionReviewRequest {
@@ -94,84 +95,113 @@ const defaultActionId = (req: AdmissionReviewRequest["request"]): string => `k8s
  * Translate one AdmissionReview into a Commit Gate decision and back
  * into an AdmissionResponse. Fail-closed: any gate error -> `allowed:false`.
  */
+/**
+ * Govern a Kubernetes AdmissionReview request.
+ *
+ * Implementation note: this function delegates to
+ * `governThroughResponse` from @aristotle/adapter-sdk so its
+ * fail-closed pipeline stays in lockstep with every other adapter
+ * (HTTP error -> GATE_HTTP_<status>, network error -> GATE_UNREACHABLE,
+ * !ALLOW -> GATE_REFUSED with decision, missing Warrant ->
+ * MISSING_WARRANT). The k8s-specific bits live in the two callbacks:
+ *
+ *   - buildAction:           AdmissionReviewRequest -> CanonicalAction
+ *   - buildAllowResponse:    success AdmissionReviewResponse
+ *   - buildRefusalResponse:  map substrate refusal codes ->
+ *                            AdmissionReviewResponse status objects
+ *                            (503 for gate-unreachable, 403 for
+ *                            REFUSE/EXPIRE, 409 for ESCALATE-blocks,
+ *                            202 for ESCALATE-without-blocks)
+ *
+ * Public API (function name, options shape, response shape) is
+ * unchanged from the pre-migration version; all existing tests pass.
+ */
 export async function governAdmissionReview(
   review: AdmissionReviewRequest,
   options: GovernAdmissionOptions
 ): Promise<AdmissionReviewResponse> {
-  const req = review.request;
-  const subject = typeof options.subject === "function" ? options.subject(req)
-    : options.subject ?? defaultSubject(req);
-  const actionType = options.actionTypeFor ? options.actionTypeFor(req) : defaultActionType(req);
-  const actionId = options.actionIdFor ? options.actionIdFor(req) : defaultActionId(req);
   const escalateBlocks = options.escalateBlocksAdmission ?? true;
 
-  // Surface a stable set of params that policy authors can match against
-  // without having to know the full Kubernetes object schema.
-  const obj = req.object ?? {};
-  const meta = (obj["metadata"] ?? {}) as Record<string, unknown>;
-  const spec = (obj["spec"] ?? {}) as Record<string, unknown>;
-  const action: CanonicalAction = {
-    action_id: actionId,
-    ward_id: options.wardId,
-    subject,
-    action_type: actionType,
-    params: {
-      operation: req.operation,
-      group: req.kind?.group ?? "",
-      kind: req.kind?.kind ?? "",
-      version: req.kind?.version ?? "",
-      resource: req.resource?.resource ?? "",
-      name: req.name ?? meta["name"] ?? null,
-      namespace: req.namespace ?? meta["namespace"] ?? null,
-      labels: meta["labels"] ?? null,
-      annotations: meta["annotations"] ?? null,
-      image: extractContainerImages(spec),
-      privileged: extractPrivileged(spec),
-      host_network: spec["hostNetwork"] ?? null,
-      dry_run: req.dryRun === true
+  return governThroughResponse<AdmissionReviewRequest, AdmissionReviewResponse>(review, {
+    client: options.client,
+    buildAction: (rev): CanonicalAction => {
+      const req = rev.request;
+      const subject = typeof options.subject === "function" ? options.subject(req)
+        : options.subject ?? defaultSubject(req);
+      const actionType = options.actionTypeFor ? options.actionTypeFor(req) : defaultActionType(req);
+      const actionId = options.actionIdFor ? options.actionIdFor(req) : defaultActionId(req);
+      const obj = req.object ?? {};
+      const meta = (obj["metadata"] ?? {}) as Record<string, unknown>;
+      const spec = (obj["spec"] ?? {}) as Record<string, unknown>;
+      return {
+        action_id: actionId,
+        ward_id: options.wardId,
+        subject,
+        action_type: actionType,
+        params: {
+          operation: req.operation,
+          group: req.kind?.group ?? "",
+          kind: req.kind?.kind ?? "",
+          version: req.kind?.version ?? "",
+          resource: req.resource?.resource ?? "",
+          name: req.name ?? meta["name"] ?? null,
+          namespace: req.namespace ?? meta["namespace"] ?? null,
+          labels: meta["labels"] ?? null,
+          annotations: meta["annotations"] ?? null,
+          image: extractContainerImages(spec),
+          privileged: extractPrivileged(spec),
+          host_network: spec["hostNetwork"] ?? null,
+          dry_run: req.dryRun === true
+        },
+        requested_at: new Date().toISOString(),
+        telemetry: { agent_runtime: "kubernetes-admission" }
+      };
     },
-    requested_at: new Date().toISOString(),
-    telemetry: { agent_runtime: "kubernetes-admission" }
-  };
-
-  let decision: EvaluateResponse;
-  try {
-    decision = await options.client.evaluate(action);
-  } catch (err) {
-    const message = err instanceof AristotleApiError ? `gate HTTP ${err.status}: ${err.message}`
-      : err instanceof Error ? err.message : String(err);
-    // Fail-closed: gate unreachable -> reject admission.
-    return refuseResponse(req.uid, 503, "GATE_UNREACHABLE", message);
-  }
-
-  if (decision.decision === "ALLOW") {
-    return {
+    buildAllowResponse: (rev, _decision, warrant) => ({
       apiVersion: "admission.k8s.io/v1",
       kind: "AdmissionReview",
       response: {
-        uid: req.uid,
+        uid: rev.request.uid,
         allowed: true,
-        warnings: decision.warrant?.warrant_id ? [`AristotleOS warrant ${decision.warrant.warrant_id}`] : []
+        warnings: warrant.warrant_id ? [`AristotleOS warrant ${warrant.warrant_id}`] : []
       }
-    };
-  }
-  if (decision.decision === "ESCALATE" && !escalateBlocks) {
-    return {
-      apiVersion: "admission.k8s.io/v1",
-      kind: "AdmissionReview",
-      response: {
-        uid: req.uid,
-        allowed: false,
-        status: {
-          code: 202,
-          message: "AristotleOS requires human approval; resubmit after warrant issuance",
-          reason: "ESCALATE"
-        }
+    }),
+    buildRefusalResponse: (rev, refusal) => {
+      const uid = rev.request.uid;
+      // Gate unreachable / HTTP error -> fail closed with 503.
+      if (refusal.code === "GATE_UNREACHABLE" || refusal.code.startsWith("GATE_HTTP_")) {
+        return refuseResponse(uid, 503, refusal.code, refusal.detail);
       }
-    };
-  }
-  const code = decision.decision === "ESCALATE" ? 409 : 403;
-  return refuseResponse(req.uid, code, decision.decision, decision.reason_codes.join(", ") || "no reason");
+      // MISSING_WARRANT (substrate invariant violation) -> 500.
+      if (refusal.code === "MISSING_WARRANT") {
+        return refuseResponse(uid, 500, refusal.code, refusal.detail);
+      }
+      // GATE_REFUSED: dispatch on the decision shape.
+      const decision = refusal.decision;
+      if (decision && decision.decision === "ESCALATE" && !escalateBlocks) {
+        return {
+          apiVersion: "admission.k8s.io/v1",
+          kind: "AdmissionReview",
+          response: {
+            uid,
+            allowed: false,
+            status: {
+              code: 202,
+              message: "AristotleOS requires human approval; resubmit after warrant issuance",
+              reason: "ESCALATE"
+            }
+          }
+        };
+      }
+      if (decision) {
+        const code = decision.decision === "ESCALATE" ? 409 : 403;
+        return refuseResponse(uid, code, decision.decision, decision.reason_codes.join(", ") || "no reason");
+      }
+      // Defensive: no decision attached to the refusal (shouldn't
+      // happen for GATE_REFUSED, but the SDK type allows it).
+      return refuseResponse(uid, 403, refusal.code, refusal.detail);
+    }
+  });
 }
 
 function refuseResponse(uid: string, code: number, reason: string, message: string): AdmissionReviewResponse {

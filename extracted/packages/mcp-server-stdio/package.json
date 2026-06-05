@@ -1,0 +1,47 @@
+{
+  "name": "@aristotle/mcp-server-stdio",
+  "version": "0.1.0",
+  "description": "Stdio transport adapter for @aristotle/mcp-server. Wraps the governed MCP server with the official @modelcontextprotocol/sdk Server + StdioServerTransport so operators can install AristotleOS as a real Claude Desktop MCP server.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }
+  },
+  "files": ["dist", "README.md", "LICENSE", "NOTICE"],
+  "keywords": [
+    "aristotle",
+    "mcp",
+    "stdio",
+    "model-context-protocol",
+    "agent-governance",
+    "claude-desktop"
+  ],
+  "homepage": "https://github.com/AristotleAgentic/AristotleOS",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AristotleAgentic/AristotleOS.git",
+    "directory": "packages/mcp-server-stdio"
+  },
+  "bugs": { "url": "https://github.com/AristotleAgentic/AristotleOS/issues" },
+  "publishConfig": { "access": "public" },
+  "engines": { "node": ">=18" },
+  "sideEffects": false,
+  "dependencies": {
+    "@aristotle/mcp-server": "workspace:*",
+    "@aristotle/os-sdk": "workspace:*"
+  },
+  "peerDependencies": {
+    "@modelcontextprotocol/sdk": ">=1.0.0 <2"
+  },
+  "peerDependenciesMeta": {
+    "@modelcontextprotocol/sdk": { "optional": true }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test src/index.test.ts",
+    "prepublishOnly": "npm run build"
+  }
+}
