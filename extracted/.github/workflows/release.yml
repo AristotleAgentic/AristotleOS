@@ -1,0 +1,213 @@
+name: Release artifacts
+
+# Fires when an operator pushes a tag of the form v* (e.g., v0.1.42,
+# v1.0.0-rc.1). Builds a release tarball of the substrate, generates
+# a CycloneDX SBOM for it, signs both with Sigstore cosign (keyless
+# OIDC; no operator-held signing key), and publishes everything as a
+# GitHub Release.
+#
+# Closes ROADMAP_TO_100.md Category 4 "Generate signed release
+# artifacts (zip + tarball, signed via Sigstore cosign or npm
+# provenance)".
+#
+# Why Sigstore + cosign (and not a held-key signing flow):
+#   - Sigstore's keyless flow uses the GitHub OIDC token to identify
+#     the signer ("this artifact was signed by the GitHub Actions
+#     workflow on tag vX.Y.Z in repo AristotleAgentic/AristotleOS").
+#   - Operators verifying the signature don't need a pre-shared key;
+#     they verify against the embedded transparency-log entry in
+#     Sigstore Rekor.
+#   - The signing key NEVER lives in CI secrets or on disk anywhere.
+#     Compromising the workflow doesn't compromise a long-lived key.
+#
+# This workflow is NOT a substitute for the operator-side signing of
+# Warrants / GEL records / mesh messages (that's runtime, see
+# docs/PRODUCTION_DEPLOYMENT.md). It only signs RELEASE ARTIFACTS — the
+# substrate source distribution itself.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write     # create GitHub Releases
+  id-token: write     # required for Sigstore keyless OIDC
+  packages: read
+
+jobs:
+  release:
+    name: Build + sign + publish release artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout (with tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - name: Enable corepack + pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.32.1 --activate
+
+      - name: Install (frozen lockfile)
+        run: corepack pnpm@10.32.1 install --frozen-lockfile
+
+      - name: Reviewer verification (gate the release)
+        run: corepack pnpm@10.32.1 run reviewer:verify
+
+      - name: Compute release name from tag
+        id: tagmeta
+        shell: bash
+        run: |
+          tag="${GITHUB_REF##refs/tags/}"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "artifact_basename=aristotle-os-${tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Build source tarball (excluding node_modules + dist build outputs)
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ steps.tagmeta.outputs.tag }}"
+          base="${{ steps.tagmeta.outputs.artifact_basename }}"
+          mkdir -p release-staging
+          # Create a clean source archive — no node_modules, no build
+          # outputs, no .git. Reviewers should be able to reproduce
+          # `pnpm install` + `pnpm reviewer:verify` from the tarball.
+          tar --exclude='./node_modules' \
+              --exclude='./.git' \
+              --exclude='./**/node_modules' \
+              --exclude='./**/dist' \
+              --exclude='./.pnpm-store' \
+              --exclude='./release-staging' \
+              -czf "release-staging/${base}.tar.gz" \
+              --transform "s,^\./,${base}/," \
+              .
+          ls -lh release-staging/
+
+      - name: Install CycloneDX SBOM generator (cdxgen)
+        run: npm install -g @cyclonedx/cdxgen@10
+
+      - name: Generate CycloneDX SBOM
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="${{ steps.tagmeta.outputs.artifact_basename }}"
+          # cdxgen reads pnpm-lock.yaml + workspace packages and
+          # produces a CycloneDX 1.5 JSON SBOM covering every
+          # transitively-resolved dependency.
+          cdxgen \
+            --type js \
+            --recurse \
+            --required-only \
+            --output "release-staging/${base}.cdx.json" \
+            .
+          ls -lh release-staging/
+
+      - name: Install Sigstore cosign
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v2.4.1'
+
+      - name: Sign release artifacts with Sigstore keyless (OIDC)
+        shell: bash
+        env:
+          COSIGN_EXPERIMENTAL: '1'
+        run: |
+          set -euo pipefail
+          cd release-staging
+          for artifact in *.tar.gz *.cdx.json; do
+            echo "Signing ${artifact}..."
+            cosign sign-blob \
+              --yes \
+              --bundle "${artifact}.cosign.bundle" \
+              "${artifact}"
+          done
+          ls -lh
+
+      - name: Verify the just-signed artifacts (paranoia check)
+        shell: bash
+        env:
+          COSIGN_EXPERIMENTAL: '1'
+        run: |
+          set -euo pipefail
+          cd release-staging
+          for artifact in *.tar.gz *.cdx.json; do
+            echo "Verifying ${artifact}..."
+            cosign verify-blob \
+              --bundle "${artifact}.cosign.bundle" \
+              --certificate-identity-regexp "^https://github.com/${GITHUB_REPOSITORY}/.+@refs/tags/v" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+              "${artifact}"
+          done
+
+      - name: Compute artifact digests for the release notes
+        id: digests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-staging
+          {
+            echo 'digests<<EOF'
+            for f in *.tar.gz *.cdx.json *.cosign.bundle; do
+              sha256sum "${f}"
+            done
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tagmeta.outputs.tag }}
+          name: AristotleOS ${{ steps.tagmeta.outputs.tag }}
+          body: |
+            ## AristotleOS ${{ steps.tagmeta.outputs.tag }}
+
+            **Signed release artifacts** — all artifacts below are
+            Sigstore-cosign keyless-signed via the GitHub Actions OIDC
+            token. The signing identity is this workflow run on this
+            tag; verify with:
+
+            ```sh
+            cosign verify-blob \
+              --bundle aristotle-os-${{ steps.tagmeta.outputs.tag }}.tar.gz.cosign.bundle \
+              --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.+@refs/tags/v" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+              aristotle-os-${{ steps.tagmeta.outputs.tag }}.tar.gz
+            ```
+
+            **SBOM**: CycloneDX 1.5 JSON, every transitively-resolved
+            dependency listed.
+
+            ### Artifact digests (sha256)
+
+            ```
+            ${{ steps.digests.outputs.digests }}
+            ```
+
+            ### Reviewer verification
+
+            The headline `pnpm reviewer:verify` ran clean as a gate on
+            this release. See `examples/reviewer/REVIEWER.md` for the
+            walkthrough you can re-run against this tarball locally.
+
+            ### Documentation pointers
+
+            - [PROOF_STATUS.md](https://github.com/${{ github.repository }}/blob/${{ steps.tagmeta.outputs.tag }}/extracted/PROOF_STATUS.md) — what's proven in this revision
+            - [LIMITATIONS.md](https://github.com/${{ github.repository }}/blob/${{ steps.tagmeta.outputs.tag }}/extracted/LIMITATIONS.md) — what's not
+            - [RELEASE_CHECKLIST.md](https://github.com/${{ github.repository }}/blob/${{ steps.tagmeta.outputs.tag }}/extracted/RELEASE_CHECKLIST.md) — operator pre-flight
+            - [docs/PRODUCTION_DEPLOYMENT.md](https://github.com/${{ github.repository }}/blob/${{ steps.tagmeta.outputs.tag }}/extracted/docs/PRODUCTION_DEPLOYMENT.md) — production runbook
+
+          files: |
+            release-staging/*.tar.gz
+            release-staging/*.cdx.json
+            release-staging/*.cosign.bundle
+          draft: false
+          prerelease: ${{ contains(steps.tagmeta.outputs.tag, '-rc') || contains(steps.tagmeta.outputs.tag, '-beta') || contains(steps.tagmeta.outputs.tag, '-alpha') }}

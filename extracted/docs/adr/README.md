@@ -8,8 +8,8 @@ have to reverse-engineer the rationale from the code.
 Format: a lightweight variant of [Michael Nygard's ADR template](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions).
 
 Closes the in-repo portion of [ROADMAP_TO_100.md](../../ROADMAP_TO_100.md)
-Category 3 *"Author ADRs for the top 15 design decisions"*. The first 5
-ship here; ADRs 6–15 are tracked as a follow-up.
+Category 3 *"Author ADRs for the top 15 design decisions"*. 10 of the
+15 ship here; ADRs 11–15 are tracked as a follow-up.
 
 ## Index
 
@@ -20,6 +20,11 @@ ship here; ADRs 6–15 are tracked as a follow-up.
 | [0003](0003-gel-hash-chain.md) | Hash-chained Governance Evidence Ledger | Accepted |
 | [0004](0004-fluidity-tokens.md) | Fluidity Tokens for disconnected operation | Accepted |
 | [0005](0005-small-apl.md) | Small Aristotle Policy Language | Accepted |
+| [0006](0006-mesh-role-separation.md) | Mesh role separation: Root / Witness / Edge | Accepted |
+| [0007](0007-per-tenant-ledger-isolation.md) | Per-tenant ledger isolation | Accepted |
+| [0008](0008-oci-policy-bundles.md) | OCI-style signed policy bundles | Accepted |
+| [0009](0009-evidence-bundle-format.md) | Evidence bundle format for offline verification | Accepted |
+| [0010](0010-productionmode-lockdown.md) | `productionMode: true` constructor lockdown | Accepted |
 
 ## Conventions
 

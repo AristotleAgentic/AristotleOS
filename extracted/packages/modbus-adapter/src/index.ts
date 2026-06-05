@@ -19,6 +19,7 @@
  */
 
 import { createHash } from "node:crypto";
+import { governThroughAdapter } from "@aristotle/adapter-sdk";
 import { AristotleApiError, AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
 
 export type ModbusOperationKind =
@@ -240,55 +241,75 @@ export interface GovernModbusOptions {
   allowDemonstrationTransport?: boolean;
 }
 
+/**
+ * Govern a Modbus operation.
+ *
+ * Implementation note: this function delegates to
+ * `governThroughAdapter` from @aristotle/adapter-sdk so its behavior
+ * stays in lockstep with the generic adapter contract. The public API
+ * (function name, options shape, return shape) is unchanged from the
+ * pre-migration version; existing callers see no difference.
+ *
+ * Modbus-specific bits live in the two callbacks:
+ *   - buildAction:        produces the CanonicalAction the gate evaluates
+ *   - buildAuthorization: derives permitted_register_addresses /
+ *                         permitted_coil_addresses from the operation
+ *
+ * Everything else (gate call, ALLOW check, MISSING_WARRANT guard,
+ * production_validated transport guard, transport.emit, structured
+ * refusal codes) is the SDK pattern. Reference example for
+ * third-party adapter authors: this is what migrating from a
+ * hand-rolled govern*() to governThroughAdapter looks like.
+ */
 export async function governModbusOperation(
   op: ModbusOperation,
   transport: ModbusControlTransport,
   options: GovernModbusOptions
 ): Promise<{ ok: boolean; decision?: EvaluateResponse; outcome?: ModbusSubmissionOutcome; refusal?: { code: string; detail: string } }> {
-  const actionType = options.actionTypeFor ? options.actionTypeFor(op) : `ot.modbus.${op.kind}`;
-  const action: CanonicalAction = {
-    action_id: `modbus-${Date.now().toString(16)}`,
-    ward_id: options.wardId,
-    subject: options.subject,
-    action_type: actionType,
-    params: {
-      device_id: options.deviceId,
-      kind: op.kind,
-      unit_id: op.unit_id,
-      start_address: op.start_address,
-      values: op.values,
-      coils: op.coils,
-      label: op.label
-    },
-    requested_at: op.requested_at,
-    telemetry: { agent_runtime: "modbus" }
+  const result = await governThroughAdapter<ModbusOperation, ModbusAuthorization>(op, {
+    client: options.client,
+    transport,
+    allowDemonstrationTransport: options.allowDemonstrationTransport,
+    buildAction: (operation): CanonicalAction => ({
+      action_id: `modbus-${Date.now().toString(16)}`,
+      ward_id: options.wardId,
+      subject: options.subject,
+      action_type: options.actionTypeFor ? options.actionTypeFor(operation) : `ot.modbus.${operation.kind}`,
+      params: {
+        device_id: options.deviceId,
+        kind: operation.kind,
+        unit_id: operation.unit_id,
+        start_address: operation.start_address,
+        values: operation.values,
+        coils: operation.coils,
+        label: operation.label
+      },
+      requested_at: operation.requested_at,
+      telemetry: { agent_runtime: "modbus" }
+    }),
+    buildAuthorization: (decision, operation): ModbusAuthorization => {
+      const warrant = decision.warrant!;
+      return {
+        warrant_id: warrant.warrant_id,
+        warrant_signature: (warrant.signature as string) ?? "ed25519:opaque",
+        consumed: true,
+        consumed_at: new Date().toISOString(),
+        action_hash: decision.canonical_action_hash,
+        device_id: options.deviceId,
+        permitted_register_addresses: isRegisterKind(operation.kind) ? addressesTouched(operation) : undefined,
+        permitted_coil_addresses: isCoilKind(operation.kind) ? addressesTouched(operation) : undefined
+      };
+    }
+  });
+  // Narrow the SDK's generic AdapterEmitOutcome back to the
+  // adapter-specific ModbusSubmissionOutcome for callers who depend
+  // on the strong return type.
+  return {
+    ok: result.ok,
+    decision: result.decision,
+    outcome: result.outcome as ModbusSubmissionOutcome | undefined,
+    refusal: result.refusal
   };
-  let decision: EvaluateResponse;
-  try { decision = await options.client.evaluate(action); }
-  catch (err) {
-    if (err instanceof AristotleApiError) return { ok: false, refusal: { code: `GATE_HTTP_${err.status}`, detail: err.message } };
-    return { ok: false, refusal: { code: "GATE_UNREACHABLE", detail: err instanceof Error ? err.message : String(err) } };
-  }
-  if (decision.decision !== "ALLOW") {
-    return { ok: false, decision, refusal: { code: decision.decision, detail: decision.reason_codes.join(", ") } };
-  }
-  const warrant = decision.warrant;
-  if (!warrant) return { ok: false, decision, refusal: { code: "MISSING_WARRANT", detail: "ALLOW without warrant" } };
-  const authz: ModbusAuthorization = {
-    warrant_id: warrant.warrant_id,
-    warrant_signature: (warrant.signature as string) ?? "ed25519:opaque",
-    consumed: true,
-    consumed_at: new Date().toISOString(),
-    action_hash: decision.canonical_action_hash,
-    device_id: options.deviceId,
-    permitted_register_addresses: isRegisterKind(op.kind) ? addressesTouched(op) : undefined,
-    permitted_coil_addresses: isCoilKind(op.kind) ? addressesTouched(op) : undefined
-  };
-  if (!transport.production_validated && !options.allowDemonstrationTransport) {
-    return { ok: false, decision, refusal: { code: "DEMONSTRATION_ONLY_BLOCKED", detail: `transport ${transport.id} is not production-validated` } };
-  }
-  const outcome = await transport.emit(op, authz);
-  return { ok: outcome.ok, decision, outcome };
 }
 
 export { AristotleClient, AristotleApiError } from "@aristotle/os-sdk";

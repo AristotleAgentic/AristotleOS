@@ -182,8 +182,20 @@ importers:
         specifier: workspace:*
         version: link:../os-sdk
 
+  packages/mcp-server:
+    dependencies:
+      '@aristotle/adapter-sdk':
+        specifier: workspace:*
+        version: link:../../shared/adapter-sdk
+      '@aristotle/os-sdk':
+        specifier: workspace:*
+        version: link:../os-sdk
+
   packages/modbus-adapter:
     dependencies:
+      '@aristotle/adapter-sdk':
+        specifier: workspace:*
+        version: link:../../shared/adapter-sdk
       '@aristotle/os-sdk':
         specifier: workspace:*
         version: link:../os-sdk

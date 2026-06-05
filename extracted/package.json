@@ -68,6 +68,7 @@
     "test:adapter-sdk": "corepack pnpm@10.32.1 --filter @aristotle/adapter-sdk test",
     "test:service-runtime": "corepack pnpm@10.32.1 --filter @aristotle/service-runtime test",
     "test:observability-otel": "corepack pnpm@10.32.1 --filter @aristotle/observability-otel test",
+    "test:mcp-server": "corepack pnpm@10.32.1 --filter @aristotle/mcp-server test",
     "bench:sustained": "node --import tsx bench/sustained-load.mjs",
     "bench:sustained:json": "node --import tsx bench/sustained-load.mjs --json",
     "mutation:gate": "pnpm dlx @stryker-mutator/core --config stryker.conf.mjs",
