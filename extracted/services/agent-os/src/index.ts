@@ -14,6 +14,7 @@ import {
   type CanonicalActionInput,
   type WardManifest
 } from "@aristotle/execution-control-runtime";
+import { ReadinessChecks, mountHealthEndpoints } from "@aristotle/service-runtime";
 import type {
   AgentCapability,
   AgentOSSnapshot,
@@ -3062,6 +3063,22 @@ const peers: NodeId[] = peerSpec
     };
   });
 edge.setPeers(peers);
+
+// /healthz + /readyz mounted via the shared service-runtime helper
+// after the EdgeNode + peers are constructed so the readiness closure
+// can reference them. mountLegacyHealth: false because the legacy
+// /health handler above already surfaces extra fields
+// (persistedStatePath, missions, agents, executionTasks, autonomyTickMs)
+// the operator UI and other services rely on.
+mountHealthEndpoints(app, {
+  service: "agent-os",
+  mountLegacyHealth: false,
+  readiness: () => ReadinessChecks.start()
+    .addTry("mesh_signer", () => typeof edge.getId() === "string")
+    .addPeersConfiguredCheck(peers.length)
+    .addDemoSecretCheck(meshSecret)
+    .build()
+});
 
 app.post("/mesh", async (req, res) => {
   try {

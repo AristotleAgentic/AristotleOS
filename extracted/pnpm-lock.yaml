@@ -228,6 +228,9 @@ importers:
       '@aristotle/mesh-runtime':
         specifier: workspace:*
         version: link:../../shared/mesh-runtime
+      '@aristotle/service-runtime':
+        specifier: workspace:*
+        version: link:../../shared/service-runtime
       '@aristotle/shared-types':
         specifier: workspace:*
         version: link:../../shared/types
@@ -243,6 +246,9 @@ importers:
       '@aristotle/mesh-runtime':
         specifier: workspace:*
         version: link:../../shared/mesh-runtime
+      '@aristotle/service-runtime':
+        specifier: workspace:*
+        version: link:../../shared/service-runtime
       '@aristotle/shared-schemas':
         specifier: workspace:*
         version: link:../../shared/schemas
@@ -264,6 +270,9 @@ importers:
       '@aristotle/execution-control-runtime':
         specifier: workspace:*
         version: link:../../shared/execution-control-runtime
+      '@aristotle/service-runtime':
+        specifier: workspace:*
+        version: link:../../shared/service-runtime
       '@aristotle/shared-schemas':
         specifier: workspace:*
         version: link:../../shared/schemas
@@ -285,6 +294,9 @@ importers:
       '@aristotle/execution-control-runtime':
         specifier: workspace:*
         version: link:../../shared/execution-control-runtime
+      '@aristotle/service-runtime':
+        specifier: workspace:*
+        version: link:../../shared/service-runtime
       '@aristotle/shared-schemas':
         specifier: workspace:*
         version: link:../../shared/schemas
@@ -309,6 +321,9 @@ importers:
       '@aristotle/governance-core':
         specifier: workspace:*
         version: link:../../shared/governance-core
+      '@aristotle/service-runtime':
+        specifier: workspace:*
+        version: link:../../shared/service-runtime
       '@aristotle/shared-schemas':
         specifier: workspace:*
         version: link:../../shared/schemas
@@ -330,6 +345,9 @@ importers:
       '@aristotle/mesh-runtime':
         specifier: workspace:*
         version: link:../../shared/mesh-runtime
+      '@aristotle/service-runtime':
+        specifier: workspace:*
+        version: link:../../shared/service-runtime
       '@aristotle/shared-schemas':
         specifier: workspace:*
         version: link:../../shared/schemas
@@ -351,6 +369,9 @@ importers:
       '@aristotle/execution-control-runtime':
         specifier: workspace:*
         version: link:../../shared/execution-control-runtime
+      '@aristotle/service-runtime':
+        specifier: workspace:*
+        version: link:../../shared/service-runtime
       '@aristotle/shared-schemas':
         specifier: workspace:*
         version: link:../../shared/schemas
@@ -375,6 +396,9 @@ importers:
       '@aristotle/mesh-runtime':
         specifier: workspace:*
         version: link:../../shared/mesh-runtime
+      '@aristotle/service-runtime':
+        specifier: workspace:*
+        version: link:../../shared/service-runtime
       '@aristotle/shared-schemas':
         specifier: workspace:*
         version: link:../../shared/schemas
@@ -396,6 +420,9 @@ importers:
       '@aristotle/mesh-runtime':
         specifier: workspace:*
         version: link:../../shared/mesh-runtime
+      '@aristotle/service-runtime':
+        specifier: workspace:*
+        version: link:../../shared/service-runtime
       '@aristotle/shared-schemas':
         specifier: workspace:*
         version: link:../../shared/schemas
@@ -460,6 +487,15 @@ importers:
         specifier: workspace:*
         version: link:../execution-control-runtime
 
+  shared/observability-otel:
+    dependencies:
+      '@aristotle/execution-control-runtime':
+        specifier: workspace:*
+        version: link:../execution-control-runtime
+      '@opentelemetry/api':
+        specifier: '>=1.6.0 <2'
+        version: 1.9.1
+
   shared/policy-pipeline:
     dependencies:
       '@aristotle/execution-control-runtime':
@@ -478,6 +514,8 @@ importers:
         version: link:../mesh-runtime
 
   shared/schemas: {}
+
+  shared/service-runtime: {}
 
   shared/tenant-onboarding:
     dependencies:
@@ -503,6 +541,9 @@ importers:
 
   tests/cross-adapter:
     dependencies:
+      '@aristotle/adapter-sdk':
+        specifier: workspace:*
+        version: link:../../shared/adapter-sdk
       '@aristotle/bacnet-adapter':
         specifier: workspace:*
         version: link:../../packages/bacnet-adapter

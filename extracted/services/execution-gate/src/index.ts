@@ -7,6 +7,7 @@ import {
   type CommitGateDecision,
   type WardManifest
 } from "@aristotle/execution-control-runtime";
+import { ReadinessChecks, mountHealthEndpoints } from "@aristotle/service-runtime";
 
 const port = Number(process.env.PORT_EXECUTION_GATE ?? 7008);
 const app = createApp();
@@ -174,6 +175,10 @@ function mapSubstrateDecisionToWire(
 // HTTP surface — same routes, real substrate behind them.
 // ---------------------------------------------------------------------------
 
+// Keep the custom /health handler because it surfaces extra fields
+// (killSwitchState, activeKillScopes, substrate_wired) used by the
+// agent-os cross-service kill-switch poll; mount only /healthz +
+// /readyz from the shared helper.
 app.get("/health", (_req, res) =>
   res.json({
     ok: true,
@@ -183,6 +188,13 @@ app.get("/health", (_req, res) =>
     substrate_wired: true
   })
 );
+mountHealthEndpoints(app, {
+  service: "execution-gate",
+  mountLegacyHealth: false,
+  readiness: () => ReadinessChecks.start()
+    .add("service_initialized", true)
+    .build()
+});
 app.get("/decisions", (_req, res) => res.json({ items: [...decisions.values()] }));
 app.post("/kill-switch", (req, res) => {
   const scope =

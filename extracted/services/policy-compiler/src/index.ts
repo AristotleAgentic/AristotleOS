@@ -6,6 +6,7 @@ import {
   type GovernanceDraft,
   type PolicyDiagnostic
 } from "@aristotle/execution-control-runtime";
+import { ReadinessChecks, mountHealthEndpoints } from "@aristotle/service-runtime";
 
 const port = Number(process.env.PORT_POLICY_COMPILER ?? 7002);
 const app = createApp();
@@ -35,9 +36,16 @@ type CompileOutput = {
   };
 };
 
-app.get("/health", (_req, res) =>
-  res.json({ ok: true, service: "policy-compiler", substrate_wired: true })
-);
+// Use the shared helper for /health + /healthz + /readyz. The legacy
+// `substrate_wired: true` flag is dropped from /health (it was purely
+// cosmetic — substrate wiring is observable via the /compile output's
+// `substrate` field).
+mountHealthEndpoints(app, {
+  service: "policy-compiler",
+  readiness: () => ReadinessChecks.start()
+    .add("service_initialized", true)
+    .build()
+});
 
 /** Render the compiled GovernanceDraft(s) as the graph shape the UI
  *  expects. One Ward node per draft, one Envelope node per draft,

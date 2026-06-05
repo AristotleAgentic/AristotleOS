@@ -19,6 +19,7 @@ import {
   // can coexist in this service.
   type AuthorityEnvelope as SubstrateAuthorityEnvelope
 } from "@aristotle/execution-control-runtime";
+import { ReadinessChecks, mountHealthEndpoints } from "@aristotle/service-runtime";
 import type {
   AssuranceAttestationArtifact,
   ArtifactType,
@@ -647,9 +648,19 @@ const artifactTimeline = (traceId?: string, artifactType?: ArtifactType, related
 
 await loadState();
 
+// Keep the custom /health handler because it surfaces extra fields
+// (persistedStatePath, committedEvents) operators rely on; mount only
+// the structured /healthz + /readyz from the shared helper.
 app.get("/health", (_req, res) =>
   res.json({ ok: true, service: "evidence-ledger", persistedStatePath: statePath, committedEvents: committed.length })
 );
+mountHealthEndpoints(app, {
+  service: "evidence-ledger",
+  mountLegacyHealth: false,
+  readiness: () => ReadinessChecks.start()
+    .add("service_initialized", true)
+    .build()
+});
 
 app.post("/events/commit", async (req, res) => {
   const ev: ReplayEvent = {

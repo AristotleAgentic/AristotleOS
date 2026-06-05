@@ -15,6 +15,7 @@ import {
   type CanonicalActionInput,
   type WardManifest
 } from "@aristotle/execution-control-runtime";
+import { ReadinessChecks, mountHealthEndpoints } from "@aristotle/service-runtime";
 
 const port = Number(process.env.PORT_GOVERNANCE_KERNEL ?? 7001);
 const app = createApp();
@@ -78,6 +79,10 @@ function getSubstrateSigner(): AristotleSigner {
   return substrateSigner;
 }
 
+// Keep the custom /health handler because it surfaces extra fields
+// (killSwitchState, activeKillScopes, governanceChainV2) that agent-os
+// polls cross-service; mount only /healthz + /readyz from the shared
+// helper.
 app.get("/health", (_req, res) =>
   res.json({
     ok: true,
@@ -88,6 +93,13 @@ app.get("/health", (_req, res) =>
     substrate_wired: true
   })
 );
+mountHealthEndpoints(app, {
+  service: "governance-kernel",
+  mountLegacyHealth: false,
+  readiness: () => ReadinessChecks.start()
+    .add("service_initialized", true)
+    .build()
+});
 app.get("/envelopes", (_req, res) => res.json({ items: [...envelopes.values()] }));
 app.get("/warrants", (_req, res) => res.json({ items: [...warrants.values()] }));
 app.post("/kill-switch", (req, res) => {

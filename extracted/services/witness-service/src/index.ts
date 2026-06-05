@@ -1,13 +1,13 @@
 import { createApp, id, now } from "./lib.js";
 import type { WitnessReceipt } from "@aristotle/shared-types";
 import { WitnessNode, type NodeId, type MeshMessage } from "@aristotle/mesh-runtime";
+import { ReadinessChecks, mountHealthEndpoints } from "@aristotle/service-runtime";
 
 const port = Number(process.env.PORT_WITNESS_SERVICE ?? 7007);
 const quorumDefault = Number(process.env.WITNESS_QUORUM ?? 2);
 const app = createApp();
 const receipts = new Map<string, WitnessReceipt>();
 
-app.get("/health", (_req, res) => res.json({ ok: true, service: "witness-service" }));
 app.post("/verify", (req, res) => {
   const { warrantId, envelopeId, requestedWitnesses = ["node.attest.1", "node.attest.2"], quorumRequired = quorumDefault } = req.body;
   const quorumReached = requestedWitnesses.length;
@@ -70,6 +70,19 @@ const peers: NodeId[] = peerSpec
     };
   });
 witness.setPeers(peers);
+
+// /health + /healthz + /readyz mounted via the shared service-runtime
+// helper after the WitnessNode + peers are constructed so the readiness
+// closure can reference them. Checks: mesh signer constructed + at
+// least one peer configured + MESH_SECRET is not a known demo string.
+mountHealthEndpoints(app, {
+  service: "witness-service",
+  readiness: () => ReadinessChecks.start()
+    .addTry("mesh_signer", () => typeof witness.getId() === "string")
+    .addPeersConfiguredCheck(peers.length)
+    .addDemoSecretCheck(meshSecret)
+    .build()
+});
 
 app.post("/mesh", async (req, res) => {
   try {

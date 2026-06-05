@@ -1,0 +1,14 @@
+{
+  "name": "@aristotle/service-runtime",
+  "version": "0.1.0",
+  "description": "Service-runtime helpers for AristotleOS services. Ships consistent /healthz (liveness) + /readyz (readiness) + /health (legacy) endpoints with structured response bodies that operators can wire to k8s probes, plus a small ReadinessChecks builder for composing per-service readiness conditions. Designed so every service ships the same probe surface area without duplicating the boilerplate in each service's index.ts.",
+  "license": "Apache-2.0",
+  "private": false,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test src/index.test.ts"
+  }
+}

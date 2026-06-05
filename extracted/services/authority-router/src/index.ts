@@ -1,5 +1,6 @@
 import { createApp } from "./lib.js";
 import { StaticSovereignRouter, type NodeId, type TrustAnchor } from "@aristotle/mesh-runtime";
+import { ReadinessChecks, mountHealthEndpoints } from "@aristotle/service-runtime";
 
 const port = Number(process.env.PORT_AUTHORITY_ROUTER ?? 7006);
 const app = createApp();
@@ -14,7 +15,6 @@ type RouteRequest = {
   requiredAuthorities?: string[];
 };
 
-app.get("/health", (_req, res) => res.json({ ok: true, service: "authority-router" }));
 app.post("/route", (req, res) => {
   const {
     source,
@@ -120,6 +120,25 @@ const trustAnchors: TrustAnchor[] = anchorSpec
   });
 
 const sovereignRouter = new StaticSovereignRouter(localMaeId, trustAnchors);
+
+// /health + /healthz + /readyz mounted via the shared service-runtime
+// helper after the sovereign router + trust anchors are constructed
+// so the readiness closure can reference them. authority-router does
+// not use mesh-runtime's signing/peer plane (only the sovereign router
+// primitive) — readiness just confirms at least one trust anchor is
+// configured.
+mountHealthEndpoints(app, {
+  service: "authority-router",
+  readiness: () => ReadinessChecks.start()
+    .add(
+      "trust_anchors_configured",
+      trustAnchors.length > 0,
+      trustAnchors.length === 0
+        ? "MESH_TRUST_ANCHORS produced no anchors"
+        : `${trustAnchors.length} anchor(s) configured`
+    )
+    .build()
+});
 
 app.post("/v1/mesh/route", (req, res) => {
   const { mae_id } = req.body as { mae_id: string };

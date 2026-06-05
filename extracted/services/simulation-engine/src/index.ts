@@ -12,6 +12,7 @@ import {
   runEnvelopeVersionDowngradeScenario,
   runAllChaosScenarios
 } from "@aristotle/chaos-harness";
+import { ReadinessChecks, mountHealthEndpoints } from "@aristotle/service-runtime";
 
 const port = Number(process.env.PORT_SIMULATION_ENGINE ?? 7005);
 const tickMs = Number(process.env.REPLAY_TICK_MS ?? 1500);
@@ -46,7 +47,18 @@ type ProjectedRecoveryPath = {
   summary: string;
 };
 
+// Keep the custom /health handler because it surfaces the running
+// `tick` counter, which the operator UI reads as a liveness signal.
+// /healthz + /readyz from the shared helper provide structured probes
+// alongside it.
 app.get("/health", (_req, res) => res.json({ ok: true, service: "simulation-engine", tick }));
+mountHealthEndpoints(app, {
+  service: "simulation-engine",
+  mountLegacyHealth: false,
+  readiness: () => ReadinessChecks.start()
+    .add("service_initialized", true)
+    .build()
+});
 app.get("/telemetry", (_req, res) => {
   res.json({
     tick,

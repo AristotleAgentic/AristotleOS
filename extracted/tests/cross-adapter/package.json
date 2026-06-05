@@ -6,9 +6,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --import tsx --test src/refusal-before-emission.test.ts"
+    "test": "node --import tsx --test src/refusal-before-emission.test.ts src/conformance.test.ts"
   },
   "dependencies": {
+    "@aristotle/adapter-sdk": "workspace:*",
     "@aristotle/os-sdk": "workspace:*",
     "@aristotle/dnp3-adapter": "workspace:*",
     "@aristotle/modbus-adapter": "workspace:*",
