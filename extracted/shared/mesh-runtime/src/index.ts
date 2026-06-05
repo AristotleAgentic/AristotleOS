@@ -329,6 +329,77 @@ export interface MeshReplayCacheOptions {
   now?: () => number;
 }
 
+// ---------------------------------------------------------------------------
+// Per-peer rate limiter
+//
+// Defends against a single compromised mesh peer flooding the node with
+// valid-looking signed messages. Even with replay-cache + body-size cap,
+// an attacker with a stolen signing key can sustain N qps of fresh
+// signed messages forever — the rate limiter caps how often any single
+// signer_id can hit this node.
+//
+// Token bucket per signer_id: each bucket starts full, refills at
+// `refillRatePerSec` tokens/second up to `capacity`. Every inbound
+// request consumes one token. Empty bucket -> reject with HTTP 429.
+// Anonymous traffic (msg.from absent) is bucketed under "*".
+//
+// Opt-in via MeshNodeOptions.rateLimiter. Default mesh stays exactly
+// as it was — no behavior change unless an operator wires a limiter in.
+// ---------------------------------------------------------------------------
+
+export interface MeshRateLimiter {
+  /**
+   * Try to admit one request from `peerId`. Returns true if a token was
+   * available (request allowed), false if the bucket was empty (reject
+   * with 429).
+   */
+  tryAcquire(peerId: string): boolean;
+  /** Inspect a peer's current token count (for diagnostics / metrics). */
+  peek(peerId: string): { tokens: number; capacity: number };
+}
+
+export interface MeshRateLimiterOptions {
+  /** Max tokens per peer bucket. Default 50. Sized for normal mesh chatter (envelope propagation + gossip), not steady-state throughput. */
+  capacity?: number;
+  /** Refill rate in tokens/second. Default 5. */
+  refillRatePerSec?: number;
+  /** Clock for tests. Defaults to Date.now. */
+  now?: () => number;
+}
+
+export function createMeshRateLimiter(opts: MeshRateLimiterOptions = {}): MeshRateLimiter {
+  const capacity = opts.capacity ?? 50;
+  const refillRatePerSec = opts.refillRatePerSec ?? 5;
+  const now = opts.now ?? Date.now;
+  // peerId -> { tokens, lastRefillMs }
+  const buckets: Map<string, { tokens: number; lastRefillMs: number }> = new Map();
+
+  function refill(bucket: { tokens: number; lastRefillMs: number }, t: number): void {
+    const elapsedSec = (t - bucket.lastRefillMs) / 1000;
+    if (elapsedSec <= 0) return;
+    bucket.tokens = Math.min(capacity, bucket.tokens + elapsedSec * refillRatePerSec);
+    bucket.lastRefillMs = t;
+  }
+
+  return {
+    tryAcquire(peerId: string): boolean {
+      const t = now();
+      let b = buckets.get(peerId);
+      if (!b) { b = { tokens: capacity, lastRefillMs: t }; buckets.set(peerId, b); }
+      refill(b, t);
+      if (b.tokens < 1) return false;
+      b.tokens -= 1;
+      return true;
+    },
+    peek(peerId: string): { tokens: number; capacity: number } {
+      const b = buckets.get(peerId);
+      if (!b) return { tokens: capacity, capacity };
+      refill(b, now());
+      return { tokens: b.tokens, capacity };
+    }
+  };
+}
+
 export function createMeshReplayCache(opts: MeshReplayCacheOptions = {}): MeshReplayCache {
   const ttlMs = opts.ttlMs ?? 60_000;
   const maxSize = opts.maxSize ?? 10_000;
@@ -454,6 +525,13 @@ export interface MeshNodeOptions {
    */
   replayCache?: MeshReplayCache;
   /**
+   * Optional per-peer rate limiter. Token-bucket per `msg.from` signer
+   * id. Empty bucket -> HTTP 429. Defaults to none (backwards compat);
+   * opt in with createMeshRateLimiter(...). Defends against a single
+   * compromised peer flooding the node.
+   */
+  rateLimiter?: MeshRateLimiter;
+  /**
    * Maximum request body size in bytes accepted by the HTTP ingress.
    * Defaults to 1 MiB. Oversized requests are rejected with HTTP 413
    * (Payload Too Large) before any signature work. Defends against DoS
@@ -498,6 +576,7 @@ export abstract class MeshNode {
   protected readonly signer: MeshSigner;
   protected readonly verifier: MeshVerifier;
   protected readonly replayCache: MeshReplayCache | null;
+  protected readonly rateLimiter: MeshRateLimiter | null;
   protected readonly maxRequestBodyBytes: number;
   protected readonly requireJsonContentType: boolean;
   protected peers: NodeId[];
@@ -557,6 +636,7 @@ export abstract class MeshNode {
       throw new Error("MeshNode: must provide either { secret } or { signer, verifier }");
     }
     this.replayCache = opts.replayCache ?? null;
+    this.rateLimiter = opts.rateLimiter ?? null;
     this.maxRequestBodyBytes = opts.maxRequestBodyBytes ?? 1024 * 1024; // 1 MiB
     this.requireJsonContentType = opts.requireJsonContentType ?? true;
     this.peers = opts.peers ?? [];
@@ -646,6 +726,21 @@ export abstract class MeshNode {
       res.setHeader("content-type", "application/json");
       res.end(JSON.stringify({ ok: false, reason: "partitioned" }));
       return;
+    }
+    // (4b) Per-peer rate limit (opt-in). Empty bucket -> 429.
+    if (this.rateLimiter) {
+      const peerId = parsed.from ?? "*";
+      if (!this.rateLimiter.tryAcquire(peerId)) {
+        res.statusCode = 429;
+        res.setHeader("content-type", "application/json");
+        res.setHeader("retry-after", "1");
+        res.end(JSON.stringify({
+          ok: false,
+          reason: "rate-limited",
+          peer: peerId
+        }));
+        return;
+      }
     }
     // (5) Anti-replay — opt-in. Hash (signer || body); reject if seen.
     if (this.replayCache) {

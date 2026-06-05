@@ -66,6 +66,9 @@ const evidenceStewardSeed: MetaAuthorityArtifact = {
 artifacts.set(evidenceStewardSeed.id, evidenceStewardSeed);
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "meta-authority-registry" }));
+
+const SERVICE_NAME = "meta-authority-registry";
+const STARTED_AT_MS = Date.now();
 app.get("/artifacts", (_req, res) => res.json({ items: [...artifacts.values()] }));
 app.get("/artifacts/:id", (req, res) => {
   const artifact = artifacts.get(req.params.id);
@@ -146,6 +149,87 @@ const peers: NodeId[] = peerSpec
     };
   });
 root.setPeers(peers);
+
+// ---------------------------------------------------------------------------
+// /healthz and /readyz — Kubernetes-style structured probes.
+//
+// /healthz: liveness — am I running? Cheap, never fails unless the
+//   process is dying. Returns 200 + minimal envelope.
+//
+// /readyz : readiness — am I able to serve traffic? Verifies the things
+//   that must be true for the service's substrate to actually work:
+//     - mesh signer is constructed (every service has one)
+//     - trust anchors are loaded (at least one peer is known)
+//     - peers list is non-empty (the service isn't dangling alone)
+//     - MESH_SECRET is not a well-known demo string (operator
+//       deployed-and-forgot detection)
+//   Returns 200 + structured body when all green, 503 + the failing
+//   check name when not. Operators wire this into k8s readinessProbe
+//   so a startup failure (bad config, missing trust anchor) keeps
+//   the service out of the load-balancer rotation instead of
+//   silently serving 500s.
+//
+// Override the demo-secret check with ARISTOTLE_ALLOW_DEMO_SECRET=1
+// — useful for dev / CI / explicit demo deployments.
+// ---------------------------------------------------------------------------
+
+app.get("/healthz", (_req, res) => {
+  res.json({
+    ok: true,
+    service: SERVICE_NAME,
+    status: "alive",
+    uptime_s: Math.round((Date.now() - STARTED_AT_MS) / 1000),
+    timestamp: new Date().toISOString()
+  });
+});
+
+const KNOWN_DEMO_SECRETS = new Set([
+  "demo-mesh-secret",
+  "aos-demo-mesh-secret",
+  "aristotle-demo-secret",
+  "test-secret",
+  "live-secret"
+]);
+
+app.get("/readyz", (_req, res) => {
+  const checks: Array<{ name: string; ok: boolean; detail?: string }> = [];
+  // 1. Mesh signer constructed.
+  try {
+    const rootSignerOk = typeof root.getId === "function" && typeof root.getId() === "string";
+    checks.push({ name: "mesh_signer", ok: rootSignerOk });
+  } catch (err) {
+    checks.push({ name: "mesh_signer", ok: false, detail: err instanceof Error ? err.message : String(err) });
+  }
+  // 2. Peers list non-empty.
+  checks.push({
+    name: "peers_configured",
+    ok: peers.length > 0,
+    detail: peers.length === 0
+      ? "MESH_PEERS env produced no peers"
+      : `${peers.length} peer(s) configured`
+  });
+  // 3. Demo-secret check.
+  const usingDemoSecret = KNOWN_DEMO_SECRETS.has(meshSecret);
+  const allowDemoEnv = process.env.ARISTOTLE_ALLOW_DEMO_SECRET === "1";
+  checks.push({
+    name: "secret_not_demo",
+    ok: !usingDemoSecret || allowDemoEnv,
+    detail: usingDemoSecret
+      ? (allowDemoEnv
+          ? "demo secret in use (ARISTOTLE_ALLOW_DEMO_SECRET=1 overrides)"
+          : "MESH_SECRET equals a known demo string and ARISTOTLE_ALLOW_DEMO_SECRET is not set")
+      : "operator-supplied secret"
+  });
+  const allOk = checks.every((c) => c.ok);
+  res.status(allOk ? 200 : 503).json({
+    ok: allOk,
+    service: SERVICE_NAME,
+    status: allOk ? "ready" : "not-ready",
+    uptime_s: Math.round((Date.now() - STARTED_AT_MS) / 1000),
+    timestamp: new Date().toISOString(),
+    checks
+  });
+});
 
 // Mesh inter-node POST route.
 app.post("/mesh", async (req, res) => {

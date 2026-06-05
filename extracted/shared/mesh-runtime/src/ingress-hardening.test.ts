@@ -33,6 +33,7 @@ import {
   createEd25519MeshVerifier,
   createHmacMeshSigner,
   createHmacMeshVerifier,
+  createMeshRateLimiter,
   createMeshReplayCache
 } from "./index.js";
 
@@ -271,4 +272,99 @@ test("replay cache unit: maxSize bounds memory (LRU-ish eviction)", () => {
   // After d, the oldest (a) should have been evicted.
   assert.equal(cache.size(), 3);
   assert.equal(cache.seen("a"), false, "evicted entry must be treated as fresh");
+});
+
+// ---------------------------------------------------------------------------
+// (5) MeshRateLimiter — per-peer token bucket
+// ---------------------------------------------------------------------------
+
+test("rate limiter unit: bursting up to capacity is allowed", () => {
+  const rl = createMeshRateLimiter({ capacity: 5, refillRatePerSec: 0 });
+  for (let i = 0; i < 5; i++) {
+    assert.equal(rl.tryAcquire("peer-a"), true, `request #${i} should be admitted`);
+  }
+  assert.equal(rl.tryAcquire("peer-a"), false, "burst beyond capacity must be rejected");
+});
+
+test("rate limiter unit: per-peer isolation — one flooder doesn't starve others", () => {
+  const rl = createMeshRateLimiter({ capacity: 3, refillRatePerSec: 0 });
+  // Peer A exhausts its bucket.
+  for (let i = 0; i < 3; i++) assert.equal(rl.tryAcquire("peer-a"), true);
+  assert.equal(rl.tryAcquire("peer-a"), false);
+  // Peer B still has its full capacity.
+  for (let i = 0; i < 3; i++) assert.equal(rl.tryAcquire("peer-b"), true, `peer-b req #${i}`);
+});
+
+test("rate limiter unit: refill restores tokens at the configured rate", () => {
+  let clock = 1000;
+  const rl = createMeshRateLimiter({ capacity: 2, refillRatePerSec: 10, now: () => clock });
+  assert.equal(rl.tryAcquire("p"), true);
+  assert.equal(rl.tryAcquire("p"), true);
+  assert.equal(rl.tryAcquire("p"), false);
+  clock = 1200; // 200 ms -> 10 * 0.2 = 2 tokens refilled (capped at capacity)
+  assert.equal(rl.tryAcquire("p"), true);
+  assert.equal(rl.tryAcquire("p"), true);
+  assert.equal(rl.tryAcquire("p"), false);
+});
+
+test("rate limiter unit: peek shows current tokens without consuming", () => {
+  let clock = 0;
+  const rl = createMeshRateLimiter({ capacity: 5, refillRatePerSec: 0, now: () => clock });
+  assert.equal(rl.peek("p").tokens, 5);
+  rl.tryAcquire("p");
+  rl.tryAcquire("p");
+  assert.equal(rl.peek("p").tokens, 3);
+  assert.equal(rl.peek("p").capacity, 5);
+});
+
+test("ingress: rate-limited request returns 429 with structured body", async () => {
+  const port = 21118;
+  const rateLimiter = createMeshRateLimiter({ capacity: 2, refillRatePerSec: 0 });
+  await withServer(port, { rateLimiter }, async (p) => {
+    const url = `http://127.0.0.1:${p}/`;
+    const body = (n: number) => JSON.stringify({ kind: "PING", from: "peer-rl-test", n });
+    // First two requests succeed.
+    let res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: body(1) });
+    assert.equal(res.status, 200);
+    res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: body(2) });
+    assert.equal(res.status, 200);
+    // Third request blocked.
+    res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: body(3) });
+    assert.equal(res.status, 429);
+    assert.equal(res.headers.get("retry-after"), "1");
+    const data = await res.json() as { ok: boolean; reason: string; peer: string };
+    assert.equal(data.ok, false);
+    assert.equal(data.reason, "rate-limited");
+    assert.equal(data.peer, "peer-rl-test");
+  });
+});
+
+test("ingress: anonymous (no msg.from) traffic is bucketed under '*'", async () => {
+  const port = 21119;
+  const rateLimiter = createMeshRateLimiter({ capacity: 1, refillRatePerSec: 0 });
+  await withServer(port, { rateLimiter }, async (p) => {
+    const url = `http://127.0.0.1:${p}/`;
+    // First anonymous PING (no `from`) succeeds.
+    let res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: "PING" }) });
+    assert.equal(res.status, 200);
+    // Second anonymous PING blocked.
+    res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: "PING" }) });
+    assert.equal(res.status, 429);
+    const data = await res.json() as { peer: string };
+    assert.equal(data.peer, "*", "anonymous traffic must bucket under '*'");
+  });
+});
+
+test("ingress: rate limiter is per-peer — one flooder doesn't block others over HTTP", async () => {
+  const port = 21120;
+  const rateLimiter = createMeshRateLimiter({ capacity: 1, refillRatePerSec: 0 });
+  await withServer(port, { rateLimiter }, async (p) => {
+    const url = `http://127.0.0.1:${p}/`;
+    const body = (peer: string) => JSON.stringify({ kind: "PING", from: peer });
+    // peer-a uses its only token, then is rate-limited.
+    assert.equal((await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: body("peer-a") })).status, 200);
+    assert.equal((await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: body("peer-a") })).status, 429);
+    // peer-b is independent — still has full capacity.
+    assert.equal((await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: body("peer-b") })).status, 200);
+  });
 });
