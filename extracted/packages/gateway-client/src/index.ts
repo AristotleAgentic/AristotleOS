@@ -55,6 +55,20 @@ export {
   OPENAPI_PATHS
 } from "./openapi-spec.gen.js";
 
+// Typed-route helper — fluent wrapper over AristotleClient whose method
+// names mirror the OpenAPI operation set. Use when you want IDE-suggested
+// route names + auto-typed body/response without juggling URL paths.
+//
+//   import { AristotleClient, createTypedRoutes } from "@aristotle/gateway-client";
+//   const routes = createTypedRoutes(new AristotleClient({ baseUrl, token }));
+//   const decision = await routes.evaluate(action);
+export {
+  createTypedRoutes,
+  type TypedRoutes,
+  type EvaluateOptions,
+  type ReplayInput
+} from "./routes.js";
+
 // Re-export the canonical typed client + every public type from os-sdk so
 // installing only this package gives the operator a complete TypeScript
 // surface for the boundary.

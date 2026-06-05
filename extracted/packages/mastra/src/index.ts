@@ -28,6 +28,7 @@
  */
 
 import { AristotleApiError, AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
+import { governThroughHandler, type GovernedHandlerResult, type HandlerContext } from "@aristotle/adapter-sdk";
 
 // ---------------------------------------------------------------------------
 // Structural Mastra Tool shape (mirrored locally; @mastra/core is a peer).
@@ -148,6 +149,18 @@ export function governMastraTool<T extends MastraToolLike>(tool: T, options: Gov
   const onError = options.onError ?? "throw";
   const innerExecute = tool.execute;
 
+  // Internal SDK shape: precompute the toolInput / action so we can hand the
+  // orchestrator buildAction(input) and inside the handler we still have the
+  // original executionContext closure. Pattern 3 (governThroughHandler) gives
+  // us the fail-closed evaluate -> ALLOW -> warrant-present pipeline; this
+  // file keeps the Mastra-specific shape on top (return-outcome vs throw,
+  // onDecision, passthroughTools).
+  interface SdkInput {
+    executionContext: MastraExecutionContext;
+    toolInput: Record<string, unknown>;
+    action: CanonicalAction;
+  }
+
   const governedExecute = async (executionContext: MastraExecutionContext): Promise<unknown> => {
     const toolInput = (executionContext.context ?? {}) as Record<string, unknown>;
     const now = new Date().toISOString();
@@ -156,11 +169,18 @@ export function governMastraTool<T extends MastraToolLike>(tool: T, options: Gov
       ? options.buildAction({ toolName, toolInput, now })
       : defaultBuildAction({ toolName, toolInput, now, wardId: options.wardId, subject: options.subject, actionType });
 
+    const sdkInput: SdkInput = { executionContext, toolInput, action };
     const t0 = Date.now();
-    let decision: EvaluateResponse;
+
+    let result: GovernedHandlerResult<unknown>;
     try {
-      decision = await options.client.evaluate(action, { now });
+      result = await governThroughHandler<SdkInput, unknown>(sdkInput, {
+        client: options.client,
+        buildAction: (i) => i.action,
+        handler: (i, _ctx: HandlerContext) => innerExecute(i.executionContext) as Promise<unknown>
+      });
     } catch (err) {
+      // governThroughHandler should never throw; treat as fail-closed.
       const elapsedMs = Date.now() - t0;
       const message =
         err instanceof AristotleApiError
@@ -174,29 +194,77 @@ export function governMastraTool<T extends MastraToolLike>(tool: T, options: Gov
     }
 
     const elapsedMs = Date.now() - t0;
-    options.onDecision?.({ toolName, toolInput, action, decision, elapsedMs });
 
-    if (decision.decision === "ALLOW") {
-      return await innerExecute(executionContext);
+    // ALLOW path: warrant present + handler ran successfully.
+    if (result.ok) {
+      options.onDecision?.({ toolName, toolInput, action, decision: result.decision, elapsedMs });
+      return result.output;
     }
 
-    const reasonCodes = decision.reason_codes;
-    const gelRecordId = decision.gel_record?.record_id;
-    const warrantId = decision.warrant?.warrant_id;
+    const refusalCode = result.refusal.code;
+    const refusalDetail = result.refusal.detail;
+    const decision = result.decision;
 
-    if (decision.decision === "ESCALATE") {
-      const message = `aristotle: ESCALATE on ${toolName} - ${reasonCodes.join(", ") || "no reason codes"} - record ${gelRecordId ?? "(none)"}`;
-      if (onEscalate === "throw") {
-        throw new AristotleGateError("ESCALATE", toolName, reasonCodes, gelRecordId, decision, message);
+    // Gate-unreachable family.
+    if (refusalCode === "GATE_UNREACHABLE" || refusalCode.startsWith("GATE_HTTP_")) {
+      const message = refusalCode.startsWith("GATE_HTTP_")
+        ? `aristotle: gate error HTTP ${refusalCode.replace(/^GATE_HTTP_/, "")}: ${refusalDetail}`
+        : `aristotle: gate unreachable: ${refusalDetail}`;
+      options.onDecision?.({ toolName, toolInput, action, decision: { decision: "ERROR", reason_codes: [message] }, elapsedMs });
+      if (onError === "throw") {
+        throw new AristotleGateError("GATE_UNREACHABLE", toolName, [message], undefined, undefined, message);
       }
-      return { __aristotle: "ESCALATE", toolName, reasonCodes, message, gelRecordId, warrantId } satisfies AristotleToolOutcome;
+      return { __aristotle: "GATE_UNREACHABLE", toolName, reasonCodes: [message], message } satisfies AristotleToolOutcome;
     }
 
-    const message = `aristotle: REFUSE on ${toolName} - ${reasonCodes.join(", ") || "no reason codes"} - record ${gelRecordId ?? "(none)"}`;
-    if (onRefuse === "throw") {
-      throw new AristotleGateError("REFUSE", toolName, reasonCodes, gelRecordId, decision, message);
+    // TRANSPORT_REFUSED: inner execute threw after ALLOW. Pre-SDK behavior was
+    // to let that throw surface raw — preserve.
+    if (refusalCode === "TRANSPORT_REFUSED") {
+      throw new Error(refusalDetail.replace(/^handler threw: /, ""));
     }
-    return { __aristotle: "REFUSE", toolName, reasonCodes, message, gelRecordId, warrantId } satisfies AristotleToolOutcome;
+
+    // MISSING_WARRANT: treat as REFUSE.
+    if (refusalCode === "MISSING_WARRANT" && decision) {
+      const reasonCodes = decision.reason_codes;
+      const gelRecordId = decision.gel_record?.record_id;
+      const warrantId = decision.warrant?.warrant_id;
+      const message = `aristotle: REFUSE on ${toolName} - ${reasonCodes.join(", ") || "no reason codes"} - record ${gelRecordId ?? "(none)"}`;
+      options.onDecision?.({ toolName, toolInput, action, decision, elapsedMs });
+      if (onRefuse === "throw") {
+        throw new AristotleGateError("REFUSE", toolName, reasonCodes, gelRecordId, decision, message);
+      }
+      return { __aristotle: "REFUSE", toolName, reasonCodes, message, gelRecordId, warrantId } satisfies AristotleToolOutcome;
+    }
+
+    // GATE_REFUSED: decision is present and is REFUSE / ESCALATE / EXPIRE.
+    if (refusalCode === "GATE_REFUSED" && decision) {
+      options.onDecision?.({ toolName, toolInput, action, decision, elapsedMs });
+      const reasonCodes = decision.reason_codes;
+      const gelRecordId = decision.gel_record?.record_id;
+      const warrantId = decision.warrant?.warrant_id;
+
+      if (decision.decision === "ESCALATE") {
+        const message = `aristotle: ESCALATE on ${toolName} - ${reasonCodes.join(", ") || "no reason codes"} - record ${gelRecordId ?? "(none)"}`;
+        if (onEscalate === "throw") {
+          throw new AristotleGateError("ESCALATE", toolName, reasonCodes, gelRecordId, decision, message);
+        }
+        return { __aristotle: "ESCALATE", toolName, reasonCodes, message, gelRecordId, warrantId } satisfies AristotleToolOutcome;
+      }
+
+      const message = `aristotle: REFUSE on ${toolName} - ${reasonCodes.join(", ") || "no reason codes"} - record ${gelRecordId ?? "(none)"}`;
+      if (onRefuse === "throw") {
+        throw new AristotleGateError("REFUSE", toolName, reasonCodes, gelRecordId, decision, message);
+      }
+      return { __aristotle: "REFUSE", toolName, reasonCodes, message, gelRecordId, warrantId } satisfies AristotleToolOutcome;
+    }
+
+    // Forward-compat fallback.
+    const fallback = `aristotle: ${refusalCode} on ${toolName}: ${refusalDetail}`;
+    options.onDecision?.({ toolName, toolInput, action, decision: decision ?? { decision: "ERROR", reason_codes: [fallback] }, elapsedMs });
+    if (onRefuse === "throw") {
+      throw new AristotleGateError("REFUSE", toolName, [fallback], decision?.gel_record?.record_id, decision, fallback);
+    }
+    return { __aristotle: "REFUSE", toolName, reasonCodes: [fallback], message: fallback, gelRecordId: decision?.gel_record?.record_id, warrantId: decision?.warrant?.warrant_id } satisfies AristotleToolOutcome;
   };
 
   return { ...tool, execute: governedExecute };

@@ -8,9 +8,9 @@ have to reverse-engineer the rationale from the code.
 Format: a lightweight variant of [Michael Nygard's ADR template](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions).
 
 Closes [ROADMAP_TO_100.md](../../ROADMAP_TO_100.md) Category 3
-*"Author ADRs for the top 15 design decisions"* and adds 5 more
+*"Author ADRs for the top 15 design decisions"* and adds 10 more
 covering design decisions taken during the post-roadmap hardening
-batches. The next number to use is 0021.
+batches. The next number to use is 0026.
 
 ## Index
 
@@ -36,6 +36,11 @@ batches. The next number to use is 0021.
 | [0018](0018-per-vertical-helm-overlays.md) | Per-vertical Helm overlays, not a vertical-aware chart | Accepted |
 | [0019](0019-openapi-as-typed-client-surface.md) | OpenAPI is the typed-client surface | Accepted |
 | [0020](0020-reviewer-as-separate-package.md) | Reviewer ships as a separate package | Accepted |
+| [0021](0021-typed-route-helper-as-fluent-surface.md) | Typed-route helper as fluent surface (not generator output) | Accepted |
+| [0022](0022-per-package-changelog-discipline.md) | Per-package CHANGELOG discipline | Accepted |
+| [0023](0023-framework-adapter-collective-migration.md) | Framework adapters as a collective SDK migration | Accepted |
+| [0024](0024-five-by-two-vertical-overlay-pattern.md) | 5+5 vertical overlay shipping pattern | Accepted |
+| [0025](0025-signed-release-as-diligence-anchor.md) | Signed release artifacts as the diligence anchor | Accepted |
 
 ## Conventions
 

@@ -26,6 +26,7 @@
  */
 
 import { AristotleApiError, AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
+import { governThroughHandler, type GovernedHandlerResult, type HandlerContext } from "@aristotle/adapter-sdk";
 
 // ---------------------------------------------------------------------------
 // Vercel AI SDK structural types (mirrored locally; `ai` is a peer dep)
@@ -203,6 +204,21 @@ export function governTool<T extends VercelTool>(
   const onEscalate = options.onEscalate ?? "return-error";
   const onError = options.onError ?? "throw";
 
+  // Internal SDK shape: precompute the toolInput / action so we can hand the
+  // orchestrator buildAction(input) and inside the handler we still have the
+  // original (input, execOptions) closures available for the underlying
+  // tool's execute contract. This sits on `@aristotle/adapter-sdk`'s
+  // `governThroughHandler` — Pattern 3 — which gives us the fail-closed
+  // evaluate -> ALLOW -> warrant-present pipeline for free; this file keeps
+  // the Vercel-specific shape on top (return-error vs throw, onDecision,
+  // passthroughTools, GATE_UNREACHABLE outcome marker).
+  interface SdkInput {
+    rawInput: unknown;
+    execOptions: VercelToolExecutionOptions;
+    toolInput: Record<string, unknown>;
+    action: CanonicalAction;
+  }
+
   const governedExecute = async (input: unknown, execOptions: VercelToolExecutionOptions): Promise<unknown> => {
     const toolInput = normalizeInput(input);
     const now = new Date().toISOString();
@@ -221,11 +237,19 @@ export function governTool<T extends VercelTool>(
           telemetry: { agent_runtime: "vercel-ai-sdk" }
         };
 
+    const sdkInput: SdkInput = { rawInput: input, execOptions, toolInput, action };
     const t0 = Date.now();
-    let decision: EvaluateResponse;
+
+    let result: GovernedHandlerResult<unknown>;
     try {
-      decision = await options.client.evaluate(action, { now });
+      result = await governThroughHandler<SdkInput, unknown>(sdkInput, {
+        client: options.client,
+        buildAction: (i) => i.action,
+        handler: (i, _ctx: HandlerContext) => innerExecute(i.rawInput, i.execOptions) as Promise<unknown>
+      });
     } catch (err) {
+      // governThroughHandler should never throw; treat a throw as a fail-closed
+      // defect equivalent to gate-unreachable.
       const elapsedMs = Date.now() - t0;
       const msg = errorMessage(name, err);
       options.onDecision?.({
@@ -248,19 +272,64 @@ export function governTool<T extends VercelTool>(
     }
 
     const elapsedMs = Date.now() - t0;
-    options.onDecision?.({ toolName: name, toolInput, action, decision, elapsedMs });
 
-    if (decision.decision === "ALLOW") {
-      return await innerExecute(input, execOptions);
+    // ALLOW path: warrant present + handler ran successfully.
+    if (result.ok) {
+      options.onDecision?.({ toolName: name, toolInput, action, decision: result.decision, elapsedMs });
+      return result.output;
     }
 
-    if (decision.decision === "ESCALATE") {
-      const msg = escalateMessage(name, decision);
-      if (onEscalate === "throw") {
-        throw new AristotleGateError("ESCALATE", name, decision.reason_codes ?? [], decision.gel_record?.record_id, decision, msg);
+    const refusalCode = result.refusal.code;
+    const refusalDetail = result.refusal.detail;
+    const decision = result.decision;
+
+    // Gate-unreachable family: GATE_UNREACHABLE + any GATE_HTTP_<n>.
+    if (refusalCode === "GATE_UNREACHABLE" || refusalCode.startsWith("GATE_HTTP_")) {
+      const err = refusalCode.startsWith("GATE_HTTP_")
+        ? new AristotleApiError(Number(refusalCode.replace(/^GATE_HTTP_/, "")), refusalDetail)
+        : new Error(refusalDetail);
+      const msg = errorMessage(name, err);
+      options.onDecision?.({
+        toolName: name,
+        toolInput,
+        action,
+        decision: { decision: "ERROR", reason_codes: [msg] },
+        elapsedMs
+      });
+      if (onError === "throw") {
+        throw new AristotleGateError("GATE_UNREACHABLE", name, [msg], undefined, undefined, msg);
       }
       const outcome: AristotleToolOutcome = {
-        __aristotle: "ESCALATE",
+        __aristotle: "GATE_UNREACHABLE",
+        toolName: name,
+        reasonCodes: [msg],
+        message: msg
+      };
+      return outcome;
+    }
+
+    // TRANSPORT_REFUSED: inner execute threw after ALLOW. Pre-SDK behavior
+    // was to let that throw surface raw — preserve that exact behavior.
+    if (refusalCode === "TRANSPORT_REFUSED") {
+      // Fire onDecision telemetry for the ALLOW (the gate did ALLOW; the
+      // tool itself blew up).
+      if (decision) {
+        options.onDecision?.({ toolName: name, toolInput, action, decision, elapsedMs });
+      }
+      throw new Error(refusalDetail.replace(/^handler threw: /, ""));
+    }
+
+    // MISSING_WARRANT: gate said ALLOW but didn't produce a Warrant. The
+    // pre-SDK code didn't have this branch (it trusted ALLOW); treat as a
+    // REFUSE since we can't bind without a warrant.
+    if (refusalCode === "MISSING_WARRANT" && decision) {
+      const msg = refuseMessage(name, decision);
+      options.onDecision?.({ toolName: name, toolInput, action, decision, elapsedMs });
+      if (onRefuse === "throw") {
+        throw new AristotleGateError("REFUSE", name, decision.reason_codes ?? [], decision.gel_record?.record_id, decision, msg);
+      }
+      const outcome: AristotleToolOutcome = {
+        __aristotle: "REFUSE",
         toolName: name,
         reasonCodes: decision.reason_codes ?? [],
         message: msg,
@@ -269,19 +338,58 @@ export function governTool<T extends VercelTool>(
       return outcome;
     }
 
-    // REFUSE
-    const msg = refuseMessage(name, decision);
-    if (onRefuse === "throw") {
-      throw new AristotleGateError("REFUSE", name, decision.reason_codes ?? [], decision.gel_record?.record_id, decision, msg);
+    // GATE_REFUSED: decision is present and is REFUSE / ESCALATE / EXPIRE.
+    if (refusalCode === "GATE_REFUSED" && decision) {
+      options.onDecision?.({ toolName: name, toolInput, action, decision, elapsedMs });
+      if (decision.decision === "ESCALATE") {
+        const msg = escalateMessage(name, decision);
+        if (onEscalate === "throw") {
+          throw new AristotleGateError("ESCALATE", name, decision.reason_codes ?? [], decision.gel_record?.record_id, decision, msg);
+        }
+        const outcome: AristotleToolOutcome = {
+          __aristotle: "ESCALATE",
+          toolName: name,
+          reasonCodes: decision.reason_codes ?? [],
+          message: msg,
+          gelRecordId: decision.gel_record?.record_id
+        };
+        return outcome;
+      }
+      // REFUSE (or EXPIRE — treat the same).
+      const msg = refuseMessage(name, decision);
+      if (onRefuse === "throw") {
+        throw new AristotleGateError("REFUSE", name, decision.reason_codes ?? [], decision.gel_record?.record_id, decision, msg);
+      }
+      const outcome: AristotleToolOutcome = {
+        __aristotle: "REFUSE",
+        toolName: name,
+        reasonCodes: decision.reason_codes ?? [],
+        message: msg,
+        gelRecordId: decision.gel_record?.record_id
+      };
+      return outcome;
     }
-    const outcome: AristotleToolOutcome = {
+
+    // Forward-compat: any other refusal code surfaces as a generic REFUSE.
+    const fallbackMsg = `aristotle: ${refusalCode} on ${name}: ${refusalDetail}`;
+    options.onDecision?.({
+      toolName: name,
+      toolInput,
+      action,
+      decision: decision ?? { decision: "ERROR", reason_codes: [fallbackMsg] },
+      elapsedMs
+    });
+    if (onRefuse === "throw") {
+      throw new AristotleGateError("REFUSE", name, [fallbackMsg], decision?.gel_record?.record_id, decision, fallbackMsg);
+    }
+    const fallbackOutcome: AristotleToolOutcome = {
       __aristotle: "REFUSE",
       toolName: name,
-      reasonCodes: decision.reason_codes ?? [],
-      message: msg,
-      gelRecordId: decision.gel_record?.record_id
+      reasonCodes: [fallbackMsg],
+      message: fallbackMsg,
+      gelRecordId: decision?.gel_record?.record_id
     };
-    return outcome;
+    return fallbackOutcome;
   };
 
   return { ...tool, execute: governedExecute as T["execute"] };

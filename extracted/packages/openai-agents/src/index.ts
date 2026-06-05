@@ -31,6 +31,7 @@
  */
 
 import { AristotleApiError, AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
+import { governThroughHandler, type GovernedHandlerResult, type HandlerContext } from "@aristotle/adapter-sdk";
 
 // ---------------------------------------------------------------------------
 // SDK types (mirrored locally; @openai/agents is a peer)
@@ -220,6 +221,20 @@ export function aristotleToolInputGuardrail(
   const onEscalate = options.onEscalate ?? "rejectContent";
   const onError = options.onError ?? "rejectContent";
 
+  // Internal SDK shape: precompute toolInput / action so we can hand the
+  // orchestrator buildAction(input). This guardrail is unusual relative to
+  // langchain/vercel-ai/mastra: it never invokes the underlying tool —
+  // ALLOW just resolves to behavior:'allow' and the SDK runs the tool
+  // afterward. The Pattern 3 handler is therefore a no-op that returns the
+  // identity result the guardrail will use to construct outputInfo.
+  interface SdkInput {
+    toolName: string;
+    callId: string;
+    agentName: string | undefined;
+    toolInput: Record<string, unknown>;
+    action: CanonicalAction;
+  }
+
   const run: ToolInputGuardrailFunction = async (data) => {
     const toolCall = data.toolCall;
     const toolName = toolCall.name;
@@ -237,11 +252,21 @@ export function aristotleToolInputGuardrail(
       ? options.buildAction({ toolName, toolInput, callId, now, agentName })
       : defaultBuildAction({ toolName, toolInput, callId, now, agentName, wardId: options.wardId, subject: options.subject, actionType });
 
+    const sdkInput: SdkInput = { toolName, callId, agentName, toolInput, action };
     const t0 = Date.now();
-    let decision: EvaluateResponse;
+
+    // Pattern 3: governThroughHandler. The handler is a no-op — the
+    // guardrail's job is admission-only; the SDK calls the underlying tool
+    // itself after we resolve to behavior:'allow'.
+    let result: GovernedHandlerResult<void>;
     try {
-      decision = await options.client.evaluate(action, { now });
+      result = await governThroughHandler<SdkInput, void>(sdkInput, {
+        client: options.client,
+        buildAction: (i) => i.action,
+        handler: (_i, _ctx: HandlerContext) => { /* admission only */ }
+      });
     } catch (err) {
+      // Defect: orchestrator should never throw. Surface as gate-unreachable.
       const elapsedMs = Date.now() - t0;
       const reason =
         err instanceof AristotleApiError
@@ -261,24 +286,70 @@ export function aristotleToolInputGuardrail(
     }
 
     const elapsedMs = Date.now() - t0;
-    options.onDecision?.({ toolName, toolInput, action, decision, elapsedMs });
 
-    if (decision.decision === "ALLOW") {
+    // ALLOW path: handler ran (no-op), warrant present.
+    if (result.ok) {
+      options.onDecision?.({ toolName, toolInput, action, decision: result.decision, elapsedMs });
       return {
         behavior: { type: "allow" },
         outputInfo: {
           aristotle: "allow",
-          warrantId: decision.warrant?.warrant_id,
-          gelRecordId: decision.gel_record?.record_id
+          warrantId: result.decision.warrant?.warrant_id,
+          gelRecordId: result.decision.gel_record?.record_id
         }
       };
     }
 
-    if (decision.decision === "ESCALATE") {
-      const msg = `aristotle: ESCALATE on ${toolName} · ${decision.reason_codes.join(", ") || "no reason codes"} · record ${decision.gel_record?.record_id ?? "(none)"}`;
-      if (onEscalate === "throwException") {
+    const refusalCode = result.refusal.code;
+    const refusalDetail = result.refusal.detail;
+    const decision = result.decision;
+
+    // Gate-unreachable family.
+    if (refusalCode === "GATE_UNREACHABLE" || refusalCode.startsWith("GATE_HTTP_")) {
+      const reason = refusalCode.startsWith("GATE_HTTP_")
+        ? `aristotle: gate error HTTP ${refusalCode.replace(/^GATE_HTTP_/, "")}: ${refusalDetail}`
+        : `aristotle: gate unreachable: ${refusalDetail}`;
+      options.onDecision?.({
+        toolName,
+        toolInput,
+        action,
+        decision: { decision: "ERROR", reason_codes: [reason] },
+        elapsedMs
+      });
+      if (onError === "throwException") {
+        return { behavior: { type: "throwException" }, outputInfo: { aristotle: "gate_unreachable", message: reason } };
+      }
+      return { behavior: { type: "rejectContent", message: reason }, outputInfo: { aristotle: "gate_unreachable" } };
+    }
+
+    // MISSING_WARRANT: gate said ALLOW but produced no warrant. Treat as REFUSE.
+    if (refusalCode === "MISSING_WARRANT" && decision) {
+      options.onDecision?.({ toolName, toolInput, action, decision, elapsedMs });
+      const msg = `aristotle: REFUSE on ${toolName} · ${decision.reason_codes.join(", ") || "no reason codes"} · record ${decision.gel_record?.record_id ?? "(none)"}`;
+      return {
+        behavior: { type: "rejectContent", message: msg },
+        outputInfo: { aristotle: "refuse", reasonCodes: decision.reason_codes, gelRecordId: decision.gel_record?.record_id }
+      };
+    }
+
+    // GATE_REFUSED: REFUSE / ESCALATE / EXPIRE.
+    if (refusalCode === "GATE_REFUSED" && decision) {
+      options.onDecision?.({ toolName, toolInput, action, decision, elapsedMs });
+
+      if (decision.decision === "ESCALATE") {
+        const msg = `aristotle: ESCALATE on ${toolName} · ${decision.reason_codes.join(", ") || "no reason codes"} · record ${decision.gel_record?.record_id ?? "(none)"}`;
+        if (onEscalate === "throwException") {
+          return {
+            behavior: { type: "throwException" },
+            outputInfo: {
+              aristotle: "escalate",
+              reasonCodes: decision.reason_codes,
+              gelRecordId: decision.gel_record?.record_id
+            }
+          };
+        }
         return {
-          behavior: { type: "throwException" },
+          behavior: { type: "rejectContent", message: msg },
           outputInfo: {
             aristotle: "escalate",
             reasonCodes: decision.reason_codes,
@@ -286,25 +357,31 @@ export function aristotleToolInputGuardrail(
           }
         };
       }
+
+      // REFUSE (or EXPIRE — same UX).
+      const refuseMsg = `aristotle: REFUSE on ${toolName} · ${decision.reason_codes.join(", ") || "no reason codes"} · record ${decision.gel_record?.record_id ?? "(none)"}`;
       return {
-        behavior: { type: "rejectContent", message: msg },
+        behavior: { type: "rejectContent", message: refuseMsg },
         outputInfo: {
-          aristotle: "escalate",
+          aristotle: "refuse",
           reasonCodes: decision.reason_codes,
           gelRecordId: decision.gel_record?.record_id
         }
       };
     }
 
-    // REFUSE
-    const refuseMsg = `aristotle: REFUSE on ${toolName} · ${decision.reason_codes.join(", ") || "no reason codes"} · record ${decision.gel_record?.record_id ?? "(none)"}`;
+    // Forward-compat fallback.
+    const fallback = `aristotle: ${refusalCode} on ${toolName}: ${refusalDetail}`;
+    options.onDecision?.({
+      toolName,
+      toolInput,
+      action,
+      decision: decision ?? { decision: "ERROR", reason_codes: [fallback] },
+      elapsedMs
+    });
     return {
-      behavior: { type: "rejectContent", message: refuseMsg },
-      outputInfo: {
-        aristotle: "refuse",
-        reasonCodes: decision.reason_codes,
-        gelRecordId: decision.gel_record?.record_id
-      }
+      behavior: { type: "rejectContent", message: fallback },
+      outputInfo: { aristotle: "refuse", reasonCodes: [fallback], gelRecordId: decision?.gel_record?.record_id }
     };
   };
 

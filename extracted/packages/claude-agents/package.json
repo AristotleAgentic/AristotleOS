@@ -46,6 +46,7 @@
   },
   "sideEffects": false,
   "dependencies": {
+    "@aristotle/adapter-sdk": "workspace:*",
     "@aristotle/os-sdk": "workspace:*"
   },
   "peerDependencies": {

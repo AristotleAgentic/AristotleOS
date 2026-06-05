@@ -1,0 +1,133 @@
+# Vertical: connected vehicle / V2X
+# Doctrine alignment: Every OTA update, every fleet-wide cohort dispatch,
+# every V2X authority (signal phase + timing, road-hazard advisory,
+# emergency-vehicle-preemption command, intersection management) must transit
+# a Warrant. Connected vehicle is the highest-throughput vertical this
+# substrate ships defaults for — production fleets produce tens of thousands
+# of correlated gate calls per second during cohort dispatches and traffic
+# events — so sizing is biased extremely high and revocation gossip is
+# aggressive to keep withdrawn authority from propagating across the fleet.
+# Compliance reference: SAE J3061 (Cybersecurity Guidebook for Cyber-Physical
+#   Vehicle Systems), ISO/SAE 21434 (Road vehicles — cybersecurity
+#   engineering), UNECE WP.29 R155 (Cyber security management system),
+#   NHTSA 49 CFR Part 571 FMVSS for V2X-equipped vehicles — DEMONSTRATION
+#   ONLY. Production deployments require the OEM cybersecurity lead and the
+#   fleet operations director to sign off on the physical-invariant policy
+#   bundle plus the OTA + cohort-dispatch authority partitioning posture
+#   before any wire-level adapter is enabled.
+# Last reviewed: 2026-06-05
+#
+# Apply as a base profile under another overlay (e.g. hardened) for a pilot:
+#
+#   helm template aristotle charts/aristotle-governance-os \
+#     -f charts/aristotle-governance-os/values-automotive.yaml \
+#     -f charts/aristotle-governance-os/values-hardened.yaml
+#
+# Field provenance
+# ────────────────
+#   `runtimeConfig.*`     — template-consumed (passed straight into pod env).
+#   `secrets.*`           — template-consumed.
+#   `services.*`          — template-consumed (resource sizing per deployment).
+#   `mesh.*`              — operator-facing documentation.
+#   `gel.*`               — operator-facing documentation.
+#   `adapters.*`          — operator-facing posture statement.
+#   `global.vertical`     — discovery tag.
+#   `global.doctrine`     — operator-facing prose.
+
+global:
+  vertical: "automotive"
+  doctrine: |
+    Connected vehicle / V2X: every OTA update, every fleet-wide cohort
+    dispatch, and every V2X authority transits the gate with a single-use
+    Warrant. Mesh quorum is three — fleet-wide authority must never be
+    minted unilaterally by a single compromised OEM-cloud node. Revocation
+    gossip is aggressive (5 s) so withdrawn authority stops propagating
+    across the fleet inside one cohort cycle. Sizing is biased extremely
+    high (10000 commits/s target throughput) because cohort dispatches and
+    traffic events produce tens of thousands of correlated gate calls per
+    second. GEL retention is 1 year primary — older history archives via
+    the sidecar.
+
+mesh:
+  productionMode: true
+  revocationQuorum: 3                  # fleet authority cannot be minted unilaterally
+  rateLimit:
+    perPeerPerMinute: 10000            # per-region OEM-cloud peers; cohort dispatch is extremely bursty
+  replayCache:
+    ttlMs: 15000                       # 15 s — V2X messages cluster tightly; short window to surface duplicates
+  revocation:
+    autoPullIntervalMs: 5000           # aggressive — fleet must drop withdrawn authority inside one cohort cycle
+  throughput:
+    targetCommitsPerSecond: 10000      # connected-fleet event volume
+    workerPoolSize: 32
+  partition:
+    disconnectedWarrantCap: 0          # control-plane partition must not mint vehicle authority
+
+gel:
+  retention:
+    maxAgeDays: 365                    # 1 year primary
+  timestamp:
+    enabled: true
+    kind: "rfc3161"
+  archive:
+    enabled: true
+    minimumRetentionDays: 1825         # 5 years archived
+
+adapters:
+  demonstrationOnlyBlocked: true        # production deployments must not load demo transports
+
+runtimeConfig:
+  NODE_ENV: "production"
+  ALLOW_INSECURE_PRODUCTION_BOOT: "false"
+  GOVERNANCE_CHAIN_MODE: "enforce"
+  OPERATOR_SESSION_ENFORCEMENT: "true"
+  OPERATOR_ROLE_ENFORCEMENT: "true"
+  WITNESS_QUORUM: "3"
+  REVOCATION_AUTO_PULL_MS: "5000"
+  GATE_TARGET_COMMITS_PER_SECOND: "10000"
+  OTEL_RESOURCE_ATTRIBUTES_VERTICAL: "vertical=automotive"
+
+telemetry:
+  otel:
+    enabled: true
+    resourceAttributes: "deployment.environment=pilot,service.namespace=aristotle-governance-os,vertical=automotive"
+
+# Connected vehicle: maximum sizing across the board. This is the highest-
+# throughput vertical the substrate ships defaults for.
+services:
+  governance-kernel:
+    replicas: 6
+    resources:
+      requests: { cpu: 2000m, memory: 4Gi }
+      limits:   { cpu: 8000m, memory: 16Gi }
+  execution-gate:
+    replicas: 8                         # 10000 commits/s target sizing
+    resources:
+      requests: { cpu: 2000m, memory: 2Gi }
+      limits:   { cpu: 8000m, memory: 8Gi }
+  evidence-ledger:
+    replicas: 2
+    persistentVolume:
+      enabled: true
+      size: 1000Gi                      # 1-year primary at 10k commits/s sizing
+      mountPath: /var/lib/aristotle
+    resources:
+      requests: { cpu: 1000m, memory: 2Gi }
+      limits:   { cpu: 4000m, memory: 8Gi }
+  witness-service:
+    replicas: 3                         # matches mesh.revocationQuorum
+    resources:
+      requests: { cpu: 500m, memory: 1Gi }
+      limits:   { cpu: 2000m, memory: 4Gi }
+  policy-compiler:
+    replicas: 3
+  meta-authority-registry:
+    replicas: 3
+  authority-router:
+    replicas: 3
+  agent-os:
+    replicas: 2
+    persistentVolume:
+      enabled: true
+      size: 50Gi
+      mountPath: /var/lib/aristotle

@@ -22,6 +22,7 @@
  */
 
 import { AristotleApiError, AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
+import { governThroughHandler, type GovernedHandlerResult, type HandlerContext } from "@aristotle/adapter-sdk";
 
 // ---------------------------------------------------------------------------
 // Claude Agent SDK hook types (defined locally so this package does not have
@@ -227,39 +228,22 @@ export function aristotleGuard(options: AristotleGuardOptions): AristotleGuardRe
           actionType
         });
 
+    // Pattern 3: governThroughHandler. Like openai-agents, claude-agents is
+    // admission-only — Claude's SDK runs the tool itself after we resolve to
+    // permissionDecision:'allow'. The handler is a no-op.
+    interface SdkInput { toolName: string; toolInput: Record<string, unknown>; action: CanonicalAction; }
+    const sdkInput: SdkInput = { toolName, toolInput, action };
     const t0 = Date.now();
-    try {
-      const decision = await options.client.evaluate(action, { now });
-      const elapsedMs = Date.now() - t0;
-      options.onDecision?.({ toolName, toolInput, action, decision, elapsedMs });
 
-      if (decision.decision === "ALLOW") {
-        return {
-          hookSpecificOutput: {
-            hookEventName: "PreToolUse",
-            permissionDecision: "allow",
-            permissionDecisionReason: `aristotle: ALLOW · warrant ${decision.warrant?.warrant_id ?? "(none)"} · record ${decision.gel_record?.record_id ?? "(none)"}`
-          }
-        };
-      }
-      if (decision.decision === "ESCALATE") {
-        return {
-          hookSpecificOutput: {
-            hookEventName: "PreToolUse",
-            permissionDecision: "ask",
-            permissionDecisionReason: `aristotle: ESCALATE · ${decision.reason_codes.join(", ") || "no reason codes"} · record ${decision.gel_record?.record_id ?? "(none)"}`
-          }
-        };
-      }
-      // REFUSE
-      return {
-        hookSpecificOutput: {
-          hookEventName: "PreToolUse",
-          permissionDecision: "deny",
-          permissionDecisionReason: `aristotle: REFUSE · ${decision.reason_codes.join(", ") || "no reason codes"} · record ${decision.gel_record?.record_id ?? "(none)"}`
-        }
-      };
+    let result: GovernedHandlerResult<void>;
+    try {
+      result = await governThroughHandler<SdkInput, void>(sdkInput, {
+        client: options.client,
+        buildAction: (i) => i.action,
+        handler: (_i, _ctx: HandlerContext) => { /* admission only */ }
+      });
     } catch (err) {
+      // Defect: orchestrator should never throw. Treat as gate-unreachable.
       const elapsedMs = Date.now() - t0;
       const reason =
         err instanceof AristotleApiError
@@ -280,6 +264,97 @@ export function aristotleGuard(options: AristotleGuardOptions): AristotleGuardRe
         }
       };
     }
+
+    const elapsedMs = Date.now() - t0;
+
+    // ALLOW path: handler ran (no-op), warrant present.
+    if (result.ok) {
+      const decision = result.decision;
+      options.onDecision?.({ toolName, toolInput, action, decision, elapsedMs });
+      return {
+        hookSpecificOutput: {
+          hookEventName: "PreToolUse",
+          permissionDecision: "allow",
+          permissionDecisionReason: `aristotle: ALLOW · warrant ${decision.warrant?.warrant_id ?? "(none)"} · record ${decision.gel_record?.record_id ?? "(none)"}`
+        }
+      };
+    }
+
+    const refusalCode = result.refusal.code;
+    const refusalDetail = result.refusal.detail;
+    const decision = result.decision;
+
+    // Gate-unreachable family.
+    if (refusalCode === "GATE_UNREACHABLE" || refusalCode.startsWith("GATE_HTTP_")) {
+      const reason = refusalCode.startsWith("GATE_HTTP_")
+        ? `aristotle: gate error HTTP ${refusalCode.replace(/^GATE_HTTP_/, "")}: ${refusalDetail}`
+        : `aristotle: gate unreachable: ${refusalDetail}`;
+      options.onDecision?.({
+        toolName,
+        toolInput,
+        action,
+        decision: { decision: "ERROR", reason_codes: [reason] },
+        elapsedMs
+      });
+      return {
+        hookSpecificOutput: {
+          hookEventName: "PreToolUse",
+          permissionDecision: onError,
+          permissionDecisionReason: reason
+        }
+      };
+    }
+
+    // MISSING_WARRANT: treat as REFUSE.
+    if (refusalCode === "MISSING_WARRANT" && decision) {
+      options.onDecision?.({ toolName, toolInput, action, decision, elapsedMs });
+      return {
+        hookSpecificOutput: {
+          hookEventName: "PreToolUse",
+          permissionDecision: "deny",
+          permissionDecisionReason: `aristotle: REFUSE · ${decision.reason_codes.join(", ") || "no reason codes"} · record ${decision.gel_record?.record_id ?? "(none)"}`
+        }
+      };
+    }
+
+    // GATE_REFUSED: REFUSE / ESCALATE / EXPIRE.
+    if (refusalCode === "GATE_REFUSED" && decision) {
+      options.onDecision?.({ toolName, toolInput, action, decision, elapsedMs });
+
+      if (decision.decision === "ESCALATE") {
+        return {
+          hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            permissionDecision: "ask",
+            permissionDecisionReason: `aristotle: ESCALATE · ${decision.reason_codes.join(", ") || "no reason codes"} · record ${decision.gel_record?.record_id ?? "(none)"}`
+          }
+        };
+      }
+      return {
+        hookSpecificOutput: {
+          hookEventName: "PreToolUse",
+          permissionDecision: "deny",
+          permissionDecisionReason: `aristotle: REFUSE · ${decision.reason_codes.join(", ") || "no reason codes"} · record ${decision.gel_record?.record_id ?? "(none)"}`
+        }
+      };
+    }
+
+    // Forward-compat fallback.
+    const fallback = `aristotle: ${refusalCode}: ${refusalDetail}`;
+    options.onDecision?.({
+      toolName,
+      toolInput,
+      action,
+      decision: decision ?? { decision: "ERROR", reason_codes: [fallback] },
+      elapsedMs
+    });
+    return {
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "deny",
+        permissionDecisionReason: fallback
+      }
+    };
   };
 
   return {

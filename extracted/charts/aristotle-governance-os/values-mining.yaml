@@ -1,0 +1,127 @@
+# Vertical: autonomous mining (loaders, haulers)
+# Doctrine alignment: Every traction command, every dump-cycle authority,
+# every loader-to-hauler hand-off must transit a Warrant. Autonomous mining
+# vehicles operate in long-partition environments (haul roads in open-pit
+# mines and underground long-wall faces both have meaningful periods of
+# limited connectivity), so the disconnected-warrant cap is set wide enough
+# for normal cycle continuation. Demo transports are blocked because a
+# misissued traction command at scale produces immediate vehicle-collision
+# liability.
+# Compliance reference: MSHA 30 CFR Part 56 (surface metal/nonmetal mines),
+#   30 CFR Part 75 (underground coal mines), AS/NZS 4801 OHSMS (Australia/
+#   New Zealand operators) — DEMONSTRATION ONLY. Production deployments
+#   require the mine site safety officer and the autonomous-fleet
+#   engineering lead to sign off on the physical-invariant policy bundle
+#   plus the partition-tolerance posture before any wire-level adapter is
+#   enabled.
+# Last reviewed: 2026-06-05
+#
+# Apply as a base profile under another overlay (e.g. hardened) for a pilot:
+#
+#   helm template aristotle charts/aristotle-governance-os \
+#     -f charts/aristotle-governance-os/values-mining.yaml \
+#     -f charts/aristotle-governance-os/values-hardened.yaml
+#
+# Field provenance
+# ────────────────
+#   `runtimeConfig.*`     — template-consumed (passed straight into pod env).
+#   `secrets.*`           — template-consumed.
+#   `services.*`          — template-consumed (resource sizing per deployment).
+#   `mesh.*`              — operator-facing documentation.
+#   `gel.*`               — operator-facing documentation.
+#   `adapters.*`          — operator-facing posture statement.
+#   `global.vertical`     — discovery tag.
+#   `global.doctrine`     — operator-facing prose.
+
+global:
+  vertical: "mining"
+  doctrine: |
+    Autonomous mining (loaders, haulers): every traction command, every
+    dump-cycle authority, every loader-to-hauler hand-off transits the gate
+    with a single-use Warrant. Mesh quorum is two — mine sites operate
+    small operator cohorts and quorum=3 stalls during a single-node outage,
+    which directly stops the haul. Disconnected-warrant cap is wide (20)
+    because haul roads and underground faces have meaningful periods of
+    limited mesh connectivity; vehicles must keep cycling under brief
+    partition. GEL retention is 90 days operational — incident review and
+    long-term archive happen out-of-band via the archive sidecar. Demo
+    transports are blocked because the collision-liability blast radius
+    is immediate.
+
+mesh:
+  productionMode: true
+  revocationQuorum: 2                  # small operator cohort; quorum=3 stalls
+  rateLimit:
+    perPeerPerMinute: 180              # autonomous fleet telemetry is steady but high
+  replayCache:
+    ttlMs: 60000                       # 60 s replay window
+  partition:
+    disconnectedWarrantCap: 20         # vehicles have long partition windows; wide cap
+
+gel:
+  retention:
+    maxAgeDays: 90                     # 90 days operational; archive sidecar holds older
+  timestamp:
+    enabled: true
+    kind: "rfc3161"
+  archive:
+    enabled: true
+    minimumRetentionDays: 730          # 2 years archived
+
+adapters:
+  demonstrationOnlyBlocked: true        # demonstration_only blocked — vehicle collision blast radius
+
+runtimeConfig:
+  NODE_ENV: "production"
+  ALLOW_INSECURE_PRODUCTION_BOOT: "false"
+  GOVERNANCE_CHAIN_MODE: "enforce"
+  OPERATOR_SESSION_ENFORCEMENT: "true"
+  OPERATOR_ROLE_ENFORCEMENT: "true"
+  WITNESS_QUORUM: "2"
+  OTEL_RESOURCE_ATTRIBUTES_VERTICAL: "vertical=mining"
+
+telemetry:
+  otel:
+    enabled: true
+    resourceAttributes: "deployment.environment=pilot,service.namespace=aristotle-governance-os,vertical=mining"
+
+# Autonomous mining: steady high-volume gate calls + moderate ledger writes.
+# Bias for partition tolerance — kernel + gate replicated across availability
+# zones; witness service is the partition-tolerance lever.
+services:
+  governance-kernel:
+    replicas: 2
+    resources:
+      requests: { cpu: 500m, memory: 1Gi }
+      limits:   { cpu: 2000m, memory: 4Gi }
+  execution-gate:
+    replicas: 3
+    resources:
+      requests: { cpu: 500m, memory: 512Mi }
+      limits:   { cpu: 2000m, memory: 2Gi }
+  evidence-ledger:
+    replicas: 1
+    persistentVolume:
+      enabled: true
+      size: 50Gi                        # 90-day operational + churn headroom
+      mountPath: /var/lib/aristotle
+    resources:
+      requests: { cpu: 250m, memory: 512Mi }
+      limits:   { cpu: 1500m, memory: 2Gi }
+  witness-service:
+    replicas: 2                         # matches mesh.revocationQuorum
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits:   { cpu: 1000m, memory: 1Gi }
+  policy-compiler:
+    replicas: 2
+  meta-authority-registry:
+    replicas: 2
+  authority-router:
+    replicas: 2
+  agent-os:
+    replicas: 2                         # autonomous fleet supervisors run agent surface
+    persistentVolume:
+      enabled: true
+      size: 20Gi
+      mountPath: /var/lib/aristotle

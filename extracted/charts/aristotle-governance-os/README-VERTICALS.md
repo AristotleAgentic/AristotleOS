@@ -1,21 +1,26 @@
 # Per-vertical Helm overlays
 
-This chart ships five vertical overlays alongside the environment overlays
+This chart ships ten vertical overlays alongside the environment overlays
 (`values-local.yaml`, `values-staging.yaml`, `values-pilot.yaml`, etc.).
 A vertical overlay records the operator-facing posture choices a deployment
 inherits when the substrate is operated in a specific industry — mesh quorum,
 GEL retention, demonstration-transport blocking, per-service resource sizing,
 and a one-line doctrine statement consumable by tooling.
 
-The five verticals shipped today are:
+The ten verticals shipped today are:
 
-| Overlay file              | Vertical                          | Mesh quorum | GEL retention | Notable posture                                                                  |
-|---------------------------|-----------------------------------|:-----------:|:-------------:|----------------------------------------------------------------------------------|
-| `values-pipeline.yaml`    | Oil & gas pipeline SCADA          |      3      |    7 years    | Demo transports blocked; 5-warrant disconnected cap.                              |
-| `values-aviation.yaml`    | UAV / flight control              |      2      |    90 days    | 10-warrant disconnected cap (partition tolerance for isolated drones).            |
-| `values-grid.yaml`        | Electric grid SCADA               |      3      |    7 years    | Aggressive 5-s revocation auto-pull; zero disconnected-warrant tolerance.         |
-| `values-healthcare.yaml`  | Clinical decision support         |      2      |    7 years    | Aggressive 100/min per-peer rate limit; encrypted-at-rest archive sidecar.        |
-| `values-telecom.yaml`     | 5G / NEF / network slicing        |      3      |    1 year     | High-throughput sizing (2 000 commits/s); 3-year archive.                          |
+| Overlay file               | Vertical                          | Mesh quorum | GEL retention   | Notable posture                                                                  |
+|----------------------------|-----------------------------------|:-----------:|:---------------:|----------------------------------------------------------------------------------|
+| `values-pipeline.yaml`     | Oil & gas pipeline SCADA          |      3      |    7 years      | Demo transports blocked; 5-warrant disconnected cap.                              |
+| `values-aviation.yaml`     | UAV / flight control              |      2      |    90 days      | 10-warrant disconnected cap (partition tolerance for isolated drones).            |
+| `values-grid.yaml`         | Electric grid SCADA               |      3      |    7 years      | Aggressive 5-s revocation auto-pull; zero disconnected-warrant tolerance.         |
+| `values-healthcare.yaml`   | Clinical decision support         |      2      |    7 years      | Aggressive 100/min per-peer rate limit; encrypted-at-rest archive sidecar.        |
+| `values-telecom.yaml`      | 5G / NEF / network slicing        |      3      |    1 year       | High-throughput sizing (2 000 commits/s); 3-year archive.                          |
+| `values-rail.yaml`         | Rail / signaling (CBTC, PTC)      |      3      |    7 years      | 5-warrant disconnected cap; aggressive 5-s revocation auto-pull.                  |
+| `values-water.yaml`        | Water / wastewater SCADA          |      3      |    7 years      | Encrypted-at-rest archive; demo transports blocked (public health blast radius).   |
+| `values-port.yaml`         | Port operations / crane control   |      2      |   1 y + 5 y     | High event density (200/min per-peer); 4 gate replicas for vessel-exchange bursts. |
+| `values-mining.yaml`       | Autonomous mining (loaders, haulers) |   2      |    90 days      | 20-warrant disconnected cap (long-partition tolerance); demo transports blocked.    |
+| `values-automotive.yaml`   | Connected vehicle / V2X           |      3      |   1 y + 5 y     | Maximum sizing (10 000 commits/s target); aggressive 5-s revocation gossip.        |
 
 > Compliance references in each overlay's header comment are demonstration-only.
 > Production deployments require the operator's compliance officer or
@@ -189,14 +194,96 @@ template change, not a values change. Overlays shipped today remain valid.
   thousands of correlated gate calls in seconds.
 - `disconnectedWarrantCap: 0` — control-plane partitions should not issue
   authority.
-- Maximum sizing across the board — this is the largest vertical the substrate
-  ships defaults for, by an order of magnitude.
+- Maximum sizing across the board for the original five — superseded only by
+  automotive among the ten verticals shipped today.
+
+### Rail (`values-rail.yaml`)
+
+- Mesh quorum **3** — rail signaling actuates physical-invariant-class
+  equipment; one compromised dispatch node must not be able to revoke peers
+  silently.
+- GEL retention **7 years** — matches FRA incident-record retention practice
+  for railroad signal and train control systems.
+- `disconnectedWarrantCap: 5` — tight cap. Signals must NOT issue authority
+  under partition beyond a short window because the physical consequences of
+  a misissued aspect are immediate and irreversible.
+- Aggressive `revocation.autoPullIntervalMs: 5000` (5 s) — withdrawn
+  authority must stop the next interlocking command, not the next polling
+  round.
+- High sizing on kernel + gate; 150 GiB ledger PV for 7-year retention at
+  CBTC/PTC write volume.
+
+### Water (`values-water.yaml`)
+
+- Mesh quorum **3** — chemical-dose, pump, and clarifier commands are
+  physical-invariant-class; one compromised plant node should not be able to
+  revoke peers silently.
+- GEL retention **7 years** + `archive.encryptAtRest: true` — matches EPA
+  RMP rule recordkeeping; the archive holds process-control history that is
+  sensitive both for incident response and competitive reasons.
+- `demonstrationOnlyBlocked: true` is explicit doctrine, not just the
+  default — a misissued chlorination command has a direct public-health
+  blast radius and operators must sign off before any wire-level adapter is
+  enabled.
+- `disconnectedWarrantCap: 3` — wastewater control should not auto-issue
+  under partition.
+- Mid-sized; 100 GiB ledger PV.
+
+### Port (`values-port.yaml`)
+
+- Mesh quorum **2** — small terminal-operator cohorts; quorum=3 stalls
+  during single-node maintenance and that stall directly affects vessel-
+  exchange revenue.
+- GEL retention **1 year primary + 5 year archive** — operational dashboards
+  need the last twelve months inline; older history archives for facility
+  security and incident review.
+- Per-peer rate limit **200/min** — automated yard orchestration is
+  intentionally bursty during a vessel exchange; the governance discipline
+  is per-action, not per-volume.
+- **4 gate replicas** to absorb vessel-exchange storms without queueing.
+- `disconnectedWarrantCap: 10` — yard operations can continue under brief
+  partition (a tug or stevedore link drop is operational, not adversarial).
+
+### Mining (`values-mining.yaml`)
+
+- Mesh quorum **2** — small mine-site operator cohorts; quorum=3 stalls
+  during single-node outage and that stall directly stops the haul.
+- GEL retention **90 days operational + 2-year archive** — incident review
+  and long-term archive happen out-of-band via the archive sidecar; primary
+  is sized for in-cycle review only.
+- `disconnectedWarrantCap: 20` — wide cap. Autonomous loaders and haulers
+  operate in long-partition environments (open-pit haul roads and underground
+  long-wall faces both have meaningful periods of limited connectivity);
+  vehicles must keep cycling under brief partition.
+- `demonstrationOnlyBlocked: true` is explicit doctrine — a misissued
+  traction command at scale produces immediate vehicle-collision liability.
+- 2× agent-os replicas because autonomous-fleet supervisors run the agent
+  surface that schedules dump cycles and loader hand-offs.
+
+### Automotive (`values-automotive.yaml`)
+
+- Mesh quorum **3** — fleet-wide authority must never be minted unilaterally
+  by a single compromised OEM-cloud node. OTA campaigns and cohort dispatches
+  cross regional control planes.
+- GEL retention **1 year primary + 5-year archive** — aligns to OEM
+  cybersecurity audit-cycle practice (ISO/SAE 21434, UNECE WP.29 R155).
+- Mesh throughput recommendations bias highest among the ten verticals:
+  `targetCommitsPerSecond: 10000`, `workerPoolSize: 32`,
+  `perPeerPerMinute: 10000`. Cohort dispatches and traffic events produce
+  tens of thousands of correlated gate calls per second.
+- Aggressive `revocation.autoPullIntervalMs: 5000` (5 s) — withdrawn
+  authority must stop propagating across the fleet inside one cohort cycle.
+- `disconnectedWarrantCap: 0` — control-plane partition must never mint
+  vehicle authority.
+- Maximum sizing across the board (6 kernel × 8 gate × 2 ledger replicas;
+  1 TiB ledger PV) — this is now the largest-throughput vertical the
+  substrate ships defaults for.
 
 ---
 
 ## Adding a new vertical
 
-To add a sixth vertical overlay:
+To add an eleventh vertical overlay:
 
 1. Pick a short vertical key (lowercase, no spaces): `manufacturing`,
    `defense`, `transit`, etc.

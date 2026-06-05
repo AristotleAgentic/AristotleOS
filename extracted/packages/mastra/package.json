@@ -15,7 +15,7 @@
   "publishConfig": {"access": "public"},
   "engines": {"node": ">=18"},
   "sideEffects": false,
-  "dependencies": {"@aristotle/os-sdk": "workspace:*"},
+  "dependencies": {"@aristotle/adapter-sdk": "workspace:*", "@aristotle/os-sdk": "workspace:*"},
   "peerDependencies": {"@mastra/core": ">=0.1.0 <2.0.0"},
   "peerDependenciesMeta": {"@mastra/core": {"optional": true}},
   "scripts": {

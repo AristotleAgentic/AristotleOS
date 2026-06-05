@@ -1,0 +1,121 @@
+# Vertical: port operations / crane control
+# Doctrine alignment: Every crane motion command, every twistlock action,
+# every yard-truck dispatch, and every ship-to-shore power interlock transits
+# a Warrant. Port operations are HIGH event density — automated yard
+# orchestration produces hundreds of correlated commands per second during a
+# vessel exchange — so the per-peer rate limit is set aggressively high; the
+# governance discipline is per-action, not per-volume.
+# Compliance reference: 33 CFR Part 105 (Marine Transportation Security Act
+#   facility security plan), 49 CFR Part 1545 (TSA cargo facility security),
+#   IMO ISPS Code — DEMONSTRATION ONLY. Production deployments require the
+#   port facility security officer and the terminal operations manager to
+#   sign off on the policy bundle plus the per-berth authority partitioning
+#   posture before any wire-level adapter is enabled.
+# Last reviewed: 2026-06-05
+#
+# Apply as a base profile under another overlay (e.g. hardened) for a pilot:
+#
+#   helm template aristotle charts/aristotle-governance-os \
+#     -f charts/aristotle-governance-os/values-port.yaml \
+#     -f charts/aristotle-governance-os/values-hardened.yaml
+#
+# Field provenance
+# ────────────────
+#   `runtimeConfig.*`     — template-consumed (passed straight into pod env).
+#   `secrets.*`           — template-consumed.
+#   `services.*`          — template-consumed (resource sizing per deployment).
+#   `mesh.*`              — operator-facing documentation.
+#   `gel.*`               — operator-facing documentation.
+#   `adapters.*`          — operator-facing posture statement.
+#   `global.vertical`     — discovery tag.
+#   `global.doctrine`     — operator-facing prose.
+
+global:
+  vertical: "port"
+  doctrine: |
+    Port operations / crane control: every crane motion, every twistlock,
+    every yard-truck dispatch, and every ship-to-shore interlock transits
+    the gate with a single-use Warrant. Mesh quorum is two — small operator
+    cohorts mean quorum=3 stalls during single-node maintenance and that
+    stall directly affects vessel-exchange revenue. Per-peer rate limit is
+    high (200/min) because automated yard orchestration is intentionally
+    bursty during a vessel exchange. GEL retention is 1 year operational +
+    5 year archive — operational dashboards need the last twelve months
+    inline; older history archives for incident review.
+
+mesh:
+  productionMode: true
+  revocationQuorum: 2                  # small operator cohort; quorum=3 stalls during single-node maintenance
+  rateLimit:
+    perPeerPerMinute: 200              # automated yard orchestration is bursty; high event density
+  replayCache:
+    ttlMs: 30000                       # 30 s — vessel-exchange commands cluster tightly in time
+  partition:
+    disconnectedWarrantCap: 10         # yard operations can continue under brief partition
+
+gel:
+  retention:
+    maxAgeDays: 365                    # 1 year primary — operational dashboards live here
+  timestamp:
+    enabled: true
+    kind: "rfc3161"
+  archive:
+    enabled: true
+    minimumRetentionDays: 1825         # 5 years archived — incident review reach
+
+adapters:
+  demonstrationOnlyBlocked: true        # production deployments must not load demo transports
+
+runtimeConfig:
+  NODE_ENV: "production"
+  ALLOW_INSECURE_PRODUCTION_BOOT: "false"
+  GOVERNANCE_CHAIN_MODE: "enforce"
+  OPERATOR_SESSION_ENFORCEMENT: "true"
+  OPERATOR_ROLE_ENFORCEMENT: "true"
+  WITNESS_QUORUM: "2"
+  OTEL_RESOURCE_ATTRIBUTES_VERTICAL: "vertical=port"
+
+telemetry:
+  otel:
+    enabled: true
+    resourceAttributes: "deployment.environment=pilot,service.namespace=aristotle-governance-os,vertical=port"
+
+# Port operations: bursty high-volume gate calls + steady ledger writes.
+# Bias gate replicas up for burst handling; agent-os modest (operators are few).
+services:
+  governance-kernel:
+    replicas: 3
+    resources:
+      requests: { cpu: 750m, memory: 1Gi }
+      limits:   { cpu: 3000m, memory: 4Gi }
+  execution-gate:
+    replicas: 4                         # burst capacity for vessel-exchange storms
+    resources:
+      requests: { cpu: 750m, memory: 1Gi }
+      limits:   { cpu: 3000m, memory: 4Gi }
+  evidence-ledger:
+    replicas: 1
+    persistentVolume:
+      enabled: true
+      size: 75Gi                        # 1-year primary; archive sidecar holds the rest
+      mountPath: /var/lib/aristotle
+    resources:
+      requests: { cpu: 500m, memory: 1Gi }
+      limits:   { cpu: 2000m, memory: 4Gi }
+  witness-service:
+    replicas: 2                         # matches mesh.revocationQuorum
+    resources:
+      requests: { cpu: 250m, memory: 512Mi }
+      limits:   { cpu: 1500m, memory: 2Gi }
+  policy-compiler:
+    replicas: 2
+  meta-authority-registry:
+    replicas: 2
+  authority-router:
+    replicas: 2
+  agent-os:
+    replicas: 1
+    persistentVolume:
+      enabled: true
+      size: 20Gi
+      mountPath: /var/lib/aristotle

@@ -80,6 +80,7 @@
  */
 
 import { AristotleApiError, type AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
+import { governThroughHandler, type GovernedHandlerResult, type HandlerContext } from "@aristotle/adapter-sdk";
 
 // ---------------------------------------------------------------------------
 // Public types — mirror @anthropic-ai/sdk's `Anthropic.Messages.Tool` shape
@@ -308,11 +309,36 @@ export class GovernedAnthropicHandler {
       telemetry: { agent_runtime: "anthropic-sdk" }
     };
 
+    // Pattern 3: route the evaluate -> ALLOW -> warrant-present pipeline
+    // through `@aristotle/adapter-sdk`'s governThroughHandler. The handler
+    // invocation itself is what executes the host's tool implementation;
+    // the orchestrator handles fail-closed checks before it runs.
+    interface SdkInput {
+      action: CanonicalAction;
+      input: Record<string, unknown>;
+    }
+    const sdkInput: SdkInput = { action, input };
     const t0 = Date.now();
-    let decision: EvaluateResponse;
+
+    let result: GovernedHandlerResult<unknown>;
     try {
-      decision = await this.opts.client.evaluate(action);
+      result = await governThroughHandler<SdkInput, unknown>(sdkInput, {
+        client: this.opts.client,
+        buildAction: (i) => i.action,
+        handler: (i, ctx: HandlerContext) => {
+          const governance: GovernanceContext = {
+            warrant_id: ctx.warrant_id,
+            canonical_action_hash: ctx.canonical_action_hash,
+            evaluated_at: new Date().toISOString(),
+            ward_id: this.opts.wardId,
+            subject: this.opts.subject
+          };
+          return handler(i.input, governance);
+        }
+      });
     } catch (err) {
+      // governThroughHandler should never throw; treat as fail-closed
+      // gate-unreachable to preserve pre-SDK semantics.
       const elapsedMs = Date.now() - t0;
       const reason = err instanceof AristotleApiError
         ? `gate HTTP ${err.status}: ${err.message}`
@@ -333,25 +359,78 @@ export class GovernedAnthropicHandler {
         }
       };
     }
-    const elapsedMs = Date.now() - t0;
-    this.opts.onDecision?.({ toolName: name, input, action, decision, elapsedMs });
 
-    if (decision.decision !== "ALLOW") {
+    const elapsedMs = Date.now() - t0;
+
+    // ALLOW path: handler ran successfully + warrant present.
+    if (result.ok) {
+      this.opts.onDecision?.({ toolName: name, input, action, decision: result.decision, elapsedMs });
       return {
         tool_use_id,
-        content: `AristotleOS ${decision.decision} for tool '${name}': ${decision.reason_codes.join(", ") || "no reason codes"}`,
-        isError: true,
+        content: formatResult(result.output),
+        isError: false,
         _aristotle: {
-          decision: decision.decision,
-          reason_codes: ["GATE_REFUSED", ...decision.reason_codes],
-          canonical_action_hash: decision.canonical_action_hash,
-          gel_record_id: decision.gel_record?.record_id as string | undefined
+          decision: "ALLOW",
+          reason_codes: [],
+          warrant_id: result.warrant_id,
+          canonical_action_hash: result.canonical_action_hash,
+          gel_record_id: result.decision.gel_record?.record_id as string | undefined
         }
       };
     }
 
-    const warrant = decision.warrant;
-    if (!warrant) {
+    const refusalCode = result.refusal.code;
+    const refusalDetail = result.refusal.detail;
+    const decision = result.decision;
+
+    // Gate-unreachable family: GATE_UNREACHABLE + any GATE_HTTP_<n>. Both
+    // surface as fail-closed REFUSE with `reason_codes: ["GATE_UNREACHABLE"]`
+    // to preserve the pre-SDK contract.
+    if (refusalCode === "GATE_UNREACHABLE" || refusalCode.startsWith("GATE_HTTP_")) {
+      const reason = refusalCode.startsWith("GATE_HTTP_")
+        ? `gate HTTP ${refusalCode.replace(/^GATE_HTTP_/, "")}: ${refusalDetail}`
+        : refusalDetail;
+      this.opts.onDecision?.({
+        toolName: name, input, action,
+        decision: { decision: "ERROR", reason_codes: ["GATE_UNREACHABLE", reason] },
+        elapsedMs
+      });
+      return {
+        tool_use_id,
+        content: `AristotleOS gate unreachable: ${reason}. Tool '${name}' not executed (fail-closed).`,
+        isError: true,
+        _aristotle: {
+          decision: "REFUSE",
+          reason_codes: ["GATE_UNREACHABLE"],
+          canonical_action_hash: "unknown"
+        }
+      };
+    }
+
+    // TRANSPORT_REFUSED: handler threw after ALLOW. Map to the
+    // HANDLER_THREW shape the pre-SDK code produced.
+    if (refusalCode === "TRANSPORT_REFUSED" && decision) {
+      const warrant = decision.warrant;
+      // Strip the orchestrator's "handler threw: " prefix to recover the
+      // original exception text the pre-SDK code surfaced raw.
+      const originalMsg = refusalDetail.replace(/^handler threw: /, "");
+      this.opts.onDecision?.({ toolName: name, input, action, decision, elapsedMs });
+      return {
+        tool_use_id,
+        content: `Tool '${name}' handler threw after ALLOW: ${originalMsg}`,
+        isError: true,
+        _aristotle: {
+          decision: "ALLOW",
+          reason_codes: ["HANDLER_THREW"],
+          warrant_id: warrant?.warrant_id,
+          canonical_action_hash: decision.canonical_action_hash
+        }
+      };
+    }
+
+    // MISSING_WARRANT: ALLOW with no warrant — handler NOT invoked.
+    if (refusalCode === "MISSING_WARRANT" && decision) {
+      this.opts.onDecision?.({ toolName: name, input, action, decision, elapsedMs });
       return {
         tool_use_id,
         content: `AristotleOS gate ALLOWed but issued no Warrant for tool '${name}'. This is a substrate invariant violation; refusing.`,
@@ -364,41 +443,37 @@ export class GovernedAnthropicHandler {
       };
     }
 
-    const ctx: GovernanceContext = {
-      warrant_id: warrant.warrant_id,
-      canonical_action_hash: decision.canonical_action_hash,
-      evaluated_at: new Date().toISOString(),
-      ward_id: this.opts.wardId,
-      subject: this.opts.subject
-    };
-
-    let raw: unknown;
-    try {
-      raw = await handler(input, ctx);
-    } catch (err) {
+    // GATE_REFUSED: REFUSE / ESCALATE / EXPIRE. Preserve the
+    // [GATE_REFUSED, ...decision.reason_codes] reason_codes shape the test
+    // suite locks in.
+    if (refusalCode === "GATE_REFUSED" && decision) {
+      this.opts.onDecision?.({ toolName: name, input, action, decision, elapsedMs });
       return {
         tool_use_id,
-        content: `Tool '${name}' handler threw after ALLOW: ${err instanceof Error ? err.message : String(err)}`,
+        content: `AristotleOS ${decision.decision} for tool '${name}': ${decision.reason_codes.join(", ") || "no reason codes"}`,
         isError: true,
         _aristotle: {
-          decision: "ALLOW",
-          reason_codes: ["HANDLER_THREW"],
-          warrant_id: warrant.warrant_id,
-          canonical_action_hash: decision.canonical_action_hash
+          decision: decision.decision as "REFUSE" | "ESCALATE" | "EXPIRE",
+          reason_codes: ["GATE_REFUSED", ...decision.reason_codes],
+          canonical_action_hash: decision.canonical_action_hash,
+          gel_record_id: decision.gel_record?.record_id as string | undefined
         }
       };
     }
 
+    // Forward-compat fallback: any unknown refusal code surfaces as a
+    // generic REFUSE with the code in reason_codes.
+    const fallbackDecision = decision ?? { decision: "ERROR" as const, reason_codes: [refusalCode] };
+    this.opts.onDecision?.({ toolName: name, input, action, decision: fallbackDecision, elapsedMs });
     return {
       tool_use_id,
-      content: formatResult(raw),
-      isError: false,
+      content: `AristotleOS ${refusalCode} for tool '${name}': ${refusalDetail}`,
+      isError: true,
       _aristotle: {
-        decision: "ALLOW",
-        reason_codes: [],
-        warrant_id: warrant.warrant_id,
-        canonical_action_hash: decision.canonical_action_hash,
-        gel_record_id: decision.gel_record?.record_id as string | undefined
+        decision: "REFUSE",
+        reason_codes: [refusalCode],
+        canonical_action_hash: decision?.canonical_action_hash ?? "unknown",
+        gel_record_id: decision?.gel_record?.record_id as string | undefined
       }
     };
   }

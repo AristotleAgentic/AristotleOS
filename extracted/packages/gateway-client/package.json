@@ -55,7 +55,7 @@
     "prebuild": "node scripts/embed-openapi.mjs",
     "build": "tsc -p tsconfig.json",
     "prepare": "npm run prebuild && npm run build",
-    "test": "node --import tsx --test src/index.test.ts",
+    "test": "node --import tsx --test src/index.test.ts src/routes.test.ts",
     "prepublishOnly": "npm run prebuild && npm run build"
   }
 }
