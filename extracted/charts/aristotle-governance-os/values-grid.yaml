@@ -1,0 +1,119 @@
+# Vertical: electric grid SCADA
+# Doctrine alignment: Every breaker open/close, every setpoint change on a protective
+# relay, every dispatch instruction to a controllable load transits a Warrant before
+# it is committed. Revocation propagation is aggressive — operators expect a withdrawn
+# authority to stop the next gate call inside one polling tick.
+# Compliance reference: NERC CIP-002 through CIP-014 plus FERC Order 706 series —
+#   DEMONSTRATION ONLY. Production deployments require the operator's CIP Senior
+#   Manager sign-off on the BES Cyber System categorization the policy bundle covers
+#   and the per-asset evidence-retention obligations.
+# Last reviewed: 2026-06-05
+#
+# Apply on top of an environment profile:
+#
+#   helm template aristotle charts/aristotle-governance-os \
+#     -f charts/aristotle-governance-os/values-grid.yaml \
+#     -f charts/aristotle-governance-os/values-hardened.yaml
+#
+# Field provenance
+# ────────────────
+#   `runtimeConfig.*`     — template-consumed.
+#   `secrets.*`           — template-consumed.
+#   `services.*`          — template-consumed (resource sizing).
+#   `mesh.*`              — operator-facing documentation; bind in mesh-runtime config.
+#   `gel.*`               — operator-facing documentation; bind in evidence-ledger config.
+#   `adapters.*`          — operator-facing posture statement.
+#   `global.vertical`     — discovery tag.
+#   `global.doctrine`     — operator-facing prose.
+
+global:
+  vertical: "grid"
+  doctrine: |
+    Electric-grid SCADA: every breaker open/close, every setpoint change, and
+    every controllable-load dispatch passes the gate with a single-use Warrant.
+    Mesh quorum is three so a single compromised RTO node cannot revoke peers
+    silently. Revocation auto-pull is aggressive (5s) so a withdrawn authority
+    stops the next gate call. GEL retention is 7 years to match NERC CIP audit
+    evidence obligations.
+
+mesh:
+  productionMode: true
+  revocationQuorum: 3
+  rateLimit:
+    perPeerPerMinute: 300              # SCADA polling + relay telemetry; high volume
+  replayCache:
+    ttlMs: 30000                       # short replay window to surface duplicate-command attacks fast
+  revocation:
+    autoPullIntervalMs: 5000           # aggressive — withdrawn authority stops the next gate call
+  partition:
+    disconnectedWarrantCap: 0          # grid does NOT issue authority in partition; safety over availability
+
+gel:
+  retention:
+    maxAgeDays: 2555                   # 7 years — NERC CIP audit retention floor
+  timestamp:
+    enabled: true
+    kind: "rfc3161"
+  archive:
+    enabled: true
+    minimumRetentionDays: 2555
+
+adapters:
+  demonstrationOnlyBlocked: true
+
+runtimeConfig:
+  NODE_ENV: "production"
+  ALLOW_INSECURE_PRODUCTION_BOOT: "false"
+  GOVERNANCE_CHAIN_MODE: "enforce"
+  OPERATOR_SESSION_ENFORCEMENT: "true"
+  OPERATOR_ROLE_ENFORCEMENT: "true"
+  WITNESS_QUORUM: "3"
+  # The kernel's revocation list is pulled by edge nodes every N ms; aggressive
+  # value paired with the mesh.revocation.autoPullIntervalMs above.
+  REVOCATION_AUTO_PULL_MS: "5000"
+  OTEL_RESOURCE_ATTRIBUTES_VERTICAL: "vertical=grid"
+
+telemetry:
+  otel:
+    enabled: true
+    resourceAttributes: "deployment.environment=pilot,service.namespace=aristotle-governance-os,vertical=grid"
+
+# Grid SCADA is high-throughput gate calls + heavy evidence-ledger writes.
+# Bias kernel, gate, ledger, witness up; agent-os down (few "agent" workloads).
+services:
+  governance-kernel:
+    replicas: 3
+    resources:
+      requests: { cpu: 1000m, memory: 2Gi }
+      limits:   { cpu: 4000m, memory: 8Gi }
+  execution-gate:
+    replicas: 3
+    resources:
+      requests: { cpu: 1000m, memory: 1Gi }
+      limits:   { cpu: 4000m, memory: 4Gi }
+  evidence-ledger:
+    replicas: 1
+    persistentVolume:
+      enabled: true
+      size: 250Gi                       # 7-year retention + heavy commit volume
+      mountPath: /var/lib/aristotle
+    resources:
+      requests: { cpu: 500m, memory: 1Gi }
+      limits:   { cpu: 2000m, memory: 4Gi }
+  witness-service:
+    replicas: 3
+    resources:
+      requests: { cpu: 250m, memory: 512Mi }
+      limits:   { cpu: 1500m, memory: 2Gi }
+  policy-compiler:
+    replicas: 2
+  meta-authority-registry:
+    replicas: 2
+  authority-router:
+    replicas: 2
+  agent-os:
+    replicas: 1
+    persistentVolume:
+      enabled: true
+      size: 20Gi
+      mountPath: /var/lib/aristotle

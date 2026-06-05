@@ -4,9 +4,11 @@ import type { AristotleClient, CanonicalAction, EvaluateResponse } from "@aristo
 import {
   AristotleApiError,
   type AdapterAuthorization,
+  type HandlerContext,
   DemonstrationTransport,
   RecordingTransport,
-  governThroughAdapter
+  governThroughAdapter,
+  governThroughHandler
 } from "./index.js";
 
 // ---------------------------------------------------------------------------
@@ -270,4 +272,148 @@ test("DemonstrationTransport: emit appends to emitted[] and increments seq", asy
   if (a.ok && b.ok) {
     assert.notEqual((a.receipt as NoopReceipt).receipt_id, (b.receipt as NoopReceipt).receipt_id);
   }
+});
+
+// ---------------------------------------------------------------------------
+// governThroughHandler — Pattern 3: framework tool wrappers
+// ---------------------------------------------------------------------------
+
+interface ToolInput {
+  tool_name: string;
+  args: Record<string, unknown>;
+}
+
+function buildHandlerAction(input: ToolInput): CanonicalAction {
+  return {
+    action_id: `tool-${Date.now().toString(16)}`,
+    ward_id: "w-tools",
+    subject: "agent:test",
+    action_type: `tool.${input.tool_name}`,
+    params: input.args,
+    requested_at: "2026-05-24T00:00:00.000Z"
+  };
+}
+
+const TOOL_INPUT: ToolInput = { tool_name: "search", args: { query: "alice" } };
+
+test("governThroughHandler: ALLOW invokes handler with input + context, returns ok+output", async () => {
+  const observed: Array<{ input: ToolInput; ctx: HandlerContext }> = [];
+  const result = await governThroughHandler<ToolInput, string>(TOOL_INPUT, {
+    client: allowingClient(),
+    buildAction: buildHandlerAction,
+    handler: async (input, ctx) => {
+      observed.push({ input, ctx });
+      return `result for ${input.tool_name}`;
+    }
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.output, "result for search");
+    assert.equal(result.warrant_id, "warrant:adapter-sdk");
+    assert.equal(result.canonical_action_hash, "sha256:adapter-sdk-test");
+  }
+  assert.equal(observed.length, 1);
+  assert.deepEqual(observed[0].input, TOOL_INPUT);
+  assert.equal(observed[0].ctx.warrant_id, "warrant:adapter-sdk");
+  assert.equal(observed[0].ctx.canonical_action_hash, "sha256:adapter-sdk-test");
+  assert.equal(observed[0].ctx.decision.decision, "ALLOW");
+});
+
+test("governThroughHandler: REFUSE returns GATE_REFUSED, handler is NOT invoked", async () => {
+  let handlerRan = false;
+  const result = await governThroughHandler<ToolInput, string>(TOOL_INPUT, {
+    client: refusingClient(),
+    buildAction: buildHandlerAction,
+    handler: async () => { handlerRan = true; return "should never run"; }
+  });
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.refusal.code, "GATE_REFUSED");
+    assert.ok(result.refusal.detail.includes("REFUSE"));
+    assert.ok(result.refusal.detail.includes("FORBIDDEN"));
+    assert.equal(result.decision?.decision, "REFUSE");
+  }
+  assert.equal(handlerRan, false, "handler must NOT run on REFUSE");
+});
+
+test("governThroughHandler: gate unreachable returns GATE_UNREACHABLE, handler is NOT invoked", async () => {
+  let handlerRan = false;
+  const result = await governThroughHandler<ToolInput, string>(TOOL_INPUT, {
+    client: unreachableClient(),
+    buildAction: buildHandlerAction,
+    handler: async () => { handlerRan = true; return "x"; }
+  });
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.refusal.code, "GATE_UNREACHABLE");
+    assert.ok(result.refusal.detail.includes("ECONNREFUSED"));
+    assert.equal(result.decision, undefined, "no decision when gate itself was unreachable");
+  }
+  assert.equal(handlerRan, false);
+});
+
+test("governThroughHandler: gate HTTP 503 returns GATE_HTTP_503, handler is NOT invoked", async () => {
+  let handlerRan = false;
+  const result = await governThroughHandler<ToolInput, string>(TOOL_INPUT, {
+    client: httpErroringClient(503),
+    buildAction: buildHandlerAction,
+    handler: async () => { handlerRan = true; return "x"; }
+  });
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.refusal.code, "GATE_HTTP_503");
+  }
+  assert.equal(handlerRan, false);
+});
+
+test("governThroughHandler: ALLOW without a warrant returns MISSING_WARRANT (defensive)", async () => {
+  const client = {
+    evaluate: async (_: CanonicalAction): Promise<EvaluateResponse> => ({
+      decision: "ALLOW",
+      reason_codes: [],
+      canonical_action_hash: "sha256:no-warrant",
+      // intentionally omit warrant
+      gel_record: { record_id: "rec", record_hash: "rh" }
+    } as EvaluateResponse)
+  } as unknown as AristotleClient;
+  let handlerRan = false;
+  const result = await governThroughHandler<ToolInput, string>(TOOL_INPUT, {
+    client,
+    buildAction: buildHandlerAction,
+    handler: async () => { handlerRan = true; return "x"; }
+  });
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.refusal.code, "MISSING_WARRANT");
+    assert.equal(result.decision?.decision, "ALLOW");
+  }
+  assert.equal(handlerRan, false, "handler must NOT run when ALLOW lacks a warrant");
+});
+
+test("governThroughHandler: handler throws after ALLOW -> TRANSPORT_REFUSED with throw message", async () => {
+  const result = await governThroughHandler<ToolInput, string>(TOOL_INPUT, {
+    client: allowingClient(),
+    buildAction: buildHandlerAction,
+    handler: async () => { throw new Error("downstream API blew up"); }
+  });
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.refusal.code, "TRANSPORT_REFUSED");
+    assert.ok(result.refusal.detail.includes("handler threw"));
+    assert.ok(result.refusal.detail.includes("downstream API blew up"));
+    // The decision is attached so callers can still inspect the warrant.
+    assert.equal(result.decision?.decision, "ALLOW");
+  }
+});
+
+test("governThroughHandler: synchronous handler return value is wrapped without await", async () => {
+  // The handler signature allows TOutput OR Promise<TOutput>; ensure the
+  // orchestrator does not require a Promise specifically.
+  const result = await governThroughHandler<ToolInput, number>(TOOL_INPUT, {
+    client: allowingClient(),
+    buildAction: buildHandlerAction,
+    handler: (input) => input.args.query === "alice" ? 42 : -1
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) assert.equal(result.output, 42);
 });

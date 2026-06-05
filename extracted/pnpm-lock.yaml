@@ -158,6 +158,12 @@ importers:
         specifier: workspace:*
         version: link:../os-sdk
 
+  packages/gateway-client:
+    dependencies:
+      '@aristotle/os-sdk':
+        specifier: workspace:*
+        version: link:../os-sdk
+
   packages/k8s-admission:
     dependencies:
       '@aristotle/adapter-sdk':
@@ -169,6 +175,9 @@ importers:
 
   packages/langchain:
     dependencies:
+      '@aristotle/adapter-sdk':
+        specifier: workspace:*
+        version: link:../../shared/adapter-sdk
       '@aristotle/os-sdk':
         specifier: workspace:*
         version: link:../os-sdk
@@ -604,6 +613,15 @@ importers:
       '@aristotle/gel-timestamp':
         specifier: workspace:*
         version: link:../gel-timestamp
+
+  shared/sigstore-rekor-verify:
+    dependencies:
+      '@aristotle/gel-timestamp':
+        specifier: workspace:*
+        version: link:../gel-timestamp
+      '@aristotle/sigstore-rekor':
+        specifier: workspace:*
+        version: link:../sigstore-rekor
 
   shared/tenant-onboarding:
     dependencies:

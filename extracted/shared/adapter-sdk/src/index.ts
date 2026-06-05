@@ -457,6 +457,155 @@ export async function governThroughResponse<Req, Resp>(
 }
 
 // ---------------------------------------------------------------------------
+// Pattern 3: governThroughHandler — for framework tool wrappers
+// (langchain, vercel-ai, mastra, openai-agents, claude-agents, anthropic).
+//
+// The third operational shape: wrap an arbitrary handler function with the
+// gate. The handler receives the validated input + a HandlerContext on
+// ALLOW; it is never invoked on REFUSE.
+//
+// First-party framework wrappers (packages/langchain, packages/vercel-ai,
+// packages/mastra, packages/openai-agents, packages/claude-agents,
+// packages/sdk-anthropic) all rediscover the same shape: build a
+// CanonicalAction from the tool name + input, evaluate at the gate, run the
+// caller-supplied handler with the warrant binding on ALLOW, surface a
+// framework-appropriate error on any other decision. This is that pattern
+// lifted out — the third orchestrator next to governThroughAdapter
+// (transport-shaped) and governThroughResponse (response-shaped).
+//
+// Third-party agent runtimes (custom MCP brokers, internal tool dispatchers,
+// orchestration glue we haven't written yet) get the same fail-closed
+// pipeline by passing buildAction + handler. No transport, no response —
+// just a function that runs on ALLOW.
+// ---------------------------------------------------------------------------
+
+/**
+ * Context handed to the handler on ALLOW. The warrant binding is established
+ * before the handler runs; the handler can stamp these into its own outputs
+ * (audit log entries, downstream RPC headers, etc.) to carry the binding
+ * forward.
+ */
+export interface HandlerContext {
+  /** Warrant id issued by the gate; single-use. */
+  warrant_id: string;
+  /** Canonical hash the warrant binds to. */
+  canonical_action_hash: string;
+  /** Full evaluate response, for handlers that want the gel_record or full warrant body. */
+  decision: EvaluateResponse;
+}
+
+export interface GovernThroughHandlerInput<TInput, TOutput> {
+  /** AristotleClient pointed at the gate. */
+  client: AristotleClient;
+  /** Translate the input into a CanonicalAction the gate evaluates. */
+  buildAction: (input: TInput) => CanonicalAction;
+  /**
+   * The handler invoked on ALLOW with the validated input and the
+   * post-decision context. Never invoked on any non-ALLOW outcome.
+   * May return synchronously or asynchronously. If the handler throws,
+   * the orchestrator surfaces the throw as TRANSPORT_REFUSED (matching
+   * the substrate's "transport-rejected-the-emit-after-ALLOW" semantics).
+   */
+  handler: (input: TInput, context: HandlerContext) => Promise<TOutput> | TOutput;
+}
+
+/**
+ * Result of governThroughHandler. ALLOW path returns `ok: true` with the
+ * handler's output and the warrant binding. Any non-ALLOW outcome returns
+ * `ok: false` with the closed-set refusal code; the `decision` is attached
+ * when the rejection came after a successful gate call so callers can map
+ * `decision.reason_codes` into their framework's error vocabulary.
+ */
+export type GovernedHandlerResult<TOutput> =
+  | { ok: true; output: TOutput; warrant_id: string; canonical_action_hash: string; decision: EvaluateResponse }
+  | { ok: false; refusal: { code: AdapterRefusalCode; detail: string }; decision?: EvaluateResponse };
+
+/**
+ * Handler-shaped governance pipeline. Mirrors governThroughAdapter /
+ * governThroughResponse step-for-step except the terminal effect is a
+ * caller-supplied function instead of a transport emission or a wire
+ * response object.
+ *
+ * Pipeline:
+ *   1. buildAction(input) -> CanonicalAction.
+ *   2. client.evaluate(action) -> decision. AristotleApiError ->
+ *      GATE_HTTP_<status>; any other thrown error -> GATE_UNREACHABLE.
+ *   3. If decision !== ALLOW: { ok: false, refusal: GATE_REFUSED, decision }.
+ *   4. If decision.warrant missing: { ok: false, refusal: MISSING_WARRANT, decision } (defensive).
+ *   5. handler(input, { warrant_id, canonical_action_hash, decision }).
+ *      Throw -> { ok: false, refusal: TRANSPORT_REFUSED }.
+ *   6. { ok: true, output, warrant_id, canonical_action_hash, decision }.
+ */
+export async function governThroughHandler<TInput, TOutput>(
+  input: TInput,
+  config: GovernThroughHandlerInput<TInput, TOutput>
+): Promise<GovernedHandlerResult<TOutput>> {
+  // (1) Build action.
+  const action = config.buildAction(input);
+  // (2) Evaluate.
+  let decision: EvaluateResponse;
+  try {
+    decision = await config.client.evaluate(action);
+  } catch (err) {
+    if (err instanceof AristotleApiError) {
+      const code = `GATE_HTTP_${err.status}` as AdapterRefusalCode;
+      return { ok: false, refusal: { code, detail: err.message } };
+    }
+    return {
+      ok: false,
+      refusal: {
+        code: "GATE_UNREACHABLE",
+        detail: err instanceof Error ? err.message : String(err)
+      }
+    };
+  }
+  // (3) ALLOW check.
+  if (decision.decision !== "ALLOW") {
+    return {
+      ok: false,
+      decision,
+      refusal: {
+        code: "GATE_REFUSED",
+        detail: `${decision.decision}: ${decision.reason_codes.join(", ")}`
+      }
+    };
+  }
+  // (4) Warrant present (defensive guard).
+  const warrant = decision.warrant;
+  if (!warrant) {
+    return {
+      ok: false,
+      decision,
+      refusal: { code: "MISSING_WARRANT", detail: "gate ALLOWed without a Warrant" }
+    };
+  }
+  // (5) Invoke handler.
+  try {
+    const output = await config.handler(input, {
+      warrant_id: warrant.warrant_id,
+      canonical_action_hash: decision.canonical_action_hash,
+      decision
+    });
+    return {
+      ok: true,
+      output,
+      warrant_id: warrant.warrant_id,
+      canonical_action_hash: decision.canonical_action_hash,
+      decision
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      decision,
+      refusal: {
+        code: "TRANSPORT_REFUSED",
+        detail: `handler threw: ${err instanceof Error ? err.message : String(err)}`
+      }
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Re-exports so third-party adapters only need to import from this package.
 // ---------------------------------------------------------------------------
 

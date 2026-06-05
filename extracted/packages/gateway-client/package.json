@@ -1,7 +1,7 @@
 {
-  "name": "@aristotle/langchain",
+  "name": "@aristotle/gateway-client",
   "version": "0.1.0",
-  "description": "Govern LangChain.js tool invocations with AristotleOS. Drop-in wrapper that routes every tool call through the execution-control Commit Gate before it runs.",
+  "description": "Slim, dependency-free TypeScript client for the AristotleOS HTTP execution-control boundary. Re-exports AristotleClient (the canonical OpenAPI-conforming client) from @aristotle/os-sdk and ships the OpenAPI 3.1 spec as both a JSON artifact and a JavaScript string constant so operators can feed it directly into openapi-generator, Stoplight, Insomnia, Postman, or any other OpenAPI-aware tooling without cloning the substrate repo.",
   "license": "UNLICENSED",
   "type": "module",
   "main": "dist/index.js",
@@ -10,10 +10,12 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./openapi.json": "./openapi.json"
   },
   "files": [
     "dist",
+    "openapi.json",
     "README.md",
     "LICENSE",
     "NOTICE"
@@ -21,18 +23,20 @@
   "keywords": [
     "aristotle",
     "aristotleos",
-    "langchain",
-    "langchainjs",
-    "agent-governance",
+    "openapi",
+    "openapi-3.1",
+    "execution-control",
+    "commit-gate",
+    "warrant",
+    "gel",
     "ai-governance",
-    "tool-call-gate",
-    "commit-gate"
+    "agent-governance"
   ],
   "homepage": "https://github.com/AristotleAgentic/AristotleOS",
   "repository": {
     "type": "git",
     "url": "https://github.com/AristotleAgentic/AristotleOS.git",
-    "directory": "packages/langchain"
+    "directory": "packages/gateway-client"
   },
   "bugs": {
     "url": "https://github.com/AristotleAgentic/AristotleOS/issues"
@@ -45,20 +49,13 @@
   },
   "sideEffects": false,
   "dependencies": {
-    "@aristotle/adapter-sdk": "workspace:*",
     "@aristotle/os-sdk": "workspace:*"
   },
-  "peerDependencies": {
-    "@langchain/core": ">=0.3.0 <1.0.0"
-  },
-  "peerDependenciesMeta": {
-    "@langchain/core": {
-      "optional": true
-    }
-  },
   "scripts": {
+    "prebuild": "node scripts/embed-openapi.mjs",
     "build": "tsc -p tsconfig.json",
+    "prepare": "npm run prebuild && npm run build",
     "test": "node --import tsx --test src/index.test.ts",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run prebuild && npm run build"
   }
 }

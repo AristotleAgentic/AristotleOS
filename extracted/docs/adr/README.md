@@ -8,9 +8,9 @@ have to reverse-engineer the rationale from the code.
 Format: a lightweight variant of [Michael Nygard's ADR template](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions).
 
 Closes [ROADMAP_TO_100.md](../../ROADMAP_TO_100.md) Category 3
-*"Author ADRs for the top 15 design decisions"*. All 15 ship.
-Future ADRs document new design decisions as they're made; the
-next number to use is 0016.
+*"Author ADRs for the top 15 design decisions"* and adds 5 more
+covering design decisions taken during the post-roadmap hardening
+batches. The next number to use is 0021.
 
 ## Index
 
@@ -31,6 +31,11 @@ next number to use is 0016.
 | [0013](0013-no-substrate-ui.md) | The substrate ships no UI | Accepted |
 | [0014](0014-adapter-production-validated-default-false.md) | Adapters default `production_validated: false` | Accepted |
 | [0015](0015-one-package-per-substrate-concept.md) | One package per substrate concept | Accepted |
+| [0016](0016-three-sdk-patterns.md) | Three SDK patterns (Adapter / Response / Handler) | Accepted |
+| [0017](0017-timestamp-authority-substitution-point.md) | TimestampAuthority is the substitution point for external time | Accepted |
+| [0018](0018-per-vertical-helm-overlays.md) | Per-vertical Helm overlays, not a vertical-aware chart | Accepted |
+| [0019](0019-openapi-as-typed-client-surface.md) | OpenAPI is the typed-client surface | Accepted |
+| [0020](0020-reviewer-as-separate-package.md) | Reviewer ships as a separate package | Accepted |
 
 ## Conventions
 
