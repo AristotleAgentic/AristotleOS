@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@aristotle/governance-core": "workspace:*",
+    "@aristotle/execution-control-runtime": "workspace:*",
     "@aristotle/shared-types": "workspace:*",
     "@aristotle/shared-schemas": "workspace:*",
     "express": "^4.21.1",

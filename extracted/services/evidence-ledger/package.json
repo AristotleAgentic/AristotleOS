@@ -13,6 +13,7 @@
   "dependencies": {
     "@aristotle/shared-types": "workspace:*",
     "@aristotle/shared-schemas": "workspace:*",
+    "@aristotle/execution-control-runtime": "workspace:*",
     "express": "^4.21.1",
     "cors": "^2.8.5",
     "zod": "^3.23.8"

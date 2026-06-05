@@ -234,6 +234,9 @@ importers:
 
   services/evidence-ledger:
     dependencies:
+      '@aristotle/execution-control-runtime':
+        specifier: workspace:*
+        version: link:../../shared/execution-control-runtime
       '@aristotle/shared-schemas':
         specifier: workspace:*
         version: link:../../shared/schemas
@@ -252,6 +255,9 @@ importers:
 
   services/execution-gate:
     dependencies:
+      '@aristotle/execution-control-runtime':
+        specifier: workspace:*
+        version: link:../../shared/execution-control-runtime
       '@aristotle/shared-schemas':
         specifier: workspace:*
         version: link:../../shared/schemas
@@ -270,6 +276,9 @@ importers:
 
   services/governance-kernel:
     dependencies:
+      '@aristotle/execution-control-runtime':
+        specifier: workspace:*
+        version: link:../../shared/execution-control-runtime
       '@aristotle/governance-core':
         specifier: workspace:*
         version: link:../../shared/governance-core
@@ -309,6 +318,9 @@ importers:
 
   services/policy-compiler:
     dependencies:
+      '@aristotle/execution-control-runtime':
+        specifier: workspace:*
+        version: link:../../shared/execution-control-runtime
       '@aristotle/shared-schemas':
         specifier: workspace:*
         version: link:../../shared/schemas
