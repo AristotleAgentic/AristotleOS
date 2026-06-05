@@ -426,7 +426,19 @@ importers:
         specifier: ^0.4.5
         version: 0.4.5
 
+  shared/gel-timestamp:
+    dependencies:
+      '@aristotle/execution-control-runtime':
+        specifier: workspace:*
+        version: link:../execution-control-runtime
+
   shared/governance-core: {}
+
+  shared/kms-keyring:
+    dependencies:
+      '@aristotle/execution-control-runtime':
+        specifier: workspace:*
+        version: link:../execution-control-runtime
 
   shared/mesh-runtime: {}
 

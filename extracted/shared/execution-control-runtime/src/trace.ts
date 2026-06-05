@@ -100,3 +100,77 @@ export function traceSpan<T>(
     span.end();
   }
 }
+
+/**
+ * Captured span record produced by createInMemoryTracer(). One per
+ * startSpan + end() cycle.
+ */
+export interface CapturedSpan {
+  name: string;
+  attributes: Record<string, SpanAttributeValue>;
+  status: { ok: boolean; message?: string };
+  ended: boolean;
+}
+
+export interface InMemoryTracer extends AristotleTracer {
+  /** All spans that have been started, in order. */
+  readonly spans: CapturedSpan[];
+  /** Convenience: every captured span's name, in order. */
+  spanNames(): string[];
+  /** Find the first span whose name matches; throws if none. */
+  findSpan(name: string): CapturedSpan;
+  /** Reset captured state without rebuilding the tracer. */
+  reset(): void;
+}
+
+/**
+ * First-party in-memory tracer suitable for tests and local validation
+ * of an OTel wiring. Captures every span (name, attributes, final
+ * status) without an OTel SDK dependency. To bridge to a real OTel
+ * deployment:
+ *
+ *   import { trace } from "@opentelemetry/api";
+ *   const otelTracer = trace.getTracer("aristotle");
+ *   const adapter: AristotleTracer = {
+ *     startSpan(name, attrs) {
+ *       const span = otelTracer.startSpan(name, { attributes: attrs });
+ *       return {
+ *         setAttribute: (k, v) => { span.setAttribute(k, v); },
+ *         setStatus: (s) => { span.setStatus({ code: s.ok ? 1 : 2, message: s.message }); },
+ *         end: () => { span.end(); }
+ *       };
+ *     }
+ *   };
+ *
+ * That bridge is intentionally documentation rather than code because
+ * @opentelemetry/api is a per-deployment choice (and version-pinning
+ * matters); shipping a hard dependency here would force every consumer
+ * to take it.
+ */
+export function createInMemoryTracer(): InMemoryTracer {
+  const spans: CapturedSpan[] = [];
+  return {
+    spans,
+    startSpan(name: string, attributes?: Record<string, SpanAttributeValue>): AristotleSpan {
+      const rec: CapturedSpan = {
+        name,
+        attributes: { ...(attributes ?? {}) },
+        status: { ok: true },
+        ended: false
+      };
+      spans.push(rec);
+      return {
+        setAttribute(key: string, value: SpanAttributeValue): void { rec.attributes[key] = value; },
+        setStatus(s: { ok: boolean; message?: string }): void { rec.status = { ...s }; },
+        end(): void { rec.ended = true; }
+      };
+    },
+    spanNames(): string[] { return spans.map((s) => s.name); },
+    findSpan(name: string): CapturedSpan {
+      const found = spans.find((s) => s.name === name);
+      if (!found) throw new Error(`InMemoryTracer: no captured span named '${name}'. Captured: ${spans.map((s) => s.name).join(", ")}`);
+      return found;
+    },
+    reset(): void { spans.length = 0; }
+  };
+}

@@ -24,20 +24,23 @@ The system has not been reviewed by an external security firm. The code is in go
 
 Before relying on AristotleOS for safety-critical or high-consequence deployments, the operator must commission an external review. See `THREAT_MODEL.md` for the threat surface a reviewer should examine.
 
-## 3. No external timestamp authority
+## 3. External timestamp authority — interface ships; real TSA wiring is operator-supplied
 
-GEL records are hash-chained and signed with the operator's keyring, but there is **no integration with an external timestamp authority** (RFC 3161 TSA, Sigstore, OpenTimestamps). A determined adversary with access to the signing key can backdate or forward-date records.
+**Status:** the trust-chain shape now ships in `@aristotle/gel-timestamp`. What remains operator-supplied is the actual external endpoint.
 
-What's tested today:
-- Hash chain continuity (tampering one record breaks the chain).
-- Signature verification on each record.
-- Offline evidence-bundle export / import.
+What ships:
+- `TimestampAuthority` interface — the contract any TSA must satisfy.
+- `LocalTimestampAuthority` — filesystem-backed reference implementation. Holds its own Ed25519 keypair (or accepts one from the caller), signs `(record_hash, ts)` tuples, persists every anchor to an append-only JSONL ledger.
+- `verifyTimestampAnchor(record_hash, anchor, tsa_pubkey)` — pure verifier. Catches record-hash mismatch, wrong-TSA-key, tampered-signature, tampered-timestamp, and unsupported-kind cases with distinct reason codes. 10/10 tests including a backdating-defense regression.
 
-What's missing:
-- Per-record external timestamp anchoring.
+What's still missing:
+- A real RFC 3161 TSA client (DER-encoded ASN.1 TimeStampResp). Would ship as `@aristotle/gel-timestamp-rfc3161` implementing the same `TimestampAuthority` interface.
+- A real Sigstore Rekor / Fulcio client. Same shape, separate package.
 - Block-anchored / Merkle-mountain-range publication of GEL roots to a public source of truth.
 
-If your use case requires non-repudiation across a time gap (insurance claims, regulatory replay), pair the GEL with an external TSA at write time.
+The "external" guarantee comes from key custody: in production, the TSA's private key must live in a separate operational domain from the GEL signer. If the same operator holds both, the threat model collapses back to the original "operator can backdate" case. Document this when deploying.
+
+If your use case requires non-repudiation across a long time gap, swap `LocalTimestampAuthority` for a network TSA (RFC 3161 or Sigstore) and verify against the issuing CA's published certificate.
 
 ## 4. Clock-skew assumptions
 
