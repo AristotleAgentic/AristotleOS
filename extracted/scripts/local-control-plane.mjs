@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { createWriteStream, existsSync } from "node:fs";
+import { createWriteStream, existsSync, openSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -127,22 +127,37 @@ async function down() {
 
 function runBuild() {
   console.log("[local] building workspace before boot");
-  const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-  const result = spawnSync(npm, ["run", "build"], { cwd: root, env: localEnv, stdio: "inherit" });
+  // Node 24 on Windows fails to spawn npm.cmd via spawnSync without `shell: true`.
+  // Using shell:true also resolves the binary through %PATHEXT% naturally.
+  const isWin = process.platform === "win32";
+  const npm = isWin ? "npm.cmd" : "npm";
+  const result = spawnSync(npm, ["run", "build"], {
+    cwd: root,
+    env: localEnv,
+    stdio: "inherit",
+    shell: isWin
+  });
   if (result.status !== 0) {
     throw new Error(`workspace build failed with exit code ${result.status}`);
   }
 }
 
 function start(service) {
-  const out = createWriteStream(path.join(logDir, `${service.name}.out`), { flags: "a" });
-  const err = createWriteStream(path.join(logDir, `${service.name}.err`), { flags: "a" });
-  out.write(`\n[${new Date().toISOString()}] starting ${service.name}\n`);
+  // Node 24 hardened stdio validation: WriteStream with null `fd` is rejected.
+  // Open real file descriptors with openSync and pass them directly to spawn.
+  const outPath = path.join(logDir, `${service.name}.out`);
+  const errPath = path.join(logDir, `${service.name}.err`);
+  const outFd = openSync(outPath, "a");
+  const errFd = openSync(errPath, "a");
+  // Header line via a one-shot WriteStream around the same path; flush quickly.
+  const header = createWriteStream(outPath, { flags: "a" });
+  header.write(`\n[${new Date().toISOString()}] starting ${service.name}\n`);
+  header.end();
   const child = spawn(process.execPath, [path.join(root, service.entry)], {
     cwd: root,
     env: localEnv,
     detached: true,
-    stdio: ["ignore", out, err],
+    stdio: ["ignore", outFd, errFd],
     windowsHide: true,
   });
   child.unref();

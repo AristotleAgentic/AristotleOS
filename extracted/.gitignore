@@ -11,6 +11,10 @@ secrets/
 services/*/data/
 backups/
 .aristotle/
+# Local control plane runtime artifacts (created by `pnpm local:up`).
+.aristotle-local-stack.json
+/data/
+/logs/
 .tmp/
 reports/
 # Supply-chain build outputs (generated in CI; attested, not committed).
