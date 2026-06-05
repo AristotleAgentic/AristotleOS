@@ -145,6 +145,151 @@ function verify(secret: string, payload: unknown, sig: string): boolean {
   return sign(secret, payload) === sig;
 }
 
+// ---------------------------------------------------------------------------
+// Mesh trust: per-node Ed25519 keypairs (additive over the legacy shared-HMAC
+// path).
+//
+// Until this section landed, every mesh node shared one HMAC secret. That
+// works for clarity in tests but it means: one compromised node = entire
+// mesh compromise; no per-node accountability; no MAE-style allowlist of
+// who is allowed to issue what.
+//
+// The new model:
+//
+//   MeshSigner    — wraps "how I sign". Each node has exactly one. The
+//                   signerId is included so message receivers can look up
+//                   the right verifying key.
+//
+//   MeshVerifier  — wraps "given a signature claimed by signerId X, does
+//                   it verify?". A node's verifier holds the trust anchors
+//                   for every signerId it's willing to accept signatures
+//                   from. Unknown signerId -> reject.
+//
+// Backwards compatibility: MeshNodeOptions still accepts `secret`. When
+// only secret is provided, both signer and verifier are constructed as
+// HMAC wrappers so the existing in-process tests behave exactly as before.
+// Production deployments should provide signer + verifier explicitly and
+// drop secret entirely.
+// ---------------------------------------------------------------------------
+
+import {
+  createPrivateKey,
+  createPublicKey,
+  sign as cryptoSign,
+  verify as cryptoVerify
+} from "node:crypto";
+
+export interface MeshSigner {
+  /** Stable id this signer signs under — typically the NodeId. */
+  readonly signerId: string;
+  /** Sign a payload. Returns an opaque string (hex for HMAC, base64 for Ed25519). */
+  sign(payload: unknown): string;
+  /** Algorithm tag. "hmac-sha256" or "ed25519". Useful for diagnostics. */
+  readonly alg: string;
+}
+
+export interface MeshVerifier {
+  /**
+   * Verify a payload's signature against the trust-anchor for the
+   * declared signerId. Unknown signerId, mismatched signature, or
+   * malformed signature MUST return false.
+   *
+   * Implementations must be constant-time-safe vs naive string compare
+   * where applicable; HMAC verifier uses hex-string equality which is
+   * timing-leak-tolerable for non-secret hash values, but Ed25519 uses
+   * the native crypto.verify which is constant-time by construction.
+   */
+  verify(payload: unknown, signature: string, signerId: string): boolean;
+  /** List the signer ids this verifier trusts. Useful for diagnostics. */
+  trustedSignerIds(): string[];
+}
+
+/**
+ * Build a signer + verifier pair from a single shared HMAC secret.
+ * This is the legacy / demo path. Every node calling this with the same
+ * secret will trust every other node's signatures. Suitable for tests
+ * and local development; NOT suitable for production.
+ */
+export function createHmacMeshSigner(opts: { signerId: string; secret: string }): MeshSigner {
+  return {
+    signerId: opts.signerId,
+    alg: "hmac-sha256",
+    sign(payload: unknown): string { return sign(opts.secret, payload); }
+  };
+}
+
+export function createHmacMeshVerifier(opts: { secret: string }): MeshVerifier {
+  return {
+    verify(payload: unknown, signature: string, _signerId: string): boolean {
+      // Shared-secret model: every signerId verifies against the same key.
+      return verify(opts.secret, payload, signature);
+    },
+    trustedSignerIds(): string[] { return ["*"]; }
+  };
+}
+
+/**
+ * Build an Ed25519 signer keyed to one NodeId. The privateKeyPem must be
+ * a PKCS#8 PEM (the format `crypto.generateKeyPairSync("ed25519")` emits
+ * by default).
+ */
+export function createEd25519MeshSigner(opts: { signerId: string; privateKeyPem: string }): MeshSigner {
+  const key = createPrivateKey({ key: opts.privateKeyPem, format: "pem" });
+  return {
+    signerId: opts.signerId,
+    alg: "ed25519",
+    sign(payload: unknown): string {
+      const sig = cryptoSign(null, Buffer.from(stableStringify(payload)), key);
+      return "ed25519:" + sig.toString("base64");
+    }
+  };
+}
+
+/**
+ * Build an Ed25519 verifier with an explicit allowlist of trusted
+ * (signerId -> publicKeyPem) bindings. Any signerId not in the
+ * allowlist is REJECTED — this is the "MAE-style signing-key allowlist"
+ * mentioned in ROADMAP_TO_100.md Category 1.
+ *
+ * Adding / removing trust anchors at runtime is supported via
+ * addTrustAnchor() / removeTrustAnchor(). That mirrors the operator
+ * workflow for rotating per-node keys.
+ */
+export interface Ed25519MeshVerifier extends MeshVerifier {
+  addTrustAnchor(signerId: string, publicKeyPem: string): void;
+  removeTrustAnchor(signerId: string): void;
+}
+
+export function createEd25519MeshVerifier(opts: {
+  trustedKeys: Record<string, string> | Map<string, string>;
+}): Ed25519MeshVerifier {
+  const keys = new Map<string, ReturnType<typeof createPublicKey>>();
+  const seed = opts.trustedKeys instanceof Map
+    ? opts.trustedKeys
+    : new Map(Object.entries(opts.trustedKeys));
+  for (const [id, pem] of seed) keys.set(id, createPublicKey({ key: pem, format: "pem" }));
+  return {
+    addTrustAnchor(signerId: string, publicKeyPem: string): void {
+      keys.set(signerId, createPublicKey({ key: publicKeyPem, format: "pem" }));
+    },
+    removeTrustAnchor(signerId: string): void {
+      keys.delete(signerId);
+    },
+    verify(payload: unknown, signature: string, signerId: string): boolean {
+      if (!signature.startsWith("ed25519:")) return false;
+      const key = keys.get(signerId);
+      if (!key) return false; // Unknown signerId: reject.
+      try {
+        const sig = Buffer.from(signature.slice("ed25519:".length), "base64");
+        return cryptoVerify(null, Buffer.from(stableStringify(payload)), key, sig);
+      } catch {
+        return false;
+      }
+    },
+    trustedSignerIds(): string[] { return [...keys.keys()]; }
+  };
+}
+
 function nowIso(): string {
   return new Date().toISOString();
 }
@@ -161,10 +306,24 @@ export interface MeshNodeOptions {
   id: string;
   host: string;
   port: number;
-  /** Shared HMAC secret across the mesh — production would be Ed25519 with
-   *  per-node keypairs gated by the issuer→key-binding layer that already
-   *  exists in governance-core. Kept symmetric here for clarity. */
-  secret: string;
+  /**
+   * Shared HMAC secret across the mesh — legacy / demo path.
+   *
+   * If `secret` is provided and `signer`/`verifier` are not, both will
+   * be constructed as HMAC wrappers automatically (existing behavior).
+   *
+   * If `signer` and `verifier` ARE provided (the per-node Ed25519 path),
+   * `secret` may be omitted; if it is also provided, it is ignored.
+   *
+   * Production deployments should leave `secret` unset and provide
+   * `signer` + `verifier` explicitly (e.g. createEd25519MeshSigner +
+   * createEd25519MeshVerifier with a MAE-style trust-anchor allowlist).
+   */
+  secret?: string;
+  /** Per-node signer. Defaults to HMAC built from `secret`. */
+  signer?: MeshSigner;
+  /** Per-node verifier with trust anchors. Defaults to HMAC built from `secret`. */
+  verifier?: MeshVerifier;
   peers?: NodeId[];
   /**
    * Pluggable HTTP client used for inter-node calls. Defaults to the global
@@ -187,7 +346,14 @@ export abstract class MeshNode {
   protected readonly id: string;
   protected readonly host: string;
   protected readonly port: number;
+  /**
+   * Retained for backwards compatibility (some test paths still read it
+   * via the legacy `secret` constructor option). New code should always
+   * go through this.signer / this.verifier.
+   */
   protected readonly secret: string;
+  protected readonly signer: MeshSigner;
+  protected readonly verifier: MeshVerifier;
   protected peers: NodeId[];
   protected server: Server | null = null;
   protected readonly httpClient: typeof fetch;
@@ -203,7 +369,24 @@ export abstract class MeshNode {
     this.id = opts.id;
     this.host = opts.host;
     this.port = opts.port;
-    this.secret = opts.secret;
+    // Resolve signer/verifier. Three valid configurations:
+    //   1. opts.secret only             -> build HMAC pair (legacy default)
+    //   2. opts.signer + opts.verifier  -> use both (new Ed25519 path)
+    //   3. opts.secret AND signer/verifier -> use signer/verifier; secret
+    //      is retained only for legacy this.secret reads
+    if (opts.signer && opts.verifier) {
+      this.signer = opts.signer;
+      this.verifier = opts.verifier;
+      this.secret = opts.secret ?? "";
+    } else if (opts.signer || opts.verifier) {
+      throw new Error("MeshNode: signer and verifier must be provided together");
+    } else if (opts.secret !== undefined) {
+      this.signer = createHmacMeshSigner({ signerId: opts.id, secret: opts.secret });
+      this.verifier = createHmacMeshVerifier({ secret: opts.secret });
+      this.secret = opts.secret;
+    } else {
+      throw new Error("MeshNode: must provide either { secret } or { signer, verifier }");
+    }
     this.peers = opts.peers ?? [];
     this.httpClient = opts.httpClient ?? fetch;
     this.urlFor = opts.urlFor ?? ((t: NodeId) => `http://${t.host}:${t.port}/`);
@@ -320,7 +503,7 @@ export class RootNode extends MeshNode {
     const partial = {
       ...args, issued_by: this.id, issued_at: nowIso(), signature: ""
     };
-    partial.signature = sign(this.secret, { ...partial, signature: "" });
+    partial.signature = this.signer.sign({ ...partial, signature: "" });
     this.envelopes.set(partial.envelope_id, partial);
     // Async-fire propagation; ignore errors (partitions will recover later).
     void this.propagateEnvelope(partial);
@@ -333,7 +516,7 @@ export class RootNode extends MeshNode {
       target_id, kind, reason,
       revoked_at: nowIso(), issued_by: this.id, signature: ""
     };
-    partial.signature = sign(this.secret, { ...partial, signature: "" });
+    partial.signature = this.signer.sign({ ...partial, signature: "" });
     this.revocations.set(partial.revocation_id, partial);
     await this.gossipRevocation(partial);
     return partial;
@@ -353,7 +536,7 @@ export class RootNode extends MeshNode {
       max_revocation_age_ms: args.max_revocation_age_ms ?? 60_000,
       signature: ""
     };
-    partial.signature = sign(this.secret, { ...partial, signature: "" });
+    partial.signature = this.signer.sign({ ...partial, signature: "" });
     this.issuedFluidityTokens.set(partial.token_id, partial);
     return partial;
   }
@@ -432,7 +615,7 @@ export class WitnessNode extends MeshNode {
       case "PING": return { id: this.id, role: this.role, ok: true };
       case "PROPAGATE_ENVELOPE": {
         const env = msg.envelope;
-        if (!verify(this.secret, { ...env, signature: "" }, env.signature)) {
+        if (!this.verifier.verify({ ...env, signature: "" }, env.signature, env.issued_by)) {
           return { ok: false, reason: "bad-signature" };
         }
         // Accept only newer or equal version.
@@ -450,7 +633,7 @@ export class WitnessNode extends MeshNode {
       }
       case "GOSSIP_REVOCATION": {
         const rev = msg.revocation;
-        if (!verify(this.secret, { ...rev, signature: "" }, rev.signature)) {
+        if (!this.verifier.verify({ ...rev, signature: "" }, rev.signature, rev.issued_by)) {
           return { ok: false, reason: "bad-signature" };
         }
         this.cachedRevocations.set(rev.revocation_id, rev);
@@ -513,7 +696,7 @@ export class EdgeNode extends MeshNode {
 
   receiveFluidityToken(token: FluidityToken): void {
     if (token.edge_id !== this.id) return;
-    if (!verify(this.secret, { ...token, signature: "" }, token.signature)) return;
+    if (!this.verifier.verify({ ...token, signature: "" }, token.signature, token.issued_by)) return;
     this.fluidityTokens.set(token.token_id, token);
   }
 
@@ -573,7 +756,7 @@ export class EdgeNode extends MeshNode {
       root_reachable_at_issue: rootReachable,
       signature: ""
     };
-    partial.signature = sign(this.secret, { ...partial, signature: "" });
+    partial.signature = this.signer.sign({ ...partial, signature: "" });
     this.warrantsSinceContact++;
     const decision: CommitDecision = { decision: "ALLOW", warrant: partial };
     this.localDecisions.push({
@@ -633,7 +816,7 @@ export class EdgeNode extends MeshNode {
     try {
       const resp = (await this.sendTo(root, { kind: "QUERY_REVOCATIONS", since_ms })) as { revocations?: Revocation[] };
       for (const rev of resp.revocations ?? []) {
-        if (!verify(this.secret, { ...rev, signature: "" }, rev.signature)) {
+        if (!this.verifier.verify({ ...rev, signature: "" }, rev.signature, rev.issued_by)) {
           rejected++;
           continue;
         }
@@ -674,7 +857,7 @@ export class EdgeNode extends MeshNode {
       case "PING": return { id: this.id, role: this.role, ok: true };
       case "PROPAGATE_ENVELOPE": {
         const env = msg.envelope;
-        if (!verify(this.secret, { ...env, signature: "" }, env.signature)) {
+        if (!this.verifier.verify({ ...env, signature: "" }, env.signature, env.issued_by)) {
           return { ok: false, reason: "bad-signature" };
         }
         const existing = this.cachedEnvelopes.get(env.envelope_id);
@@ -685,7 +868,7 @@ export class EdgeNode extends MeshNode {
       }
       case "GOSSIP_REVOCATION": {
         const rev = msg.revocation;
-        if (!verify(this.secret, { ...rev, signature: "" }, rev.signature)) {
+        if (!this.verifier.verify({ ...rev, signature: "" }, rev.signature, rev.issued_by)) {
           return { ok: false, reason: "bad-signature" };
         }
         this.cachedRevocations.set(rev.revocation_id, rev);

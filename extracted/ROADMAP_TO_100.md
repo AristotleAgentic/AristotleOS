@@ -7,10 +7,10 @@ Five categories. Each lists the current gap, the concrete actions to close it, a
 ## Category 1 — Technical seriousness
 
 ### Current gaps
-- No formal verification of the Commit Gate's decision function or the mesh reconciliation protocol.
+- No formal verification of the Commit Gate's decision function. The mesh reconciliation protocol has a TLA+ model at `docs/specs/mesh-reconciliation.tla` (manual `tlc` run; not yet in CI).
 - No external security audit.
 - No KMS / HSM integration as a first-party package.
-- No production-grade mesh transport (mTLS + per-node Ed25519 keypairs); shared HMAC ships as the default.
+- ~~No production-grade mesh transport (mTLS + per-node Ed25519 keypairs); shared HMAC ships as the default~~ — **partially closed.** `shared/mesh-runtime` now ships `MeshSigner` + `MeshVerifier` interfaces with first-party `createEd25519MeshSigner` / `createEd25519MeshVerifier` factories. Per-node Ed25519 with a MAE-style trust-anchor allowlist is opt-in via the `signer` + `verifier` MeshNode options; shared HMAC remains the default for backwards compat. 8 new tests in `ed25519-mesh.test.ts` cover happy path, allowlist enforcement, impersonation defense, and constructor misconfiguration. mTLS at the HTTP layer remains caller-supplied (the `httpClient` and `urlFor` hooks are already in place).
 - No production hardware validation for any of the seven adapters.
 - No fuzzing or property-based testing beyond the existing 2 property tests in `gate.property.test.ts`.
 - No cross-adapter test asserting the refusal-before-emission invariant simultaneously.
@@ -24,11 +24,12 @@ Five categories. Each lists the current gap, the concrete actions to close it, a
 | Action | Output | Affects |
 |---|---|---|
 | Write a `fast-check` property-based test suite for `evaluateCommitGate` covering decision determinism + invariants — partial: `gate.replay-property.test.ts` ships 4 replay-protection invariants (I1 replay detection, I2 precedence, I3 fresh-passes, I4 nonce uniqueness) over ~5500 deterministic trials using the existing hand-rolled mulberry32 PRNG (no new dev-dep). A future iteration could swap in `fast-check` for richer shrinking. | `shared/execution-control-runtime/src/gate.{property,replay-property}.test.ts` | Partial |
-| Write a TLA+ or Alloy spec for the mesh reconciliation protocol | `docs/specs/mesh-reconciliation.tla` | High |
+| ~~Write a TLA+ or Alloy spec for the mesh reconciliation protocol~~ — shipped at `docs/specs/mesh-reconciliation.tla` with `docs/specs/README.md` walkthrough. Models the partition→heal→auto-pull→reconcile flow; asserts `Inv_NoWarrantAfterKnownRevocation`, `Inv_QuotaCap`, `Inv_ReconcileDetectsConflict`, and the liveness property `Live_EventualConsistencyOnHeal`. Manual `tlc` run only; not yet in CI. | `docs/specs/mesh-reconciliation.tla` | ✅ done (doc); CI step still TBD |
 | Ship a first-party KMS keyring adapter (AWS KMS + Vault) implementing the `Keyring` interface | new package `@aristotle/kms-keyring` | High |
 | ~~Ship a durable `NonceSeenSet` implementation~~ — shipped (`InMemoryNonceStore` + `FilesystemNonceStore`; Redis + Postgres backends still TBD as separate packages) | `@aristotle/nonce-store` | ✅ done |
 | ~~Add cross-adapter refusal-before-emission test~~ — shipped at `tests/cross-adapter/src/refusal-before-emission.test.ts` | `@aristotle/tests-cross-adapter` | ✅ done |
-| Replace shared-HMAC mesh trust with per-node Ed25519 keypairs gated by MAE signing-key allowlist | refactor `shared/mesh-runtime` | High |
+| ~~Replace shared-HMAC mesh trust with per-node Ed25519 keypairs gated by MAE signing-key allowlist~~ — partially closed: `MeshSigner` + `MeshVerifier` interfaces + `createEd25519MeshSigner` / `createEd25519MeshVerifier` factories ship; per-node Ed25519 is opt-in via MeshNode options. Shared HMAC stays as default for backwards compat. Covered by 8 tests in `ed25519-mesh.test.ts`. | `shared/mesh-runtime` | ✅ done (opt-in) |
+| GEL chain mutation-resistance property tests (M1 record-hash, M2 previous-hash, M3 reorder, M4 insertion, M5 signature strip, M6 signature forgery) | `shared/execution-control-runtime/src/gel.mutation.test.ts` | ✅ done |
 | Integrate Sigstore (or RFC 3161 TSA) for GEL root anchoring | extension to `appendGelRecord` | Medium |
 | Add OpenTelemetry tracing through the gate + adapter layers | shared instrumentation | Medium |
 | Add benchmarks under sustained concurrent load (1000 req/s, 10K req/s) with regression tracking | `bench/` directory | Medium |

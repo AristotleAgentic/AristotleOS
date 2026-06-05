@@ -60,6 +60,7 @@
     "test:execution-control": "tsx shared/execution-control-runtime/src/index.test.ts",
     "test:gate-property": "tsx shared/execution-control-runtime/src/gate.property.test.ts",
     "test:gate-replay-property": "tsx shared/execution-control-runtime/src/gate.replay-property.test.ts",
+    "test:gel-mutation": "tsx shared/execution-control-runtime/src/gel.mutation.test.ts",
     "test:warrant-time": "tsx shared/execution-control-runtime/src/warrant-time.test.ts",
     "test:ward-marshal": "tsx shared/execution-control-runtime/src/ward-marshal.test.ts",
     "test:ward-marshal-adapters": "tsx shared/execution-control-runtime/src/ward-marshal-adapters.test.ts",
