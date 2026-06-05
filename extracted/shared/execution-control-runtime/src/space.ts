@@ -14,7 +14,7 @@ import {
 } from "./index.js";
 
 /**
- * Space launch readiness primitives.
+ * Space launch and orbital mission readiness primitives.
  *
  * Space adapters do not fire engines or release vehicles directly. They translate
  * range-safety, telemetry, propellant load, ignition, flight termination, payload
@@ -100,6 +100,15 @@ export type SpaceAdapterKind =
   | "fts-health"
   | "ground-systems"
   | "tracking-radar"
+  | "mission-ops"
+  | "ttc-command"
+  | "orbit-maneuver"
+  | "rf-spectrum"
+  | "payload-tasking"
+  | "ground-station"
+  | "conjunction-screening"
+  | "rendezvous-proximity"
+  | "deorbit-reentry"
   | "historian";
 
 export type SpaceCountdownPhase =
@@ -114,6 +123,18 @@ export type SpaceCountdownPhase =
   | "second-burn"
   | "deploy"
   | "post-flight";
+
+export type SpaceMissionClass =
+  | "earth-observation"
+  | "communications"
+  | "navigation"
+  | "space-domain-awareness"
+  | "in-orbit-servicing"
+  | "rendezvous-proximity-ops"
+  | "deorbit"
+  | "defense";
+
+export type OrbitRegime = "LEO" | "MEO" | "GEO" | "HEO" | "cislunar" | "suborbital" | string;
 
 export interface SpaceAdapterDescriptor {
   id: SpaceAdapterKind;
@@ -138,6 +159,15 @@ export const SPACE_ADAPTER_CATALOG: SpaceAdapterDescriptor[] = [
   { id: "fts-health", label: "FTS health-check, battery, RF link to range", warrant_required: false, consequential: false },
   { id: "ground-systems", label: "Pad systems, water deluge, hold-down release", warrant_required: true, consequential: true },
   { id: "tracking-radar", label: "Tracking radar handover / acquisition", warrant_required: false, consequential: false },
+  { id: "mission-ops", label: "On-orbit mission operations and mode control", warrant_required: true, consequential: true },
+  { id: "ttc-command", label: "TT&C uplink and spacecraft command stack", warrant_required: true, consequential: true },
+  { id: "orbit-maneuver", label: "Stationkeeping, collision-avoidance, phasing, disposal burns", warrant_required: true, consequential: true },
+  { id: "rf-spectrum", label: "RF transmitter enable, carrier plan, crosslink activation", warrant_required: true, consequential: true },
+  { id: "payload-tasking", label: "Imaging, collection, deployer, and payload-mode tasking", warrant_required: true, consequential: true },
+  { id: "ground-station", label: "Ground-station contact scheduling and command-window open", warrant_required: true, consequential: true },
+  { id: "conjunction-screening", label: "Conjunction assessment and collision-avoidance plan approval", warrant_required: false, consequential: false },
+  { id: "rendezvous-proximity", label: "Rendezvous, proximity operations, hold point, docking/capture", warrant_required: true, consequential: true },
+  { id: "deorbit-reentry", label: "Disposal burn, controlled reentry, passivation", warrant_required: true, consequential: true },
   { id: "historian", label: "Historian / range data archival (NPR / DOD retention)", warrant_required: false, consequential: false }
 ];
 
@@ -344,6 +374,46 @@ export interface SpaceRuntimeSnapshot {
   callsign?: string;
 }
 
+export interface SpaceOrbitalRuntimeSnapshot {
+  asset_id: string;
+  asset_type: "satellite" | "constellation" | "ground-station" | "payload" | string;
+  mission_id: string;
+  mission_class: SpaceMissionClass | string;
+  orbit_regime: OrbitRegime;
+  orbital_slot?: string;
+  ground_station_id?: string;
+  rf_band?: string;
+  payload_mode?: string;
+  target_region?: string;
+  operator_id: string;
+  controller_id?: string;
+  command_window_active: boolean;
+  command_window_age_ms: number;
+  ephemeris_age_ms: number;
+  telemetry_age_ms: number;
+  delta_v_mps?: number;
+  burn_duration_s?: number;
+  conjunction_probability?: number;
+  miss_distance_km?: number;
+  power_margin_pct: number;
+  thermal_limits_nominal: boolean;
+  attitude_control_stable: boolean;
+  safe_mode_available: boolean;
+  collision_avoidance_enabled: boolean;
+  conjunction_screening_clear: boolean;
+  debris_mitigation_plan_approved: boolean;
+  rf_authorization_active: boolean;
+  ground_station_authorized: boolean;
+  payload_tasking_authorized: boolean;
+  export_control_clearance: boolean;
+  deorbit_plan_approved?: boolean;
+  casualty_risk_accepted?: boolean;
+  relative_navigation_valid?: boolean;
+  operator_console_locked: boolean;
+  policy_version?: string;
+  metadata?: Record<string, JsonValue>;
+}
+
 // ---------------------------------------------------------------------------
 // Adapter request types
 // ---------------------------------------------------------------------------
@@ -356,6 +426,18 @@ export interface SpaceActionContext {
   request_id?: string;
   snapshot: SpaceRuntimeSnapshot;
   /** Optional ISO timestamp (alias of requested_at for parity with other verticals). */
+  now?: string;
+  classification?: { level: "UNCLASSIFIED" | "CUI" | "CONFIDENTIAL" | "SECRET" | "TOP_SECRET"; caveats?: string[] };
+  telemetry?: Record<string, JsonValue>;
+}
+
+export interface SpaceOrbitalActionContext {
+  action_id: string;
+  ward_id: string;
+  subject: string;
+  requested_at: string;
+  request_id?: string;
+  snapshot: SpaceOrbitalRuntimeSnapshot;
   now?: string;
   classification?: { level: "UNCLASSIFIED" | "CUI" | "CONFIDENTIAL" | "SECRET" | "TOP_SECRET"; caveats?: string[] };
   telemetry?: Record<string, JsonValue>;
@@ -440,6 +522,62 @@ export interface SpaceHistorianWriteRequest {
   records: Array<{ kind: string; value: JsonValue }>;
 }
 
+export interface OrbitManeuverRequest {
+  maneuver_id: string;
+  operation: "stationkeeping" | "collision-avoidance" | "phasing" | "orbit-raise" | "disposal";
+  delta_v_mps?: number;
+  burn_duration_s?: number;
+  action_type?: string;
+}
+
+export interface RfTransmissionRequest {
+  carrier_id: string;
+  operation: "enable" | "disable" | "plan" | "crosslink-activate";
+  rf_band?: string;
+  action_type?: string;
+}
+
+export interface OrbitalPayloadTaskingRequest {
+  task_id: string;
+  operation: "image-collect" | "mode-set" | "deploy";
+  payload_mode?: string;
+  target_region?: string;
+  action_type?: string;
+}
+
+export interface GroundStationContactRequest {
+  contact_id: string;
+  ground_station_id: string;
+  operation: "schedule" | "handoff" | "open-command-window";
+  action_type?: string;
+}
+
+export interface ConjunctionAssessmentRequest {
+  assessment_id: string;
+  operation: "run" | "approve-plan";
+  action_type?: string;
+}
+
+export interface RendezvousProximityRequest {
+  rpo_id: string;
+  operation: "approach" | "hold-point" | "capture";
+  action_type?: string;
+}
+
+export interface DeorbitReentryRequest {
+  disposal_id: string;
+  operation: "deorbit-burn" | "reentry-commit" | "passivate";
+  action_type?: string;
+}
+
+export interface SpaceOrbitalHistorianWriteRequest {
+  historian_id: string;
+  stream: string;
+  record_type: "command-receipt" | "anomaly-marker" | "compliance-marker" | string;
+  payload: Record<string, JsonValue>;
+  action_type?: string;
+}
+
 export type SpaceAdapterRequest =
   | RangeSafetyRequest
   | PropellantRequest
@@ -450,6 +588,16 @@ export type SpaceAdapterRequest =
   | CommsLicensingRequest
   | WeatherWindsRequest
   | SpaceHistorianWriteRequest;
+
+export type SpaceOrbitalAdapterRequest =
+  | { kind: "orbit-maneuver"; request: OrbitManeuverRequest }
+  | { kind: "rf-spectrum"; request: RfTransmissionRequest }
+  | { kind: "payload-tasking"; request: OrbitalPayloadTaskingRequest }
+  | { kind: "ground-station"; request: GroundStationContactRequest }
+  | { kind: "conjunction-screening"; request: ConjunctionAssessmentRequest }
+  | { kind: "rendezvous-proximity"; request: RendezvousProximityRequest }
+  | { kind: "deorbit-reentry"; request: DeorbitReentryRequest }
+  | { kind: "historian"; request: SpaceOrbitalHistorianWriteRequest };
 
 // ---------------------------------------------------------------------------
 // Evidence context
@@ -501,6 +649,49 @@ export interface SpaceEvidenceBundle {
   verification: { ok: boolean; failures: string[]; execution_bundle_ok: boolean };
 }
 
+export interface SpaceOrbitalEvidenceContext {
+  mission_id: string;
+  asset_id: string;
+  asset_type: string;
+  mission_class: SpaceMissionClass | string;
+  orbit_regime: OrbitRegime;
+  operator_id: string;
+  ground_station_id?: string;
+  rf_band?: string;
+  payload_mode?: string;
+  maneuver_id?: string;
+  conjunction_probability?: number;
+  miss_distance_km?: number;
+  regulatory_evidence_profile: Array<
+    | "FCC_ITU_SPECTRUM"
+    | "EARTH_STATION_LICENSE"
+    | "NOAA_REMOTE_SENSING"
+    | "FAA_AST_LAUNCH_REENTRY"
+    | "SSA_CONJUNCTION_SCREENING"
+    | "IADC_DEBRIS_MITIGATION"
+    | "ITAR_EAR_EXPORT_CONTROL"
+    | "MISSION_ASSURANCE"
+    | string
+  >;
+  redaction_manifest?: {
+    redacted_fields: string[];
+    retained_hashes: string[];
+  };
+}
+
+export interface SpaceOrbitalEvidenceBundle {
+  bundle_version: "aristotle.space-orbital-evidence.v1";
+  exported_at: string;
+  orbital: SpaceOrbitalEvidenceContext;
+  execution_bundle: EvidenceBundle;
+  hashes: {
+    orbital_context_hash: string;
+    execution_bundle_hash: string;
+    orbital_bundle_hash: string;
+  };
+  verification: { ok: boolean; failures: string[]; execution_bundle_ok: boolean };
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -539,6 +730,14 @@ function snapshotParams(snapshot: SpaceRuntimeSnapshot): Record<string, JsonValu
   };
 }
 
+function orbitalSnapshotParams(snapshot: SpaceOrbitalRuntimeSnapshot): Record<string, JsonValue> {
+  return JSON.parse(stableStringify(snapshot)) as Record<string, JsonValue>;
+}
+
+function slug(value: string): string {
+  return value.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase();
+}
+
 function makeAction(input: SpaceAdapterRequest, ctx: SpaceActionContext): CanonicalActionInput {
   const base = snapshotParams(ctx.snapshot);
   // Merge request-specific fields (everything except action_type) into params.
@@ -558,6 +757,28 @@ function makeAction(input: SpaceAdapterRequest, ctx: SpaceActionContext): Canoni
     ...(ctx.request_id ? { request_id: ctx.request_id } : {}),
     params: { ...base, actor_id: ctx.snapshot.actor_id, ...extras } as Record<string, JsonValue>,
     telemetry: { ...(base as Record<string, JsonValue>), ...(ctx.telemetry ?? {}) },
+    ...(ctx.classification ? { classification: ctx.classification } : {})
+  };
+}
+
+function makeOrbitalAction(
+  ctx: SpaceOrbitalActionContext,
+  action_type: string,
+  targetSuffix: string,
+  params: Record<string, JsonValue>
+): CanonicalActionInput {
+  const telemetry = orbitalSnapshotParams(ctx.snapshot);
+  const requested_at = ctx.now ?? ctx.requested_at;
+  return {
+    action_id: ctx.action_id,
+    ward_id: ctx.ward_id,
+    subject: ctx.subject,
+    action_type,
+    target: `space/${ctx.snapshot.asset_id}/${targetSuffix}`,
+    requested_at,
+    ...(ctx.request_id ? { request_id: ctx.request_id } : {}),
+    params: { ...telemetry, ...params },
+    telemetry: { ...telemetry, ...(ctx.telemetry ?? {}) },
     ...(ctx.classification ? { classification: ctx.classification } : {})
   };
 }
@@ -606,6 +827,124 @@ export function spaceAdapterToAction(input: SpaceAdapterRequest, ctx: SpaceActio
   return makeAction(input, ctx);
 }
 
+export function orbitManeuverToAction(input: OrbitManeuverRequest, ctx: SpaceOrbitalActionContext): CanonicalActionInput {
+  const fallback = input.operation === "collision-avoidance"
+    ? "orbit.collision_avoidance.burn"
+    : input.operation === "stationkeeping"
+      ? "orbit.stationkeeping.burn"
+      : input.operation === "disposal"
+        ? "orbit.disposal.burn"
+        : `orbit.${slug(input.operation)}.burn`;
+  return makeOrbitalAction(ctx, input.action_type ?? fallback, `maneuver/${input.maneuver_id}`, {
+    adapter: "orbit-maneuver",
+    maneuver_id: input.maneuver_id,
+    operation: input.operation,
+    ...(input.delta_v_mps !== undefined ? { delta_v_mps: input.delta_v_mps } : {}),
+    ...(input.burn_duration_s !== undefined ? { burn_duration_s: input.burn_duration_s } : {})
+  });
+}
+
+export function rfTransmissionToAction(input: RfTransmissionRequest, ctx: SpaceOrbitalActionContext): CanonicalActionInput {
+  const fallback = input.operation === "crosslink-activate"
+    ? "crosslink.activate"
+    : input.operation === "enable"
+      ? "rf.transmit.enable"
+      : input.operation === "disable"
+        ? "rf.transmit.disable"
+        : "rf.carrier.plan";
+  return makeOrbitalAction(ctx, input.action_type ?? fallback, `rf/${input.carrier_id}`, {
+    adapter: "rf-spectrum",
+    carrier_id: input.carrier_id,
+    operation: input.operation,
+    ...(input.rf_band ? { rf_band: input.rf_band } : {})
+  });
+}
+
+export function payloadTaskingToAction(input: OrbitalPayloadTaskingRequest, ctx: SpaceOrbitalActionContext): CanonicalActionInput {
+  const fallback = input.operation === "image-collect"
+    ? "payload.image.collect"
+    : input.operation === "mode-set"
+      ? "payload.mode.set"
+      : "payload.deploy";
+  return makeOrbitalAction(ctx, input.action_type ?? fallback, `payload/${input.task_id}`, {
+    adapter: "payload-tasking",
+    task_id: input.task_id,
+    operation: input.operation,
+    ...(input.payload_mode ? { payload_mode: input.payload_mode } : {}),
+    ...(input.target_region ? { target_region: input.target_region } : {})
+  });
+}
+
+export function groundStationContactToAction(input: GroundStationContactRequest, ctx: SpaceOrbitalActionContext): CanonicalActionInput {
+  const fallback = input.operation === "schedule"
+    ? "ground_station.contact.schedule"
+    : input.operation === "handoff"
+      ? "ground_station.handoff"
+      : "ground_station.command_window.open";
+  return makeOrbitalAction(ctx, input.action_type ?? fallback, `ground-station/${input.ground_station_id}/${input.contact_id}`, {
+    adapter: "ground-station",
+    contact_id: input.contact_id,
+    ground_station_id: input.ground_station_id,
+    operation: input.operation
+  });
+}
+
+export function conjunctionAssessmentToAction(input: ConjunctionAssessmentRequest, ctx: SpaceOrbitalActionContext): CanonicalActionInput {
+  const fallback = input.operation === "run" ? "conjunction.assessment.run" : "conjunction.plan.approve";
+  return makeOrbitalAction(ctx, input.action_type ?? fallback, `conjunction/${input.assessment_id}`, {
+    adapter: "conjunction-screening",
+    assessment_id: input.assessment_id,
+    operation: input.operation
+  });
+}
+
+export function rendezvousProximityToAction(input: RendezvousProximityRequest, ctx: SpaceOrbitalActionContext): CanonicalActionInput {
+  const fallback = input.operation === "approach"
+    ? "rpo.approach.execute"
+    : input.operation === "hold-point"
+      ? "rpo.hold_point.enter"
+      : "rpo.capture.execute";
+  return makeOrbitalAction(ctx, input.action_type ?? fallback, `rpo/${input.rpo_id}`, {
+    adapter: "rendezvous-proximity",
+    rpo_id: input.rpo_id,
+    operation: input.operation
+  });
+}
+
+export function deorbitReentryToAction(input: DeorbitReentryRequest, ctx: SpaceOrbitalActionContext): CanonicalActionInput {
+  const fallback = input.operation === "deorbit-burn"
+    ? "deorbit.burn.execute"
+    : input.operation === "reentry-commit"
+      ? "reentry.commit"
+      : "satellite.passivate";
+  return makeOrbitalAction(ctx, input.action_type ?? fallback, `deorbit/${input.disposal_id}`, {
+    adapter: "deorbit-reentry",
+    disposal_id: input.disposal_id,
+    operation: input.operation
+  });
+}
+
+export function spaceOrbitalHistorianWriteToAction(input: SpaceOrbitalHistorianWriteRequest, ctx: SpaceOrbitalActionContext): CanonicalActionInput {
+  return makeOrbitalAction(ctx, input.action_type ?? "space.historian_write", `historian/${input.historian_id}/${input.stream}`, {
+    adapter: "historian",
+    historian_id: input.historian_id,
+    stream: input.stream,
+    record_type: input.record_type,
+    payload: input.payload
+  });
+}
+
+export function spaceOrbitalAdapterToAction(input: SpaceOrbitalAdapterRequest, ctx: SpaceOrbitalActionContext): CanonicalActionInput {
+  if (input.kind === "orbit-maneuver") return orbitManeuverToAction(input.request, ctx);
+  if (input.kind === "rf-spectrum") return rfTransmissionToAction(input.request, ctx);
+  if (input.kind === "payload-tasking") return payloadTaskingToAction(input.request, ctx);
+  if (input.kind === "ground-station") return groundStationContactToAction(input.request, ctx);
+  if (input.kind === "conjunction-screening") return conjunctionAssessmentToAction(input.request, ctx);
+  if (input.kind === "rendezvous-proximity") return rendezvousProximityToAction(input.request, ctx);
+  if (input.kind === "deorbit-reentry") return deorbitReentryToAction(input.request, ctx);
+  return spaceOrbitalHistorianWriteToAction(input.request, ctx);
+}
+
 // ---------------------------------------------------------------------------
 // Runtime register
 // ---------------------------------------------------------------------------
@@ -615,6 +954,16 @@ export function spaceSnapshotToRuntimeRegister(snapshot: SpaceRuntimeSnapshot): 
     boundary_id: snapshot.launch_site,
     captured_at: new Date().toISOString(),
     values: snapshotParams(snapshot) as RuntimeRegister["values"]
+  };
+}
+
+export function spaceOrbitalSnapshotToRuntimeRegister(snapshot: SpaceOrbitalRuntimeSnapshot): RuntimeRegister {
+  const values = orbitalSnapshotParams(snapshot);
+  return {
+    boundary_id: snapshot.asset_id,
+    captured_at: new Date().toISOString(),
+    ...(snapshot.policy_version ? { policy_version: snapshot.policy_version } : {}),
+    values
   };
 }
 
@@ -701,5 +1050,75 @@ export function verifySpaceEvidenceBundle(bundle: SpaceEvidenceBundle): SpaceEvi
     }
   });
   if (expected !== bundle.hashes.space_bundle_hash) failures.push("space bundle hash mismatch");
+  return { ok: failures.length === 0, failures, execution_bundle_ok: executionVerification.ok };
+}
+
+function orbitalEvidenceBundleHash(input: {
+  bundle_version: "aristotle.space-orbital-evidence.v1";
+  exported_at: string;
+  orbital: SpaceOrbitalEvidenceContext;
+  execution_bundle: EvidenceBundle;
+  hashes: { orbital_context_hash: string; execution_bundle_hash: string };
+}): string {
+  return sha256(
+    stableStringify({
+      bundle_version: input.bundle_version,
+      exported_at: input.exported_at,
+      orbital_context_hash: input.hashes.orbital_context_hash,
+      execution_bundle_hash: input.hashes.execution_bundle_hash
+    } as Record<string, unknown>)
+  );
+}
+
+export function exportSpaceOrbitalEvidenceBundle(
+  input: ExportEvidenceBundleInput & { orbital: SpaceOrbitalEvidenceContext }
+): SpaceOrbitalEvidenceBundle {
+  const execution_bundle = exportEvidenceBundle(input);
+  const partial = {
+    bundle_version: "aristotle.space-orbital-evidence.v1" as const,
+    exported_at: input.exportedAt ?? execution_bundle.exported_at,
+    orbital: JSON.parse(stableStringify(input.orbital)) as SpaceOrbitalEvidenceContext,
+    execution_bundle
+  };
+  const hashes = {
+    orbital_context_hash: sha256(stableStringify(partial.orbital)),
+    execution_bundle_hash: evidenceBundleMaterialHash(execution_bundle),
+    orbital_bundle_hash: ""
+  };
+  hashes.orbital_bundle_hash = orbitalEvidenceBundleHash({
+    ...partial,
+    hashes: {
+      orbital_context_hash: hashes.orbital_context_hash,
+      execution_bundle_hash: hashes.execution_bundle_hash
+    }
+  });
+  const draft: SpaceOrbitalEvidenceBundle = {
+    ...partial,
+    hashes,
+    verification: { ok: false, failures: [], execution_bundle_ok: false }
+  };
+  return { ...draft, verification: verifySpaceOrbitalEvidenceBundle(draft) };
+}
+
+export function verifySpaceOrbitalEvidenceBundle(bundle: SpaceOrbitalEvidenceBundle): SpaceOrbitalEvidenceBundle["verification"] {
+  const failures: string[] = [];
+  if (bundle.bundle_version !== "aristotle.space-orbital-evidence.v1") failures.push("unsupported orbital space evidence bundle version");
+  const contextHash = sha256(stableStringify(bundle.orbital));
+  if (contextHash !== bundle.hashes.orbital_context_hash) failures.push("orbital context hash mismatch");
+  const executionHash = evidenceBundleMaterialHash(bundle.execution_bundle);
+  if (executionHash !== bundle.hashes.execution_bundle_hash) failures.push("execution bundle hash mismatch");
+  const executionVerification = verifyEvidenceBundle(bundle.execution_bundle);
+  if (!executionVerification.ok) failures.push(`execution evidence failed: ${executionVerification.failures.join(";")}`);
+  const expected = orbitalEvidenceBundleHash({
+    bundle_version: bundle.bundle_version,
+    exported_at: bundle.exported_at,
+    orbital: bundle.orbital,
+    execution_bundle: bundle.execution_bundle,
+    hashes: {
+      orbital_context_hash: bundle.hashes.orbital_context_hash,
+      execution_bundle_hash: bundle.hashes.execution_bundle_hash
+    }
+  });
+  if (expected !== bundle.hashes.orbital_bundle_hash) failures.push("orbital bundle hash mismatch");
   return { ok: failures.length === 0, failures, execution_bundle_ok: executionVerification.ok };
 }

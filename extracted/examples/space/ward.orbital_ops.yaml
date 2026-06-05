@@ -1,0 +1,53 @@
+ward_id: ward-space-orbital-ops
+name: Aurora Orbital Operations Ward
+sovereignty_context: licensed-us-commercial-space-operator
+authority_domain: space-mission-ops
+policy_version: 0.1.0
+evidence_ledger_path: .aristotle/space-orbital-ops.gel.jsonl
+permitted_subjects:
+  - agent:space-mission-controller
+physical_bounds:
+  permitted_space_asset_ids: [sat-aurora-7, gs-pine-gap-demo]
+  permitted_orbit_regimes: [LEO, MEO, GEO]
+  permitted_space_mission_classes:
+    - earth-observation
+    - communications
+    - space-domain-awareness
+    - deorbit
+  permitted_ground_station_ids: [gs-pine-gap-demo, gs-alaska-demo]
+  permitted_rf_bands: [S-band, X-band]
+  permitted_payload_modes: [earth-observation, calibration, safe]
+  max_delta_v_mps: 1.5
+  max_burn_duration_s: 120
+  max_conjunction_probability: 0.0001
+  min_miss_distance_km: 5
+  min_power_margin_pct: 10
+  max_ephemeris_age_ms: 120000
+  max_command_window_age_ms: 60000
+  max_telemetry_age_ms: 60000
+  require_conjunction_screening_clear: true
+  require_debris_mitigation_plan: true
+  require_rf_authorization: true
+  require_ground_station_authorized: true
+  require_ephemeris_fresh: true
+  require_attitude_control_stable: true
+  require_safe_mode_available: true
+  require_power_margin_positive: true
+  require_thermal_limits_nominal: true
+  require_operator_console_locked: true
+  require_payload_tasking_authorized: true
+  require_export_control_clearance: true
+  require_deorbit_plan_approved: true
+  require_collision_avoidance_enabled: true
+criticality: safety_critical
+classification:
+  level: SECRET
+  caveats: [SPACE_OPS]
+metadata:
+  vertical: space-mission-ops
+  demonstration_only: true
+  evidence_profiles:
+    - FCC_ITU_SPECTRUM
+    - SSA_CONJUNCTION_SCREENING
+    - IADC_DEBRIS_MITIGATION
+    - MISSION_ASSURANCE

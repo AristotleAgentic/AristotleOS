@@ -585,6 +585,34 @@ export interface PhysicalBounds {
   require_hazard_area_cleared?: boolean;
   require_tracking_radar_acquired?: boolean;
   require_range_commander_go?: boolean;
+  // -- space orbital / satellite mission operations ------------------------
+  permitted_space_asset_ids?: string[];
+  permitted_orbit_regimes?: string[];
+  permitted_space_mission_classes?: string[];
+  permitted_ground_station_ids?: string[];
+  permitted_rf_bands?: string[];
+  permitted_payload_modes?: string[];
+  max_delta_v_mps?: number;
+  max_burn_duration_s?: number;
+  max_conjunction_probability?: number;
+  min_miss_distance_km?: number;
+  min_power_margin_pct?: number;
+  max_ephemeris_age_ms?: number;
+  max_command_window_age_ms?: number;
+  require_conjunction_screening_clear?: boolean;
+  require_debris_mitigation_plan?: boolean;
+  require_rf_authorization?: boolean;
+  require_ground_station_authorized?: boolean;
+  require_ephemeris_fresh?: boolean;
+  require_attitude_control_stable?: boolean;
+  require_safe_mode_available?: boolean;
+  require_power_margin_positive?: boolean;
+  require_thermal_limits_nominal?: boolean;
+  require_operator_console_locked?: boolean;
+  require_payload_tasking_authorized?: boolean;
+  require_export_control_clearance?: boolean;
+  require_deorbit_plan_approved?: boolean;
+  require_collision_avoidance_enabled?: boolean;
 }
 
 export interface PhysicalInvariantResult {
@@ -1161,6 +1189,25 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
     action.action_type === "space.payload_deploy_outside_primary"
   ) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard space-launch range-safety interlock violation` };
+  }
+  if (
+    action.action_type === "space.disable_safe_mode" ||
+    action.action_type === "satellite.disable_safe_mode" ||
+    action.action_type === "space.disable_collision_avoidance" ||
+    action.action_type === "space.disable_conjunction_screening" ||
+    action.action_type === "conjunction_screening.disable" ||
+    action.action_type === "space.rf_transmit_without_authorization" ||
+    action.action_type === "rf.authorization.bypass" ||
+    action.action_type === "space.force_deorbit_without_approval" ||
+    action.action_type === "deorbit.override" ||
+    action.action_type === "space.payload_task_denied_target" ||
+    action.action_type === "payload.targeting.override" ||
+    action.action_type === "space.bypass_export_control" ||
+    action.action_type === "export_control.bypass" ||
+    action.action_type === "space.disable_evidence" ||
+    action.action_type === "satellite.force_burn_without_warrant"
+  ) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `${action.action_type} is a hard space-orbital mission interlock violation` };
   }
   const altitude = numericParam(action, "altitude_m");
   if (bounds.max_altitude_m !== undefined && altitude !== undefined && altitude > bounds.max_altitude_m) {
@@ -2353,6 +2400,101 @@ export function evaluatePhysicalInvariants(action: CanonicalActionInput, bounds?
   }
   if (bounds.require_range_commander_go && booleanParam(action, "range_commander_go") !== true) {
     return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "range commander has not issued GO" };
+  }
+  // -- space orbital / satellite mission invariants ------------------------
+  const spaceAssetId = stringParam(action, "asset_id");
+  if (bounds.permitted_space_asset_ids?.length && spaceAssetId && !bounds.permitted_space_asset_ids.includes(spaceAssetId)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `space asset ${spaceAssetId} is outside permitted assets` };
+  }
+  const orbitRegime = stringParam(action, "orbit_regime");
+  if (bounds.permitted_orbit_regimes?.length && orbitRegime && !bounds.permitted_orbit_regimes.includes(orbitRegime)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `orbit_regime ${orbitRegime} is outside permitted orbit regimes` };
+  }
+  const spaceMissionClass = stringParam(action, "mission_class");
+  if (bounds.permitted_space_mission_classes?.length && spaceMissionClass && !bounds.permitted_space_mission_classes.includes(spaceMissionClass)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `mission_class ${spaceMissionClass} is outside permitted space mission classes` };
+  }
+  const groundStationId = stringParam(action, "ground_station_id");
+  if (bounds.permitted_ground_station_ids?.length && groundStationId && !bounds.permitted_ground_station_ids.includes(groundStationId)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `ground_station_id ${groundStationId} is outside permitted ground stations` };
+  }
+  const rfBand = stringParam(action, "rf_band");
+  if (bounds.permitted_rf_bands?.length && rfBand && !bounds.permitted_rf_bands.includes(rfBand)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `rf_band ${rfBand} is outside permitted RF bands` };
+  }
+  const payloadMode = stringParam(action, "payload_mode");
+  if (bounds.permitted_payload_modes?.length && payloadMode && !bounds.permitted_payload_modes.includes(payloadMode)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `payload_mode ${payloadMode} is outside permitted payload modes` };
+  }
+  const deltaV = numericParam(action, "delta_v_mps");
+  if (bounds.max_delta_v_mps !== undefined && deltaV !== undefined && deltaV > bounds.max_delta_v_mps) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `delta_v_mps ${deltaV} exceeds max_delta_v_mps ${bounds.max_delta_v_mps}` };
+  }
+  const burnDuration = numericParam(action, "burn_duration_s");
+  if (bounds.max_burn_duration_s !== undefined && burnDuration !== undefined && burnDuration > bounds.max_burn_duration_s) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `burn_duration_s ${burnDuration} exceeds max_burn_duration_s ${bounds.max_burn_duration_s}` };
+  }
+  const conjunctionProbability = numericParam(action, "conjunction_probability");
+  if (bounds.max_conjunction_probability !== undefined && conjunctionProbability !== undefined && conjunctionProbability > bounds.max_conjunction_probability) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `conjunction_probability ${conjunctionProbability} exceeds max_conjunction_probability ${bounds.max_conjunction_probability}` };
+  }
+  const missDistance = numericParam(action, "miss_distance_km");
+  if (bounds.min_miss_distance_km !== undefined && missDistance !== undefined && missDistance < bounds.min_miss_distance_km) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `miss_distance_km ${missDistance} below min_miss_distance_km ${bounds.min_miss_distance_km}` };
+  }
+  const powerMargin = numericParam(action, "power_margin_pct");
+  if (bounds.min_power_margin_pct !== undefined && powerMargin !== undefined && powerMargin < bounds.min_power_margin_pct) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `power_margin_pct ${powerMargin} below min_power_margin_pct ${bounds.min_power_margin_pct}` };
+  }
+  const ephemerisAge = numericParam(action, "ephemeris_age_ms");
+  if (bounds.max_ephemeris_age_ms !== undefined && ephemerisAge !== undefined && ephemerisAge > bounds.max_ephemeris_age_ms) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `ephemeris_age_ms ${ephemerisAge} exceeds max_ephemeris_age_ms ${bounds.max_ephemeris_age_ms}` };
+  }
+  const commandWindowAge = numericParam(action, "command_window_age_ms");
+  if (bounds.max_command_window_age_ms !== undefined && commandWindowAge !== undefined && commandWindowAge > bounds.max_command_window_age_ms) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: `command_window_age_ms ${commandWindowAge} exceeds max_command_window_age_ms ${bounds.max_command_window_age_ms}` };
+  }
+  if (bounds.require_conjunction_screening_clear && booleanParam(action, "conjunction_screening_clear") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "conjunction screening must be clear before this space action" };
+  }
+  if (bounds.require_debris_mitigation_plan && booleanParam(action, "debris_mitigation_plan_approved") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "debris mitigation plan must be approved before this space action" };
+  }
+  if (bounds.require_rf_authorization && booleanParam(action, "rf_authorization_active") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "RF authorization must be active before this transmission" };
+  }
+  if (bounds.require_ground_station_authorized && booleanParam(action, "ground_station_authorized") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "ground station must be authorized before this command/contact" };
+  }
+  if (bounds.require_ephemeris_fresh && ephemerisAge === undefined) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "fresh ephemeris age is required before this space action" };
+  }
+  if (bounds.require_attitude_control_stable && booleanParam(action, "attitude_control_stable") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "attitude control must be stable before this space action" };
+  }
+  if (bounds.require_safe_mode_available && booleanParam(action, "safe_mode_available") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "safe mode must remain available before this space action" };
+  }
+  if (bounds.require_power_margin_positive && (powerMargin === undefined || powerMargin <= 0)) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "power margin must be positive before this space action" };
+  }
+  if (bounds.require_thermal_limits_nominal && booleanParam(action, "thermal_limits_nominal") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "thermal limits must be nominal before this space action" };
+  }
+  if (bounds.require_operator_console_locked && booleanParam(action, "operator_console_locked") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "operator console must be locked to the mission authority context" };
+  }
+  if (bounds.require_payload_tasking_authorized && booleanParam(action, "payload_tasking_authorized") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "payload tasking is not authorized for this target/mode" };
+  }
+  if (bounds.require_export_control_clearance && booleanParam(action, "export_control_clearance") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "export-control clearance is required before this space action" };
+  }
+  if (bounds.require_deorbit_plan_approved && booleanParam(action, "deorbit_plan_approved") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "approved deorbit/reentry plan is required before this action" };
+  }
+  if (bounds.require_collision_avoidance_enabled && booleanParam(action, "collision_avoidance_enabled") !== true) {
+    return { ok: false, reason_codes: ["PHYSICAL_INVARIANT_FAILED"], detail: "collision avoidance must remain enabled before this space action" };
   }
   return { ok: true, reason_codes: [], detail: "physical invariants satisfied" };
 }

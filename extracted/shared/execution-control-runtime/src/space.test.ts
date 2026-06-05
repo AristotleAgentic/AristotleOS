@@ -5,17 +5,27 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   type AuthorityEnvelope,
+  type SpaceOrbitalRuntimeSnapshot,
   type SpaceRuntimeSnapshot,
   type WardManifest,
+  deorbitReentryToAction,
   evaluateExecutionControl,
   exportSpaceEvidenceBundle,
+  exportSpaceOrbitalEvidenceBundle,
   flightTerminationToAction,
   groundSystemsToAction,
+  groundStationContactToAction,
   ignitionToAction,
+  orbitManeuverToAction,
+  payloadTaskingToAction,
   spacePayloadToAction,
   propellantToAction,
   rangeSafetyToAction,
+  rfTransmissionToAction,
+  spaceOrbitalAdapterToAction,
+  spaceOrbitalSnapshotToRuntimeRegister,
   spaceSnapshotToRuntimeRegister,
+  verifySpaceOrbitalEvidenceBundle,
   verifySpaceEvidenceBundle
 } from "./index.js";
 
@@ -151,6 +161,143 @@ const ctx = {
   request_id: "req-space-001",
   snapshot,
   classification: { level: "CUI" as const, caveats: ["SPACE_OPS"] }
+};
+
+const orbitalSnapshot: SpaceOrbitalRuntimeSnapshot = {
+  asset_id: "sat-aurora-7",
+  asset_type: "satellite",
+  mission_id: "mission-aurora-earth-observation",
+  mission_class: "earth-observation",
+  orbit_regime: "LEO",
+  ground_station_id: "gs-pine-gap-demo",
+  rf_band: "S-band",
+  payload_mode: "earth-observation",
+  target_region: "us-mountain-west",
+  operator_id: "operator:space-flight-director",
+  controller_id: "controller:space-ops",
+  command_window_active: true,
+  command_window_age_ms: 5000,
+  ephemeris_age_ms: 30000,
+  telemetry_age_ms: 900,
+  delta_v_mps: 0.4,
+  burn_duration_s: 18,
+  conjunction_probability: 0.00001,
+  miss_distance_km: 12,
+  power_margin_pct: 24,
+  thermal_limits_nominal: true,
+  attitude_control_stable: true,
+  safe_mode_available: true,
+  collision_avoidance_enabled: true,
+  conjunction_screening_clear: true,
+  debris_mitigation_plan_approved: true,
+  rf_authorization_active: true,
+  ground_station_authorized: true,
+  payload_tasking_authorized: true,
+  export_control_clearance: true,
+  deorbit_plan_approved: true,
+  casualty_risk_accepted: true,
+  relative_navigation_valid: true,
+  operator_console_locked: true,
+  policy_version: "0.1.0"
+};
+
+const orbitalWard: WardManifest = {
+  ward_id: "ward-space-orbital-ops",
+  name: "Aurora Orbital Operations Ward",
+  sovereignty_context: "licensed-us-commercial-space-operator",
+  authority_domain: "space-mission-ops",
+  policy_version: "0.1.0",
+  permitted_subjects: ["agent:space-mission-controller"],
+  physical_bounds: {
+    permitted_space_asset_ids: ["sat-aurora-7", "gs-pine-gap-demo"],
+    permitted_orbit_regimes: ["LEO", "MEO", "GEO"],
+    permitted_space_mission_classes: ["earth-observation", "communications", "space-domain-awareness", "deorbit"],
+    permitted_ground_station_ids: ["gs-pine-gap-demo", "gs-alaska-demo"],
+    permitted_rf_bands: ["S-band", "X-band"],
+    permitted_payload_modes: ["earth-observation", "calibration", "safe"],
+    max_delta_v_mps: 1.5,
+    max_burn_duration_s: 120,
+    max_conjunction_probability: 0.0001,
+    min_miss_distance_km: 5,
+    min_power_margin_pct: 10,
+    max_ephemeris_age_ms: 120000,
+    max_command_window_age_ms: 60000,
+    max_telemetry_age_ms: 60000,
+    require_conjunction_screening_clear: true,
+    require_debris_mitigation_plan: true,
+    require_rf_authorization: true,
+    require_ground_station_authorized: true,
+    require_ephemeris_fresh: true,
+    require_attitude_control_stable: true,
+    require_safe_mode_available: true,
+    require_power_margin_positive: true,
+    require_thermal_limits_nominal: true,
+    require_operator_console_locked: true,
+    require_payload_tasking_authorized: true,
+    require_export_control_clearance: true,
+    require_deorbit_plan_approved: true,
+    require_collision_avoidance_enabled: true
+  },
+  criticality: "safety_critical",
+  classification: { level: "SECRET", caveats: ["SPACE_OPS"] }
+};
+
+const orbitalEnvelope: AuthorityEnvelope = {
+  envelope_id: "ae-space-mission-controller-001",
+  ward_id: orbitalWard.ward_id,
+  subject: "agent:space-mission-controller",
+  allowed_actions: [
+    "orbit.stationkeeping.burn",
+    "orbit.collision_avoidance.burn",
+    "rf.transmit.enable",
+    "payload.image.collect",
+    "ground_station.contact.schedule",
+    "conjunction.assessment.run",
+    "rpo.approach.execute",
+    "deorbit.burn.execute",
+    "space.historian_write"
+  ],
+  denied_actions: [
+    "space.disable_safe_mode",
+    "space.disable_collision_avoidance",
+    "space.disable_conjunction_screening",
+    "space.rf_transmit_without_authorization",
+    "space.force_deorbit_without_approval",
+    "space.payload_task_denied_target",
+    "space.bypass_export_control",
+    "space.disable_evidence"
+  ],
+  constraints: {
+    required_runtime_registers: [
+      "telemetry.asset_id",
+      "telemetry.mission_id",
+      "telemetry.orbit_regime",
+      "telemetry.command_window_active",
+      "telemetry.ephemeris_age_ms",
+      "telemetry.conjunction_screening_clear",
+      "telemetry.rf_authorization_active",
+      "telemetry.ground_station_authorized",
+      "telemetry.operator_console_locked"
+    ],
+    dual_control: {
+      actions: ["rpo.approach.execute", "deorbit.burn.execute"],
+      required: 2,
+      ttl_ms: 600000
+    }
+  },
+  expires_at: "2026-12-31T23:59:59Z",
+  issuer: "aristotle-space-orbital-root",
+  classification: { level: "SECRET", caveats: ["SPACE_OPS"] }
+};
+
+const orbitalCtx = {
+  action_id: "act-space-orbital-001",
+  ward_id: orbitalWard.ward_id,
+  subject: orbitalEnvelope.subject,
+  requested_at: now,
+  request_id: "req-space-orbital-001",
+  snapshot: orbitalSnapshot,
+  classification: { level: "SECRET" as const, caveats: ["SPACE_OPS"] }
 };
 
 function ledgerPath() {
@@ -347,4 +494,150 @@ test("space Evidence Bundle wraps execution evidence with space context and veri
   const ver = verifySpaceEvidenceBundle(tampered);
   assert.equal(ver.ok, false);
   assert.ok(ver.failures.some((f) => f.includes("space context hash")));
+});
+
+test("orbital space adapter builders produce Canonical Governed Actions", () => {
+  const burn = orbitManeuverToAction({ maneuver_id: "mnv-1", operation: "stationkeeping" }, orbitalCtx);
+  assert.equal(burn.action_type, "orbit.stationkeeping.burn");
+  assert.equal(burn.params.adapter, "orbit-maneuver");
+  assert.equal(burn.params.asset_id, "sat-aurora-7");
+
+  assert.equal(rfTransmissionToAction({ carrier_id: "car-1", operation: "enable", rf_band: "S-band" }, { ...orbitalCtx, action_id: "act-orb-rf" }).action_type, "rf.transmit.enable");
+  assert.equal(payloadTaskingToAction({ task_id: "task-1", operation: "image-collect", payload_mode: "earth-observation" }, { ...orbitalCtx, action_id: "act-orb-payload" }).action_type, "payload.image.collect");
+  assert.equal(groundStationContactToAction({ contact_id: "ct-1", ground_station_id: "gs-pine-gap-demo", operation: "schedule" }, { ...orbitalCtx, action_id: "act-orb-gs" }).action_type, "ground_station.contact.schedule");
+  assert.equal(spaceOrbitalAdapterToAction({ kind: "orbit-maneuver", request: { maneuver_id: "mnv-2", operation: "stationkeeping" } }, { ...orbitalCtx, action_id: "act-orb-generic" }).action_type, "orbit.stationkeeping.burn");
+});
+
+test("orbital stationkeeping ALLOWs and issues a Warrant", () => {
+  const action = orbitManeuverToAction({ maneuver_id: "mnv-clean-001", operation: "stationkeeping" }, orbitalCtx);
+  const r = evaluateExecutionControl({
+    ward: orbitalWard,
+    authorityEnvelope: orbitalEnvelope,
+    action,
+    ledgerPath: ledgerPath(),
+    now,
+    replayProtection: false,
+    runtimeRegister: spaceOrbitalSnapshotToRuntimeRegister(orbitalSnapshot)
+  });
+  assert.equal(r.decision, "ALLOW", `expected ALLOW, got ${r.decision} (${r.reason_codes.join(",")})`);
+  assert.ok(r.warrant);
+});
+
+test("orbital invariants REFUSE unsafe or unauthorized mission state", () => {
+  const localCtx = { ...orbitalCtx, snapshot: { ...orbitalSnapshot, conjunction_screening_clear: false } };
+  const action = orbitManeuverToAction({ maneuver_id: "mnv-unsafe-001", operation: "stationkeeping" }, localCtx);
+  const r = evaluateExecutionControl({
+    ward: orbitalWard,
+    authorityEnvelope: orbitalEnvelope,
+    action,
+    ledgerPath: ledgerPath(),
+    now,
+    replayProtection: false,
+    runtimeRegister: spaceOrbitalSnapshotToRuntimeRegister(localCtx.snapshot)
+  });
+  assert.equal(r.decision, "REFUSE");
+  assert.ok(r.reason_codes.includes("PHYSICAL_INVARIANT_FAILED"));
+});
+
+test("orbital hard interlock REFUSEs even if envelope mistakenly allows it", () => {
+  const badEnvelope = { ...orbitalEnvelope, allowed_actions: [...orbitalEnvelope.allowed_actions, "space.disable_collision_avoidance"], denied_actions: [] };
+  const action = orbitManeuverToAction(
+    { maneuver_id: "mnv-bad", operation: "stationkeeping", action_type: "space.disable_collision_avoidance" },
+    { ...orbitalCtx, action_id: "act-orb-interlock" }
+  );
+  const r = evaluateExecutionControl({
+    ward: orbitalWard,
+    authorityEnvelope: badEnvelope,
+    action,
+    ledgerPath: ledgerPath(),
+    now,
+    replayProtection: false,
+    runtimeRegister: spaceOrbitalSnapshotToRuntimeRegister(orbitalSnapshot)
+  });
+  assert.equal(r.decision, "REFUSE");
+  assert.ok(r.reason_codes.includes("PHYSICAL_INVARIANT_FAILED"));
+});
+
+test("orbital deorbit requires dual-control before ALLOW", async () => {
+  const { ApprovalStore } = await import("./index.js");
+  const approvalStore = ApprovalStore.memory();
+  const action = deorbitReentryToAction(
+    { disposal_id: "disp-approved-001", operation: "deorbit-burn" },
+    { ...orbitalCtx, action_id: "act-orb-deorbit", snapshot: { ...orbitalSnapshot, mission_class: "deorbit" } }
+  );
+  const first = evaluateExecutionControl({
+    ward: orbitalWard,
+    authorityEnvelope: orbitalEnvelope,
+    action,
+    ledgerPath: ledgerPath(),
+    now,
+    replayProtection: false,
+    approvalStore,
+    runtimeRegister: spaceOrbitalSnapshotToRuntimeRegister({ ...orbitalSnapshot, mission_class: "deorbit" })
+  });
+  assert.equal(first.decision, "ESCALATE");
+  const pending = approvalStore.list(now)[0];
+  approvalStore.vote(pending.request_id, "operator:flight-director", "approve", "conjunction clear and disposal plan approved", now);
+  approvalStore.vote(pending.request_id, "operator:mission-assurance", "approve", "casualty risk and passivation reviewed", now);
+  const second = evaluateExecutionControl({
+    ward: orbitalWard,
+    authorityEnvelope: orbitalEnvelope,
+    action,
+    ledgerPath: ledgerPath(),
+    now,
+    replayProtection: false,
+    approvalStore,
+    runtimeRegister: spaceOrbitalSnapshotToRuntimeRegister({ ...orbitalSnapshot, mission_class: "deorbit" })
+  });
+  assert.equal(second.decision, "ALLOW");
+  assert.ok(second.warrant);
+});
+
+test("orbital Space Evidence Bundle wraps execution evidence and verifies; tampering breaks verification", () => {
+  const action = orbitManeuverToAction({ maneuver_id: "mnv-evidence-001", operation: "stationkeeping" }, orbitalCtx);
+  const ledger = ledgerPath();
+  const r = evaluateExecutionControl({
+    ward: orbitalWard,
+    authorityEnvelope: orbitalEnvelope,
+    action,
+    ledgerPath: ledger,
+    now,
+    replayProtection: false,
+    runtimeRegister: spaceOrbitalSnapshotToRuntimeRegister(orbitalSnapshot)
+  });
+  const bundle = exportSpaceOrbitalEvidenceBundle({
+    ledgerPath: ledger,
+    ward: orbitalWard,
+    authorityEnvelope: orbitalEnvelope,
+    recordId: r.gel_record.record_id,
+    warrant: r.warrant,
+    exportedAt: now,
+    orbital: {
+      mission_id: orbitalSnapshot.mission_id,
+      asset_id: orbitalSnapshot.asset_id,
+      asset_type: orbitalSnapshot.asset_type,
+      mission_class: orbitalSnapshot.mission_class,
+      orbit_regime: orbitalSnapshot.orbit_regime,
+      operator_id: orbitalSnapshot.operator_id,
+      ground_station_id: orbitalSnapshot.ground_station_id,
+      rf_band: orbitalSnapshot.rf_band,
+      payload_mode: orbitalSnapshot.payload_mode,
+      maneuver_id: "mnv-evidence-001",
+      conjunction_probability: orbitalSnapshot.conjunction_probability,
+      miss_distance_km: orbitalSnapshot.miss_distance_km,
+      regulatory_evidence_profile: ["FCC_ITU_SPECTRUM", "SSA_CONJUNCTION_SCREENING", "IADC_DEBRIS_MITIGATION", "MISSION_ASSURANCE"],
+      redaction_manifest: {
+        redacted_fields: ["target_region", "ground_station_precise_location"],
+        retained_hashes: ["canonical_action_hash", "warrant_id", "gel_record_hash"]
+      }
+    }
+  });
+  assert.equal(bundle.bundle_version, "aristotle.space-orbital-evidence.v1");
+  assert.equal(bundle.verification.ok, true, `failures=${bundle.verification.failures.join(";")}`);
+
+  const tampered = JSON.parse(JSON.stringify(bundle)) as typeof bundle;
+  tampered.orbital.asset_id = "sat-attacker";
+  const ver = verifySpaceOrbitalEvidenceBundle(tampered);
+  assert.equal(ver.ok, false);
+  assert.ok(ver.failures.some((f) => f.includes("orbital context hash")));
 });

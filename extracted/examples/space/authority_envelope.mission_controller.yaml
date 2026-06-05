@@ -1,0 +1,44 @@
+envelope_id: ae-space-mission-controller-001
+ward_id: ward-space-orbital-ops
+subject: agent:space-mission-controller
+allowed_actions:
+  - orbit.stationkeeping.burn
+  - orbit.collision_avoidance.burn
+  - rf.transmit.enable
+  - payload.image.collect
+  - ground_station.contact.schedule
+  - conjunction.assessment.run
+  - rpo.approach.execute
+  - deorbit.burn.execute
+  - space.historian_write
+denied_actions:
+  - space.disable_safe_mode
+  - space.disable_collision_avoidance
+  - space.disable_conjunction_screening
+  - space.rf_transmit_without_authorization
+  - space.force_deorbit_without_approval
+  - space.payload_task_denied_target
+  - space.bypass_export_control
+  - space.disable_evidence
+constraints:
+  required_runtime_registers:
+    - telemetry.asset_id
+    - telemetry.mission_id
+    - telemetry.orbit_regime
+    - telemetry.command_window_active
+    - telemetry.ephemeris_age_ms
+    - telemetry.conjunction_screening_clear
+    - telemetry.rf_authorization_active
+    - telemetry.ground_station_authorized
+    - telemetry.operator_console_locked
+  dual_control:
+    actions:
+      - rpo.approach.execute
+      - deorbit.burn.execute
+    required: 2
+    ttl_ms: 600000
+expires_at: 2026-12-31T23:59:59Z
+issuer: aristotle-space-orbital-root
+classification:
+  level: SECRET
+  caveats: [SPACE_OPS]

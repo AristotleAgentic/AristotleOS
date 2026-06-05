@@ -106,7 +106,17 @@ export function validateWardManifest(value: unknown): ValidationResult {
         "max_patient_message_risk_score",
         "max_clinical_context_age_ms",
         "max_medication_reconciliation_age_ms",
-        "max_device_telemetry_age_ms"
+        "max_device_telemetry_age_ms",
+        "max_surface_wind_kts",
+        "max_upper_wind_shear_kts_per_kft",
+        "max_q_kpa",
+        "max_delta_v_mps",
+        "max_burn_duration_s",
+        "max_conjunction_probability",
+        "min_miss_distance_km",
+        "min_power_margin_pct",
+        "max_ephemeris_age_ms",
+        "max_command_window_age_ms"
       ]) {
         const v = value.physical_bounds[numKey];
         if (v !== undefined && (typeof v !== "number" || !Number.isFinite(v))) {
@@ -154,7 +164,15 @@ export function validateWardManifest(value: unknown): ValidationResult {
         "permitted_order_types",
         "permitted_medication_classes",
         "permitted_healthcare_device_ids",
-        "permitted_phi_purposes"
+        "permitted_phi_purposes",
+        "permitted_launch_sites",
+        "permitted_vehicle_classes",
+        "permitted_space_asset_ids",
+        "permitted_orbit_regimes",
+        "permitted_space_mission_classes",
+        "permitted_ground_station_ids",
+        "permitted_rf_bands",
+        "permitted_payload_modes"
       ]) {
         const v = value.physical_bounds[arrKey];
         if (v !== undefined && (!Array.isArray(v) || !v.every((item) => typeof item === "string" && item.trim() !== ""))) {
@@ -246,7 +264,32 @@ export function validateWardManifest(value: unknown): ValidationResult {
         "require_chart_lock_clear",
         "require_human_review_for_patient_message",
         "require_claim_attestation",
-        "require_healthcare_audit_context"
+        "require_healthcare_audit_context",
+        "require_range_clear",
+        "require_fts_armed",
+        "require_afts_nominal",
+        "require_fts_battery_ok",
+        "require_fts_rf_link_ok",
+        "require_propellant_temp_in_spec",
+        "require_itar_cleared",
+        "require_comms_licensed",
+        "require_hazard_area_cleared",
+        "require_tracking_radar_acquired",
+        "require_range_commander_go",
+        "require_conjunction_screening_clear",
+        "require_debris_mitigation_plan",
+        "require_rf_authorization",
+        "require_ground_station_authorized",
+        "require_ephemeris_fresh",
+        "require_attitude_control_stable",
+        "require_safe_mode_available",
+        "require_power_margin_positive",
+        "require_thermal_limits_nominal",
+        "require_operator_console_locked",
+        "require_payload_tasking_authorized",
+        "require_export_control_clearance",
+        "require_deorbit_plan_approved",
+        "require_collision_avoidance_enabled"
       ]) {
         const v = value.physical_bounds[boolKey];
         if (v !== undefined && typeof v !== "boolean") {

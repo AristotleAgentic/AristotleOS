@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.67 - Space orbital-ops integration
+
+This release integrates the local orbital mission-operations work into the newer Space launch/range-safety module already present on the branch. Space is now one coherent vertical: launch and range consequence plus on-orbit spacecraft command consequence.
+
+- **Space runtime expanded**: `space.ts` now includes orbital typed adapters alongside launch/range adapters: orbit maneuver, RF/spectrum, payload tasking, ground-station contact, conjunction screening, RPO, deorbit/reentry, and orbital historian writes.
+- **Commit Gate orbital invariants**: new `physical_bounds` cover permitted assets, orbit regimes, mission classes, ground stations, RF bands, payload modes, delta-v, burn duration, conjunction probability, miss distance, power margin, ephemeris age, command-window age, safe mode, collision avoidance, RF authorization, ground-station authority, payload authorization, deorbit approval, export-control clearance, and operator-console lock.
+- **Fail-closed hard interlocks**: refuses attempts to disable safe mode, collision avoidance, conjunction screening, RF authorization, export-control checks, evidence, or force deorbit/burns without authority.
+- **Orbital evidence**: added `aristotle.space-orbital-evidence.v1` export/verify helpers to bind mission, asset, orbit, RF, payload, conjunction, redaction, and retained hash material to the existing execution Evidence Bundle and GEL chain.
+- **Examples**: added `examples/space/ward.orbital_ops.yaml`, `authority_envelope.mission_controller.yaml`, `policy/orbital_ops.apl`, and ALLOW/REFUSE/ESCALATE orbital action fixtures.
+- **UI registry**: Space now renders as "Space Launch + Orbital Ops" in the vertical registry with launch plus orbital adapter surfaces, safety drills, evidence profile, scenarios, and hard interlocks.
+- **Tests**: root `npm test` now includes `test:space`; `space.test.ts` covers launch and orbital ALLOW/REFUSE/ESCALATE paths, hard interlocks, Warrant issuance, and evidence tamper detection.
+
 ## v0.1.66 - Hostile-diligence pass
 
 The substrate was at 100% across the 12-item audit (v0.1.64) and shipped the 20-minute reviewer flow (v0.1.65). This release prepares the repository for hostile diligence: every major claim now ties to an evidence path, every limitation is documented, every threat is enumerated, and a sober technical README replaces the previous marketing-tinged one.
@@ -817,7 +829,7 @@ exercise on a host with SITL installed).
   failures**.
 
 ## v0.1.53 - Ultimate mode: 7 framework adapters in one batch
-- **Faramesh framework coverage closes from 6/14 -> 13/14 explicit + 1
+- **Runtime-authorization framework coverage closes from 6/14 -> 13/14 explicit + 1
   via MCP.** Gap -7 -> -1 (only Anthropic Claude Code is left, which is
   effectively covered already via the existing @aristotle/claude-agents
   adapter — Claude Code's tool runtime is a superset of the Agent SDK's
@@ -867,7 +879,7 @@ exercise on a host with SITL installed).
 
 ## v0.1.52 - LangGraph integration (aristotle-langgraph, Python)
 - **Sixth agent-framework integration ships, SECOND Python adapter.**
-  Faramesh framework coverage now 6/14 explicit (Claude Agent SDK,
+  Runtime-authorization framework coverage now 6/14 explicit (Claude Agent SDK,
   LangChain.js, OpenAI Agents SDK, CrewAI, Vercel AI SDK, LangGraph) +
   1 via MCP. Gap -8 -> -7. Python side now 2 adapters (CrewAI + LangGraph)
   alongside 4 TS adapters.
@@ -963,7 +975,7 @@ exercise on a host with SITL installed).
 
 ## v0.1.51 - Vercel AI SDK integration (@aristotle/vercel-ai)
 - **Fifth agent-framework integration ships, third TS adapter, fourth
-  active framework on the JS side.** Faramesh framework coverage now
+  active framework on the JS side.** Runtime-authorization framework coverage now
   5/14 explicit (Claude Agent SDK, LangChain.js, OpenAI Agents SDK,
   CrewAI, Vercel AI SDK) + 1 via MCP. Gap −9 -> −8.
 - **`governTool(name, tool, options)` and `governTools(tools, options)`**:
@@ -1061,7 +1073,7 @@ exercise on a host with SITL installed).
 
 ## v0.1.50 - CrewAI integration (aristotle-crewai, Python)
 - **Fourth agent-framework integration ships, and the FIRST Python adapter.**
-  Faramesh framework coverage now 4/14 explicit (Claude Agent SDK, LangChain.js,
+  Runtime-authorization framework coverage now 4/14 explicit (Claude Agent SDK, LangChain.js,
   OpenAI Agents SDK, CrewAI) + 1 via MCP. Proves the canonical-action
   pattern works in BOTH JS and Python runtimes — same shape, same
   decision mapping, same vertical-routing recipe.
@@ -1157,7 +1169,7 @@ exercise on a host with SITL installed).
   24/24 = 44 Python tests.
 
 ## v0.1.49 - OpenAI Agents SDK integration (@aristotle/openai-agents)
-- **Third agent-framework integration ships.** Faramesh framework
+- **Third agent-framework integration ships.** Runtime-authorization framework
   coverage now 3/14 explicit (Claude Agent SDK, LangChain.js,
   OpenAI Agents SDK) — the three anchor TypeScript agent frameworks
   in market — plus MCP-over-stdio reachable from Claude Code, Cursor,
@@ -1232,7 +1244,7 @@ exercise on a host with SITL installed).
 - **Second agent-framework integration ships.** LangChain.js is the
   single biggest agent framework in market; closing it after the
   Claude Agent SDK was the highest-leverage next gap. The
-  Faramesh-style "14 framework integrations" coverage column moves
+  execution-control benchmark "14 framework integrations" coverage column moves
   from 1/14 to 2/14, and the pattern is now demonstrably reusable
   across frameworks (not Claude-specific).
 - **`governTool(tool, options)` + `governTools(tools, options)`** wrap
@@ -1308,7 +1320,7 @@ exercise on a host with SITL installed).
   Python SDK 20/20 unaffected.
 
 ## v0.1.47 - @aristotle/os-cli 0.2.0 (single-binary install, 30-second eval)
-- **Closes follow-up #4 from the Faramesh comparison: package the
+- **Closes follow-up #4 from the runtime-authorization comparison: package the
   runtime as a single binary.** A user evaluating AristotleOS can now
   install the CLI in one command and have a real Commit Gate boundary
   running in ~30 seconds, with no `git clone`, no `pnpm install`, and
@@ -1369,13 +1381,13 @@ exercise on a host with SITL installed).
 - **No code regressions in the runtime libraries.** governance-core
   41/41 + 4/4 + 6/6 = 51/51, execution-control-runtime 75/75, TS SDK
   15/15, claude-agents 13/13. Python SDK 20/20 unaffected.
-- **Series complete.** All four Faramesh-comparison follow-ups are
+- **Series complete.** All four runtime-authorization comparison follow-ups are
   now closed: license (Apache-2.0), TS SDK, Python SDK, Claude Agent
   SDK integration, single-binary install path.
 
 ## v0.1.46 - Claude Agent SDK integration (@aristotle/claude-agents)
 - **`@aristotle/claude-agents` 0.1.0 ships the first agent-framework
-  integration.** Closes follow-up #3 from the Faramesh comparison: pick
+  integration.** Closes follow-up #3 from the runtime-authorization comparison: pick
   ONE agent framework to integrate first. The Claude Agent SDK is the
   natural first target — Anthropic-native, the canonical reference
   implementation for AI agents calling tools.
@@ -1485,7 +1497,7 @@ exercise on a host with SITL installed).
   license footer.
 - **No regressions**: governance-core 41/41, execution-control 75/75,
   TS SDK 15/15, Python SDK 20/20.
-- **This closes the second of the four Faramesh-comparison follow-ups.**
+- **This closes the second of the four runtime-authorization comparison follow-ups.**
   Next: pick ONE agent framework to integrate first (Claude Agents SDK).
 
 ## v0.1.44 - TypeScript SDK 0.2.0 (publish-ready, expanded surface)

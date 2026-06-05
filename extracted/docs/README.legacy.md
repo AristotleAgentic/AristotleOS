@@ -524,7 +524,7 @@ dual-controlled. See [docs/title.md](docs/title.md),
 
 ## Ward/Warrant Execution-Control Path
 
-This AristotleOS component is independently developed. It may discuss Faramesh as a public example of the broader runtime authorization and execution-control category, but it does not copy Faramesh source code, documentation, examples, schemas, tests, comments, file names, repository structure, policy syntax, branding, or expressive material. AristotleOS is not affiliated with, certified by, sponsored by, or endorsed by Faramesh.
+This AristotleOS component is independently developed. It may discuss public runtime authorization and execution-control systems as category examples, but it does not copy third-party source code, documentation, examples, schemas, tests, comments, file names, repository structure, policy syntax, branding, or expressive material. AristotleOS is not affiliated with, certified by, sponsored by, or endorsed by any third-party runtime authorization project.
 
 It canonicalizes a proposed action, evaluates it through a Ward and Authority Envelope at the Commit Gate, returns `ALLOW`, `ESCALATE`, or `REFUSE`, issues a single-use Warrant only on `ALLOW`, and appends the decision to a hash-linked Governance Evidence Ledger.
 

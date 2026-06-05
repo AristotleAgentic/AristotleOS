@@ -241,6 +241,7 @@ packages/{claude-agents, openai-agents, langchain, vercel-ai, bedrock, mastra,
 
 examples/reviewer/                  the 20-minute reviewer flow
 examples/mesh/                      40-asset disconnected swarm + published.replay.json
+examples/space/                     launch + orbital Space Ward, Authority, APL, and action fixtures
 examples/framework-adapters/        worked examples per framework
 
 services/                           service skeletons (most early; see PROOF_STATUS.md)

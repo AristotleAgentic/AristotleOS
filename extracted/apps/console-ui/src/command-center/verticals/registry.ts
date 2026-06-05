@@ -735,64 +735,78 @@ export const VERTICAL_REGISTRY: Record<VerticalId, VerticalConfig> = {
   },
   space: {
     id: "space",
-    name: "Space Launch",
-    framing: "FAA Part 450 + AST + SLD-30/45 + NASA NPR 8715.5 + ITAR + FCC + UN OST",
+    name: "Space Launch + Orbital Ops",
+    framing: "FAA Part 450 + AST + SLD-30/45 + NASA NPR 8715.5 + ITAR/EAR + FCC/ITU + SSA",
     purpose:
-      "Govern countdown, propellant, ignition, flight termination, and payload deploy before any range consequence.",
-    regulatory: ["14 CFR Part 450", "14 CFR Part 415/417", "FAA AST license", "USSF SLD-30/45 range safety", "NASA NPR 8715.5", "ITAR USML IV+XV", "EAR", "FCC Part 25/87", "UN Outer Space Treaty"],
+      "Govern launch, range-safety, satellite command, orbit maneuver, RF, payload, RPO, and deorbit actions before space consequence.",
+    regulatory: ["14 CFR Part 450", "14 CFR Part 415/417", "FAA AST license", "USSF SLD-30/45 range safety", "NASA NPR 8715.5", "ITAR USML IV+XV", "EAR", "FCC Part 25/87", "ITU coordination", "SPD-3 / SSA", "IADC debris mitigation", "UN Outer Space Treaty"],
     adapters: [
       { id: "range-safety", label: "Range Safety / Commander authority", actionTypes: ["space.range_commander_go", "space.range_clear_declare"], boundary: "Range commander" },
       { id: "propellant", label: "Propellant load / drain", actionTypes: ["space.propellant_load"], boundary: "Propellant farm" },
       { id: "ignition", label: "Igniter arm / ignite", actionTypes: ["space.igniter_arm", "space.ignite"], boundary: "Engine controller" },
       { id: "fts", label: "Flight Termination System", actionTypes: ["space.fts_arm", "space.fts_trigger"], boundary: "FTS receiver" },
       { id: "payload", label: "Payload deploy / despin", actionTypes: ["space.payload_deploy"], boundary: "Payload adapter" },
-      { id: "weather-winds", label: "Weather / winds-aloft", actionTypes: ["space.weather_constraint_acknowledge"], boundary: "Range weather" }
+      { id: "weather-winds", label: "Weather / winds-aloft", actionTypes: ["space.weather_constraint_acknowledge"], boundary: "Range weather" },
+      { id: "ttc-command", label: "TT&C command uplink", actionTypes: ["ttc.command.uplink", "satellite.mode.set"], boundary: "Ground station / TT&C stack" },
+      { id: "orbit-maneuver", label: "Orbit maneuver", actionTypes: ["orbit.stationkeeping.burn", "orbit.collision_avoidance.burn"], boundary: "Flight dynamics / spacecraft bus" },
+      { id: "rf-spectrum", label: "RF / spectrum", actionTypes: ["rf.transmit.enable", "rf.carrier.plan"], boundary: "RF chain / licensing authority" },
+      { id: "payload-tasking", label: "Orbital payload tasking", actionTypes: ["payload.image.collect", "payload.mode.set"], boundary: "Payload operations" },
+      { id: "conjunction", label: "Conjunction screening", actionTypes: ["conjunction.assessment.run"], boundary: "SSA / flight dynamics" },
+      { id: "deorbit", label: "Deorbit / reentry", actionTypes: ["deorbit.burn.execute"], boundary: "Disposal / reentry authority" }
     ],
     hardInterlocks: [
       "space.disable_flight_termination", "space.override_range_safety",
       "space.bypass_collision_avoidance", "space.ignite_outside_window",
       "space.bypass_wind_limits", "space.override_propellant_limits",
       "space.bypass_pad_interlocks", "space.payload_deploy_outside_primary",
+      "space.disable_safe_mode", "space.disable_collision_avoidance",
+      "space.disable_conjunction_screening", "space.rf_transmit_without_authorization",
+      "space.force_deorbit_without_approval", "space.payload_task_denied_target",
+      "space.bypass_export_control", "space.disable_evidence",
       "warrant.reuse_attempt"
     ],
-    presets: { label: "Launch sites (DEMO)", states: ["ccsfs", "vandenberg", "wallops", "starbase", "kodiak", "mojave"] },
-    testSurface: { tests: 12, suite: "space.test.ts" },
+    presets: { label: "Launch sites + mission regimes (DEMO)", states: ["ccsfs", "vandenberg", "wallops", "starbase", "kodiak", "mojave", "LEO", "MEO", "GEO", "deorbit"] },
+    testSurface: { tests: 18, suite: "space.test.ts" },
     hasDedicatedConsole: false,
     workflow: [
-      { id: "intent", label: "Operator intent (terminal count, propellant load, ignite)", owner: "Launch director", state: "complete", evidence: "Canonical Governed Action recorded" },
-      { id: "authority", label: "Authority Envelope (operator + range commander)", owner: "Authority service", state: "complete", evidence: "Envelope unrevoked, signer authorized" },
+      { id: "intent", label: "Operator intent (terminal count, propellant load, burn, RF, deorbit)", owner: "Launch / mission director", state: "complete", evidence: "Canonical Governed Action recorded" },
+      { id: "authority", label: "Authority Envelope (range commander + mission controller)", owner: "Authority service", state: "complete", evidence: "Envelope unrevoked, signer authorized" },
       { id: "preflight", label: "Range / weather / FTS / AFTS / propellant / ITAR / comms checks", owner: "Pre-launch adapters", state: "complete", evidence: "Bounds pinned at commit time" },
-      { id: "range-go", label: "Range Commander GO concurrence", owner: "Range commander", state: "complete", evidence: "Range GO captured" },
-      { id: "commit", label: "Commit Gate decision (ALLOW / REFUSE / ESCALATE)", owner: "Commit Gate", state: "active", evidence: "Decision bound to site rule-set" },
-      { id: "warrant", label: "Single-use Launch Warrant issued (dual-control)", owner: "Warrant service", state: "pending", evidence: "Two approvers consumed before ignition" },
-      { id: "evidence", label: "Space Evidence Bundle exported", owner: "GEL exporter", state: "pending", evidence: "aristotle.space-evidence.v1, signed + hash-chained" }
+      { id: "orbital", label: "Ephemeris / conjunction / RF / ground-station / payload checks", owner: "Mission adapters", state: "complete", evidence: "Orbital runtime registers pinned" },
+      { id: "commit", label: "Commit Gate decision (ALLOW / REFUSE / ESCALATE)", owner: "Commit Gate", state: "active", evidence: "Decision bound to site or orbital rule-set" },
+      { id: "warrant", label: "Single-use Space Warrant issued", owner: "Warrant service", state: "pending", evidence: "Dual-control consumed for ignition, RPO, and deorbit" },
+      { id: "evidence", label: "Space Evidence Bundle exported", owner: "GEL exporter", state: "pending", evidence: "Launch and orbital evidence bundles signed + hash-chained" }
     ],
     safetyDrills: [
       { id: "fts", label: "Flight Termination System health", posture: "green", current: "FTS + AFTS nominal, RF link OK, battery within envelope", invariant: "require_fts_armed + require_afts_nominal", evidence: "Range telemetry pinned" },
       { id: "wind", label: "Surface + upper wind", posture: "amber", current: "Surface 18 kts (limit 30), shear 22 kts/kft (limit 30)", invariant: "max_surface_wind_kts / max_upper_wind_shear_kts_per_kft", evidence: "Range weather snapshot" },
       { id: "range-clear", label: "Range clear (hazard area)", posture: "green", current: "Ships / aircraft / overflight all clear", invariant: "require_range_clear + require_hazard_area_cleared", evidence: "VTS + ATC + USCG inputs" },
-      { id: "itar", label: "ITAR / comms posture", posture: "green", current: "USML IV+XV pre-clearance on file; FCC Part 25 filed", invariant: "require_itar_cleared + require_comms_licensed", evidence: "Pre-clearance refs in bundle" }
+      { id: "itar", label: "ITAR / comms posture", posture: "green", current: "USML IV+XV pre-clearance on file; FCC Part 25 filed", invariant: "require_itar_cleared + require_comms_licensed", evidence: "Pre-clearance refs in bundle" },
+      { id: "ephemeris", label: "Ephemeris freshness", posture: "green", current: "30s old (limit 120s)", invariant: "max_ephemeris_age_ms + require_ephemeris_fresh", evidence: "Orbit state vector pinned" },
+      { id: "conjunction", label: "Conjunction screening", posture: "green", current: "Pc 0.00001, miss distance 12km", invariant: "max_conjunction_probability + min_miss_distance_km", evidence: "SSA screen in evidence bundle" },
+      { id: "rf", label: "RF authority", posture: "green", current: "S-band authorization active; ground station authorized", invariant: "require_rf_authorization + require_ground_station_authorized", evidence: "Spectrum + station authority pinned" }
     ],
     evidenceSample: {
-      bundleVersion: "aristotle.space-evidence.v1",
+      bundleVersion: "aristotle.space-evidence.v1 + aristotle.space-orbital-evidence.v1",
       fields: [
         { k: "Operator", v: "operator:demo-launch" },
         { k: "Flight", v: "FL-DEMO-CCSFS-2026-05-26-001", mono: true },
         { k: "Vehicle", v: "demo-orbital-class", mono: true },
         { k: "Site", v: "CCSFS (SLD-45)" },
-        { k: "Site rule pack", v: "ccsfs-demo-2026-05-26", mono: true },
+        { k: "Satellite", v: "sat-aurora-7", mono: true },
+        { k: "Orbit", v: "LEO" },
         { k: "Bundle hash", v: "0xa1b2c3d4...e5f6", mono: true }
       ],
-      profile: ["aristotle.space-evidence.v1", "FAA-Part-450", "FAA-AST-license", "USSF-SLD-45-Range-Safety", "ITAR-USML-IV", "ITAR-USML-XV", "FCC-Part-25", "aristotle.evidence-base.v1"],
-      redactedFields: ["payload_telemetry", "exact_trajectory"],
+      profile: ["aristotle.space-evidence.v1", "aristotle.space-orbital-evidence.v1", "FAA-Part-450", "FAA-AST-license", "USSF-SLD-45-Range-Safety", "ITAR-USML-IV", "ITAR-USML-XV", "FCC-Part-25", "SSA-CONJUNCTION", "IADC-DEBRIS", "aristotle.evidence-base.v1"],
+      redactedFields: ["payload_telemetry", "exact_trajectory", "ground_station_precise_location", "target_region"],
       bundleHash: "0xa1b2c3d4...e5f6",
       verification: "ok"
     },
-    boundaryChainLabels: ["Intent", "Ward", "Range checks", "Adapter", "GEL"],
+    boundaryChainLabels: ["Intent", "Ward", "Range/orbit checks", "Adapter", "GEL"],
     failClosedRule: {
       description:
-        "FTS / AFTS not armed, surface or upper wind above site limit, range not clear, hazard area not cleared, tracking radar not acquired, ITAR or comms pre-clearance missing, range commander GO not issued, or a hard interlock attempt — prevents Warrant issuance before any countdown advance, ignition, or FTS state change.",
-      chips: ["Part 450", "FAA AST", "Range Safety", "FTS / AFTS", "ITAR", "FCC"]
+        "FTS / AFTS not armed, range or weather limits violated, range commander GO missing, ephemeris stale, conjunction screen unsafe, RF or ground-station authority missing, export-control clearance absent, deorbit plan unapproved, or a hard interlock attempt - prevents Warrant issuance before launch, orbit maneuver, RF, payload, RPO, or deorbit consequence.",
+      chips: ["Part 450", "FAA AST", "Range Safety", "FTS / AFTS", "ITAR/EAR", "FCC/ITU", "SSA", "IADC"]
     },
     scenarios: [
       { id: "clean", label: "Clean terminal count + ignite (dual-control)", expected: "ALLOW", rationale: "Range clear, weather + wind within limits, FTS armed, AFTS nominal, range commander GO, two approvers." },
@@ -800,7 +814,10 @@ export const VERTICAL_REGISTRY: Record<VerticalId, VerticalConfig> = {
       { id: "wind-over", label: "Surface wind 35 kts exceeds site limit", expected: "REFUSE", rationale: "max_surface_wind_kts bound fails." },
       { id: "outside-window", label: "Ignite called outside launch window", expected: "REFUSE", rationale: "Hard interlock: space.ignite_outside_window." },
       { id: "payload-deploy-secondary", label: "Payload deploy outside primary insertion orbit", expected: "REFUSE", rationale: "Hard interlock: space.payload_deploy_outside_primary." },
-      { id: "dual-control-pending", label: "Ignite request with only one approval", expected: "ESCALATE", rationale: "Dual control required: 2 approvers." }
+      { id: "dual-control-pending", label: "Ignite request with only one approval", expected: "ESCALATE", rationale: "Dual control required: 2 approvers." },
+      { id: "stationkeeping", label: "Clean LEO stationkeeping burn", expected: "ALLOW", rationale: "Ephemeris fresh, conjunction clear, RF + ground station authorized, power and thermal margins nominal." },
+      { id: "rf-missing", label: "RF transmitter enable without authorization", expected: "REFUSE", rationale: "require_rf_authorization fails before RF chain activation." },
+      { id: "deorbit-dual", label: "Deorbit burn awaiting mission assurance approval", expected: "ESCALATE", rationale: "Dual control required before disposal/reentry Warrant issuance." }
     ]
   },
   swarm: {

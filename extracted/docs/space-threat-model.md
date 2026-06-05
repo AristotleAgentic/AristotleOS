@@ -1,50 +1,67 @@
-# Space Launch — Threat Model (DEMONSTRATION ONLY)
+# Space Threat Model (DEMONSTRATION ONLY)
 
-Threats that the vertical's invariants + hard interlocks are designed to refuse. Per-deployment threat modeling against the operator's flight safety analysis is required before any production use.
+Threats that the Space vertical's invariants and hard interlocks are designed to refuse. Per-deployment threat modeling against the operator's launch safety analysis, spacecraft mission rules, licensing posture, and mission assurance process is required before production use.
 
-## T1 — Adversary asks the autonomous launch director to disable Flight Termination
+## Launch And Range Threats
+
+### T1 - Disable Flight Termination
 
 Action type: `space.disable_flight_termination` / `fts.disable`.
-Refused as a **hard interlock** in `evaluatePhysicalInvariants` regardless of envelope. The FTS is the range commander's last-resort authority; software cannot disarm it via this surface.
 
-## T2 — Adversary asks to override range safety / ignite outside window / bypass wind limits
+Refused as a hard interlock regardless of envelope. The FTS is range authority; software cannot disarm it through this surface.
+
+### T2 - Override Range Safety Or Ignite Outside Window
 
 Action types: `space.override_range_safety`, `space.ignite_outside_window`, `space.bypass_wind_limits`, `space.override_propellant_limits`, `space.bypass_pad_interlocks`, `space.bypass_collision_avoidance`.
-All refused as hard interlocks. The corresponding "non-bypass" path (`space.ignite` etc.) still has to pass the site rule pack's wind/weather/range/FTS bounds + dual control.
 
-## T3 — Adversary submits a `space.ignite` while wind exceeds site limit, range is not clear, FTS not armed, or range commander has not issued GO
+All are refused as hard interlocks. The corresponding non-bypass path still has to pass wind, weather, range-clear, FTS, AFTS, propellant, comms, ITAR, and range-commander bounds.
 
-Each of these conditions is a separate bound check (`max_surface_wind_kts`, `require_range_clear`, `require_fts_armed`, `require_range_commander_go`). REFUSE returned with `PHYSICAL_INVARIANT_FAILED` and the specific reason in the detail field; proven by individual REFUSE tests.
+### T3 - Execute While Range Or Weather Is Unsafe
 
-## T4 — Adversary submits ITAR-controlled payload or comms activity without pre-clearance
+Conditions such as wind above limit, range not clear, FTS not armed, AFTS not nominal, hazard area not cleared, or range commander GO missing are physical invariant failures. The Commit Gate returns `REFUSE` with `PHYSICAL_INVARIANT_FAILED`.
 
-`require_itar_cleared: true` and `require_comms_licensed: true` on the bounds, plus regulatory evidence profile entries `ITAR_USML_IV`, `ITAR_USML_XV`, `FCC_PART_25` get bound into the Evidence Bundle so audit can confirm pre-clearance was on file at decision time.
+### T4 - Payload Or Comms Activity Without Clearance
 
-## T5 — Adversary tampers with the Evidence Bundle after export
+`require_itar_cleared` and `require_comms_licensed` bind export-control and spectrum posture into the Evidence Bundle so audit can confirm pre-clearance was on file at decision time.
 
-`verifySpaceEvidenceBundle` re-hashes the space context and chains through to the execution bundle's hash + GEL chain. Substituting a field (e.g. range_commander_id) fails verification — proven by the tamper test in `space.test.ts`.
+## Orbital Mission Threats
 
-## T6 — Adversary replays a single-use Warrant
+### T5 - Disable Safe Mode Or Collision Avoidance
 
-Handled by the shared `warrant.reuse_attempt` hard interlock (already in place across all verticals).
+Action types: `space.disable_safe_mode`, `satellite.disable_safe_mode`, `space.disable_collision_avoidance`.
 
-## T7 — Adversary attempts a payload deploy outside the primary insertion orbit
+Refused as hard interlocks regardless of envelope. These are not normal policy choices; they remove last-resort recovery and collision-risk controls.
 
-Action type: `space.payload_deploy_outside_primary`. Refused as a hard interlock. The non-bypass path (`space.payload_deploy`) is dual-controlled (2 approvers).
+### T6 - Burn With Stale Ephemeris Or Unscreened Conjunction Risk
 
-## T8 — Adversary spoofs range-commander GO
+`max_ephemeris_age_ms`, `require_ephemeris_fresh`, `require_conjunction_screening_clear`, `max_conjunction_probability`, and `min_miss_distance_km` prevent stationkeeping, collision-avoidance, phasing, RPO, or deorbit commands from issuing a Warrant when the orbital picture is stale or unsafe.
 
-The space vertical's snapshot carries `range_commander_go: boolean`; in production this MUST be sourced from a signed range telemetry feed, NOT from operator-supplied state. The gate does not itself authenticate the range commander; that's the operator's responsibility. The bound enforcement here is defense-in-depth.
+### T7 - Transmit Without RF Authorization
 
-## T9 — Adversary attempts to ship a fictional or stale rule pack to production
+Action types: `space.rf_transmit_without_authorization`, `rf.authorization.bypass`, or a normal `rf.transmit.enable` with `rf_authorization_active: false`.
 
-The `rule_validation_state` field on `SpaceEvidenceContext` carries one of `"demonstration"` / `"operator-validated"` / `"counsel-reviewed"` / `"range-coordinated"`. Bundle exports with `"demonstration"` are explicitly labeled in evidence so an auditor can detect a demo rule pack reaching production. Operators must signed-promote past `"demonstration"` before any real launch.
+Bypass actions are hard interlocks. Normal RF actions fail physical invariants when the RF authorization flag is not current.
 
-## Out of scope (NOT covered by this vertical)
+### T8 - Payload Tasking Without Mission Or Export Authority
 
-- The Flight Termination System hardware/firmware itself.
-- The range's tracking, telemetry, and command (TT&C) systems.
-- ITAR clearance issuance (handled by State Department / DDTC).
-- FCC / ITU radio licensing (handled by FCC).
-- Vehicle GNC / autopilot — Aristotle governs commanded transitions, not flight-control law.
-- Public-risk Ec/Pc computation — that's the operator's flight safety analysis (this vertical references the result but does not compute it).
+`require_payload_tasking_authorized` and `require_export_control_clearance` gate payload tasking before command execution. Bypass actions such as `space.payload_task_denied_target` and `space.bypass_export_control` are refused regardless of envelope.
+
+### T9 - Deorbit Or RPO Without Plural Authority
+
+`rpo.approach.execute` and `deorbit.burn.execute` are modeled as dual-control actions in the sample Authority Envelope. Without the required approvals, the Commit Gate returns `ESCALATE`; after approval, a single-use Warrant can be issued and evidence is committed.
+
+## Evidence Threats
+
+### T10 - Tamper With Evidence After Export
+
+`verifySpaceEvidenceBundle` and `verifySpaceOrbitalEvidenceBundle` re-hash the launch/orbital context and chain through to the execution bundle and GEL chain. Substituting a bound field fails verification.
+
+### T11 - Replay A Single-Use Warrant
+
+Handled by shared Warrant verification and the `warrant.reuse_attempt` interlock already present across AristotleOS.
+
+## Residual Risks
+
+- Real range telemetry, range-commander GO, ground-station authority, RF authorization, export-control state, and spacecraft telemetry must come from authenticated operator systems. Aristotle binds and verifies the state it receives; it does not magically authenticate an unsigned upstream feed.
+- Real collision-risk, public-risk, debris, casualty-risk, and licensing determinations remain with the operator and regulators. Aristotle gates against approved outputs and preserves evidence.
+- The FTS, spacecraft bus, flight-control law, ground-station hardware, RF chain, and payload firmware remain outside this vertical's direct control.
