@@ -159,4 +159,4 @@ pnpm test:core
 
 ## License
 
-Apache-2.0.
+Proprietary. See `LICENSE` and `NOTICE`.

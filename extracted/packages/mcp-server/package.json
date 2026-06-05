@@ -2,7 +2,7 @@
   "name": "@aristotle/mcp-server",
   "version": "0.1.0",
   "description": "AristotleOS as a Model Context Protocol (MCP) server that gates tool calls through the substrate's commit gate. Any MCP-speaking agent (Claude Desktop, IDEs, custom clients) that connects gets governance on every tool call: evaluate -> warrant -> execute -> evidence, with refusals surfacing as MCP tool errors. Wraps caller-supplied tool implementations with the AristotleClient.evaluate -> governThroughAdapter pipeline.",
-  "license": "Apache-2.0",
+  "license": "UNLICENSED",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

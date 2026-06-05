@@ -2,7 +2,7 @@
   "name": "@aristotle/event-stream",
   "version": "0.1.0",
   "description": "Event delivery for AristotleOS: webhook dispatch (HMAC-signed, retried) and Server-Sent Events streams for execution-control decisions, warrant issuance, GEL appends. The missing piece for the 'APIs' substrate item.",
-  "license": "Apache-2.0",
+  "license": "UNLICENSED",
   "private": false,
   "type": "module",
   "main": "src/index.ts",

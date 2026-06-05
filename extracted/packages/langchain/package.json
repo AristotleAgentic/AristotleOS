@@ -2,7 +2,7 @@
   "name": "@aristotle/langchain",
   "version": "0.1.0",
   "description": "Govern LangChain.js tool invocations with AristotleOS. Drop-in wrapper that routes every tool call through the execution-control Commit Gate before it runs.",
-  "license": "Apache-2.0",
+  "license": "UNLICENSED",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

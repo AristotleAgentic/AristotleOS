@@ -2,7 +2,7 @@
   "name": "@aristotle/adapter-sdk",
   "version": "0.1.0",
   "description": "Generic adapter contract for AristotleOS. Third parties can ship governed adapters for any transport (Modbus dialects we don't cover, vendor-specific BMS, custom robotics stacks, anything that takes an action and emits something) without modifying this repo. Defines AristotleAdapterTransport, DemonstrationTransport, RecordingTransport, and governThroughAdapter — the same shape every first-party adapter in packages/ already implements, generalized.",
-  "license": "Apache-2.0",
+  "license": "UNLICENSED",
   "private": false,
   "type": "module",
   "main": "src/index.ts",

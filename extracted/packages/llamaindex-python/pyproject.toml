@@ -7,14 +7,14 @@ name = "aristotle-llamaindex"
 version = "0.1.0"
 description = "Govern LlamaIndex tool calls with AristotleOS."
 readme = "README.md"
-license = "Apache-2.0"
+license = { text = "Proprietary" }
 license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.9"
 authors = [{ name = "AristotleAgentic" }]
 keywords = ["aristotle", "llamaindex", "ai-governance", "agent-governance"]
 classifiers = [
     "Development Status :: 4 - Beta",
-    "License :: OSI Approved :: Apache Software License",
+    "License :: Other/Proprietary License",
     "Programming Language :: Python :: 3",
     "Typing :: Typed",
 ]

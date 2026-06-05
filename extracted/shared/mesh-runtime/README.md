@@ -109,4 +109,4 @@ The live HTTP transport test occasionally has port-timing flakes on contended ho
 
 ## License
 
-Apache-2.0.
+Proprietary. See `LICENSE` and `NOTICE`.

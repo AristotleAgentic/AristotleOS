@@ -1,7 +1,7 @@
 {
   "name": "@aristotle/os-cli",
   "version": "0.2.0",
-  "description": "AristotleOS CLI — run AI agents behind a governed execution-control boundary with signed, single-use Warrants and a tamper-evident evidence ledger.",
+  "description": "AristotleOS CLI â€” run AI agents behind a governed execution-control boundary with signed, single-use Warrants and a tamper-evident evidence ledger.",
   "type": "module",
   "bin": {
     "aristotle": "dist/index.js"
@@ -44,7 +44,7 @@
   "bugs": {
     "url": "https://github.com/AristotleAgentic/AristotleOS/issues"
   },
-  "license": "Apache-2.0",
+  "license": "UNLICENSED",
   "scripts": {
     "build": "node build.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",

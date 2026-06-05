@@ -33,7 +33,7 @@ Run through every item before tagging a release. Skip nothing.
 
 ### Security
 - [ ] `SECURITY.md` reviewed — any new disclosure path or contact change?
-- [ ] No new dependency without a license check (Apache-2.0 / MIT / BSD acceptable; copyleft requires review).
+- [ ] No new dependency without owner-approved license review; copyleft and source-available terms require explicit approval.
 - [ ] Signing-key handling code touched? Pair-reviewed.
 
 ## Release artifacts

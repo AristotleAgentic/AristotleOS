@@ -2,7 +2,7 @@
   "name": "@aristotle/chaos-harness",
   "version": "0.1.0",
   "description": "Chaos / failure-mode test harness for the AristotleOS governance mesh. Exercises revocation lag, partitions, malicious envelopes, hallucinated commands, and Fluidity-Token TTL expiry; emits a deterministic scorecard.",
-  "license": "Apache-2.0",
+  "license": "UNLICENSED",
   "private": false,
   "type": "module",
   "main": "src/index.ts",

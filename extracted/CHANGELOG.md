@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.68 - Proprietary license posture alignment
+
+This release aligns the repository presentation, workspace license files, package manifests, package notices, and release documentation with the current proprietary AristotleOS license posture.
+
+- **License files**: replaced workspace and package-level Apache license text with an AristotleOS proprietary software notice for AristotleOS-original material.
+- **Package metadata**: npm workspace packages now declare `"license": "UNLICENSED"`; Python package manifests now declare proprietary license text and proprietary Trove classifiers.
+- **Documentation**: README, CONTRIBUTING, diligence, release checklist, NOTICE, and package README license sections now describe the current proprietary posture while preserving third-party dependency license review.
+- **Historical record**: older changelog entries remain as history and are superseded by this license posture alignment.
+
 ## v0.1.67 - Space orbital-ops integration
 
 This release integrates the local orbital mission-operations work into the newer Space launch/range-safety module already present on the branch. Space is now one coherent vertical: launch and range consequence plus on-orbit spacecraft command consequence.

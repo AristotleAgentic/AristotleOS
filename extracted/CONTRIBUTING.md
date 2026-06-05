@@ -82,7 +82,7 @@ See `SECURITY.md`. Do not file public GitHub issues for security bugs.
 
 ## Licensing
 
-All contributions are licensed under Apache-2.0. By submitting a PR, you certify that you have the right to license your contribution under those terms.
+Contributions to AristotleOS-original material are submitted for inclusion under the repository's proprietary license unless a separate written agreement says otherwise. By submitting a PR, you certify that you have the right to contribute the material on those terms.
 
 ## Code of conduct
 

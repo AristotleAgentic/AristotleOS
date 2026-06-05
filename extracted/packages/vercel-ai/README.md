@@ -183,4 +183,4 @@ import {
 
 ## License
 
-Apache-2.0. See `LICENSE` and `NOTICE`.
+Proprietary. See `LICENSE` and `NOTICE`.

@@ -176,4 +176,4 @@ const aos = new AristotleClient({ baseUrl, token, fetch });
 
 ## License
 
-Apache-2.0. See the repo root `LICENSE` and `NOTICE`.
+Proprietary. See the repository root `LICENSE` and the local `NOTICE`.

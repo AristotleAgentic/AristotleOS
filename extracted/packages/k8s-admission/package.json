@@ -2,7 +2,7 @@
   "name": "@aristotle/k8s-admission",
   "version": "0.1.0",
   "description": "Govern Kubernetes AdmissionReview requests with AristotleOS. Maps cluster-API mutations into Commit Gate decisions; refuses unauthorized workloads before they reach the API server.",
-  "license": "Apache-2.0",
+  "license": "UNLICENSED",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

@@ -2,7 +2,7 @@
   "name": "@aristotle/modbus-adapter",
   "version": "0.1.0",
   "description": "Govern Modbus TCP register and coil writes with AristotleOS. The hardware-governance pattern applied to legacy industrial PLC / RTU communication.",
-  "license": "Apache-2.0",
+  "license": "UNLICENSED",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

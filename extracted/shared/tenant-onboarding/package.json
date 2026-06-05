@@ -2,7 +2,7 @@
   "name": "@aristotle/tenant-onboarding",
   "version": "0.1.0",
   "description": "Tenant onboarding primitive for AristotleOS. Bootstrap a new tenant with a Meta Authority Envelope, an initial Ward, an Authority Envelope, and a bootstrap agent subject in one signed, validator-checked call.",
-  "license": "Apache-2.0",
+  "license": "UNLICENSED",
   "private": false,
   "type": "module",
   "main": "src/index.ts",

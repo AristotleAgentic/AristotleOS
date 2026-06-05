@@ -213,4 +213,4 @@ For deeper diagnostic info, the JSON report's structure mirrors the stage / chec
 
 ## License
 
-Apache-2.0. See `LICENSE` and `NOTICE` at the repo root.
+Proprietary. See the repository root `LICENSE` and workspace `NOTICE`.

@@ -2,7 +2,7 @@
   "name": "@aristotle/openai-agents",
   "version": "0.1.0",
   "description": "Govern OpenAI Agents SDK tool calls with AristotleOS. Drop-in ToolInputGuardrail that routes every tool invocation through the execution-control Commit Gate before it runs.",
-  "license": "Apache-2.0",
+  "license": "UNLICENSED",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

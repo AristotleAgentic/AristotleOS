@@ -2,7 +2,7 @@
   "name": "@aristotle/bedrock",
   "version": "0.1.0",
   "description": "Govern AWS Bedrock Converse-API tool calls with AristotleOS. Drop-in dispatcher that routes every toolUse block through the execution-control Commit Gate before your tool function runs.",
-  "license": "Apache-2.0",
+  "license": "UNLICENSED",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

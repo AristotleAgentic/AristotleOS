@@ -10,7 +10,7 @@ Core positioning:
 
 > Runtime governance infrastructure for autonomous systems: authority envelopes, warrants, commit gates, and evidence ledgers for bounded, auditable machine action.
 
-This file describes the implementation workspace. If you are viewing the GitHub repository root, the source code lives in this `extracted/` directory.
+The implementation workspace currently lives under [`extracted/`](extracted/).
 
 ## What AristotleOS Is
 
@@ -18,7 +18,7 @@ AristotleOS is a TypeScript and pnpm monorepo for experimenting with runtime gov
 
 It is concerned with the boundary between machine capability and authorized consequence. An agent, robot, workflow, or autonomous subsystem may be able to act, but AristotleOS asks whether it is authorized to act in this context, under this authority, with this evidence, at this moment.
 
-The workspace includes:
+The repository includes:
 
 - A deterministic execution-control runtime.
 - Ward and Authority Envelope manifests.
@@ -117,7 +117,7 @@ flowchart TD
 
 The important boundary is not "can the machine generate an action?" The important boundary is "may this machine action become a consequence?"
 
-See [`ARCHITECTURE.md`](ARCHITECTURE.md), [`docs/architecture.md`](docs/architecture.md), and [`docs/execution-control-runtime.md`](docs/execution-control-runtime.md) for deeper architecture notes.
+See [`extracted/ARCHITECTURE.md`](extracted/ARCHITECTURE.md), [`extracted/docs/architecture.md`](extracted/docs/architecture.md), and [`extracted/docs/execution-control-runtime.md`](extracted/docs/execution-control-runtime.md) for deeper architecture notes.
 
 ## Basic Flow
 
@@ -153,7 +153,7 @@ The examples are demonstration material unless explicitly marked otherwise. They
 
 AristotleOS is experimental and pre-1.0.
 
-What exists in this workspace:
+What exists in this repository:
 
 - Core execution-control runtime and tests.
 - Warrant issuance and verification primitives.
@@ -175,13 +175,14 @@ What should not be assumed:
 - Demo policy packs are not legal, safety, or regulatory determinations.
 - KMS/HSM integration, external timestamp anchoring, and field-grade operations remain hardening work.
 
-Read [`LIMITATIONS.md`](LIMITATIONS.md) and [`PROOF_STATUS.md`](PROOF_STATUS.md) before treating any claim as established.
+Read [`extracted/LIMITATIONS.md`](extracted/LIMITATIONS.md) and [`extracted/PROOF_STATUS.md`](extracted/PROOF_STATUS.md) before treating any claim as established.
 
 ## Quickstart
 
-From this workspace directory:
+From the repository root:
 
 ```sh
+cd extracted
 corepack enable
 corepack pnpm@10.32.1 install
 pnpm reviewer:verify
@@ -208,32 +209,36 @@ npm run test:space
 npm run proof:status
 ```
 
-For more detail, see [`docs/quickstart.md`](docs/quickstart.md), [`docs/getting-started.md`](docs/getting-started.md), and [`examples/reviewer/REVIEWER.md`](examples/reviewer/REVIEWER.md).
+For more detail, see [`extracted/docs/quickstart.md`](extracted/docs/quickstart.md), [`extracted/docs/getting-started.md`](extracted/docs/getting-started.md), and [`extracted/examples/reviewer/REVIEWER.md`](extracted/examples/reviewer/REVIEWER.md).
 
 ## Repository Structure
 
 ```text
 .
-|-- README.md                     workspace README
-|-- package.json                  pnpm workspace scripts
-|-- apps/
-|   |-- aristotle-cli/            CLI
-|   `-- console-ui/               operator console and public trial UI
-|-- shared/
-|   |-- governance-core/          core governance primitives
-|   |-- execution-control-runtime/ Commit Gate, Warrants, GEL, vertical runtimes
-|   |-- mesh-runtime/             disconnected/mesh execution experiments
-|   |-- policy-pipeline/          policy bundle experiments
-|   |-- time-machine/             counterfactual replay
-|   `-- warrant-verifier/         standalone warrant verification
-|-- packages/                     agent, protocol, SDK, and adapter packages
-|-- services/                     service skeletons and control-plane components
-|-- adapters/                     HTTP gateway and related adapters
-|-- examples/                     governed action, vertical, and reviewer examples
-|-- docs/                         architecture, concepts, deployment, threat models
-|-- charts/                       Helm chart materials
-|-- manifests/                    Kubernetes manifests
-`-- scripts/                      validation, install, benchmark, release scripts
+|-- README.md                         GitHub-facing project overview
+|-- LICENSE                           top-level repository license
+|-- CLAUDE.md                         local AI-assistant guidance
+|-- extracted/                        implementation workspace
+    |-- README.md                     workspace README
+    |-- package.json                  pnpm workspace scripts
+    |-- apps/
+    |   |-- aristotle-cli/            CLI
+    |   `-- console-ui/               operator console and public trial UI
+    |-- shared/
+    |   |-- governance-core/          core governance primitives
+    |   |-- execution-control-runtime/ Commit Gate, Warrants, GEL, vertical runtimes
+    |   |-- mesh-runtime/             disconnected/mesh execution experiments
+    |   |-- policy-pipeline/          policy bundle experiments
+    |   |-- time-machine/             counterfactual replay
+    |   `-- warrant-verifier/         standalone warrant verification
+    |-- packages/                     agent, protocol, SDK, and adapter packages
+    |-- services/                     service skeletons and control-plane components
+    |-- adapters/                     HTTP gateway and related adapters
+    |-- examples/                     governed action, vertical, and reviewer examples
+    |-- docs/                         architecture, concepts, deployment, threat models
+    |-- charts/                       Helm chart materials
+    |-- manifests/                    Kubernetes manifests
+    `-- scripts/                      validation, install, benchmark, release scripts
 ```
 
 ## Development
@@ -246,6 +251,7 @@ Requirements:
 Common commands:
 
 ```sh
+cd extracted
 corepack enable
 corepack pnpm@10.32.1 install
 npm run typecheck
@@ -253,7 +259,7 @@ npm run clean-room
 pnpm reviewer:verify
 ```
 
-Broader test suites are defined in [`package.json`](package.json). The full test matrix is larger than the quick reviewer flow, so use the narrower commands while iterating and the broader CI-oriented commands before release.
+Broader test suites are defined in [`extracted/package.json`](extracted/package.json). The full test matrix is larger than the quick reviewer flow, so use the narrower commands while iterating and the broader CI-oriented commands before release.
 
 ## Roadmap
 
@@ -269,15 +275,15 @@ Near-term hardening areas:
 - Continue separating demonstration rule packs from production-validated operator policy.
 - Commission external security review before any safety-critical use.
 
-See [`ROADMAP_TO_100.md`](ROADMAP_TO_100.md), [`VALIDATION_MATRIX.md`](VALIDATION_MATRIX.md), and [`docs/readiness-assessment.md`](docs/readiness-assessment.md).
+See [`extracted/ROADMAP_TO_100.md`](extracted/ROADMAP_TO_100.md), [`extracted/VALIDATION_MATRIX.md`](extracted/VALIDATION_MATRIX.md), and [`extracted/docs/readiness-assessment.md`](extracted/docs/readiness-assessment.md).
 
 ## License
 
-AristotleOS-original material in this workspace is proprietary software. See the repository root `LICENSE` and the local [`LICENSE`](LICENSE).
+AristotleOS-original material in this repository is proprietary software. See [`LICENSE`](LICENSE).
 
 No right is granted to use, copy, modify, publish, distribute, sublicense, or sell AristotleOS-original material except under a separate written agreement with the copyright holder.
 
-Third-party dependencies remain governed by their own licenses. See [`sbom.json`](sbom.json), package metadata, and dependency notices for dependency terms.
+Third-party dependencies remain governed by their own licenses. See [`extracted/sbom.json`](extracted/sbom.json), package metadata, and dependency notices for dependency terms.
 
 ## Disclaimer
 

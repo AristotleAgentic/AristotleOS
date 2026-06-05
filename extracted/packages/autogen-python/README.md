@@ -40,4 +40,4 @@ Same decision mapping and options as the other six adapters.
 
 ## License
 
-Apache-2.0.
+Proprietary. See `LICENSE` and `NOTICE`.

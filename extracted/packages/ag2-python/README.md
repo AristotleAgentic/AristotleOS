@@ -29,4 +29,4 @@ Same decision mapping + options as the other adapters.
 
 ## License
 
-Apache-2.0.
+Proprietary. See `LICENSE` and `NOTICE`.

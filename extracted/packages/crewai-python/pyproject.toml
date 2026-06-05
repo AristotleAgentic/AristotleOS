@@ -7,7 +7,7 @@ name = "aristotle-crewai"
 version = "0.1.0"
 description = "Govern CrewAI tool calls with AristotleOS. Drop-in wrappers that route every tool invocation through the execution-control Commit Gate before it runs."
 readme = "README.md"
-license = "Apache-2.0"
+license = { text = "Proprietary" }
 license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.9"
 authors = [
@@ -26,7 +26,7 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators",
-    "License :: OSI Approved :: Apache Software License",
+    "License :: Other/Proprietary License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",

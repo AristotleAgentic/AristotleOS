@@ -2,7 +2,7 @@
   "name": "@aristotle/tests-px4-sitl",
   "version": "0.1.0",
   "description": "PX4 SITL integration test for @aristotle/mavlink-px4. Drives governFlightCommand end-to-end against a real PX4 SITL UDP endpoint when available, otherwise auto-skips. Closes the in-repo portion of ROADMAP_TO_100.md Category 1 'production hardware integration test for >= 1 adapter'.",
-  "license": "Apache-2.0",
+  "license": "UNLICENSED",
   "private": true,
   "type": "module",
   "scripts": {

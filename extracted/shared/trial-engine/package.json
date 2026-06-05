@@ -1,7 +1,7 @@
 {
   "name": "@aristotle/trial-engine",
   "version": "0.1.0",
-  "license": "Apache-2.0",
+  "license": "UNLICENSED",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
