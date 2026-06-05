@@ -15,6 +15,21 @@ backups/
 .aristotle-local-stack.json
 /data/
 /logs/
+# Build output co-located with sources (tsc emits next to .ts when
+# the package's tsconfig has no outDir). Tracked .js/.d.ts files
+# already in the index stay; new emissions stay out.
+shared/execution-control-runtime/src/*.js
+shared/execution-control-runtime/src/*.d.ts
+shared/execution-control-runtime/src/*.d.ts.map
+shared/execution-control-runtime/src/*.js.map
+shared/mesh-runtime/src/*.js
+shared/mesh-runtime/src/*.d.ts
+shared/mesh-runtime/src/*.d.ts.map
+shared/mesh-runtime/src/*.js.map
+shared/chaos-harness/src/*.js
+shared/chaos-harness/src/*.d.ts
+shared/scenario-engine/src/*.js
+shared/scenario-engine/src/*.d.ts
 .tmp/
 reports/
 # Supply-chain build outputs (generated in CI; attested, not committed).

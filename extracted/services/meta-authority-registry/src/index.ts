@@ -1,5 +1,6 @@
 import { createApp, id, now } from "./lib.js";
 import type { MetaAuthorityArtifact } from "@aristotle/shared-types";
+import { RootNode, type NodeId, type MeshMessage } from "@aristotle/mesh-runtime";
 
 const port = Number(process.env.PORT_META_AUTHORITY_REGISTRY ?? 7004);
 const app = createApp();
@@ -102,4 +103,139 @@ app.post("/resolve", (req, res) => {
   });
 });
 
-app.listen(port, () => console.log(`meta-authority-registry on ${port}`));
+// ---------------------------------------------------------------------------
+// Substrate-backed RootNode (mesh-runtime)
+//
+// This service also acts as the mesh ROOT: it issues AuthorityEnvelopes,
+// Revocations, and Fluidity Tokens. Witnesses and edges talk to it
+// via a `/mesh` POST route on this same port (no extra port allocation).
+//
+// Cross-service mesh wiring: each peer's NodeId carries host:port; we
+// override `urlFor` so requests target `/mesh` on the peer's port.
+// ---------------------------------------------------------------------------
+
+const meshSecret = process.env.MESH_SECRET ?? "aos-demo-mesh-secret";
+const meshHost = process.env.HOST_META_AUTHORITY_REGISTRY ?? "127.0.0.1";
+const root = new RootNode({
+  id: process.env.MESH_ROOT_ID ?? "root-mae",
+  host: meshHost,
+  port, // same port as the express server; routes share via /mesh
+  secret: meshSecret,
+  urlFor: (t: NodeId) => `http://${t.host}:${t.port}/mesh`
+});
+
+// Configure peers from env (comma-separated id:host:port triples).
+// Default: just the standard witness on port 7007.
+const peerSpec = process.env.MESH_PEERS ?? "witness-mae:127.0.0.1:7007,edge-aos:127.0.0.1:7009";
+const peers: NodeId[] = peerSpec
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean)
+  .map((spec) => {
+    const [id, host, portStr] = spec.split(":");
+    return {
+      id,
+      // Roles are inferred from id prefix; mesh-runtime accepts any role.
+      role: id.startsWith("witness")
+        ? ("witness" as const)
+        : id.startsWith("edge")
+          ? ("edge" as const)
+          : ("root" as const),
+      host,
+      port: Number(portStr)
+    };
+  });
+root.setPeers(peers);
+
+// Mesh inter-node POST route.
+app.post("/mesh", async (req, res) => {
+  try {
+    const msg = req.body as MeshMessage;
+    if (msg.from && root.partitions.has(msg.from)) {
+      return res.status(504).json({ ok: false, reason: "partitioned" });
+    }
+    const out = await root.direct(msg);
+    res.json(out);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Operator-facing mesh control plane.
+app.post("/v1/mesh/envelope", async (req, res) => {
+  try {
+    const { envelope_id, mae_id, ward_id, subject, allowed_action_types, expires_at, version } = req.body as {
+      envelope_id: string;
+      mae_id: string;
+      ward_id: string;
+      subject: string;
+      allowed_action_types: string[];
+      expires_at?: string;
+      version?: number;
+    };
+    if (!envelope_id || !mae_id || !ward_id || !subject || !Array.isArray(allowed_action_types)) {
+      return res.status(400).json({ ok: false, error: "missing_required_fields" });
+    }
+    const envelope = root.issueEnvelope({
+      envelope_id,
+      mae_id,
+      ward_id,
+      subject,
+      allowed_action_types,
+      expires_at: expires_at ?? new Date(Date.now() + 24 * 3600_000).toISOString(),
+      version: version ?? 1
+    });
+    res.status(201).json({ ok: true, envelope });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+app.post("/v1/mesh/revoke", async (req, res) => {
+  try {
+    const { target_id, kind, reason } = req.body as {
+      target_id: string;
+      kind?: "envelope" | "warrant" | "subject";
+      reason?: string;
+    };
+    if (!target_id) return res.status(400).json({ ok: false, error: "missing_target_id" });
+    const rev = await root.revoke(target_id, kind ?? "envelope", reason ?? "operator-revoke");
+    res.status(201).json({ ok: true, revocation: rev });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+app.post("/v1/mesh/fluidity-token", (req, res) => {
+  try {
+    const { edge_id, envelope_id, ttl_ms } = req.body as {
+      edge_id: string;
+      envelope_id: string;
+      ttl_ms?: number;
+    };
+    if (!edge_id || !envelope_id) {
+      return res.status(400).json({ ok: false, error: "missing_required_fields" });
+    }
+    const token = root.issueFluidityToken({
+      edge_id,
+      envelope_id,
+      ttl_ms: ttl_ms ?? 60_000
+    });
+    res.status(201).json({ ok: true, token });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+app.get("/v1/mesh/state", (_req, res) => {
+  res.json({
+    ok: true,
+    role: "root",
+    node_id: root.getId(),
+    peers,
+    partitions: [...root.partitions],
+    submitted_edge_decisions: root.getSubmittedEdgeDecisions().length
+  });
+});
+
+app.listen(port, () => console.log(`meta-authority-registry on ${port} (substrate-wired: RootNode at /mesh, /v1/mesh/*)`));

@@ -13,6 +13,8 @@
   "dependencies": {
     "@aristotle/shared-types": "workspace:*",
     "@aristotle/shared-schemas": "workspace:*",
+    "@aristotle/mesh-runtime": "workspace:*",
+    "@aristotle/chaos-harness": "workspace:*",
     "express": "^4.21.1",
     "cors": "^2.8.5",
     "zod": "^3.23.8"

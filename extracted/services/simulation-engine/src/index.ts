@@ -1,4 +1,17 @@
 import { createApp, id, now } from "./lib.js";
+import {
+  runRevocationLagScenario,
+  runMaliciousEnvelopeScenario,
+  runHallucinatedCommandScenario,
+  runFluidityTtlExpiryScenario,
+  runQuotaExhaustionScenario,
+  runReplayAttemptScenario,
+  runClockSkewScenario,
+  runWitnessFlapScenario,
+  runGossipStormScenario,
+  runEnvelopeVersionDowngradeScenario,
+  runAllChaosScenarios
+} from "@aristotle/chaos-harness";
 
 const port = Number(process.env.PORT_SIMULATION_ENGINE ?? 7005);
 const tickMs = Number(process.env.REPLAY_TICK_MS ?? 1500);
@@ -205,4 +218,85 @@ app.post("/counterfactual", (req, res) => {
 });
 setInterval(() => tick++, tickMs);
 
-app.listen(port, () => console.log(`simulation-engine on ${port}`));
+// ---------------------------------------------------------------------------
+// Substrate-backed chaos scenarios (chaos-harness)
+//
+// /v1/chaos/scenarios lists every deterministic failure-mode scenario
+// shipped by @aristotle/chaos-harness. /v1/chaos/run/:name runs one
+// and returns its real ChaosScorecard. /v1/chaos/run-all runs them
+// all and returns a pass/fail summary.
+// ---------------------------------------------------------------------------
+
+const scenarios: Record<string, () => Promise<{ scenario: string; passed: boolean; counters: Record<string, number>; expectations: Array<{ what: string; expected: unknown; observed: unknown; ok: boolean }> }>> = {
+  revocation_lag: () => runRevocationLagScenario(),
+  malicious_envelope: () => runMaliciousEnvelopeScenario(),
+  hallucinated_command: () => runHallucinatedCommandScenario(),
+  fluidity_ttl_expiry: () => runFluidityTtlExpiryScenario(),
+  quota_exhaustion: () => runQuotaExhaustionScenario(),
+  replay_attempt: () => runReplayAttemptScenario(),
+  clock_skew: () => runClockSkewScenario(),
+  witness_flap: () => runWitnessFlapScenario(),
+  gossip_storm: () => runGossipStormScenario(),
+  envelope_version_downgrade: () => runEnvelopeVersionDowngradeScenario()
+};
+
+app.get("/v1/chaos/scenarios", (_req, res) => {
+  res.json({
+    ok: true,
+    count: Object.keys(scenarios).length,
+    scenarios: Object.keys(scenarios).map((name) => ({
+      name,
+      description: `Deterministic failure-mode scenario: ${name}`
+    }))
+  });
+});
+
+app.post("/v1/chaos/run/:name", async (req, res) => {
+  const name = req.params.name;
+  const runner = scenarios[name];
+  if (!runner) {
+    return res.status(404).json({
+      ok: false,
+      error: "unknown_scenario",
+      detail: `scenario '${name}' not found; see GET /v1/chaos/scenarios`
+    });
+  }
+  try {
+    const t0 = Date.now();
+    const scorecard = await runner();
+    res.json({
+      ok: true,
+      scenario: name,
+      duration_ms: Date.now() - t0,
+      scorecard
+    });
+  } catch (err) {
+    res.status(500).json({
+      ok: false,
+      error: "scenario_failed",
+      detail: err instanceof Error ? err.message : String(err)
+    });
+  }
+});
+
+app.post("/v1/chaos/run-all", async (_req, res) => {
+  try {
+    const t0 = Date.now();
+    const result = await runAllChaosScenarios();
+    res.json({
+      ok: result.failed === 0,
+      duration_ms: Date.now() - t0,
+      passed: result.passed,
+      failed: result.failed,
+      scorecards: result.scorecards
+    });
+  } catch (err) {
+    res.status(500).json({
+      ok: false,
+      error: "run_all_failed",
+      detail: err instanceof Error ? err.message : String(err)
+    });
+  }
+});
+
+app.listen(port, () => console.log(`simulation-engine on ${port} (substrate-wired: chaos-harness at /v1/chaos/*)`));

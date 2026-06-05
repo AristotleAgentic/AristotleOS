@@ -204,6 +204,12 @@ importers:
 
   services/agent-os:
     dependencies:
+      '@aristotle/execution-control-runtime':
+        specifier: workspace:*
+        version: link:../../shared/execution-control-runtime
+      '@aristotle/mesh-runtime':
+        specifier: workspace:*
+        version: link:../../shared/mesh-runtime
       '@aristotle/shared-types':
         specifier: workspace:*
         version: link:../../shared/types
@@ -216,6 +222,9 @@ importers:
 
   services/authority-router:
     dependencies:
+      '@aristotle/mesh-runtime':
+        specifier: workspace:*
+        version: link:../../shared/mesh-runtime
       '@aristotle/shared-schemas':
         specifier: workspace:*
         version: link:../../shared/schemas
@@ -300,6 +309,9 @@ importers:
 
   services/meta-authority-registry:
     dependencies:
+      '@aristotle/mesh-runtime':
+        specifier: workspace:*
+        version: link:../../shared/mesh-runtime
       '@aristotle/shared-schemas':
         specifier: workspace:*
         version: link:../../shared/schemas
@@ -339,6 +351,12 @@ importers:
 
   services/simulation-engine:
     dependencies:
+      '@aristotle/chaos-harness':
+        specifier: workspace:*
+        version: link:../../shared/chaos-harness
+      '@aristotle/mesh-runtime':
+        specifier: workspace:*
+        version: link:../../shared/mesh-runtime
       '@aristotle/shared-schemas':
         specifier: workspace:*
         version: link:../../shared/schemas
@@ -357,6 +375,9 @@ importers:
 
   services/witness-service:
     dependencies:
+      '@aristotle/mesh-runtime':
+        specifier: workspace:*
+        version: link:../../shared/mesh-runtime
       '@aristotle/shared-schemas':
         specifier: workspace:*
         version: link:../../shared/schemas

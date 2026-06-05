@@ -1,0 +1,11 @@
+{
+  "name": "@aristotle/website",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "description": "Sober single-page static site for aristotleagentic.com. No build pipeline — index.html is the deliverable.",
+  "scripts": {
+    "preview": "node serve.mjs",
+    "build": "echo 'no build needed — index.html is the deliverable'"
+  }
+}
