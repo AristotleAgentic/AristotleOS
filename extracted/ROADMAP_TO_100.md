@@ -14,19 +14,20 @@ Five categories. Each lists the current gap, the concrete actions to close it, a
 - No production hardware validation for any of the seven adapters.
 - No fuzzing or property-based testing beyond the existing 2 property tests in `gate.property.test.ts`.
 - No cross-adapter test asserting the refusal-before-emission invariant simultaneously.
-- No durable nonce store as a first-party implementation (the `NonceSeenSet` interface exists; only in-memory ships).
+- ~~No durable nonce store as a first-party implementation~~ — **closed** (`@aristotle/nonce-store` ships `InMemoryNonceStore` + `FilesystemNonceStore` with append-only JSONL persistence, TTL eviction, and an integration test that proves `WARRANT_REPLAYED` survives a process restart). Redis / Postgres adapters can implement the same `NonceStore` interface in separate packages.
 - ~~No auto-pull of missed revocations on the edge~~ — **closed** (`EdgeNode.pullRevocations()` plus auto-trigger on `pingRoot()` reconnect; covered by `auto-pull: *` tests in `shared/mesh-runtime/src/index.test.ts`).
+- ~~No cross-adapter test asserting the refusal-before-emission invariant simultaneously~~ — **closed** (`@aristotle/tests-cross-adapter`; spy transports across all 7 protocol adapters; runs in <500ms; wired into CI `protocol-adapters` job).
 - No external timestamp authority anchor on GEL records.
 - No latency benchmarks under realistic concurrent load.
 
 ### Concrete actions
 | Action | Output | Affects |
 |---|---|---|
-| Write a `fast-check` property-based test suite for `evaluateCommitGate` covering decision determinism + invariants | `shared/execution-control-runtime/src/gate.property.test.ts` extended | High |
+| Write a `fast-check` property-based test suite for `evaluateCommitGate` covering decision determinism + invariants — partial: `gate.replay-property.test.ts` ships 4 replay-protection invariants (I1 replay detection, I2 precedence, I3 fresh-passes, I4 nonce uniqueness) over ~5500 deterministic trials using the existing hand-rolled mulberry32 PRNG (no new dev-dep). A future iteration could swap in `fast-check` for richer shrinking. | `shared/execution-control-runtime/src/gate.{property,replay-property}.test.ts` | Partial |
 | Write a TLA+ or Alloy spec for the mesh reconciliation protocol | `docs/specs/mesh-reconciliation.tla` | High |
 | Ship a first-party KMS keyring adapter (AWS KMS + Vault) implementing the `Keyring` interface | new package `@aristotle/kms-keyring` | High |
-| Ship a durable `NonceSeenSet` implementation (Redis + Postgres backends) | new package `@aristotle/nonce-store` | High |
-| Add cross-adapter refusal-before-emission test | `tests/refusal-before-emission.test.ts` | Medium |
+| ~~Ship a durable `NonceSeenSet` implementation~~ — shipped (`InMemoryNonceStore` + `FilesystemNonceStore`; Redis + Postgres backends still TBD as separate packages) | `@aristotle/nonce-store` | ✅ done |
+| ~~Add cross-adapter refusal-before-emission test~~ — shipped at `tests/cross-adapter/src/refusal-before-emission.test.ts` | `@aristotle/tests-cross-adapter` | ✅ done |
 | Replace shared-HMAC mesh trust with per-node Ed25519 keypairs gated by MAE signing-key allowlist | refactor `shared/mesh-runtime` | High |
 | Integrate Sigstore (or RFC 3161 TSA) for GEL root anchoring | extension to `appendGelRecord` | Medium |
 | Add OpenTelemetry tracing through the gate + adapter layers | shared instrumentation | Medium |

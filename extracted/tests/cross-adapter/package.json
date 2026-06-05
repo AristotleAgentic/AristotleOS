@@ -1,0 +1,21 @@
+{
+  "name": "@aristotle/tests-cross-adapter",
+  "version": "0.1.0",
+  "description": "Cross-adapter invariant tests. Lives in its own workspace package so it can resolve every protocol adapter as a workspace dep, and so the substrate invariants it asserts are exercised against the same artifacts that ship.",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import tsx --test src/refusal-before-emission.test.ts"
+  },
+  "dependencies": {
+    "@aristotle/os-sdk": "workspace:*",
+    "@aristotle/dnp3-adapter": "workspace:*",
+    "@aristotle/modbus-adapter": "workspace:*",
+    "@aristotle/bacnet-adapter": "workspace:*",
+    "@aristotle/opcua-adapter": "workspace:*",
+    "@aristotle/ros2-bridge": "workspace:*",
+    "@aristotle/mavlink-px4": "workspace:*",
+    "@aristotle/k8s-admission": "workspace:*"
+  }
+}

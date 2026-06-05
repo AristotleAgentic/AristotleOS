@@ -430,6 +430,12 @@ importers:
 
   shared/mesh-runtime: {}
 
+  shared/nonce-store:
+    dependencies:
+      '@aristotle/execution-control-runtime':
+        specifier: workspace:*
+        version: link:../execution-control-runtime
+
   shared/policy-pipeline:
     dependencies:
       '@aristotle/execution-control-runtime':
@@ -470,6 +476,33 @@ importers:
       '@aristotle/execution-control-runtime':
         specifier: workspace:*
         version: link:../execution-control-runtime
+
+  tests/cross-adapter:
+    dependencies:
+      '@aristotle/bacnet-adapter':
+        specifier: workspace:*
+        version: link:../../packages/bacnet-adapter
+      '@aristotle/dnp3-adapter':
+        specifier: workspace:*
+        version: link:../../packages/dnp3-adapter
+      '@aristotle/k8s-admission':
+        specifier: workspace:*
+        version: link:../../packages/k8s-admission
+      '@aristotle/mavlink-px4':
+        specifier: workspace:*
+        version: link:../../packages/mavlink-px4
+      '@aristotle/modbus-adapter':
+        specifier: workspace:*
+        version: link:../../packages/modbus-adapter
+      '@aristotle/opcua-adapter':
+        specifier: workspace:*
+        version: link:../../packages/opcua-adapter
+      '@aristotle/os-sdk':
+        specifier: workspace:*
+        version: link:../../packages/os-sdk
+      '@aristotle/ros2-bridge':
+        specifier: workspace:*
+        version: link:../../packages/ros2-bridge
 
 packages:
 

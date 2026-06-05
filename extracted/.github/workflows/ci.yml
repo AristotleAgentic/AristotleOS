@@ -63,6 +63,24 @@ jobs:
       - run: corepack pnpm@10.32.1 install --frozen-lockfile
       - name: Protocol adapter test suite (7 adapters)
         run: corepack pnpm@10.32.1 run test:protocol-adapters
+      - name: Cross-adapter refusal-before-emission invariant
+        run: corepack pnpm@10.32.1 run test:refusal-before-emission
+
+  nonce-store:
+    name: Nonce store (durable replay protection)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - run: corepack enable
+      - run: corepack prepare pnpm@10.32.1 --activate
+      - run: corepack pnpm@10.32.1 install --frozen-lockfile
+      - name: Nonce store (in-memory + filesystem + WARRANT_REPLAYED integration)
+        run: corepack pnpm@10.32.1 run test:nonce-store
 
   mesh-and-chaos:
     name: Mesh runtime + chaos harness + scenario engine

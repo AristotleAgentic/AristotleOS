@@ -18,6 +18,7 @@
   "dependencies": { "@aristotle/os-sdk": "workspace:*" },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "prepare": "tsc -p tsconfig.json",
     "test": "node --import tsx --test src/index.test.ts",
     "prepublishOnly": "npm run build"
   }
