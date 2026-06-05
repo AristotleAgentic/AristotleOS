@@ -498,6 +498,13 @@ export class EdgeNode extends MeshNode {
   private lastRootContactMs: number = Date.now();
   private warrantsSinceContact: number = 0;
   private readonly maxWarrantsDisconnected: number;
+  // Tracks whether the most recent pingRoot succeeded. Used to detect the
+  // disconnected -> reconnected edge and auto-pull any revocations the
+  // root issued during the partition.
+  private lastRootReachable: boolean = true;
+  // Counter for how many auto-pulls have fired since boot. Useful as a
+  // testable signal that the post-heal pull path activated.
+  private autoPullCount: number = 0;
 
   constructor(opts: EdgeOptions) {
     super(opts);
@@ -583,12 +590,67 @@ export class EdgeNode extends MeshNode {
     if (!root) return false;
     try {
       await this.sendTo(root, { kind: "PING" });
+      const reconnected = !this.lastRootReachable;
+      const prevContactMs = this.lastRootContactMs;
+      this.lastRootReachable = true;
       this.lastRootContactMs = Date.now();
+      if (reconnected) {
+        // Disconnected -> reconnected transition. Auto-pull any revocations
+        // gossiped during the gap. Fire-and-forget; partition recurrence
+        // is tolerated (we'll retry on the next reconnect transition).
+        // Pull a small safety margin (1s) before the last known contact to
+        // cover gossip-in-flight that the witness may not have caught.
+        const since_ms = Math.max(0, prevContactMs - 1000);
+        void this.pullRevocations(since_ms).catch(() => { /* tolerate */ });
+      }
       return true;
     } catch {
+      this.lastRootReachable = false;
       return false;
     }
   }
+
+  /**
+   * Pull revocations from the root authority since the given timestamp
+   * (ms epoch). Verified revocations are cached; signature failures are
+   * dropped silently and counted in the rejected total.
+   *
+   * Called automatically after pingRoot() detects a disconnected ->
+   * reconnected transition. Also exposed publicly so operators (and
+   * tests) can force a pull at any time, e.g. after a manual partition
+   * heal or to bootstrap a cold edge.
+   *
+   * Closes LIMITATIONS.md § 5 ("Edge has no automatic pull of missed
+   * revocations") with the fix path documented in ROADMAP_TO_100.md
+   * Category 1: edge calls QUERY_REVOCATIONS after pingRoot() succeeds.
+   */
+  async pullRevocations(sinceMs?: number): Promise<{ pulled: number; rejected: number }> {
+    const root = this.peers.find((p) => p.role === "root");
+    if (!root) return { pulled: 0, rejected: 0 };
+    const since_ms = sinceMs ?? this.lastRootContactMs;
+    let pulled = 0;
+    let rejected = 0;
+    try {
+      const resp = (await this.sendTo(root, { kind: "QUERY_REVOCATIONS", since_ms })) as { revocations?: Revocation[] };
+      for (const rev of resp.revocations ?? []) {
+        if (!verify(this.secret, { ...rev, signature: "" }, rev.signature)) {
+          rejected++;
+          continue;
+        }
+        if (!this.cachedRevocations.has(rev.revocation_id)) {
+          this.cachedRevocations.set(rev.revocation_id, rev);
+          pulled++;
+        }
+      }
+      this.autoPullCount++;
+    } catch {
+      // Partition recurred mid-pull. The next reconnect will retry.
+    }
+    return { pulled, rejected };
+  }
+
+  /** Test/operator hook: number of times pullRevocations has completed. */
+  getAutoPullCount(): number { return this.autoPullCount; }
 
   /** Reconcile local decisions with root. Returns conflict list. */
   async reconcile(): Promise<Array<{ warrant_id: string; conflict: unknown }>> {

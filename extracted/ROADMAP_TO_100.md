@@ -15,6 +15,7 @@ Five categories. Each lists the current gap, the concrete actions to close it, a
 - No fuzzing or property-based testing beyond the existing 2 property tests in `gate.property.test.ts`.
 - No cross-adapter test asserting the refusal-before-emission invariant simultaneously.
 - No durable nonce store as a first-party implementation (the `NonceSeenSet` interface exists; only in-memory ships).
+- ~~No auto-pull of missed revocations on the edge~~ — **closed** (`EdgeNode.pullRevocations()` plus auto-trigger on `pingRoot()` reconnect; covered by `auto-pull: *` tests in `shared/mesh-runtime/src/index.test.ts`).
 - No external timestamp authority anchor on GEL records.
 - No latency benchmarks under realistic concurrent load.
 
@@ -89,7 +90,7 @@ Five categories. Each lists the current gap, the concrete actions to close it, a
 | Publish Warrant + GEL formats as an open spec, versioned independently, with at least one reference implementation outside this codebase | `spec/aristotle-warrant.md` + `spec/aristotle-gel.md` | High |
 | Build an adapter SDK with documented contracts, so third parties can ship adapters without modifying this repo | `packages/adapter-sdk/` | Medium |
 | Submit a draft to IETF / NIST / OCI working group as appropriate (which depends on which way the substrate evolves) | draft RFC or working note | External / long-horizon |
-| Document the differences from OPA / Cedar / JWT / OAuth / Guardrails / Sigstore line by line | `docs/COMPARISON.md` | Quick |
+| ~~Document the differences from OPA / Cedar / JWT / OAuth / Guardrails / Sigstore line by line~~ — shipped at `docs/COMPARISON.md` | `docs/COMPARISON.md` | ✅ done |
 | Attend / present at appropriate venues: ICRA (robotics), S4 (industrial control), KubeCon (admission), NeurIPS / AAAI (AI safety) | external | Long-horizon |
 
 ### Highest-leverage next step

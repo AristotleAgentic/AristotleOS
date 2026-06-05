@@ -53,17 +53,22 @@ What's missing:
 
 Operators running edge nodes on hosts they don't control should treat edge-clock manipulation as in-scope. Hardware attestation fields in `GelRecord` are present but the bridge to real TPM/SGX quotes is caller-supplied.
 
-## 5. Edge has no automatic pull of missed revocations
+## 5. Edge auto-pulls missed revocations — closed
 
-When an edge node is partitioned from the witness at the moment a revocation is gossiped, that revocation does not auto-propagate to the edge when the link recovers. The edge has no public `pull_revocations(since=...)` API.
+**Status:** closed. Earlier revisions of this document flagged this as an open gap; the fix shipped in `shared/mesh-runtime/src/index.ts`.
 
-What's tested today:
-- `chaos-harness::witness_flap` models this exact scenario and validates the operator-driven recovery pattern (manual re-gossip via `RootNode.gossipRevocation(rev)`).
+When an edge node is partitioned at the moment a revocation is gossiped, the edge now auto-recovers via two paths:
 
-What's missing:
-- An automatic post-heal pull from the recovering edge.
+1. **Automatic post-heal pull.** `EdgeNode.pingRoot()` tracks the last reachable state. When it transitions from unreachable → reachable, it fires `pullRevocations(prevContact - 1s)` as a side effect. `QUERY_REVOCATIONS` returns every revocation Root issued during the gap; the edge verifies each signature and caches the survivors.
+2. **Operator-driven pull.** `EdgeNode.pullRevocations(sinceMs?)` is a public method an operator can invoke at any time — useful for cold-boot bootstrap or manual reconciliation drills.
 
-This is a known gap with a clean fix path (edge calls `QUERY_REVOCATIONS` after `pingRoot()` succeeds). Tracked in `ROADMAP_TO_100.md` § Category 1.
+What's tested today (`shared/mesh-runtime/src/index.test.ts`):
+- `auto-pull: pullRevocations() backfills the edge from root after a missed gossip window` — direct API test under full partition.
+- `auto-pull: pingRoot reconnect transition fires pullRevocations automatically` — asserts the disconnected → reconnected transition triggers the pull and that `getAutoPullCount()` advances.
+- `chaos-harness::witness_flap` continues to model the original scenario; the operator-driven recovery path is still supported for cases where Root is unreachable but Witness is.
+
+What's still not in scope:
+- Periodic background polling for revocations independent of any state change. The current design is event-driven (reconnect or explicit call); a future implementation could add a configurable poll interval if operators want belt-and-suspenders coverage. Not required for correctness — Fluidity Token TTL plus disconnected-warrant quota bound the staleness window today.
 
 ## 6. No production deployments
 

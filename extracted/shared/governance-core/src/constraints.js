@@ -9,12 +9,17 @@
  * and every failure is reportable with the same `Violation` vocabulary.
  */
 import { violation } from "./errors.js";
+// Path segments that would reach into the prototype chain. The fact record fed to
+// the gate is built from attacker-controlled telemetry/context/action parameters, so
+// resolving these would let a request satisfy/evade an authority-defined predicate by
+// reading inherited properties (e.g. "constructor"/"toString" always "exist").
 const FORBIDDEN_PATH_SEGMENTS = new Set(["__proto__", "prototype", "constructor"]);
 function getPath(record, path) {
     let cur = record;
     for (const part of path.split(".")) {
         if (FORBIDDEN_PATH_SEGMENTS.has(part))
             return undefined;
+        // Own-property only: never traverse the prototype chain.
         if (cur && typeof cur === "object" && Object.prototype.hasOwnProperty.call(cur, part)) {
             cur = cur[part];
         }

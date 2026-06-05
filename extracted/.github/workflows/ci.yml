@@ -164,14 +164,19 @@ jobs:
           fi
           echo "All required diligence docs present."
 
-  # Don't block merges on the legacy aristotle-cli typecheck — that
-  # has a pre-existing dep declaration issue (see ROADMAP_TO_100.md
-  # Category 2). When it's fixed, promote this to a required check.
-  legacy-cli-typecheck:
-    name: (Advisory) legacy CLI typecheck
+  # CLI typecheck — required check.
+  #
+  # Was advisory in earlier revisions because the CLI tsconfig had a
+  # narrow `rootDir` and missing path entries for workspace substrate
+  # packages. Both fixed in apps/aristotle-cli/{tsconfig.json,package.json}:
+  # rootDir/outDir dropped (this is a noEmit-only config), full paths
+  # block restored, and the four workspace deps the CLI actually imports
+  # are now declared explicitly. ROADMAP_TO_100.md Category 2 "Quick fix"
+  # closed.
+  cli-typecheck:
+    name: CLI typecheck
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4
@@ -181,6 +186,5 @@ jobs:
       - run: corepack enable
       - run: corepack prepare pnpm@10.32.1 --activate
       - run: corepack pnpm@10.32.1 install --frozen-lockfile
-      - name: Legacy CLI typecheck (advisory)
-        run: |
-          corepack pnpm@10.32.1 exec tsc --noEmit -p apps/aristotle-cli/tsconfig.json || true
+      - name: CLI typecheck
+        run: corepack pnpm@10.32.1 exec tsc --noEmit -p apps/aristotle-cli/tsconfig.json

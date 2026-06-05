@@ -59,10 +59,23 @@ export declare class Ed25519Keyring implements Keyring {
 }
 /** Produce a signature over an artifact (excluding its `signatures` field). */
 export declare function signObject(keyring: Keyring, keyId: string, obj: Record<string, unknown>): Signature;
-/** Verify every signature on an artifact. Empty signature list => unverifiable => false. */
+/**
+ * Verify every signature on an artifact. Empty signature list => unverifiable => false.
+ *
+ * `allowedKeyIds` (optional) constrains which `keyId`s the artifact may have been
+ * signed by — when provided, any signature whose `keyId` is NOT in the set fails
+ * verification BEFORE the cryptographic check is even attempted. This is the
+ * issuer→key binding mechanism: it stops a key trusted for tenant B from forging
+ * an artifact for tenant A in a multi-tenant deployment, even though both keys
+ * live in the same global keyring.
+ *
+ * Pass `undefined` (or omit) to preserve the legacy behavior of "any key the
+ * keyring knows about is acceptable". Validators derive the appropriate set
+ * from the parent authority (MAE.signing_keys) and pass it down.
+ */
 export declare function verifyObjectSignatures(keyring: Keyring, obj: {
     signatures?: Signature[];
-} & Record<string, unknown>): boolean;
+} & Record<string, unknown>, allowedKeyIds?: ReadonlySet<string>): boolean;
 /** Sign a GEL record over its content excluding `signatures` (but including its hash). */
 export declare function signGelRecord(keyring: Keyring, keyId: string, record: Record<string, unknown>): Signature;
 export declare function verifyGelRecordSignatures(keyring: Keyring, record: {

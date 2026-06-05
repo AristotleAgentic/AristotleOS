@@ -53,6 +53,22 @@ importers:
         version: 3.25.76
 
   apps/aristotle-cli:
+    dependencies:
+      '@aristotle/execution-control-runtime':
+        specifier: workspace:*
+        version: link:../../shared/execution-control-runtime
+      '@aristotle/governance-core':
+        specifier: workspace:*
+        version: link:../../shared/governance-core
+      '@aristotle/shared-schemas':
+        specifier: workspace:*
+        version: link:../../shared/schemas
+      '@aristotle/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@aristotle/trial-engine':
+        specifier: workspace:*
+        version: link:../../shared/trial-engine
     devDependencies:
       esbuild:
         specifier: ^0.28.0
@@ -106,6 +122,8 @@ importers:
       vite:
         specifier: ^5.4.11
         version: 5.4.21(@types/node@22.19.15)
+
+  apps/website: {}
 
   packages/bacnet-adapter:
     dependencies:

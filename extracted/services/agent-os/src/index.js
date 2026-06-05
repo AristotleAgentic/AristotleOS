@@ -2,6 +2,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { createApp, id, now } from "./lib.js";
 import { createChainClient } from "./governance-chain-client.js";
+import { EdgeNode } from "@aristotle/mesh-runtime";
+import { evaluateCommitGate } from "@aristotle/execution-control-runtime";
 const port = Number(process.env.PORT_AGENT_OS ?? 7009);
 const app = createApp();
 const statePath = resolve(process.cwd(), process.env.AGENT_OS_STATE_PATH ?? "./data/agent-os.json");
@@ -2562,4 +2564,110 @@ app.post("/missions/:missionId/advance", async (req, res) => {
                             : ["dispatch next executor task", "record progress to ledger", "review execution receipts"]
     });
 });
-app.listen(port, () => console.log(`agent-os on ${port}`));
+// ---------------------------------------------------------------------------
+// Substrate-backed EdgeNode + Commit Gate (mesh-runtime + execution-control-runtime)
+//
+// This service also acts as a mesh EDGE: it accepts envelope
+// propagation + revocation gossip + Fluidity Token issuance from
+// the root and witnesses, and can issue local Warrants under a
+// Fluidity Token during partition. /v1/mesh/evaluate also exposes
+// the in-process Commit Gate for direct action evaluation.
+// ---------------------------------------------------------------------------
+const meshSecret = process.env.MESH_SECRET ?? "aos-demo-mesh-secret";
+const meshHost = process.env.HOST_AGENT_OS ?? "127.0.0.1";
+const edge = new EdgeNode({
+    id: process.env.MESH_EDGE_ID ?? "edge-aos",
+    host: meshHost,
+    port,
+    secret: meshSecret,
+    urlFor: (t) => `http://${t.host}:${t.port}/mesh`,
+    maxWarrantsWhileDisconnected: Number(process.env.MESH_EDGE_QUOTA ?? 100)
+});
+const peerSpec = process.env.MESH_PEERS ?? "root-mae:127.0.0.1:7004,witness-mae:127.0.0.1:7007";
+const peers = peerSpec
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((spec) => {
+    const [pid, phost, pportStr] = spec.split(":");
+    return {
+        id: pid,
+        role: pid.startsWith("witness")
+            ? "witness"
+            : pid.startsWith("edge")
+                ? "edge"
+                : "root",
+        host: phost,
+        port: Number(pportStr)
+    };
+});
+edge.setPeers(peers);
+app.post("/mesh", async (req, res) => {
+    try {
+        const msg = req.body;
+        if (msg.from && edge.partitions.has(msg.from)) {
+            return res.status(504).json({ ok: false, reason: "partitioned" });
+        }
+        const out = await edge.direct(msg);
+        res.json(out);
+    }
+    catch (err) {
+        res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+    }
+});
+// Disconnected commit gate — issues a Warrant locally when the edge
+// holds a valid Fluidity Token for the referenced envelope.
+app.post("/v1/mesh/evaluate-disconnected", async (req, res) => {
+    try {
+        const commitReq = req.body;
+        const decision = await edge.evaluate(commitReq);
+        res.json({
+            ok: true,
+            decision
+        });
+    }
+    catch (err) {
+        res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+    }
+});
+// Connected commit gate — direct invocation of evaluateCommitGate.
+app.post("/v1/mesh/evaluate", (req, res) => {
+    try {
+        const { ward, authorityEnvelope, action } = req.body;
+        if (!ward || !authorityEnvelope || !action) {
+            return res.status(400).json({ ok: false, error: "missing_required_fields" });
+        }
+        const decision = evaluateCommitGate({ ward, authorityEnvelope, action, now: now() });
+        res.json({ ok: true, decision });
+    }
+    catch (err) {
+        res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+    }
+});
+app.post("/v1/mesh/reconcile", async (_req, res) => {
+    try {
+        const conflicts = await edge.reconcile();
+        res.json({
+            ok: true,
+            conflicts_count: conflicts.length,
+            conflicts
+        });
+    }
+    catch (err) {
+        res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+    }
+});
+app.get("/v1/mesh/state", (_req, res) => {
+    res.json({
+        ok: true,
+        role: "edge",
+        node_id: edge.getId(),
+        peers,
+        cached_envelopes: edge.cachedEnvelopeCount(),
+        cached_revocations: edge.cachedRevocationCount(),
+        valid_fluidity_tokens: edge.validFluidityTokens().length,
+        local_decisions: edge.localDecisionCount(),
+        partitions: [...edge.partitions]
+    });
+});
+app.listen(port, () => console.log(`agent-os on ${port} (substrate-wired: EdgeNode at /mesh, Commit Gate at /v1/mesh/*)`));

@@ -280,3 +280,105 @@ test("live HTTP transport: root and edge can talk over real TCP sockets", async 
     await edge.stop();
   }
 });
+
+// ---------------------------------------------------------------------------
+// LIMITATIONS.md § 5 regression: edge auto-pulls missed revocations after
+// a partition heal. Pre-fix, the edge had no public path to recover a
+// revocation gossiped during its disconnected window — it relied entirely
+// on a future re-gossip from the operator. With pullRevocations() and the
+// pingRoot reconnect trigger, the edge actively reconciles its revocation
+// cache the first time it sees the root again.
+// ---------------------------------------------------------------------------
+
+test("auto-pull: pullRevocations() backfills the edge from root after a missed gossip window", async () => {
+  const { root, edges, unbind } = setupCluster();
+  try {
+    makeEnvelope(root, new Date(Date.now() + 60_000).toISOString());
+    await new Promise((r) => setTimeout(r, 30));
+    const edge = edges[0];
+    const token = root.issueFluidityToken({ edge_id: edge.getId(), envelope_id: ENVELOPE_ID, ttl_ms: 60_000 });
+    edge.receiveFluidityToken(token);
+    assert.equal(edge.cachedRevocationCount(), 0);
+
+    // Full isolation: edge sees neither root nor either witness.
+    edge.partitionFrom("root-1");
+    edge.partitionFrom("witness-1");
+    edge.partitionFrom("witness-2");
+
+    // Root revokes the envelope while the edge is fully blind.
+    await root.revoke(ENVELOPE_ID, "envelope", "compromise-during-partition");
+    await new Promise((r) => setTimeout(r, 30));
+    assert.equal(edge.cachedRevocationCount(), 0, "edge must not have learned the revocation while partitioned");
+
+    // Heal only the root link. The witness gossip path stays cold so
+    // recovery has to come from the auto-pull (not from witness re-gossip).
+    edge.healPartition("root-1");
+    const { pulled, rejected } = await edge.pullRevocations(0);
+    assert.equal(rejected, 0);
+    assert.ok(pulled >= 1, `expected at least one revocation pulled, got ${pulled}`);
+    assert.ok(edge.cachedRevocationCount() >= 1, "edge cache must reflect the pulled revocation");
+
+    // The pulled revocation is now visible to the gate.
+    const d = await edge.evaluate(commitReq("post-pull"));
+    assert.equal(d.decision, "REFUSE");
+    if (d.decision === "REFUSE") {
+      assert.ok(d.reason_codes.includes("ENVELOPE_REVOKED"));
+    }
+  } finally { unbind(); }
+});
+
+test("auto-pull: pingRoot reconnect transition fires pullRevocations automatically", async () => {
+  const { root, edges, unbind } = setupCluster();
+  try {
+    makeEnvelope(root, new Date(Date.now() + 60_000).toISOString());
+    await new Promise((r) => setTimeout(r, 30));
+    const edge = edges[0];
+    const token = root.issueFluidityToken({ edge_id: edge.getId(), envelope_id: ENVELOPE_ID, ttl_ms: 60_000 });
+    edge.receiveFluidityToken(token);
+
+    // First evaluate is ALLOW — pingRoot succeeds, lastRootReachable stays true.
+    const d0 = await edge.evaluate(commitReq("pre-partition"));
+    assert.equal(d0.decision, "ALLOW");
+    const baselinePullCount = edge.getAutoPullCount();
+
+    // Fully isolate the edge.
+    edge.partitionFrom("root-1");
+    edge.partitionFrom("witness-1");
+    edge.partitionFrom("witness-2");
+
+    // Evaluate under partition: pingRoot fails, lastRootReachable -> false.
+    // The decision still rides the Fluidity Token; the point is to flip the
+    // edge's view of reachability.
+    await edge.evaluate(commitReq("during-partition"));
+    assert.equal(edge.cachedRevocationCount(), 0);
+
+    // Root revokes while the edge is blind.
+    await root.revoke(ENVELOPE_ID, "envelope", "compromise-during-partition-2");
+    await new Promise((r) => setTimeout(r, 20));
+    assert.equal(edge.cachedRevocationCount(), 0, "edge must still be blind to the revocation");
+
+    // Heal only the root link. The next evaluate's pingRoot succeeds and
+    // detects the disconnected -> reconnected transition, kicking off
+    // pullRevocations as a fire-and-forget side effect.
+    edge.healPartition("root-1");
+    await edge.evaluate(commitReq("post-heal-trigger"));
+    // Give the fire-and-forget pull a tick to land.
+    await new Promise((r) => setTimeout(r, 30));
+
+    assert.ok(
+      edge.getAutoPullCount() > baselinePullCount,
+      `auto-pull counter must advance on reconnect (was ${baselinePullCount}, now ${edge.getAutoPullCount()})`
+    );
+    assert.ok(
+      edge.cachedRevocationCount() >= 1,
+      "edge cache must include the revocation that landed at root during the partition"
+    );
+
+    // Subsequent evaluate now refuses on the auto-pulled revocation.
+    const d2 = await edge.evaluate(commitReq("post-heal-verify"));
+    assert.equal(d2.decision, "REFUSE");
+    if (d2.decision === "REFUSE") {
+      assert.ok(d2.reason_codes.includes("ENVELOPE_REVOKED"));
+    }
+  } finally { unbind(); }
+});
