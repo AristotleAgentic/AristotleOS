@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { createApp, id, now } from "./lib.js";
 import { createChainClient, type ChainCommitResult, type ChainMode } from "./governance-chain-client.js";
 import { mountMissionsRoutes } from "./routes/missions.js";
+import { fingerprint, createMissionSteps as buildMissionSteps } from "./lib/mission-helpers.js";
 import {
   EdgeNode,
   type NodeId,
@@ -155,8 +156,7 @@ const executionTasks = new Map<string, ExecutionTask>();
 const executionReceipts = new Map<string, ExecutionReceipt>();
 const toolActions = new Map<string, ToolAction>();
 
-const fingerprint = (namespace: string, seed: string) =>
-  `${namespace}-${seed.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "unknown"}`;
+// fingerprint() moved to ./lib/mission-helpers.ts in stage 12 (imported above).
 
 const agentIdentityContext = (agentId: string) => {
   const agent = agents.get(agentId);
@@ -195,40 +195,11 @@ let meshTelemetrySnapshot: { degradedNodes: string[]; checkedAt: number } = { de
 let persistQueue = Promise.resolve();
 let autonomyLoopRunning = false;
 
-const createMissionSteps = (requiredTools: string[]): MissionStep[] => [
-  {
-    id: id("step"),
-    title: "Frame mission and allocate governance posture",
-    status: "completed",
-    ownerRole: "planner",
-    requiredTools: [],
-    completionSignal: "mission brief accepted"
-  },
-  {
-    id: id("step"),
-    title: "Prepare workspace and attach execution agents",
-    status: "in_progress",
-    ownerRole: "executor",
-    requiredTools: ["shell", "editor"],
-    completionSignal: "workspace sealed with initial context"
-  },
-  {
-    id: id("step"),
-    title: "Lease tools and verify runtime boundaries",
-    status: "pending",
-    ownerRole: "auditor",
-    requiredTools,
-    completionSignal: "tool leases satisfy governance profile"
-  },
-  {
-    id: id("step"),
-    title: "Execute mission loop and record evidence",
-    status: "pending",
-    ownerRole: "executor",
-    requiredTools,
-    completionSignal: "success metrics reached"
-  }
-];
+// createMissionSteps() moved to ./lib/mission-helpers.ts in stage 12 (imported as
+// buildMissionSteps to avoid shadowing). Local wrapper preserves the prior
+// (requiredTools) → MissionStep[] signature so existing call sites don't change.
+const createMissionSteps = (requiredTools: string[]): MissionStep[] =>
+  buildMissionSteps(id, requiredTools);
 
 const ensureMissionMemory = (missionId: string) => {
   const records = memory.get(missionId);
