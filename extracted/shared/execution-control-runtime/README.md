@@ -159,4 +159,4 @@ pnpm test:core
 
 ## License
 
-Proprietary. See `LICENSE` and `NOTICE`.
+BUSL-1.1. See `LICENSE`, `NOTICE`, and the repository root `LICENSING.md`.

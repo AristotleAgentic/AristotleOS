@@ -74,4 +74,4 @@ Identical to the other six adapters: `action_type_prefix`, `action_type_for`, `b
 
 ## License
 
-Proprietary. See `LICENSE` and `NOTICE`.
+Apache-2.0. See `LICENSE` and `NOTICE`.

@@ -213,4 +213,4 @@ For deeper diagnostic info, the JSON report's structure mirrors the stage / chec
 
 ## License
 
-Proprietary. See the repository root `LICENSE` and workspace `NOTICE`.
+BUSL-1.1 for substrate material. See the repository root `LICENSE`, `LICENSING.md`, and workspace `NOTICE`.

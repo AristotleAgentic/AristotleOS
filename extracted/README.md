@@ -395,7 +395,7 @@ Broader test suites are defined in [`package.json`](package.json). The full test
 
 Near-term hardening areas:
 
-- Keep proprietary licensing and third-party dependency notices aligned before external release.
+- Keep split licensing, package metadata, and third-party dependency notices aligned before external release.
 - Publish a versioned reason-code and policy-artifact specification.
 - Add deeper property/fuzz testing around canonicalization and Commit Gate behavior.
 - Integrate production-grade KMS/HSM signing.
@@ -409,9 +409,14 @@ See [`ROADMAP_TO_100.md`](ROADMAP_TO_100.md), [`VALIDATION_MATRIX.md`](VALIDATIO
 
 ## License
 
-AristotleOS-original material in this workspace is proprietary software. See the repository root `LICENSE` and the local [`LICENSE`](LICENSE).
+AristotleOS uses a split licensing model. Substrate material in this workspace is
+licensed under BUSL-1.1 with a Change Date of 2030-06-06, adapter and
+integration packages under `packages/*` are Apache-2.0, and root `docs/`
+material is CC-BY-4.0. See the repository root `LICENSING.md` and the local
+[`LICENSE`](LICENSE) for the authoritative map and Additional Use Grant.
 
-No right is granted to use, copy, modify, publish, distribute, sublicense, or sell AristotleOS-original material except under a separate written agreement with the copyright holder.
+The BSL-licensed substrate becomes available under Apache-2.0 on the Change
+Date, subject to the BSL terms.
 
 Third-party dependencies remain governed by their own licenses. See [`sbom.json`](sbom.json), package metadata, and dependency notices for dependency terms.
 

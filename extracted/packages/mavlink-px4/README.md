@@ -102,4 +102,4 @@ The package emits **real MAVLink v2 frames** (start byte `0xFD`, X.25-style CRC 
 
 ## License
 
-Proprietary. See `LICENSE` and `NOTICE`.
+Apache-2.0. See `LICENSE` and `NOTICE`.

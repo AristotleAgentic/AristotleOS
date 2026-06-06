@@ -51,4 +51,4 @@ Same options surface (`actionTypeFor`, `buildAction`, `passthroughTools`, `onDec
 
 ## License
 
-Proprietary. See `LICENSE` and `NOTICE`.
+Apache-2.0. See `LICENSE` and `NOTICE`.

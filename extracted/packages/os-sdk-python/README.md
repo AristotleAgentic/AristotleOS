@@ -202,4 +202,4 @@ client = AristotleClient(base_url="https://gate.internal", token="t", transport=
 
 ## License
 
-Proprietary. See `LICENSE` and `NOTICE`.
+Apache-2.0. See `LICENSE` and `NOTICE`.

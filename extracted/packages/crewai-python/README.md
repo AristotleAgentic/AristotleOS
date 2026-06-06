@@ -176,4 +176,4 @@ Returns a same-shape governed twin of `tool`. Accepts `passthrough_tools: set[st
 
 ## License
 
-Proprietary. See `LICENSE` and `NOTICE`.
+Apache-2.0. See `LICENSE` and `NOTICE`.

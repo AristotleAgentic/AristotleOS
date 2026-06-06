@@ -47,4 +47,4 @@ Same options surface as the other adapters: `actionTypeFor`, `buildAction`, `pas
 
 ## License
 
-Proprietary. See `LICENSE` and `NOTICE`.
+Apache-2.0. See `LICENSE` and `NOTICE`.

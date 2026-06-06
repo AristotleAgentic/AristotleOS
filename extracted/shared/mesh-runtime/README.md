@@ -109,4 +109,4 @@ The live HTTP transport test occasionally has port-timing flakes on contended ho
 
 ## License
 
-Proprietary. See `LICENSE` and `NOTICE`.
+BUSL-1.1. See `LICENSE`, `NOTICE`, and the repository root `LICENSING.md`.
