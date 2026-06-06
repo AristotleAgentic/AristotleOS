@@ -4,6 +4,7 @@ import { createApp } from "./lib.js";
 import { runGatewayPreflight } from "./preflight.js";
 import { createGovernanceChainProxy } from "./governance-chain-proxy.js";
 import { createOperatorAuthFromEnv } from "./operator-auth.js";
+import { mountTrialApiRoutes, type TrialState, type TrialApproval } from "./trial-api.js";
 import {
   PAYMENTS_GOVERNANCE_SOURCE,
   TRIAL_SCENARIOS,
@@ -596,9 +597,13 @@ const deployableProfiles = [
   }
 ];
 
-let trialPolicySource = PAYMENTS_GOVERNANCE_SOURCE;
+// Trial-API state: stage 17 wrapped the formerly-`let`-bound
+// trialPolicySource in a mutable object so the carved-out
+// adapters/http-gateway/src/trial-api.ts can share the mutation
+// (let bindings don't cross module boundaries; mutable fields do).
+const trialState: TrialState = { source: PAYMENTS_GOVERNANCE_SOURCE };
 const trialGelRecords: TrialGelRecord[] = [];
-const trialApprovals = new Map<string, { intent: TrialActionIntent; source: string; evaluation: TrialEvaluation }>();
+const trialApprovals = new Map<string, TrialApproval>();
 
 const appendTrialRecord = (evaluation: TrialEvaluation) => {
   trialGelRecords.unshift(evaluation.gelRecord);
@@ -609,7 +614,7 @@ const evaluateTrialRequest = (body: Record<string, unknown>, approval?: "approve
   const scenarioId = typeof body.scenarioId === "string" ? body.scenarioId : undefined;
   const scenario = scenarioId ? TRIAL_SCENARIOS.find((item) => item.id === scenarioId) : undefined;
   const intent = (body.intent && typeof body.intent === "object" ? body.intent : scenario?.intent ?? TRIAL_SCENARIOS[0]?.intent) as TrialActionIntent;
-  const source = typeof body.policy === "string" ? body.policy : trialPolicySource;
+  const source = typeof body.policy === "string" ? body.policy : trialState.source;
   const evaluation = evaluateTrialAction({
     source,
     intent,
@@ -651,122 +656,12 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get("/v1/status", (_req, res) => {
-  const validation = validateGovernanceSource(trialPolicySource);
-  res.json({
-    ok: validation.ok,
-    runtime: "aristotle-trial",
-    activePolicyHash: validation.policy?.policyHash,
-    governanceMode: "deterministic-trial",
-    doctrine: "Governance must bind at the execution boundary before irreversible state mutation or external action occurs.",
-    scenarios: TRIAL_SCENARIOS.map(({ id, title, summary }) => ({ id, title, summary }))
-  });
-});
-
-app.post("/v1/actions/evaluate", (req, res) => {
-  res.json(evaluateTrialRequest(req.body as Record<string, unknown>));
-});
-
-app.post("/v1/actions/execute", (req, res) => {
-  const result = evaluateTrialRequest(req.body as Record<string, unknown>, (req.body as { approval?: "approve" | "deny" | "more_info" | "reduced_authority" }).approval);
-  const executable = result.evaluation.decision === "PERMIT";
-  res.status(executable ? 200 : result.evaluation.decision === "DEFER" ? 202 : 409).json({
-    ...result,
-    execution: executable
-      ? { status: "executed", boundary: "commit-gate", warrantId: result.evaluation.warrant?.id }
-      : { status: "not_executed", reason: result.evaluation.decisionCode }
-  });
-});
-
-app.get("/v1/audit/tail", (_req, res) => res.json({ items: trialGelRecords.slice(0, 25) }));
-
-app.get("/v1/audit/:recordId", (req, res) => {
-  const record = trialGelRecords.find((item) => item.recordId === req.params.recordId);
-  if (!record) {
-    res.status(404).json({ error: "record_not_found" });
-    return;
-  }
-  res.json(record);
-});
-
-app.post("/v1/replay", (req, res) => {
-  const body = req.body as Record<string, unknown>;
-  const result = evaluateTrialAction({
-    source: typeof body.policy === "string" ? body.policy : trialPolicySource,
-    intent: (body.intent && typeof body.intent === "object" ? body.intent : TRIAL_SCENARIOS[0].intent) as TrialActionIntent,
-    previousHash: typeof body.previousHash === "string" ? body.previousHash : "GENESIS",
-    now: typeof body.now === "string" ? body.now : "2026-01-01T00:00:00.000Z"
-  });
-  res.json({ replayed: true, evaluation: result });
-});
-
-app.get("/v1/approvals", (_req, res) => {
-  res.json({
-    items: Array.from(trialApprovals.entries()).map(([id, value]) => ({
-      id,
-      intent: value.intent,
-      decisionCode: value.evaluation.decisionCode,
-      explanation: value.evaluation.explanation
-    }))
-  });
-});
-
-app.post("/v1/approvals/:id/approve", (req, res) => {
-  const deferred = trialApprovals.get(req.params.id);
-  if (!deferred) {
-    res.status(404).json({ error: "approval_not_found" });
-    return;
-  }
-  const evaluation = evaluateTrialAction({
-    source: deferred.source,
-    intent: deferred.intent,
-    approval: (req.body as { reducedAuthority?: boolean }).reducedAuthority ? "reduced_authority" : "approve",
-    previousHash: trialGelRecords[0]?.currentHash
-  });
-  appendTrialRecord(evaluation);
-  trialApprovals.delete(req.params.id);
-  res.json({ approved: true, evaluation });
-});
-
-app.post("/v1/approvals/:id/deny", (req, res) => {
-  const deferred = trialApprovals.get(req.params.id);
-  if (!deferred) {
-    res.status(404).json({ error: "approval_not_found" });
-    return;
-  }
-  const evaluation = evaluateTrialAction({
-    source: deferred.source,
-    intent: deferred.intent,
-    approval: "deny",
-    previousHash: trialGelRecords[0]?.currentHash
-  });
-  appendTrialRecord(evaluation);
-  trialApprovals.delete(req.params.id);
-  res.json({ denied: true, evaluation });
-});
-
-app.post("/v1/policy/check", (req, res) => {
-  const source = typeof req.body?.policy === "string" ? req.body.policy : trialPolicySource;
-  const { policy, ...validation } = validateGovernanceSource(source);
-  res.status(validation.ok ? 200 : 422).json({ ...validation, policyHash: policy?.policyHash });
-});
-
-app.post("/v1/policy/plan", (req, res) => {
-  const source = typeof req.body?.policy === "string" ? req.body.policy : trialPolicySource;
-  const plan = planGovernanceChange(source, trialPolicySource);
-  res.status(plan.ok ? 200 : 422).json(plan);
-});
-
-app.post("/v1/policy/apply", (req, res) => {
-  const source = typeof req.body?.policy === "string" ? req.body.policy : "";
-  const validation = validateGovernanceSource(source);
-  if (!validation.ok || !validation.policy) {
-    res.status(422).json(validation);
-    return;
-  }
-  trialPolicySource = source;
-  parseGovernanceSource(trialPolicySource);
-  res.json({ applied: true, policyHash: validation.policy.policyHash });
+// /v1/* trial-API surface moved to ./trial-api.ts in stage 17 of
+// prototype-hardening. Behavior pinned by stage-16
+// adapters/http-gateway/src/trial-api.test.ts.
+mountTrialApiRoutes(app, {
+  trialState, trialGelRecords, trialApprovals,
+  appendTrialRecord, evaluateTrialRequest
 });
 
 // POST /operator/auth/session — see ./operator-auth.ts ::createOperatorAuth.
