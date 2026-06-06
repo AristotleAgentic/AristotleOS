@@ -1,11 +1,16 @@
 # AristotleOS
 
-AristotleOS is the warrant layer for AI agents and autonomous systems.
+**Autonomous action. Human authority.**
+
+AristotleOS is the warrant layer for governed autonomous action.
 
 No consequential action should execute unless it carries valid authority, policy,
-and evidence. AristotleOS turns that principle into a runtime boundary: a
-deterministic Commit Gate, signed single-use Warrants, refusal-before-emission
-adapters, and hash-chained evidence a third party can verify offline.
+and evidence. AristotleOS turns that principle into a runtime boundary for
+agents, robots, workflows, and machine systems: a deterministic Commit Gate,
+signed single-use Warrants, refusal-before-emission adapters, and hash-chained
+evidence a third party can verify offline. Its mesh runtime extends the same
+principle to disconnected, intermittent, and partitioned environments where
+central control cannot be assumed.
 
 ```sh
 corepack pnpm@10.32.1 install
@@ -14,16 +19,24 @@ npm run demo
 
 Core positioning:
 
-> Warranted execution before consequence: signed per-action authority, refusal before emission, and offline-verifiable evidence for governed machine action.
+> Govern autonomous action before it becomes consequence: authority first, Warrant at allow, evidence after decision.
+
+Secondary wedge:
+
+> Governance that survives disconnection.
 
 This file describes the implementation workspace. If you are viewing the GitHub repository root, the source code lives in this `extracted/` directory.
 
 ## Evidence Demo
 
-For the fastest product check, run `npm run demo`. It performs the Warrant Layer
-self-check without starting a server: ALLOW issues a Warrant, denied action
-REFUSEs, missing runtime state ESCALATEs, the Evidence Bundle verifies, and the
-GEL chain verifies.
+For the fastest product check, run `npm run demo`. It performs the governed
+autonomous-action self-check without starting a server: ALLOW issues a Warrant,
+denied action REFUSEs, missing runtime state ESCALATEs, the Evidence Bundle
+verifies, and the GEL chain verifies.
+
+For the disconnection wedge, run `pnpm reviewer:verify`. Stage 3 replays the
+40-asset mesh scenario: nominal operation, partition, revocation under
+partition, heal, and reconciliation.
 
 ## Full Evidence Walkthrough
 
@@ -180,7 +193,7 @@ The workspace includes:
 - Industry vertical examples for domains such as telecom, grid, rail, water, port, logistics, healthcare, automotive, robotics, aviation, space, and others.
 - Helm, Kubernetes, Docker Compose, and pilot-install materials.
 
-AristotleOS is not a chatbot framework, an observability dashboard, or a generic "AI safety" wrapper. It is an experimental execution-control substrate for governed machine action.
+AristotleOS is not a chatbot framework, an observability dashboard, or a generic "AI safety" wrapper. It is an experimental execution-control substrate for governed autonomous action.
 
 ## Why It Exists
 

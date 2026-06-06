@@ -957,11 +957,12 @@ test("cli pilot self-check passes every boundary check", async () => {
   }
 });
 
-test("cli demo aliases the Warrant Layer self-check", async () => {
+test("cli demo aliases the governed autonomous-action self-check", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
   try {
     const result = await capture(["demo"], dir);
     assert.equal(result.code, 0, result.stdout + result.stderr);
+    assert.match(result.stdout, /governed autonomous-action self-check/);
     assert.match(result.stdout, /DEMO READY/);
     assert.match(result.stdout, /Evidence Bundle/);
     assert.doesNotMatch(result.stdout, /FAIL/);

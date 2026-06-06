@@ -1,12 +1,20 @@
 # AristotleOS
 
-AristotleOS is the warrant layer for AI agents and autonomous systems.
+**Autonomous action. Human authority.**
+
+AristotleOS is the warrant layer for governed autonomous action.
 
 It enforces a simple rule: no consequential action executes unless it carries
-valid authority, policy, and evidence. A policy guard can say "yes" or "no";
-AristotleOS issues a signed, single-use Warrant for the exact action, refuses
-authority drift at the boundary, and writes a hash-chained evidence record that
-can be verified offline.
+valid authority, policy, and evidence. Agents, robots, workflows, and machine
+systems may be able to act, but AristotleOS asks whether the action may become a
+consequence under delegated human authority.
+
+A policy guard can say "yes" or "no"; AristotleOS turns that decision into an
+execution boundary. It issues a signed, single-use Warrant for the exact action,
+refuses authority drift before emission, and writes a hash-chained evidence
+record that can be verified offline. Its mesh runtime extends the same principle
+to disconnected, intermittent, and partitioned environments where central
+control cannot be assumed.
 
 ```sh
 cd extracted
@@ -17,7 +25,7 @@ npm run demo
 Expected result:
 
 ```text
-AristotleOS Warrant Layer self-check
+AristotleOS governed autonomous-action self-check
   PASS  ALLOW issues a Warrant
   PASS  Warrant signature verifies
   PASS  REFUSE blocks a denied action
@@ -29,7 +37,11 @@ DEMO READY - Warrant, refusal, GEL, and Evidence Bundle checks passed.
 
 Core positioning:
 
-> Warranted execution before consequence: signed per-action authority, refusal before emission, and offline-verifiable evidence for governed machine action.
+> Govern autonomous action before it becomes consequence: authority first, Warrant at allow, evidence after decision.
+
+Secondary wedge:
+
+> Governance that survives disconnection.
 
 The implementation workspace currently lives under [`extracted/`](extracted/).
 
@@ -41,18 +53,22 @@ Additional Use Grant.
 
 ## Why This Is Different
 
-AristotleOS is not just an agent policy guard. It combines five properties that
-usually live in separate systems:
+AristotleOS is not another capability token, guardrail, or agent policy wrapper.
+Capability tokens govern access. Guardrails shape model behavior. AristotleOS
+governs autonomous action at the point it becomes consequence.
 
-- **Per-action authority**: every consequential action gets evaluated on its own facts.
+It combines five properties that usually live in separate systems:
+
+- **Per-action authority**: every consequential action is evaluated on its own facts.
 - **Single-use Warrants**: an `ALLOW` produces a signed artifact bound to the canonical action hash.
 - **Refusal before emission**: adapters refuse unauthorized writes before bytes hit the transport.
 - **Hash-chained evidence**: decisions, refusals, Warrants, and records are tamper-evident.
 - **Offline verification**: auditors can verify evidence bundles without contacting your runtime.
+- **Partition tolerance**: bounded edge authority can continue under disconnection and reconcile later.
 
-That is the superior wedge: policy decides; AristotleOS proves why an action was
-allowed, refuses it when authority drifts, and leaves evidence a third party can
-check.
+That is the wedge: machine systems can move at machine speed, while human
+authority stays explicit, bounded, and provable, even when the network
+disappears.
 
 ## What AristotleOS Is
 
@@ -73,7 +89,7 @@ The repository includes:
 - Industry vertical examples for domains such as telecom, grid, rail, water, port, logistics, healthcare, automotive, robotics, aviation, space, and others.
 - Helm, Kubernetes, Docker Compose, and pilot-install materials.
 
-AristotleOS is not a chatbot framework, an observability dashboard, or a generic "AI safety" wrapper. It is an experimental execution-control substrate for governed machine action.
+AristotleOS is not a chatbot framework, an observability dashboard, or a generic "AI safety" wrapper. It is an experimental execution-control substrate for governed autonomous action.
 
 ## Why It Exists
 

@@ -2657,7 +2657,7 @@ Next: aristotle approvals && aristotle approve ${evaluation.deferToken ?? "<toke
       if (json) {
         printJson(out, { ok: failed.length === 0, checks }, true);
       } else {
-        out("AristotleOS Warrant Layer self-check\n\n");
+        out("AristotleOS governed autonomous-action self-check\n\n");
         for (const check of checks) out(`  ${check.ok ? "PASS" : "FAIL"}  ${check.name}${check.detail ? `  (${check.detail})` : ""}\n`);
         out(`\n${failed.length === 0 ? "DEMO READY - Warrant, refusal, GEL, and Evidence Bundle checks passed." : `DEMO NOT READY - ${failed.length} check(s) failed.`}\n`);
       }
