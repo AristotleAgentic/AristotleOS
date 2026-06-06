@@ -5,6 +5,7 @@ import { createChainClient, type ChainCommitResult, type ChainMode } from "./gov
 import { mountMissionsRoutes } from "./routes/missions.js";
 import { mountAgentsRoutes } from "./routes/agents.js";
 import { mountWorkspacesRoutes } from "./routes/workspaces.js";
+import { mountTasksReadRoutes } from "./routes/tasks-read.js";
 import { fingerprint, createMissionSteps as buildMissionSteps } from "./lib/mission-helpers.js";
 import {
   EdgeNode,
@@ -2552,17 +2553,11 @@ mountMissionsRoutes(app, {
   ensureMissionMemory, schedulePersist
 });
 
-app.get("/tasks/next", (req, res) => {
-  const agentId = typeof req.query.agentId === "string" ? req.query.agentId : undefined;
-  const task = selectNextQueuedTask(agentId)?.task;
-  if (!task) return res.status(404).json({ error: "task_not_found" });
-  res.json(task);
-});
-app.get("/tasks/:taskId/actions", (req, res) => {
-  const task = executionTasks.get(req.params.taskId);
-  if (!task) return res.status(404).json({ error: "task_not_found" });
-  res.json({ items: taskToolActions(task.id) });
-});
+// GET /tasks/next + GET /tasks/:taskId/actions moved to ./routes/tasks-read.ts
+// in stage 20. The mutating /tasks/* handlers (claim, actions POST, execute,
+// heartbeat, complete, retry) stay inline — they each pull in 10+ helpers
+// and belong in focused future stages as those helpers extract.
+mountTasksReadRoutes(app, { executionTasks, selectNextQueuedTask, taskToolActions });
 app.post("/tasks/:taskId/claim", async (req, res) => {
   const task = executionTasks.get(req.params.taskId);
   if (!task) return res.status(404).json({ error: "task_not_found" });
