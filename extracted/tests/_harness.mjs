@@ -21,6 +21,8 @@
 import { spawn } from "node:child_process";
 import { createServer as createNetServer } from "node:net";
 import { createServer as createHttpServer } from "node:http";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -73,6 +75,7 @@ export async function startService(serviceName, opts = {}) {
     PORT: String(port),
     [`PORT_${serviceUpper(serviceName)}`]: String(port),
     SERVICE_DISCOVERY_MODE: "local",
+    ...autoIsolatedStateEnv(serviceName, opts.env ?? {}),
     ...(opts.env ?? {})
   };
   const entrySegments = opts.entryPath
@@ -127,6 +130,31 @@ export async function startService(serviceName, opts = {}) {
 
 function serviceUpper(name) {
   return name.toUpperCase().replace(/-/g, "_");
+}
+
+/**
+ * Some services persist module-level state to a JSON file on every
+ * mutation (agent-os → ./data/agent-os.json, evidence-ledger →
+ * ./data/evidence-ledger.json). Without isolation, two sequential
+ * tests in the same umbrella inherit each other's persisted state on
+ * startup, which silently breaks "fresh service" assertions like
+ * 'GET /tasks/next returns 404 task_not_found on a fresh service with
+ * no missions'. Discovered the hard way in stage 11.
+ *
+ * Auto-isolate by default: when the caller doesn't supply the
+ * service-specific state-path env var, allocate a tmpdir for it.
+ * Caller-supplied env wins so existing tests that pass an explicit
+ * path (e.g. evidence-ledger's gel-chain tests) continue unchanged.
+ */
+const STATE_PATH_ENVS = {
+  "agent-os": "AGENT_OS_STATE_PATH",
+  "evidence-ledger": "EVIDENCE_LEDGER_STATE_PATH"
+};
+function autoIsolatedStateEnv(serviceName, callerEnv) {
+  const envKey = STATE_PATH_ENVS[serviceName];
+  if (!envKey || envKey in callerEnv) return {};
+  const dir = mkdtempSync(path.join(tmpdir(), `aristotle-${serviceName}-state-`));
+  return { [envKey]: path.join(dir, `${serviceName}.json`) };
 }
 
 async function waitForHealth(base, timeoutMs) {
