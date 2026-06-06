@@ -21,6 +21,7 @@ import {
 } from "@aristotle/execution-control-runtime";
 import { ReadinessChecks, mountHealthEndpoints } from "@aristotle/service-runtime";
 import { mountGelRoutes } from "./routes/gel.js";
+import { mountReplayEventsRoutes } from "./routes/replay-events.js";
 import type {
   AssuranceAttestationArtifact,
   ArtifactType,
@@ -663,84 +664,14 @@ mountHealthEndpoints(app, {
     .build()
 });
 
-app.post("/events/commit", async (req, res) => {
-  const ev: ReplayEvent = {
-    id: req.body.id ?? id("evt"),
-    artifactType: "replay-event",
-    timestamp: now(),
-    actor: req.body.actor ?? "unknown",
-    eventKind: req.body.eventKind ?? "unknown",
-    committed: true,
-    payload: req.body.payload ?? {},
-    traceId: req.body.traceId,
-    chainId: req.body.chainId
-  };
-  committed.push(ev);
-  ingestArtifactsFromPayload(ev);
-  await schedulePersist();
-  res.status(201).json({ index: committed.length - 1, event: ev });
-});
-
-app.post("/branches", async (req, res) => {
-  const branch: CounterfactualBranch = {
-    id: req.body.id ?? id("cfb"),
-    artifactType: "counterfactual-branch",
-    timestamp: now(),
-    actor: req.body.actor ?? "simulator",
-    parentTraceId: req.body.parentTraceId ?? "unknown",
-    label: req.body.label ?? "branch",
-    status: "open",
-    hypothetical: true
-  };
-  branches.set(branch.id, branch);
-  hypothetical.set(branch.id, []);
-  await schedulePersist();
-  res.status(201).json(branch);
-});
-
-app.post("/branches/:id/events", async (req, res) => {
-  const branch = branches.get(req.params.id);
-  if (!branch) return res.status(404).json({ error: "branch_not_found" });
-  const ev: ReplayEvent = {
-    id: req.body.id ?? id("evt"),
-    artifactType: "replay-event",
-    timestamp: now(),
-    actor: req.body.actor ?? "simulator",
-    eventKind: req.body.eventKind ?? "counterfactual",
-    committed: false,
-    branchId: branch.id,
-    payload: req.body.payload ?? {}
-  };
-  hypothetical.get(branch.id)!.push(ev);
-  await schedulePersist();
-  res.status(201).json(ev);
-});
-
-app.get("/replay", (req, res) => {
-  const { traceId, branchId, relatedId } = req.query;
-  if (branchId && typeof branchId === "string") {
-    const items = (hypothetical.get(branchId) ?? []).filter((event) =>
-      eventMatchesRelatedId(event, typeof relatedId === "string" ? relatedId : undefined)
-    );
-    return res.json({ committed: false, items });
-  }
-  const items = committed.filter(
-    (event) =>
-      (typeof traceId === "string" ? event.traceId === traceId : true) &&
-      eventMatchesRelatedId(event, typeof relatedId === "string" ? relatedId : undefined)
-  );
-  res.json({ committed: true, items });
-});
-
-app.get("/timeline", (req, res) => {
-  const traceId = typeof req.query.traceId === "string" ? req.query.traceId : undefined;
-  const relatedId = typeof req.query.relatedId === "string" ? req.query.relatedId : undefined;
-  res.json({
-    committed: committed.filter(
-      (event) => (traceId ? event.traceId === traceId : true) && eventMatchesRelatedId(event, relatedId)
-    ),
-    branches: [...branches.values()]
-  });
+// /events/commit + /branches + /branches/:id/events + /replay + /timeline
+// moved to ./routes/replay-events.ts in stage 19. Behavior pinned by stage-2
+// services/evidence-ledger/src/index.test.ts.
+mountReplayEventsRoutes(app, {
+  committed, branches, hypothetical,
+  id, now,
+  ingestArtifactsFromPayload, eventMatchesRelatedId,
+  schedulePersist
 });
 app.get("/artifacts", (req, res) => {
   const traceId = typeof req.query.traceId === "string" ? req.query.traceId : undefined;
