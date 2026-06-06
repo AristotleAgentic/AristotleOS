@@ -3,6 +3,8 @@ import { dirname, resolve } from "node:path";
 import { createApp, id, now } from "./lib.js";
 import { createChainClient, type ChainCommitResult, type ChainMode } from "./governance-chain-client.js";
 import { mountMissionsRoutes } from "./routes/missions.js";
+import { mountAgentsRoutes } from "./routes/agents.js";
+import { mountWorkspacesRoutes } from "./routes/workspaces.js";
 import { fingerprint, createMissionSteps as buildMissionSteps } from "./lib/mission-helpers.js";
 import {
   EdgeNode,
@@ -2810,49 +2812,10 @@ app.post("/leases/:leaseId/renew", async (req, res) => {
   res.json({ renewed });
 });
 
-app.post("/agents/register", async (req, res) => {
-  const timestamp = now();
-  const agent: AgentCapability = {
-    id: req.body.id ?? id("agent"),
-    name: req.body.name ?? "Unnamed Agent",
-    role: req.body.role ?? "executor",
-    status: req.body.status ?? "ready",
-    model: req.body.model ?? "unknown",
-    provider: req.body.provider ?? "unknown",
-    specializations: req.body.specializations ?? [],
-    toolchains: req.body.toolchains ?? [],
-    trustTier: req.body.trustTier ?? "sandboxed",
-    maxConcurrency: req.body.maxConcurrency ?? 1,
-    workspaceAffinity: req.body.workspaceAffinity,
-    deviceId: req.body.deviceId,
-    identityFingerprint: req.body.identityFingerprint ?? fingerprint("agentfp", req.body.id ?? "agent"),
-    verificationStatus: req.body.verificationStatus ?? "verified",
-    lastHeartbeat: timestamp
-  };
-  agents.set(agent.id, agent);
-  await schedulePersist();
-  res.status(201).json(agent);
-});
-
-app.post("/workspaces", async (req, res) => {
-  const timestamp = now();
-  const workspace: WorkspaceSession = {
-    id: req.body.id ?? id("ws"),
-    missionId: req.body.missionId ?? "unassigned",
-    state: req.body.state ?? "prepared",
-    cwd: req.body.cwd ?? "/workspace",
-    branchName: req.body.branchName ?? `codex/${req.body.missionId ?? "mission"}`,
-    memoryNamespace: req.body.memoryNamespace ?? `mission.${req.body.missionId ?? "shared"}`,
-    attachedAgents: req.body.attachedAgents ?? [],
-    deviceFingerprint: req.body.deviceFingerprint ?? fingerprint("devicefp", req.body.id ?? "workspace"),
-    verificationStatus: req.body.verificationStatus ?? "verified",
-    createdAt: timestamp,
-    lastActiveAt: timestamp
-  };
-  workspaces.set(workspace.id, workspace);
-  await schedulePersist();
-  res.status(201).json(workspace);
-});
+// POST /agents/register + POST /workspaces moved to ./routes/{agents,workspaces}.ts
+// in stage 15 of prototype-hardening. Behavior pinned by stage-14 tests.
+mountAgentsRoutes(app, { agents, id, now, schedulePersist });
+mountWorkspacesRoutes(app, { workspaces, id, now, schedulePersist });
 
 // POST /missions moved to ./routes/missions.ts in stage 10 (mounted above).
 // /missions/:missionId/advance stays inline — see comment by mountMissionsRoutes.
