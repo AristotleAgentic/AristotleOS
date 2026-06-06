@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { createApp, id, now } from "./lib.js";
 import { createChainClient, type ChainCommitResult, type ChainMode } from "./governance-chain-client.js";
+import { mountMissionsRoutes } from "./routes/missions.js";
 import {
   EdgeNode,
   type NodeId,
@@ -2564,7 +2565,17 @@ app.get("/health", (_req, res) =>
   })
 );
 app.get("/state", (_req, res) => res.json(snapshot()));
-app.get("/missions", (_req, res) => res.json({ items: [...missions.values()] }));
+
+// GET /missions + POST /missions are mounted from ./routes/missions.ts
+// (stage 10 of prototype-hardening). /missions/:missionId/advance still
+// lives inline because it depends on progressExecutionLoop +
+// ~10 more helpers; deferred to a follow-on stage.
+mountMissionsRoutes(app, {
+  missions, workspaces, toolLeases,
+  id, now, fingerprint, createMissionSteps,
+  ensureMissionMemory, schedulePersist
+});
+
 app.get("/tasks/next", (req, res) => {
   const agentId = typeof req.query.agentId === "string" ? req.query.agentId : undefined;
   const task = selectNextQueuedTask(agentId)?.task;
@@ -2869,94 +2880,8 @@ app.post("/workspaces", async (req, res) => {
   res.status(201).json(workspace);
 });
 
-app.post("/missions", async (req, res) => {
-  const timestamp = now();
-  const missionId = req.body.id ?? id("mission");
-  const assignedAgents: string[] = req.body.assignedAgents ?? ["agent-planner", "agent-executor", "agent-auditor"];
-  const requiredTools: string[] = req.body.requiredTools ?? ["shell", "editor", "ledger"];
-  const leasedToolIds = [...new Set([...requiredTools, "policy", "ledger"])];
-  const workspaceId = req.body.workspaceId ?? id("ws");
-  const mission: OperatingMission = {
-    id: missionId,
-    title: req.body.title ?? "Untitled Mission",
-    objective: req.body.objective ?? "No objective supplied",
-    status: req.body.status ?? "planned",
-    priority: req.body.priority ?? "high",
-    riskLevel: req.body.riskLevel ?? "medium",
-    requestedBy: req.body.requestedBy ?? "operator",
-    targetSystem: req.body.targetSystem ?? "workspace",
-    governanceProfile: req.body.governanceProfile ?? "supervised-build",
-    assignedAgents,
-    workspaceId,
-    requiredAuthorities: req.body.requiredAuthorities ?? ["mission.command"],
-    requiredTools,
-    successMetrics: req.body.successMetrics ?? ["mission completes without governance violations"],
-    steps: createMissionSteps(requiredTools),
-    createdAt: timestamp,
-    updatedAt: timestamp
-  };
-
-  const workspace: WorkspaceSession = {
-    id: workspaceId,
-    missionId,
-    state: "active",
-    cwd: req.body.cwd ?? "/workspace",
-    branchName:
-      req.body.branchName ??
-      `codex/${mission.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || missionId}`,
-    memoryNamespace: `mission.${missionId}`,
-    attachedAgents: assignedAgents,
-    deviceFingerprint: req.body.deviceFingerprint ?? fingerprint("devicefp", workspaceId),
-    verificationStatus: req.body.verificationStatus ?? "verified",
-    createdAt: timestamp,
-    lastActiveAt: timestamp
-  };
-
-  const leases = leasedToolIds.map((toolId, index) => {
-    const lease: ToolLease = {
-      id: id("lease"),
-      toolId,
-      missionId,
-      agentId: assignedAgents[Math.min(index, assignedAgents.length - 1)] ?? "agent-executor",
-      state: "leased",
-      scope: req.body.targetSystem ?? "workspace",
-      grantedAt: timestamp,
-      expiresAt: req.body.expiresAt,
-      constraints: req.body.toolConstraints?.[toolId] ?? ["operator approval required for destructive actions"]
-    };
-    toolLeases.set(lease.id, lease);
-    return lease;
-  });
-
-  const missionMemory = ensureMissionMemory(missionId);
-  missionMemory.push(
-    {
-      id: id("mem"),
-      missionId,
-      kind: "objective",
-      summary: mission.objective,
-      tags: ["objective", mission.priority, mission.riskLevel],
-      createdAt: timestamp,
-      author: mission.requestedBy
-    },
-    {
-      id: id("mem"),
-      missionId,
-      kind: "decision",
-      summary: `Mission scheduled with governance profile ${mission.governanceProfile}.`,
-      tags: ["governance", "mission"],
-      createdAt: timestamp,
-      author: "agent-os"
-    }
-  );
-
-  missions.set(mission.id, mission);
-  workspaces.set(workspace.id, workspace);
-  await schedulePersist();
-
-  res.status(201).json({ mission, workspace, leases });
-});
-
+// POST /missions moved to ./routes/missions.ts in stage 10 (mounted above).
+// /missions/:missionId/advance stays inline — see comment by mountMissionsRoutes.
 app.post("/missions/:missionId/advance", async (req, res) => {
   const mission = missions.get(req.params.missionId);
   if (!mission) return res.status(404).json({ error: "mission_not_found" });
