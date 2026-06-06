@@ -1,14 +1,14 @@
 AristotleOS
 Copyright 2026 AristotleAgentic
 
-AristotleOS-original substrate material in this extracted workspace is licensed
-under the Business Source License 1.1. The BSL Change Date is 2030-06-06, and
-the Change License is the Apache License, Version 2.0. See LICENSE and the
-repository root LICENSING.md for the license map and Additional Use Grant.
+AristotleOS-original substrate material is licensed under the Business Source
+License 1.1. The BSL Change Date is 2030-06-06, and the Change License is the
+Apache License, Version 2.0. See LICENSE and LICENSING.md for the repository
+license map and Additional Use Grant.
 
-Public adapter and integration packages under packages/* are intended to be
-licensed under Apache-2.0 unless a package says otherwise. Documentation under
-the repository root docs/ is licensed under CC-BY-4.0.
+Public adapter and integration packages under extracted/packages/* are intended
+to be licensed under Apache-2.0 unless a package says otherwise. Documentation
+under docs/ is licensed under CC-BY-4.0.
 
 Third-party components remain governed by their own license terms. See
 dependency package metadata, lockfiles, generated SBOMs, and dependency notices
@@ -17,7 +17,7 @@ for dependency terms.
 Demonstration material disclaimer
 ---------------------------------
 
-Several modules in this workspace ship JURISDICTION_RULE_PRESETS, sample policy
+Several modules in this repository ship JURISDICTION_RULE_PRESETS, sample policy
 fixtures, and example actions explicitly marked as DEMONSTRATION ONLY. These
 materials illustrate the shape of deployable rule sets and transports; they are
 not legal advice and are not validated for production use against any regulator,
