@@ -135,4 +135,4 @@ substrate repo, then run `pnpm --filter @aristotle/gateway-client build`.
 
 ## License
 
-UNLICENSED. See LICENSE / NOTICE in the substrate repo.
+Apache-2.0. See LICENSE and NOTICE.

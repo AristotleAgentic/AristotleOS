@@ -2,7 +2,7 @@
   "name": "@aristotle/mavlink-px4",
   "version": "0.1.0",
   "description": "Govern PX4 / ArduPilot flight commands with AristotleOS. FlightControlTransport contract + a UDP-based MAVLink transport that admits commands only on Warrant verification.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

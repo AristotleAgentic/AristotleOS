@@ -74,8 +74,8 @@ AristotleOS ships first-party adapters that route tool/action calls from the
 following agent frameworks, runtimes, and protocols through the substrate's
 Commit Gate before they execute. Every adapter lives in the `packages/`
 workspace under `@aristotle/<name>` (TypeScript) or `aristotle-<name>`
-(Python). License is `UNLICENSED` and packages are not yet published to npm /
-PyPI — use them from the monorepo via `workspace:*` or via
+(Python). Adapter packages are licensed under Apache-2.0 and are not yet
+published to npm / PyPI — use them from the monorepo via `workspace:*` or via
 `pip install ./packages/<name>-python`.
 
 ### Agent frameworks

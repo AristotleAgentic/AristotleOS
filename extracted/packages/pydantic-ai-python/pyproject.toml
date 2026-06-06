@@ -7,7 +7,7 @@ name = "aristotle-pydantic-ai"
 version = "0.1.0"
 description = "Govern Pydantic AI tool calls with AristotleOS. Drop-in wrappers that route every tool invocation through the execution-control Commit Gate before it runs."
 readme = "README.md"
-license = { text = "Proprietary" }
+license = { text = "Apache-2.0" }
 license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.9"
 authors = [{ name = "AristotleAgentic" }]
@@ -15,7 +15,7 @@ keywords = ["aristotle", "aristotleos", "pydantic-ai", "ai-governance", "agent-g
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: Other/Proprietary License",
+    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",

@@ -52,4 +52,4 @@ The wire format is compliant with MCP `>=1.0.0`. The gate, not the MCP server, i
 
 ## License
 
-UNLICENSED. Proprietary. See the repository root `LICENSE` and `NOTICE`. No warranty.
+Apache-2.0. See LICENSE and NOTICE. No warranty.

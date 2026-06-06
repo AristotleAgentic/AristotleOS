@@ -2,7 +2,7 @@
   "name": "@aristotle/mastra",
   "version": "0.1.0",
   "description": "Govern Mastra tool calls with AristotleOS. Wraps a Mastra Tool's execute so every invocation routes through the execution-control Commit Gate before it runs.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

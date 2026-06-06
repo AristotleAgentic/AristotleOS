@@ -2,7 +2,7 @@
   "name": "@aristotle/os-sdk",
   "version": "0.2.0",
   "description": "Typed TypeScript client for the AristotleOS execution-control boundary. Governs autonomous actions before they cross into consequence: evaluate -> warrant -> execute -> evidence.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

@@ -2,7 +2,7 @@
   "name": "@aristotle/reviewer",
   "version": "0.1.0",
   "description": "Reviewer CLI for AristotleOS. `npx @aristotle/reviewer verify <bundle.json>` verifies a substrate evidence bundle, warrant, or replay artifact end-to-end without cloning the source repo.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "dist/index.js",
   "bin": {

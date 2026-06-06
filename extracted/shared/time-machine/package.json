@@ -2,7 +2,7 @@
   "name": "@aristotle/time-machine",
   "version": "0.1.0",
   "description": "Counterfactual replay primitive for AristotleOS. Re-evaluate a historical GEL record against a different Ward / AuthorityEnvelope / RuntimeRegister and return a structured side-by-side diff. Lets policy designers ask: would the new rules have refused last week's incident?",
-  "license": "UNLICENSED",
+  "license": "BUSL-1.1",
   "private": false,
   "type": "module",
   "main": "src/index.ts",

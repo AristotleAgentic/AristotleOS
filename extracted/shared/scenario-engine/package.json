@@ -2,7 +2,7 @@
   "name": "@aristotle/scenario-engine",
   "version": "0.1.0",
   "description": "Declarative scenario engine for AristotleOS. Scripts mesh fault patterns (partition, revoke, heal, GPS spoof, packet loss) into a deterministic trace that CI can assert on.",
-  "license": "UNLICENSED",
+  "license": "BUSL-1.1",
   "private": false,
   "type": "module",
   "main": "src/index.ts",

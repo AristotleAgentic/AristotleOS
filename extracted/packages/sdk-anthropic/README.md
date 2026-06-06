@@ -135,4 +135,4 @@ Refusals format as content blocks the Messages API can pass back to the model as
 
 ## License
 
-UNLICENSED. Proprietary. See the repository root `LICENSE` and `NOTICE`. No warranty.
+Apache-2.0. See LICENSE and NOTICE. No warranty.

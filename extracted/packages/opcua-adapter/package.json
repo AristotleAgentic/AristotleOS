@@ -2,7 +2,7 @@
   "name": "@aristotle/opcua-adapter",
   "version": "0.1.0",
   "description": "Govern OPC-UA node writes + method calls with AristotleOS. The same FlightControlTransport / RosControlTransport shape, applied to industrial automation.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

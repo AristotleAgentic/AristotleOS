@@ -2,7 +2,7 @@
   "name": "@aristotle/sdk-anthropic",
   "version": "0.1.0",
   "description": "First-party Anthropic Claude SDK tool-wrapping adapter for AristotleOS. Govern @anthropic-ai/sdk Messages API tool_use blocks through the substrate's Commit Gate before the underlying handlers run.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

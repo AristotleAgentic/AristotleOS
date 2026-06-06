@@ -2,7 +2,7 @@
   "name": "@aristotle/kms-keyring",
   "version": "0.1.0",
   "description": "KMS-backed keyring for AristotleOS Warrant signing. Defines KmsKeyring + KmsKeyHandle interfaces that abstract away where the private key actually lives (in-memory, AWS KMS, Vault Transit, Azure Key Vault, GCP KMS, HashiCorp HSM, ...) and produces AristotleSigner instances the gate already consumes. Ships InMemoryKmsKeyring (full impl) + AwsKmsKeyring / VaultKeyring stubs documenting the bind point.",
-  "license": "UNLICENSED",
+  "license": "BUSL-1.1",
   "private": false,
   "type": "module",
   "main": "src/index.ts",

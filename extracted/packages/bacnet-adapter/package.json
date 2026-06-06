@@ -2,7 +2,7 @@
   "name": "@aristotle/bacnet-adapter",
   "version": "0.1.0",
   "description": "Govern BACnet/IP WriteProperty and WritePropertyMultiple operations with AristotleOS. The hardware-governance pattern applied to building automation: HVAC, lighting, access, fire systems.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

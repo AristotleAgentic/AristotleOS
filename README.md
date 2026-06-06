@@ -12,6 +12,12 @@ Core positioning:
 
 The implementation workspace currently lives under [`extracted/`](extracted/).
 
+Licensing is split by tree: AristotleOS substrate material is licensed under
+BUSL-1.1 with a Change Date of 2030-06-06, adapter and integration packages
+under `extracted/packages/*` are Apache-2.0, and documentation under `docs/` is
+CC-BY-4.0. See [`LICENSING.md`](LICENSING.md) for the authoritative map and
+Additional Use Grant.
+
 ## What AristotleOS Is
 
 AristotleOS is a TypeScript and pnpm monorepo for experimenting with runtime governance infrastructure.

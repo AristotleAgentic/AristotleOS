@@ -2,7 +2,7 @@
   "name": "@aristotle/dnp3-adapter",
   "version": "0.1.0",
   "description": "Govern DNP3 outstation control writes with AristotleOS. The hardware-governance pattern applied to electric-grid SCADA / RTU communication.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

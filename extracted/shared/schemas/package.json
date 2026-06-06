@@ -1,7 +1,7 @@
 {
   "name": "@aristotle/shared-schemas",
   "version": "0.1.0",
-  "license": "UNLICENSED",
+  "license": "BUSL-1.1",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

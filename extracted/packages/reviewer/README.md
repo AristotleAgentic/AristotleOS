@@ -81,6 +81,6 @@ jq '.verification.failures' report.json
 
 ## License
 
-UNLICENSED. Proprietary. No warranty of any kind. See the repository root `LICENSE` and `NOTICE`.
+Apache-2.0. No warranty of any kind. See LICENSE and NOTICE.
 
 > THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.

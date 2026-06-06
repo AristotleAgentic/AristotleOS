@@ -2,7 +2,7 @@
   "name": "@aristotle/gateway-client",
   "version": "0.1.0",
   "description": "Slim, dependency-free TypeScript client for the AristotleOS HTTP execution-control boundary. Re-exports AristotleClient (the canonical OpenAPI-conforming client) from @aristotle/os-sdk and ships the OpenAPI 3.1 spec as both a JSON artifact and a JavaScript string constant so operators can feed it directly into openapi-generator, Stoplight, Insomnia, Postman, or any other OpenAPI-aware tooling without cloning the substrate repo.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

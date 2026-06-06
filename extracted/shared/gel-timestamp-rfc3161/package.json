@@ -2,7 +2,7 @@
   "name": "@aristotle/gel-timestamp-rfc3161",
   "version": "0.1.0",
   "description": "RFC 3161 Time-Stamp Protocol client for AristotleOS. Implements the TimestampAuthority interface from @aristotle/gel-timestamp by posting an ASN.1 DER-encoded TimeStampReq to a configured TSA endpoint and storing the returned TimeStampToken as an opaque blob in the anchor. Closes the in-repo portion of the 'real external TSA' story; cryptographic verification of the response (X.509 certificate chain validation) is operator-supplied via a verifier callback because chain validation depends on the operator's trust store.",
-  "license": "UNLICENSED",
+  "license": "BUSL-1.1",
   "private": false,
   "type": "module",
   "main": "src/index.ts",
