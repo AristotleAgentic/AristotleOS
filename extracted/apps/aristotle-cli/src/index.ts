@@ -621,6 +621,7 @@ Commands:
                        container: --image <img> [--runtime docker|podman] [--memory 256m] [--cpus 1]
                        wasm:      --cmd <module.wasm> [--wasm-binary <path>]
   sandbox receipt verify   Verify a signed, Warrant-bound execution receipt
+  demo                 One-command Warrant + GEL + offline evidence self-check
   pilot                One-command self-check of the full boundary
   preflight            Check production readiness (signing key, auth, config)
   demo payments        Run the flagship payments scenario
@@ -2475,7 +2476,7 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
       return 0;
     }
 
-    if (command === "demo" && (subcommand === "payments" || !subcommand)) {
+    if (command === "demo" && subcommand === "payments") {
       const source = existsSync(governanceFile(cwd)) ? readPolicy(cwd) : PAYMENTS_GOVERNANCE_SOURCE;
       const evaluation = evaluateTrialAction({ source, intent: TRIAL_SCENARIOS[0].intent });
       const state = loadState(cwd);
@@ -2586,7 +2587,7 @@ Next: aristotle approvals && aristotle approve ${evaluation.deferToken ?? "<toke
       return verification.ok ? 0 : 1;
     }
 
-    if (command === "pilot") {
+    if (command === "pilot" || (command === "demo" && !subcommand)) {
       // One-command, dependency-free self-verification of the whole boundary.
       const checks: Array<{ name: string; ok: boolean; detail?: string }> = [];
       const record = (name: string, ok: boolean, detail?: string) => checks.push({ name, ok, detail });
@@ -2656,9 +2657,9 @@ Next: aristotle approvals && aristotle approve ${evaluation.deferToken ?? "<toke
       if (json) {
         printJson(out, { ok: failed.length === 0, checks }, true);
       } else {
-        out("AristotleOS pilot self-check\n\n");
+        out("AristotleOS Warrant Layer self-check\n\n");
         for (const check of checks) out(`  ${check.ok ? "PASS" : "FAIL"}  ${check.name}${check.detail ? `  (${check.detail})` : ""}\n`);
-        out(`\n${failed.length === 0 ? "PILOT READY — all checks passed." : `PILOT NOT READY — ${failed.length} check(s) failed.`}\n`);
+        out(`\n${failed.length === 0 ? "DEMO READY - Warrant, refusal, GEL, and Evidence Bundle checks passed." : `DEMO NOT READY - ${failed.length} check(s) failed.`}\n`);
       }
       rmSync(ledgerDir, { recursive: true, force: true });
       return failed.length === 0 ? 0 : 1;

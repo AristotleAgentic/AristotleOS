@@ -10,21 +10,26 @@ consequential action is evaluated at a Commit Gate, receives a single-use
 ```bash
 npm install -g @aristotle/os-cli
 # or run without installing:
-npx @aristotle/os-cli execution-control dev
+npx @aristotle/os-cli demo
 ```
 
 Requires Node.js 18+. The CLI ships as a single ~540 kB ESM bundle with the sample Ward + Authority Envelope fixtures included, so the boundary boots from any directory without further setup.
 
-## 30-second eval
+## 30-second Warrant Layer check
 
 ```bash
 npm install -g @aristotle/os-cli
-aristotle execution-control dev          # boots a real Commit Gate on http://127.0.0.1:8181
+aristotle demo
 ```
 
-In another shell:
+The demo runs without a server and verifies the core boundary: an allowed action
+gets a signed Warrant, a denied action is refused, missing runtime state
+escalates, the Evidence Bundle verifies offline, and the GEL hash chain verifies.
+
+For a local HTTP boundary:
 
 ```bash
+aristotle execution-control dev          # boots a real Commit Gate on http://127.0.0.1:8181
 curl -s http://127.0.0.1:8181/v1/execution-control/audit/verify | jq
 # {"ok": true, "count": 0}
 

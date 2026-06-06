@@ -1,18 +1,31 @@
 # AristotleOS
 
-AristotleOS is an experimental runtime governance framework for agentic and autonomous systems.
+AristotleOS is the warrant layer for AI agents and autonomous systems.
 
-It is designed around a simple principle: machine systems should not cross into consequence without legitimate authority. AristotleOS models that authority through governance primitives such as authority envelopes, warrants, commit gates, wards, runtime registers, and governance evidence ledgers.
+No consequential action should execute unless it carries valid authority, policy,
+and evidence. AristotleOS turns that principle into a runtime boundary: a
+deterministic Commit Gate, signed single-use Warrants, refusal-before-emission
+adapters, and hash-chained evidence a third party can verify offline.
 
-The project explores how autonomous agents, AI infrastructure, robotics, drones, defense systems, public infrastructure, and other high-consequence systems can be made bounded, auditable, revocable, and institutionally accountable at runtime.
+```sh
+corepack pnpm@10.32.1 install
+npm run demo
+```
 
 Core positioning:
 
-> Runtime governance infrastructure for autonomous systems: authority envelopes, warrants, commit gates, and evidence ledgers for bounded, auditable machine action.
+> Warranted execution before consequence: signed per-action authority, refusal before emission, and offline-verifiable evidence for governed machine action.
 
 This file describes the implementation workspace. If you are viewing the GitHub repository root, the source code lives in this `extracted/` directory.
 
-## Quick start
+## Evidence Demo
+
+For the fastest product check, run `npm run demo`. It performs the Warrant Layer
+self-check without starting a server: ALLOW issues a Warrant, denied action
+REFUSEs, missing runtime state ESCALATEs, the Evidence Bundle verifies, and the
+GEL chain verifies.
+
+## Full Evidence Walkthrough
 
 Watch the substrate take a proposed action through a real Commit Gate, sign a
 single-use Warrant, append a hash-linked Governance Evidence Ledger record,

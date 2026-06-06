@@ -28,6 +28,7 @@
     "pilot:smoke:kind": "node scripts/k8s-smoke-install.mjs --runtime kind",
     "pilot:smoke:minikube": "node scripts/k8s-smoke-install.mjs --runtime minikube",
     "aristotle": "tsx apps/aristotle-cli/src/index.ts",
+    "demo": "tsx apps/aristotle-cli/src/index.ts demo",
     "aristotle:demo": "npm run dev -w @aristotle/console-ui -- --host 127.0.0.1 --port 4173",
     "execution-control:dev": "tsx apps/aristotle-cli/src/index.ts execution-control dev",
     "execution-control:serve": "tsx apps/aristotle-cli/src/index.ts execution-control serve --ward examples/execution_control/ward.montana_drone_test_range.yaml --envelope examples/execution_control/authority_envelope.survey_planner.yaml --ledger ./.tmp/execution-control-runtime.gel.jsonl",

@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AristotleOS — governance execution substrate for autonomous systems</title>
-  <meta name="description" content="Open-source TypeScript substrate that interposes a signed, replayable authority chain between an autonomous agent and the wire-level action it would take." />
+  <title>AristotleOS - warrant layer for autonomous systems</title>
+  <meta name="description" content="BUSL TypeScript substrate that issues signed single-use Warrants before consequential autonomous action and leaves offline-verifiable evidence after each decision." />
   <meta name="theme-color" content="#0d1117" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%230d1117'/%3E%3Ctext x='16' y='22' font-size='18' font-family='monospace' fill='%2358a6ff' text-anchor='middle' font-weight='700'%3EA%3C/text%3E%3C/svg%3E" />
-  <meta property="og:title" content="AristotleOS — governance execution substrate" />
-  <meta property="og:description" content="warrant before consequence, hash-chained evidence after, partition-tolerant in between" />
+  <meta property="og:title" content="AristotleOS - warrant layer for autonomous systems" />
+  <meta property="og:description" content="signed Warrants before consequence, offline evidence after, partition-tolerant in between" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://aristotleagentic.com" />
   <style>
@@ -248,6 +248,8 @@
     <nav class="nav">
       <a href="/" class="brand">aristotle<span class="dot">.</span>os</a>
       <div class="nav-links">
+        <a href="#demo">Demo</a>
+        <a href="#compare">Compare</a>
         <a href="#verify">Verify</a>
         <a href="#what">What</a>
         <a href="#architecture">Architecture</a>
@@ -264,12 +266,13 @@
   <!-- HERO -->
   <section class="hero" style="border-top: none; padding-top: 56px;">
     <p class="one-line">BUSL-1.1 · TypeScript · pre-1.0 · runtime governance substrate</p>
-    <h1>Governance execution substrate for autonomous systems.</h1>
+    <h1>The warrant layer for AI agents and autonomous systems.</h1>
     <p class="lede">
-      Every consequential action by an AI agent, robot, industrial controller, or autonomous system passes through a <strong>signed, replayable authority chain</strong> before it can affect anything in the physical or digital world. <strong>Warrant before consequence.</strong> <strong>Hash-chained evidence after.</strong> <strong>Partition-tolerant in between.</strong>
+      A policy guard can say yes or no. AristotleOS issues a <strong>signed, single-use Warrant</strong> for the exact action, refuses authority drift before emission, and leaves <strong>offline-verifiable evidence</strong> after the decision. <strong>Warrant before consequence.</strong>
     </p>
     <div class="cta-row">
-      <a href="#verify" class="btn btn-primary">Verify in 20 minutes</a>
+      <a href="#demo" class="btn btn-primary">Run the 30-second demo</a>
+      <a href="#compare" class="btn btn-secondary">Why it is different</a>
       <a href="https://github.com/AristotleAgentic/AristotleOS" target="_blank" rel="noopener" class="btn btn-secondary">View source on GitHub</a>
     </div>
     <div class="badge-row">
@@ -279,6 +282,97 @@
       <span class="badge"><span class="dot"></span>7 protocol adapters</span>
       <span class="badge"><span class="dot"></span>13 agent-framework adapters</span>
     </div>
+  </section>
+
+  <!-- DEMO -->
+  <section id="demo">
+    <h2>Run the Warrant Layer in 30 seconds.</h2>
+    <p class="section-lede">No server. No dashboard. One command checks the thing that makes AristotleOS different: signed per-action authority plus verifiable evidence.</p>
+<pre class="terminal"><span class="prompt">$</span> git clone https://github.com/AristotleAgentic/AristotleOS
+<span class="prompt">$</span> cd AristotleOS/extracted
+<span class="prompt">$</span> corepack pnpm@10.32.1 install
+<span class="prompt">$</span> npm run demo
+
+<span class="comment">AristotleOS Warrant Layer self-check</span>
+<span class="out">  PASS  ALLOW issues a Warrant</span>
+<span class="out">  PASS  Warrant signature verifies</span>
+<span class="out">  PASS  Warrant key pinning works</span>
+<span class="out">  PASS  REFUSE blocks a denied action</span>
+<span class="out">  PASS  ESCALATE on missing runtime state</span>
+<span class="out">  PASS  Evidence Bundle self-verifies</span>
+<span class="out">  PASS  GEL hash chain verifies</span>
+
+<span class="out">DEMO READY - Warrant, refusal, GEL, and Evidence Bundle checks passed.</span></pre>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="label">Before action</div>
+        <h4>Authority is evaluated</h4>
+        <p>Ward, Authority Envelope, runtime registers, revocation, and invariants are checked before execution.</p>
+      </div>
+      <div class="card">
+        <div class="label">At allow</div>
+        <h4>Warrant is issued</h4>
+        <p>The Warrant is signed, single-use, content-bound, and key-pinnable. It cannot authorize a different action.</p>
+      </div>
+      <div class="card">
+        <div class="label">After decision</div>
+        <h4>Evidence is portable</h4>
+        <p>The evidence bundle and GEL hash chain verify offline, without trusting a live AristotleOS service.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMPARE -->
+  <section id="compare">
+    <h2>Why it is structurally stronger than a policy guard.</h2>
+    <p class="section-lede">Simple policy guards are useful. AristotleOS is the next layer down: warranted execution before consequence.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Capability</th>
+          <th>Typical agent guard</th>
+          <th>AristotleOS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Policy decision</td>
+          <td>Permit / deny around a tool call</td>
+          <td>Commit Gate with ALLOW / REFUSE / ESCALATE / EXPIRE and reason codes</td>
+        </tr>
+        <tr>
+          <td>Execution authority</td>
+          <td>Often implicit in process credentials</td>
+          <td>Explicit signed Warrant bound to the canonical action hash</td>
+        </tr>
+        <tr>
+          <td>Replay resistance</td>
+          <td>Depends on caller discipline</td>
+          <td>Single-use Warrant consumption and nonce binding</td>
+        </tr>
+        <tr>
+          <td>Boundary enforcement</td>
+          <td>Usually framework-level</td>
+          <td>Adapter-level refusal before transport emission</td>
+        </tr>
+        <tr>
+          <td>Audit evidence</td>
+          <td>Logs or event streams</td>
+          <td>Hash-chained GEL records plus offline Evidence Bundles</td>
+        </tr>
+        <tr>
+          <td>Delegated authority</td>
+          <td>Policy file or role mapping</td>
+          <td>Ward -> Authority Envelope -> Warrant authority chain</td>
+        </tr>
+        <tr>
+          <td>Disconnected operation</td>
+          <td>Usually unavailable or bespoke</td>
+          <td>Mesh runtime with bounded edge operation and reconciliation</td>
+        </tr>
+      </tbody>
+    </table>
   </section>
 
   <!-- VERIFY -->

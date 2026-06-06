@@ -1,14 +1,35 @@
 # AristotleOS
 
-AristotleOS is an experimental runtime governance framework for agentic and autonomous systems.
+AristotleOS is the warrant layer for AI agents and autonomous systems.
 
-It is designed around a simple principle: machine systems should not cross into consequence without legitimate authority. AristotleOS models that authority through governance primitives such as authority envelopes, warrants, commit gates, wards, runtime registers, and governance evidence ledgers.
+It enforces a simple rule: no consequential action executes unless it carries
+valid authority, policy, and evidence. A policy guard can say "yes" or "no";
+AristotleOS issues a signed, single-use Warrant for the exact action, refuses
+authority drift at the boundary, and writes a hash-chained evidence record that
+can be verified offline.
 
-The project explores how autonomous agents, AI infrastructure, robotics, drones, defense systems, public infrastructure, and other high-consequence systems can be made bounded, auditable, revocable, and institutionally accountable at runtime.
+```sh
+cd extracted
+corepack pnpm@10.32.1 install
+npm run demo
+```
+
+Expected result:
+
+```text
+AristotleOS Warrant Layer self-check
+  PASS  ALLOW issues a Warrant
+  PASS  Warrant signature verifies
+  PASS  REFUSE blocks a denied action
+  PASS  Evidence Bundle self-verifies
+  PASS  GEL hash chain verifies
+
+DEMO READY - Warrant, refusal, GEL, and Evidence Bundle checks passed.
+```
 
 Core positioning:
 
-> Runtime governance infrastructure for autonomous systems: authority envelopes, warrants, commit gates, and evidence ledgers for bounded, auditable machine action.
+> Warranted execution before consequence: signed per-action authority, refusal before emission, and offline-verifiable evidence for governed machine action.
 
 The implementation workspace currently lives under [`extracted/`](extracted/).
 
@@ -17,6 +38,21 @@ BUSL-1.1 with a Change Date of 2030-06-06, adapter and integration packages
 under `extracted/packages/*` are Apache-2.0, and documentation under `docs/` is
 CC-BY-4.0. See [`LICENSING.md`](LICENSING.md) for the authoritative map and
 Additional Use Grant.
+
+## Why This Is Different
+
+AristotleOS is not just an agent policy guard. It combines five properties that
+usually live in separate systems:
+
+- **Per-action authority**: every consequential action gets evaluated on its own facts.
+- **Single-use Warrants**: an `ALLOW` produces a signed artifact bound to the canonical action hash.
+- **Refusal before emission**: adapters refuse unauthorized writes before bytes hit the transport.
+- **Hash-chained evidence**: decisions, refusals, Warrants, and records are tamper-evident.
+- **Offline verification**: auditors can verify evidence bundles without contacting your runtime.
+
+That is the superior wedge: policy decides; AristotleOS proves why an action was
+allowed, refuses it when authority drifts, and leaves evidence a third party can
+check.
 
 ## What AristotleOS Is
 
