@@ -1,8 +1,9 @@
 import type { Request, Response } from "express";
-import { createHmac, timingSafeEqual, randomBytes, randomUUID } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { createApp } from "./lib.js";
 import { runGatewayPreflight } from "./preflight.js";
 import { createGovernanceChainProxy } from "./governance-chain-proxy.js";
+import { createOperatorAuthFromEnv } from "./operator-auth.js";
 import {
   PAYMENTS_GOVERNANCE_SOURCE,
   TRIAL_SCENARIOS,
@@ -18,52 +19,17 @@ import {
 const port = Number(process.env.PORT_GATEWAY ?? 8080);
 const app = createApp();
 const serviceDiscoveryMode = process.env.SERVICE_DISCOVERY_MODE ?? "container";
-const operatorApiKey = process.env.OPERATOR_API_KEY?.trim();
-const operatorSessionSecret = process.env.OPERATOR_SESSION_SECRET?.trim();
-const operatorSessionEnforcement =
-  process.env.OPERATOR_SESSION_ENFORCEMENT === "1" ||
-  process.env.OPERATOR_SESSION_ENFORCEMENT === "true" ||
-  process.env.OPERATOR_SESSION_ENFORCEMENT === "TRUE";
-const operatorSessionTtlMs = Number(process.env.OPERATOR_SESSION_TTL_MS ?? 15 * 60 * 1000);
-const operatorSessionSkewMs = Number(process.env.OPERATOR_SESSION_SKEW_MS ?? 60 * 1000);
-const operatorRoleEnforcement =
-  process.env.OPERATOR_ROLE_ENFORCEMENT === "1" ||
-  process.env.OPERATOR_ROLE_ENFORCEMENT === "true" ||
-  process.env.OPERATOR_ROLE_ENFORCEMENT === "TRUE";
-const operatorDefaultRole = process.env.OPERATOR_DEFAULT_ROLE?.trim() || "operator";
-const operatorReadRoles = new Set(
-  (process.env.OPERATOR_READ_ROLES ?? "viewer,operator,admin")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean)
-);
-const operatorMutationRoles = new Set(
-  (process.env.OPERATOR_MUTATION_ROLES ?? "operator,admin")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean)
-);
-const operatorReadActors = new Set(
-  (process.env.OPERATOR_READ_ACTORS ?? "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean)
-);
-const operatorMutationActors = new Set(
-  (process.env.OPERATOR_MUTATION_ACTORS ?? "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean)
-);
-const preflight = runGatewayPreflight();
 
-type OperatorSessionClaims = {
-  actor: string;
-  role: string;
-  issuedAt: string;
-  expiresAt: string;
-  sessionId: string;
-};
+// Operator-auth surface (config + helpers + session endpoint + middleware)
+// lives in ./operator-auth.ts. Extraction in stage 6 of prototype-hardening;
+// behavior is preserved exactly, pinned by adapters/http-gateway/src/
+// index.test.ts (the stage-2 RBAC suite). Destructure the helpers other
+// handlers use for event attribution + method-based RBAC so the call sites
+// below didn't have to change.
+const operatorAuth = createOperatorAuthFromEnv();
+const { readOperatorActor } = operatorAuth;
+
+const preflight = runGatewayPreflight();
 
 if (!preflight.ok) {
   const failed = preflight.checks.filter((check) => check.status === "fail").map((check) => `${check.name}: ${check.detail}`);
@@ -320,42 +286,7 @@ const emitOtelSpan = (span: {
   }).catch(() => undefined);
 };
 
-const encodeSessionPayload = (claims: OperatorSessionClaims) =>
-  Buffer.from(JSON.stringify(claims), "utf8").toString("base64url");
-
-const signSessionPayload = (payload: string) => {
-  if (!operatorSessionSecret) {
-    throw new Error("Operator session secret is not configured.");
-  }
-  return createHmac("sha256", operatorSessionSecret).update(payload).digest("base64url");
-};
-
-const createOperatorSessionToken = (claims: OperatorSessionClaims) => {
-  const payload = encodeSessionPayload(claims);
-  const signature = signSessionPayload(payload);
-  return `ost.${payload}.${signature}`;
-};
-
-const parseOperatorSessionToken = (token: string): OperatorSessionClaims | null => {
-  if (!operatorSessionSecret || !token.startsWith("ost.")) {
-    return null;
-  }
-  const [, payload, signature] = token.split(".");
-  if (!payload || !signature) {
-    return null;
-  }
-  const expected = Buffer.from(signSessionPayload(payload), "utf8");
-  const actual = Buffer.from(signature, "utf8");
-  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
-    return null;
-  }
-  try {
-    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as OperatorSessionClaims;
-    return claims;
-  } catch {
-    return null;
-  }
-};
+// Session-token codec moved to ./operator-auth.ts (createOperatorAuth(...)).
 
 const handleAsync =
   (handler: (req: Request, res: Response) => Promise<unknown>) =>
@@ -368,58 +299,11 @@ const handleAsync =
     });
   };
 
-const readOperatorCredential = (req: Request) => {
-  const keyHeader = req.header("x-operator-key")?.trim();
-  if (keyHeader) return keyHeader;
-  const authorization = req.header("authorization")?.trim();
-  if (authorization?.toLowerCase().startsWith("bearer ")) {
-    return authorization.slice(7).trim();
-  }
-  return undefined;
-};
-
-const readOperatorSession = (req: Request) => {
-  const authorization = req.header("authorization")?.trim();
-  if (!authorization?.toLowerCase().startsWith("bearer ")) {
-    return undefined;
-  }
-  const token = authorization.slice(7).trim();
-  return token.startsWith("ost.") ? token : undefined;
-};
-
-const readOperatorActor = (req: Request, fallback = "http-gateway") => {
-  const actorHeader = req.header("x-operator-actor")?.trim();
-  if (actorHeader) return actorHeader;
-  const bodyActor = typeof req.body?.actor === "string" ? req.body.actor.trim() : "";
-  return bodyActor || fallback;
-};
-
-const readOperatorRole = (req: Request) => req.header("x-operator-role")?.trim() || operatorDefaultRole;
-const isReadMethod = (method: string) => method === "GET" || method === "HEAD";
-
-const validateSessionClaims = (claims: OperatorSessionClaims, req: Request) => {
-  const issuedAt = Date.parse(claims.issuedAt);
-  const expiresAt = Date.parse(claims.expiresAt);
-  const now = Date.now();
-  if (!Number.isFinite(issuedAt) || !Number.isFinite(expiresAt)) {
-    return { ok: false, error: "operator_session_invalid", message: "Operator session timestamps are invalid." };
-  }
-  if (issuedAt - operatorSessionSkewMs > now) {
-    return { ok: false, error: "operator_session_not_yet_valid", message: "Operator session is not yet valid." };
-  }
-  if (expiresAt + operatorSessionSkewMs < now) {
-    return { ok: false, error: "operator_session_expired", message: "Operator session has expired." };
-  }
-  const actor = readOperatorActor(req).trim();
-  if (actor && actor !== claims.actor) {
-    return { ok: false, error: "operator_session_actor_mismatch", message: "Operator actor does not match session claims." };
-  }
-  const role = readOperatorRole(req);
-  if (role && role !== claims.role) {
-    return { ok: false, error: "operator_session_role_mismatch", message: "Operator role does not match session claims." };
-  }
-  return { ok: true as const };
-};
+// Header helpers (readOperatorCredential/Session/Actor/Role, isReadMethod)
+// and validateSessionClaims moved to ./operator-auth.ts. The auth surface is
+// constructed at the top of this file; `readOperatorActor` is destructured
+// at module scope so the existing call sites in /operator/* handlers don't
+// need to change. All other helpers are accessed via `operatorAuth.<name>`.
 
 const deriveAssurancePosture = (mission: {
   status: string;
@@ -597,16 +481,16 @@ const getAssuranceReport = async () => {
 const getDeploymentPosture = () => ({
   generatedAt: new Date().toISOString(),
   mode: preflight.mode,
-  operatorAuthEnabled: Boolean(operatorApiKey),
-  operatorSessionEnabled: Boolean(operatorSessionSecret),
-  operatorSessionEnforced: operatorSessionEnforcement,
-  operatorSessionTtlMs,
-  roleEnforcementEnabled: operatorRoleEnforcement,
-  defaultRole: operatorDefaultRole,
-  readRoles: [...operatorReadRoles],
-  mutationRoles: [...operatorMutationRoles],
-  readActors: [...operatorReadActors],
-  mutationActors: [...operatorMutationActors],
+  operatorAuthEnabled: Boolean(operatorAuth.config.apiKey),
+  operatorSessionEnabled: Boolean(operatorAuth.config.sessionSecret),
+  operatorSessionEnforced: operatorAuth.config.sessionEnforcement,
+  operatorSessionTtlMs: operatorAuth.config.sessionTtlMs,
+  roleEnforcementEnabled: operatorAuth.config.roleEnforcement,
+  defaultRole: operatorAuth.config.defaultRole,
+  readRoles: [...operatorAuth.config.readRoles],
+  mutationRoles: [...operatorAuth.config.mutationRoles],
+  readActors: [...operatorAuth.config.readActors],
+  mutationActors: [...operatorAuth.config.mutationActors],
   serviceDiscoveryMode,
   serviceBases: {
     governanceKernelBase,
@@ -885,129 +769,15 @@ app.post("/v1/policy/apply", (req, res) => {
   res.json({ applied: true, policyHash: validation.policy.policyHash });
 });
 
-app.post("/operator/auth/session", (req, res) => {
-  if (!operatorApiKey) {
-    res.status(503).json({ error: "operator_auth_disabled", message: "Operator authentication is not configured." });
-    return;
-  }
-  if (!operatorSessionSecret) {
-    res.status(503).json({ error: "operator_session_disabled", message: "Operator session signing is not configured." });
-    return;
-  }
-  const credential = readOperatorCredential(req);
-  if (credential !== operatorApiKey) {
-    res.status(401).json({ error: "operator_auth_required", message: "Valid operator credential required." });
-    return;
-  }
-  const actor = readOperatorActor(req).trim();
-  const role = readOperatorRole(req);
-  const allowedActors = isReadMethod(req.method) ? operatorReadActors : operatorMutationActors;
-  if (allowedActors.size > 0 && !allowedActors.has(actor)) {
-    res.status(403).json({
-      error: "operator_actor_forbidden",
-      message: `Operator actor '${actor}' is not permitted for ${req.method} ${req.path}.`
-    });
-    return;
-  }
-  const allowedRoles = isReadMethod(req.method) ? operatorReadRoles : operatorMutationRoles;
-  if (operatorRoleEnforcement && !allowedRoles.has(role)) {
-    res.status(403).json({
-      error: "operator_role_forbidden",
-      message: `Operator role '${role}' is not permitted for ${req.method} ${req.path}.`
-    });
-    return;
-  }
-  const issuedAt = new Date();
-  const expiresAt = new Date(issuedAt.getTime() + operatorSessionTtlMs);
-  const claims: OperatorSessionClaims = {
-    actor,
-    role,
-    issuedAt: issuedAt.toISOString(),
-    expiresAt: expiresAt.toISOString(),
-    sessionId: randomUUID()
-  };
-  res.json({
-    token: createOperatorSessionToken(claims),
-    tokenType: "Bearer",
-    actor,
-    role,
-    issuedAt: claims.issuedAt,
-    expiresAt: claims.expiresAt,
-    sessionId: claims.sessionId
-  });
-});
+// POST /operator/auth/session — see ./operator-auth.ts ::createOperatorAuth.
+// Registered BEFORE the /operator middleware below so the session endpoint
+// itself is reachable without already holding a session.
+app.post("/operator/auth/session", operatorAuth.sessionEndpoint);
 
-app.use("/operator", (req, res, next) => {
-    if (!operatorApiKey) {
-      next();
-      return;
-    }
-    const sessionToken = readOperatorSession(req);
-    if (sessionToken) {
-      const claims = parseOperatorSessionToken(sessionToken);
-      if (!claims) {
-        res.status(401).json({ error: "operator_session_invalid", message: "Valid operator session required." });
-        return;
-      }
-      const validity = validateSessionClaims(claims, req);
-      if (!validity.ok) {
-        res.status(401).json({ error: validity.error, message: validity.message });
-        return;
-      }
-      const allowedActors = isReadMethod(req.method) ? operatorReadActors : operatorMutationActors;
-      if (allowedActors.size > 0 && !allowedActors.has(claims.actor)) {
-        res.status(403).json({
-          error: "operator_actor_forbidden",
-          message: `Operator actor '${claims.actor}' is not permitted for ${req.method} ${req.path}.`
-        });
-        return;
-      }
-      if (operatorRoleEnforcement) {
-        const allowedRoles = isReadMethod(req.method) ? operatorReadRoles : operatorMutationRoles;
-        if (!allowedRoles.has(claims.role)) {
-          res.status(403).json({
-            error: "operator_role_forbidden",
-            message: `Operator role '${claims.role}' is not permitted for ${req.method} ${req.path}.`
-          });
-          return;
-        }
-      }
-      next();
-      return;
-    }
-    if (operatorSessionEnforcement && req.path !== "/auth/session") {
-      res.status(401).json({ error: "operator_session_required", message: "Signed operator session required." });
-      return;
-    }
-    const credential = readOperatorCredential(req);
-    if (credential === operatorApiKey) {
-      const actor = readOperatorActor(req).trim();
-      const allowedActors = isReadMethod(req.method) ? operatorReadActors : operatorMutationActors;
-    if (allowedActors.size > 0 && !allowedActors.has(actor)) {
-      res.status(403).json({
-        error: "operator_actor_forbidden",
-        message: `Operator actor '${actor}' is not permitted for ${req.method} ${req.path}.`
-      });
-      return;
-    }
-    if (!operatorRoleEnforcement) {
-      next();
-      return;
-    }
-    const role = readOperatorRole(req);
-    const allowedRoles = isReadMethod(req.method) ? operatorReadRoles : operatorMutationRoles;
-    if (allowedRoles.has(role)) {
-      next();
-      return;
-    }
-    res.status(403).json({
-      error: "operator_role_forbidden",
-      message: `Operator role '${role}' is not permitted for ${req.method} ${req.path}.`
-    });
-    return;
-  }
-  res.status(401).json({ error: "operator_auth_required", message: "Valid operator credential required." });
-});
+// /operator/* path-prefixed RBAC gate — see ./operator-auth.ts.
+// Mounted AFTER the /operator/auth/session POST above so an unauthenticated
+// caller can reach the session endpoint to obtain a token.
+app.use("/operator", operatorAuth.middleware);
 
 app.get(
   "/health",
