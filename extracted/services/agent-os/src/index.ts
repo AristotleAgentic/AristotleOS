@@ -2541,9 +2541,12 @@ app.get("/state", (_req, res) => res.json(snapshot()));
 // (stage 10 of prototype-hardening). /missions/:missionId/advance still
 // lives inline because it depends on progressExecutionLoop +
 // ~10 more helpers; deferred to a follow-on stage.
+// fingerprint + createMissionSteps used to be in this deps bag; stage 13
+// dropped them after stage 12 moved them to ./lib/mission-helpers.ts —
+// routes/missions.ts now imports those directly.
 mountMissionsRoutes(app, {
   missions, workspaces, toolLeases,
-  id, now, fingerprint, createMissionSteps,
+  id, now,
   ensureMissionMemory, schedulePersist
 });
 

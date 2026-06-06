@@ -39,11 +39,14 @@
 import type { Express } from "express";
 import type {
   MemoryRecord,
-  MissionStep,
   OperatingMission,
   ToolLease,
   WorkspaceSession
 } from "@aristotle/shared-types";
+import {
+  createMissionSteps as buildMissionSteps,
+  fingerprint
+} from "../lib/mission-helpers.js";
 
 export type MissionsRouteDeps = {
   /** The in-memory mission registry the handlers read + mutate. */
@@ -59,11 +62,6 @@ export type MissionsRouteDeps = {
   id: (prefix: string) => string;
   /** ISO timestamp generator. */
   now: () => string;
-  /** Deterministic fingerprint helper used to default deviceFingerprint
-   *  when the request doesn't supply one. */
-  fingerprint: (namespace: string, seed: string) => string;
-  /** Auto-generates the MissionStep[] from the requested tools. */
-  createMissionSteps: (requiredTools: string[]) => MissionStep[];
   /** Returns (and lazily creates) the per-mission memory array. */
   ensureMissionMemory: (missionId: string) => MemoryRecord[];
   /** Triggers the next persist tick (debounced fsync of state). */
@@ -77,8 +75,6 @@ export function mountMissionsRoutes(app: Express, deps: MissionsRouteDeps): void
     toolLeases,
     id,
     now,
-    fingerprint,
-    createMissionSteps,
     ensureMissionMemory,
     schedulePersist
   } = deps;
@@ -109,7 +105,7 @@ export function mountMissionsRoutes(app: Express, deps: MissionsRouteDeps): void
       requiredTools,
       successMetrics:
         req.body.successMetrics ?? ["mission completes without governance violations"],
-      steps: createMissionSteps(requiredTools),
+      steps: buildMissionSteps(id, requiredTools),
       createdAt: timestamp,
       updatedAt: timestamp
     };
