@@ -12,6 +12,142 @@ Core positioning:
 
 This file describes the implementation workspace. If you are viewing the GitHub repository root, the source code lives in this `extracted/` directory.
 
+## Quick start
+
+Watch the substrate take a proposed action through a real Commit Gate, sign a
+single-use Warrant, append a hash-linked Governance Evidence Ledger record,
+and emit a third-party-verifiable evidence bundle — in two commands:
+
+```sh
+# Requires Node ≥22.5 and pnpm ≥10. The repo enforces pnpm via corepack.
+git clone https://github.com/AristotleAgentic/AristotleOS && cd AristotleOS/extracted
+corepack pnpm@10.32.1 install
+corepack pnpm@10.32.1 run execution-control:evidence:demo
+corepack pnpm@10.32.1 run execution-control:evidence:verify
+```
+
+Expected output from the demo step:
+
+```
+decision=ALLOW
+reason_codes=ALLOWED
+canonical_action_hash=613ba55efbd42e97999129b9ae5a148851a4343a81c6087d5b2c835104d79f01
+warrant_id=wrn-568d57a4837361d8c39e524f
+signing_key_id=ed25519-dev:0a532aa839bf2afcc901c52da610ffad
+gel_record_hash=5eac1ef51f02f0188b2fc97b2badd39c84fe30a5903da335b7ce366d1ad264ea
+ledger_verification=ok
+evidence_bundle=./.tmp/execution-control-evidence-bundle.json
+```
+
+…and from the verify step:
+
+```
+evidence_verification=ok
+bundle_hash=…
+ledger_records=1
+```
+
+What the two commands actually do, in substrate terms:
+
+1. `execution-control:evidence:demo` loads a real Ward
+   ([`examples/execution_control/ward.montana_drone_test_range.yaml`](examples/execution_control/ward.montana_drone_test_range.yaml))
+   and an Authority Envelope, takes a Canonical Action
+   ([`examples/execution_control/actions/allow_takeoff.json`](examples/execution_control/actions/allow_takeoff.json)),
+   runs it through the deterministic Commit Gate, signs a single-use Warrant
+   (Ed25519, ephemeral dev key by default — `aristotle keys generate` produces
+   a durable one), appends a record to the GEL, and writes a portable
+   evidence bundle.
+2. `execution-control:evidence:verify` re-verifies the bundle's hash chain,
+   warrant signature, and record consistency **without contacting AristotleOS
+   at all** — the bundle is the evidence. Hand it to an auditor and they can
+   replay the decision on a clean machine.
+
+To bring up the full nine-service local control plane (governance-kernel +
+agent-os + execution-gate + witness-service + meta-authority-registry +
+authority-router + evidence-ledger + policy-compiler + simulation-engine, plus
+the http-gateway), use `corepack pnpm@10.32.1 run local:up`. Use
+`local:status` and `local:down` to manage it.
+
+## Integrations
+
+AristotleOS ships first-party adapters that route tool/action calls from the
+following agent frameworks, runtimes, and protocols through the substrate's
+Commit Gate before they execute. Every adapter lives in the `packages/`
+workspace under `@aristotle/<name>` (TypeScript) or `aristotle-<name>`
+(Python). License is `UNLICENSED` and packages are not yet published to npm /
+PyPI — use them from the monorepo via `workspace:*` or via
+`pip install ./packages/<name>-python`.
+
+### Agent frameworks
+
+| Adapter | Path | Wraps |
+|---|---|---|
+| `@aristotle/langchain` | `packages/langchain` | LangChain.js tool invocations |
+| `aristotle-langgraph` | `packages/langgraph-python` | LangGraph nodes |
+| `aristotle-crewai` | `packages/crewai-python` | CrewAI tool calls (sync + async) |
+| `aristotle-autogen` | `packages/autogen-python` | AutoGen v0.4 tool calls |
+| `aristotle-ag2` | `packages/ag2-python` | AG2 (AutoGen v0.2 fork) tool calls |
+| `aristotle-llamaindex` | `packages/llamaindex-python` | LlamaIndex agent tools |
+| `aristotle-pydantic-ai` | `packages/pydantic-ai-python` | Pydantic AI agent tools |
+| `aristotle-semantic-kernel` | `packages/semantic-kernel-python` | Semantic Kernel functions |
+| `@aristotle/mastra` | `packages/mastra` | Mastra tool calls |
+| `@aristotle/vercel-ai` | `packages/vercel-ai` | Vercel AI SDK tool calls |
+
+### Model SDKs and agent runtimes
+
+| Adapter | Path | Wraps |
+|---|---|---|
+| `@aristotle/sdk-anthropic` | `packages/sdk-anthropic` | `@anthropic-ai/sdk` Messages API tool_use blocks |
+| `@aristotle/openai-agents` | `packages/openai-agents` | OpenAI Agents SDK tool calls |
+| `@aristotle/claude-agents` | `packages/claude-agents` | Claude Code / Claude Agents tool calls |
+| `@aristotle/bedrock` | `packages/bedrock` | AWS Bedrock agent tool invocations |
+
+### Model Context Protocol (MCP)
+
+| Adapter | Path | Role |
+|---|---|---|
+| `@aristotle/mcp-server` | `packages/mcp-server` | MCP server that exposes the substrate's governance primitives as MCP tools |
+| `@aristotle/mcp-server-stdio` | `packages/mcp-server-stdio` | stdio transport for the above — drop into Claude Desktop / Cursor / any MCP host |
+
+### Industrial protocols
+
+| Adapter | Path | Protocol |
+|---|---|---|
+| `@aristotle/dnp3-adapter` | `packages/dnp3-adapter` | DNP3 (utility SCADA) |
+| `@aristotle/modbus-adapter` | `packages/modbus-adapter` | Modbus TCP/RTU |
+| `@aristotle/bacnet-adapter` | `packages/bacnet-adapter` | BACnet (building automation) |
+| `@aristotle/opcua-adapter` | `packages/opcua-adapter` | OPC UA (industrial automation) |
+
+### Robotics
+
+| Adapter | Path | Bridge |
+|---|---|---|
+| `@aristotle/ros2-bridge` | `packages/ros2-bridge` | ROS 2 action/service calls |
+| `@aristotle/mavlink-px4` | `packages/mavlink-px4` | MAVLink / PX4 vehicle commands |
+
+### Kubernetes
+
+| Adapter | Path | Surface |
+|---|---|---|
+| `@aristotle/k8s-admission` | `packages/k8s-admission` | Kubernetes admission webhook — gates resource mutations through the Commit Gate |
+
+### SDK + gateway clients
+
+| Package | Path | Use |
+|---|---|---|
+| `@aristotle/os-sdk` | `packages/os-sdk` | TypeScript SDK for the http-gateway's `/v1/*` API |
+| `aristotle-os-sdk` | `packages/os-sdk-python` | Python equivalent |
+| `@aristotle/gateway-client` | `packages/gateway-client` | OpenAPI-generated typed client for the http-gateway |
+
+### Verticals
+
+Helm overlays for ten regulated/safety-critical domains live under
+`charts/aristotle-governance-os/values-<vertical>.yaml` — pipeline, aviation,
+grid, healthcare, telecom, rail, water, port, mining, automotive. All are
+labeled **DEMONSTRATION ONLY** by design (see ADR-0014 and ADR-0024); they
+encode doctrine the substrate has thought through, not deployments it has
+ever run in production.
+
 ## What AristotleOS Is
 
 AristotleOS is a TypeScript and pnpm monorepo for experimenting with runtime governance infrastructure.
