@@ -11,7 +11,9 @@
  */
 import { createServer } from "node:http";
 import { accessSync, appendFileSync, constants as fsConstants, createReadStream, existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
+import { connect as netConnect } from "node:net";
 import { dirname, extname, isAbsolute, normalize, relative, resolve } from "node:path";
+import { connect as tlsConnect } from "node:tls";
 import { fileURLToPath } from "node:url";
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
@@ -29,6 +31,13 @@ const publicOrigin = process.env.PUBLIC_ORIGIN ?? "";
 const adminToken = process.env.ARISTOTLE_ADMIN_TOKEN ?? "";
 const adminSessionHours = Number(process.env.ADMIN_SESSION_HOURS ?? 12);
 const uiPrototypeUrl = process.env.UI_PROTOTYPE_URL ?? "https://github.com/AristotleAgentic/AristotleOS/tree/main/extracted/apps/console-ui";
+const smtpHost = process.env.SMTP_HOST ?? "";
+const smtpPort = Number(process.env.SMTP_PORT ?? 465);
+const smtpSecure = process.env.SMTP_SECURE !== "0";
+const smtpUser = process.env.SMTP_USER ?? "";
+const smtpPass = process.env.SMTP_PASS ?? "";
+const contactTo = process.env.CONTACT_TO ?? "";
+const contactFrom = process.env.CONTACT_FROM ?? smtpUser;
 const rateBuckets = new Map();
 const publicStaticExtensions = new Set([".html", ".css", ".svg", ".png", ".jpg", ".jpeg", ".ico", ".webp", ".pdf", ".txt"]);
 const blockedStaticExtensions = new Set([".bak", ".config", ".env", ".log", ".map", ".md", ".mjs", ".old", ".orig", ".ps1", ".sh", ".tmp", ".toml", ".ts", ".tsx", ".yaml", ".yml"]);
@@ -53,6 +62,7 @@ function runtimeWarnings() {
   if (adminToken && adminToken.length < 32) warnings.push("ARISTOTLE_ADMIN_TOKEN is shorter than 32 characters.");
   if (!dataStoreReady()) warnings.push(`ARISTOTLE_WEBSITE_DATA_DIR is not writable: ${dataDir}`);
   if (trustProxy && !origin) warnings.push("TRUST_PROXY=1 is set without PUBLIC_ORIGIN; origin checks may not match production expectations.");
+  if ((smtpHost || smtpUser || smtpPass || contactTo) && !emailConfigured()) warnings.push("SMTP email notification settings are incomplete.");
   return warnings;
 }
 
@@ -507,6 +517,118 @@ function persistInquiry(req, inquiry) {
   return record;
 }
 
+function emailConfigured() {
+  return Boolean(smtpHost && smtpPort && smtpUser && smtpPass && contactTo && contactFrom);
+}
+
+function smtpLine(socket) {
+  return new Promise((resolveLine, rejectLine) => {
+    let buffer = "";
+    const cleanup = () => {
+      socket.off("data", onData);
+      socket.off("error", onError);
+    };
+    const onError = (error) => {
+      cleanup();
+      rejectLine(error);
+    };
+    const onData = (chunk) => {
+      buffer += chunk.toString("utf8");
+      const lines = buffer.split(/\r?\n/).filter(Boolean);
+      if (lines.length === 0) return;
+      const last = lines.at(-1) ?? "";
+      if (/^\d{3} /.test(last)) {
+        cleanup();
+        resolveLine(lines.join("\n"));
+      }
+    };
+    socket.on("data", onData);
+    socket.on("error", onError);
+  });
+}
+
+async function smtpCommand(socket, command, expected = [250]) {
+  socket.write(`${command}\r\n`);
+  const response = await smtpLine(socket);
+  const code = Number(response.slice(0, 3));
+  if (!expected.includes(code)) throw new Error(`smtp_${command.split(" ")[0].toLowerCase()}_${code}`);
+  return response;
+}
+
+function smtpEscape(value) {
+  return String(value).replace(/^\./gm, "..");
+}
+
+function headerText(value) {
+  return String(value ?? "").replace(/[\r\n]+/g, " ").trim();
+}
+
+function plainMessage(record) {
+  return [
+    `New Aristotle Agentic inquiry`,
+    ``,
+    `Type: ${record.type}`,
+    `Name: ${record.name}`,
+    `Email: ${record.email}`,
+    `Organization: ${record.organization || "n/a"}`,
+    `Role: ${record.role || "n/a"}`,
+    `Topic: ${record.topic || "n/a"}`,
+    `Newsletter: ${record.newsletter ? "yes" : "no"}`,
+    `Source: ${record.sourcePath || "n/a"}`,
+    `Received: ${record.receivedAt}`,
+    `ID: ${record.id}`,
+    ``,
+    `Message:`,
+    record.message,
+    ``,
+    `Admin: ${configuredOrigin() || "https://www.aristotleagentic.com"}/admin/`
+  ].join("\n");
+}
+
+async function sendInquiryEmail(record) {
+  if (!emailConfigured()) return false;
+  const subject = `[Aristotle Agentic] ${record.type || "general"} inquiry from ${record.name || "website"}`;
+  const body = plainMessage(record);
+  const from = headerText(contactFrom);
+  const to = headerText(contactTo);
+  const replyTo = headerText(record.email);
+  const message = [
+    `From: Aristotle Agentic Website <${from}>`,
+    `To: ${to}`,
+    `Reply-To: ${replyTo}`,
+    `Subject: ${headerText(subject)}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: text/plain; charset=utf-8`,
+    `Content-Transfer-Encoding: 8bit`,
+    ``,
+    body
+  ].join("\r\n");
+
+  const socket = smtpSecure
+    ? tlsConnect({ host: smtpHost, port: smtpPort, servername: smtpHost, timeout: 12_000 })
+    : netConnect({ host: smtpHost, port: smtpPort, timeout: 12_000 });
+
+  try {
+    socket.setEncoding("utf8");
+    await smtpLine(socket);
+    await smtpCommand(socket, `EHLO aristotleagentic.com`);
+    await smtpCommand(socket, "AUTH LOGIN", [334]);
+    await smtpCommand(socket, Buffer.from(smtpUser).toString("base64"), [334]);
+    await smtpCommand(socket, Buffer.from(smtpPass).toString("base64"), [235]);
+    await smtpCommand(socket, `MAIL FROM:<${from}>`);
+    await smtpCommand(socket, `RCPT TO:<${to}>`, [250, 251]);
+    await smtpCommand(socket, "DATA", [354]);
+    socket.write(`${smtpEscape(message)}\r\n.\r\n`);
+    const response = await smtpLine(socket);
+    const code = Number(response.slice(0, 3));
+    if (code !== 250) throw new Error(`smtp_data_${code}`);
+    await smtpCommand(socket, "QUIT", [221, 250]).catch(() => {});
+    return true;
+  } finally {
+    socket.destroy();
+  }
+}
+
 function sameOriginPost(req) {
   const expected = requestOrigin(req);
   const origin = String(req.headers.origin ?? "");
@@ -564,6 +686,11 @@ async function handleInquiry(req, res) {
       return;
     }
     const record = persistInquiry(req, inquiry);
+    if (emailConfigured()) {
+      sendInquiryEmail(record).catch((error) => {
+        console.error("inquiry email notification failed:", error instanceof Error ? error.message : error);
+      });
+    }
     const acceptsHtml = String(req.headers.accept ?? "").includes("text/html");
     if (acceptsHtml) {
       send(res, 303, "", { location: `/thank-you/?type=${encodeURIComponent(inquiry.type)}` });

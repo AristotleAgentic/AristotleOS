@@ -78,7 +78,7 @@ Set these in production:
 ```sh
 HOST=0.0.0.0
 PORT=8080
-PUBLIC_ORIGIN=https://aristotleagentic.com
+PUBLIC_ORIGIN=https://www.aristotleagentic.com
 ARISTOTLE_WEBSITE_DATA_DIR=/var/lib/aristotle-website
 ARISTOTLE_ADMIN_TOKEN=<long-random-secret>
 UI_PROTOTYPE_URL=<deployed-ui-prototype-url-or-github-folder>
@@ -90,6 +90,20 @@ ADMIN_SESSION_HOURS=12
 Use `TRUST_PROXY=1` only behind a trusted reverse proxy that sets
 `X-Forwarded-For`. Keep `STORE_RAW_IP=0` unless a written operating policy
 requires raw IP retention.
+
+If inquiry notifications should go to the GoDaddy-hosted mailbox, also set:
+
+```sh
+SMTP_HOST=smtpout.secureserver.net
+SMTP_PORT=465
+SMTP_SECURE=1
+SMTP_USER=jdpepper@aristotleagentic.com
+SMTP_PASS=<mailbox-password-or-app-password>
+CONTACT_FROM=jdpepper@aristotleagentic.com
+CONTACT_TO=jdpepper@aristotleagentic.com
+```
+
+The backend still writes every inquiry to durable storage if SMTP is down.
 
 ## Commands
 
@@ -136,7 +150,7 @@ npm run smoke
 
 Point `aristotleagentic.com` and `www.aristotleagentic.com` at the production
 host. Put TLS in front of the Node app. If using Cloudflare, keep proxying on
-and set `PUBLIC_ORIGIN=https://aristotleagentic.com`.
+and set `PUBLIC_ORIGIN=https://www.aristotleagentic.com`.
 
 ## Inquiry Storage
 

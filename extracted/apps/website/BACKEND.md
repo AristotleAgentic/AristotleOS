@@ -21,13 +21,25 @@ Environment:
 ```sh
 HOST=0.0.0.0
 PORT=8080
-PUBLIC_ORIGIN=https://aristotleagentic.com
+PUBLIC_ORIGIN=https://www.aristotleagentic.com
 ARISTOTLE_WEBSITE_DATA_DIR=/var/lib/aristotle-website
 ARISTOTLE_ADMIN_TOKEN=replace-with-long-random-secret
 UI_PROTOTYPE_URL=https://github.com/AristotleAgentic/AristotleOS/tree/main/extracted/apps/console-ui
 TRUST_PROXY=1
 STORE_RAW_IP=0
 REQUIRE_PRODUCTION_CONFIG=1
+```
+
+Optional GoDaddy-hosted email notifications:
+
+```sh
+SMTP_HOST=smtpout.secureserver.net
+SMTP_PORT=465
+SMTP_SECURE=1
+SMTP_USER=jdpepper@aristotleagentic.com
+SMTP_PASS=<mailbox-password-or-app-password>
+CONTACT_FROM=jdpepper@aristotleagentic.com
+CONTACT_TO=jdpepper@aristotleagentic.com
 ```
 
 Use `TRUST_PROXY=1` only when the app is behind a trusted reverse proxy that
@@ -84,6 +96,9 @@ extracted/apps/website/.data/inquiries.jsonl
 ```
 
 Set `ARISTOTLE_WEBSITE_DATA_DIR` in production so submissions survive deploys.
+The durable inquiry log remains the system of record. SMTP email is a
+notification layer; if the mail server is unavailable, the inquiry is still
+stored for admin review and CSV export.
 
 Export requires `ARISTOTLE_ADMIN_TOKEN` and returns JSON:
 
@@ -137,7 +152,7 @@ PDF publications.
 Production preflight:
 
 ```sh
-PUBLIC_ORIGIN=https://aristotleagentic.com \
+PUBLIC_ORIGIN=https://www.aristotleagentic.com \
 ARISTOTLE_ADMIN_TOKEN=<long-random-secret> \
 ARISTOTLE_WEBSITE_DATA_DIR=/var/lib/aristotle-website \
 UI_PROTOTYPE_URL=<deployed-ui-prototype-url> \
@@ -188,7 +203,7 @@ Example:
 ```sh
 docker build -t aristotle-website .
 docker run --rm -p 8080:8080 \
-  -e PUBLIC_ORIGIN=https://aristotleagentic.com \
+  -e PUBLIC_ORIGIN=https://www.aristotleagentic.com \
   -e ARISTOTLE_ADMIN_TOKEN=<long-random-secret> \
   -e UI_PROTOTYPE_URL=<deployed-ui-prototype-url> \
   -e REQUIRE_PRODUCTION_CONFIG=1 \

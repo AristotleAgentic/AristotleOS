@@ -15,7 +15,7 @@ services:
       - key: PORT
         value: 8080
       - key: PUBLIC_ORIGIN
-        value: https://aristotleagentic.com
+        value: https://www.aristotleagentic.com
       - key: ARISTOTLE_WEBSITE_DATA_DIR
         value: /data
       - key: UI_PROTOTYPE_URL
