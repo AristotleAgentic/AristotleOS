@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: aristotle-agentic
+    runtime: node
+    rootDir: extracted/apps/website
+    buildCommand: npm run build
+    startCommand: npm start
+    healthCheckPath: /readyz
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 8080
+      - key: PUBLIC_ORIGIN
+        value: https://aristotleagentic.com
+      - key: ARISTOTLE_WEBSITE_DATA_DIR
+        value: /data
+      - key: UI_PROTOTYPE_URL
+        value: https://github.com/AristotleAgentic/AristotleOS/tree/main/extracted/apps/console-ui
+      - key: TRUST_PROXY
+        value: "1"
+      - key: STORE_RAW_IP
+        value: "0"
+      - key: ADMIN_SESSION_HOURS
+        value: "12"
+      - key: REQUIRE_PRODUCTION_CONFIG
+        value: "1"
+      - key: ARISTOTLE_ADMIN_TOKEN
+        sync: false
+    disk:
+      name: aristotle-agentic-data
+      mountPath: /data
+      sizeGB: 1
