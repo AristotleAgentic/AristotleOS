@@ -14,6 +14,7 @@ if (!rootElement) {
 }
 
 type View = "site" | "console" | "try" | "comparison";
+const AGENTIC_HOME = import.meta.env.VITE_ARISTOTLE_AGENTIC_HOME ?? "https://aristotleagentic.com/";
 
 const routeToView = (): View => {
   if (window.location.pathname === "/try" || window.location.hash === "#try" || window.location.hash === "#playground") return "try";
@@ -84,6 +85,24 @@ function Root() {
         <button style={tab("console")} onClick={() => select("console")} aria-pressed={view === "console"}>Command Center</button>
         <button style={tab("try")} onClick={() => select("try")} aria-pressed={view === "try"}>Try</button>
         <button style={tab("comparison")} onClick={() => select("comparison")} aria-pressed={view === "comparison"}>Ward Chain compare</button>
+        {view !== "console" ? (
+          <a
+            href={AGENTIC_HOME}
+            style={{
+              marginLeft: "auto",
+              color: "#e2e8f0",
+              border: "1px solid rgba(245, 177, 76, 0.42)",
+              borderRadius: 8,
+              padding: "6px 14px",
+              fontSize: 13,
+              fontWeight: 700,
+              textDecoration: "none",
+              whiteSpace: "nowrap"
+            }}
+          >
+            Aristotle Agentic home
+          </a>
+        ) : null}
       </nav>
       <div style={{ flex: 1, minHeight: 0, overflow: view === "console" ? "hidden" : "auto" }}>
         {view === "try" ? <PublicTrialApp initialView="playground" /> : null}

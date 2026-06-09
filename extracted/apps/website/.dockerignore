@@ -1,0 +1,8 @@
+.data
+node_modules
+npm-debug.log
+*.log
+.git
+.env
+.env.*
+!/.env.production.example

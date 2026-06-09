@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" role="img" aria-labelledby="title desc">
+  <title id="title">Governance Plane under intermittent connectivity</title>
+  <desc id="desc">A network diagram showing AI agents, a governance plane, edge nodes, satellite links, and deferred audit synchronization.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#0b1110"/>
+      <stop offset="1" stop-color="#17231f"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" x2="1">
+      <stop offset="0" stop-color="#e9c46a"/>
+      <stop offset="1" stop-color="#62d6a7"/>
+    </linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="960" height="560" rx="28" fill="url(#bg)"/>
+  <g opacity=".18" stroke="#f6f1e8" stroke-width="1">
+    <path d="M40 90h880M40 170h880M40 250h880M40 330h880M40 410h880M120 40v480M240 40v480M360 40v480M480 40v480M600 40v480M720 40v480M840 40v480"/>
+  </g>
+  <g fill="none" stroke="#8eb4ff" stroke-width="2" opacity=".55">
+    <path d="M230 380C330 270 455 240 600 195S800 140 880 92" stroke-dasharray="8 9"/>
+    <path d="M232 380C340 420 470 430 604 386S805 322 880 280" stroke-dasharray="8 9"/>
+  </g>
+  <g filter="url(#glow)">
+    <circle cx="880" cy="92" r="9" fill="#8eb4ff"/>
+    <circle cx="880" cy="280" r="9" fill="#8eb4ff"/>
+    <circle cx="604" cy="386" r="8" fill="#62d6a7"/>
+    <circle cx="600" cy="195" r="8" fill="#62d6a7"/>
+  </g>
+  <g>
+    <rect x="74" y="82" width="250" height="92" rx="14" fill="#151d1b" stroke="#e9c46a" stroke-opacity=".45"/>
+    <text x="98" y="120" fill="#e9c46a" font-family="Consolas,monospace" font-size="16" font-weight="700">AUTONOMOUS AGENTS</text>
+    <text x="98" y="148" fill="#c8c0b2" font-family="Arial" font-size="17">Propose operational actions</text>
+  </g>
+  <g>
+    <rect x="354" y="210" width="252" height="128" rx="18" fill="#101816" stroke="url(#gold)" stroke-width="2"/>
+    <text x="382" y="252" fill="#f6f1e8" font-family="Georgia" font-size="28" font-weight="700">Governance Plane</text>
+    <text x="382" y="284" fill="#c8c0b2" font-family="Arial" font-size="16">Delegated authority</text>
+    <text x="382" y="308" fill="#c8c0b2" font-family="Arial" font-size="16">Runtime constraints</text>
+  </g>
+  <g>
+    <rect x="74" y="344" width="250" height="94" rx="14" fill="#151d1b" stroke="#62d6a7" stroke-opacity=".45"/>
+    <text x="98" y="383" fill="#62d6a7" font-family="Consolas,monospace" font-size="16" font-weight="700">DEEP EDGE NODE</text>
+    <text x="98" y="412" fill="#c8c0b2" font-family="Arial" font-size="17">Acts during backhaul loss</text>
+  </g>
+  <g>
+    <rect x="668" y="140" width="218" height="86" rx="14" fill="#151d1b" stroke="#8eb4ff" stroke-opacity=".45"/>
+    <text x="692" y="176" fill="#8eb4ff" font-family="Consolas,monospace" font-size="15" font-weight="700">OPERATOR DOMAIN</text>
+    <text x="692" y="202" fill="#c8c0b2" font-family="Arial" font-size="16">Policy + intent source</text>
+  </g>
+  <g>
+    <rect x="668" y="318" width="218" height="94" rx="14" fill="#151d1b" stroke="#e9c46a" stroke-opacity=".45"/>
+    <text x="692" y="356" fill="#e9c46a" font-family="Consolas,monospace" font-size="15" font-weight="700">DEFERRED AUDIT</text>
+    <text x="692" y="384" fill="#c8c0b2" font-family="Arial" font-size="16">Attestation syncs after reconnection</text>
+  </g>
+  <path d="M324 128C385 150 417 182 444 211" stroke="#e9c46a" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M324 392C382 360 418 333 444 319" stroke="#62d6a7" stroke-width="3" fill="none"/>
+  <path d="M606 274C642 254 662 226 684 202" stroke="#8eb4ff" stroke-width="3" fill="none"/>
+  <path d="M606 308C650 335 674 350 690 362" stroke="#e9c46a" stroke-width="3" fill="none"/>
+  <text x="74" y="505" fill="#8f8678" font-family="Consolas,monospace" font-size="16">core thesis: accountability must survive intermittent connectivity</text>
+</svg>

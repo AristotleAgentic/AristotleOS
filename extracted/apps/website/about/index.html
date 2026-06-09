@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About Aristotle Agentic - Seeking human good in agentic AI</title>
+  <meta name="description" content="Aristotle Agentic is a nonprofit thought lab for training, research, civic AI, governance architecture, and public-interest development around agentic AI." />
+  <meta name="theme-color" content="#0b1110" />
+  <link rel="canonical" href="https://aristotleagentic.com/about/" />
+  <meta property="og:title" content="About Aristotle Agentic" />
+  <meta property="og:description" content="Mission, leadership, operating model, and institutional posture for Aristotle Agentic." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://aristotleagentic.com/about/" />
+  <style>
+    :root { --bg:#0b1110; --panel:#151d1b; --ink:#f6f1e8; --muted:#c8c0b2; --quiet:#8f8678; --gold:#e9c46a; --blue:#8eb4ff; --mint:#62d6a7; --rose:#d58aa7; --line:rgba(246,241,232,.14); }
+    * { box-sizing: border-box; }
+    body { margin:0; background:radial-gradient(circle at 78% 18%, rgba(233,196,106,.14), transparent 24%), radial-gradient(circle at 18% 64%, rgba(98,214,167,.12), transparent 22%), var(--bg); color:var(--ink); font-family:Georgia,"Times New Roman",serif; line-height:1.6; }
+    body::before { content:""; position:fixed; inset:0; pointer-events:none; background-image:linear-gradient(rgba(246,241,232,.05) 1px, transparent 1px),linear-gradient(90deg,rgba(246,241,232,.05) 1px,transparent 1px); background-size:72px 72px; mask-image:radial-gradient(circle at 50% 20%, black, transparent 74%); }
+    .wrap { width:min(1120px, calc(100% - 40px)); margin:0 auto; position:relative; z-index:1; }
+    header { position:sticky; top:0; z-index:2; background:rgba(11,17,16,.9); border-bottom:1px solid var(--line); backdrop-filter:blur(16px); }
+    nav { min-height:72px; display:flex; align-items:center; justify-content:space-between; gap:22px; }
+    a { color:inherit; }
+    .brand { display:inline-flex; align-items:center; gap:10px; text-decoration:none; font-weight:700; font-size:20px; }
+    .mark { display:grid; place-items:center; width:34px; aspect-ratio:1; border:1px solid rgba(233,196,106,.54); border-radius:6px; color:var(--gold); }
+    .links { display:flex; gap:18px; flex-wrap:wrap; justify-content:flex-end; color:var(--muted); font:13px Arial,sans-serif; }
+    .links a { text-decoration:none; }
+    .hero { padding:96px 0 58px; border-bottom:1px solid var(--line); }
+    .eyebrow { color:var(--gold); text-transform:uppercase; letter-spacing:.08em; font:700 12px ui-monospace,SFMono-Regular,Consolas,monospace; }
+    h1 { max-width:920px; margin:16px 0; font-size:clamp(44px,7vw,84px); line-height:.98; letter-spacing:0; }
+    .lede { max-width:780px; color:var(--muted); font-size:20px; margin:0; }
+    section { padding:62px 0; border-bottom:1px solid var(--line); }
+    .grid { display:grid; grid-template-columns:.72fr 1.28fr; gap:44px; align-items:start; }
+    h2 { margin:0; font-size:clamp(28px,4vw,46px); line-height:1.08; }
+    .panel { padding:28px; border:1px solid var(--line); border-radius:8px; background:rgba(21,29,27,.82); box-shadow:0 24px 80px rgba(0,0,0,.2); }
+    .panel + .panel { margin-top:18px; }
+    .visual-panel { padding:0; overflow:hidden; }
+    .visual-panel img { display:block; width:100%; height:100%; min-height:320px; object-fit:cover; }
+    .executive-wrap h2 { margin-bottom:24px; }
+    .bio-pair { display:grid; grid-template-columns:320px minmax(0,1fr); gap:18px; align-items:start; margin-bottom:18px; }
+    .portrait-card { padding:0; overflow:hidden; display:flex; flex-direction:column; }
+    .portrait-card img { display:block; width:100%; height:auto; filter:saturate(.9) contrast(1.03); }
+    .portrait-card figcaption { margin:0; padding:16px 18px; color:var(--muted); font:13px/1.45 Arial,sans-serif; border-top:1px solid var(--line); background:rgba(11,17,16,.5); }
+    h3 { margin:0 0 8px; font-size:22px; }
+    p { margin:0 0 16px; color:var(--muted); }
+    p:last-child { margin-bottom:0; }
+    ul { margin:0; padding-left:20px; color:var(--muted); }
+    li + li { margin-top:8px; }
+    strong { color:var(--ink); }
+    .status { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--line); margin-top:32px; }
+    .status div { background:rgba(21,29,27,.86); padding:20px; }
+    .status b { display:block; color:var(--gold); font:700 12px ui-monospace,SFMono-Regular,Consolas,monospace; margin-bottom:6px; }
+    .status span { color:var(--muted); font-size:14px; }
+    .arc { display:grid; gap:1px; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--line); }
+    .arc-row { display:grid; grid-template-columns:.24fr .32fr 1fr; gap:20px; align-items:start; background:rgba(21,29,27,.86); padding:20px; }
+    .arc-row b { color:var(--gold); font:700 12px ui-monospace,SFMono-Regular,Consolas,monospace; }
+    .arc-row strong { display:block; margin-bottom:4px; }
+    .arc-row span { color:var(--muted); }
+    footer { padding:42px 0 64px; color:var(--quiet); font:13px Arial,sans-serif; }
+    footer .row { display:flex; justify-content:space-between; gap:24px; flex-wrap:wrap; border-top:1px solid var(--line); padding-top:24px; }
+    footer a { color:var(--muted); }
+    @media (max-width:850px) { nav { align-items:flex-start; flex-direction:column; padding:16px 0; } .links { justify-content:flex-start; } .grid,.arc-row,.bio-pair { grid-template-columns:1fr; gap:20px; } .status { grid-template-columns:1fr; } .portrait-card { max-width:360px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <nav aria-label="Primary">
+        <a href="/" class="brand"><span class="mark">A</span> Aristotle Agentic</a>
+        <div class="links">
+          <a href="/research/">Research</a>
+          <a href="/governance-thesis/">Governance Thesis</a>
+          <a href="/training-hub/">Training Hub</a>
+          <a href="/montana-ai-x/">Montana AI-X</a>
+          <a href="/aristotleos/">AristotleOS</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap">
+        <div class="eyebrow">Institutional posture</div>
+        <h1>A thought lab for the human side of autonomous power.</h1>
+        <p class="lede">Aristotle Agentic exists to help institutions understand, govern, teach, and build around agentic AI before autonomous systems become invisible infrastructure.</p>
+        <div class="status">
+          <div><b>MISSION</b><span>Seeking human good in agentic AI.</span></div>
+          <div><b>MODEL</b><span>Nonprofit thought lab with applied initiatives.</span></div>
+          <div><b>HOME</b><span>Helena, Montana, with national relevance.</span></div>
+          <div><b>ROOTS</b><span>Autonomous systems, regulated markets, and public trust.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap grid">
+        <h2>What Aristotle Agentic is.</h2>
+        <div>
+          <div class="panel">
+            <h3>Training, research, development, community, civic AI.</h3>
+            <p>Aristotle Agentic is designed to connect public-interest thinking with practical implementation. It produces training, research briefs, governance patterns, civic AI programs, workforce pathways, and applied prototypes.</p>
+            <p>The institute is strongest where AI crosses from conversation into consequence: public agencies, local institutions, workforce systems, autonomous tools, civic drafting, regulated sectors, and software that acts on behalf of people.</p>
+          </div>
+          <div class="panel">
+            <h3>Brand architecture</h3>
+            <ul>
+              <li><strong>Aristotle Agentic:</strong> nonprofit thought lab, research, training, civic AI, governance architecture.</li>
+              <li><strong>AristotleOS:</strong> applied infrastructure initiative and business arm for governed autonomous action.</li>
+              <li><strong>Montana AI-X:</strong> Montana-facing civic AI and applied adoption initiative.</li>
+              <li><strong>Training Hub:</strong> workforce readiness, internships, apprenticeships, fellowships, and institutional training.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap executive-wrap">
+        <h2>Executive lead.</h2>
+        <div>
+          <div class="bio-pair">
+            <figure class="panel portrait-card">
+              <img src="/assets/pepper-petersen-cowboy-hat.jpg" alt="J. D. &quot;Pepper&quot; Petersen" />
+              <figcaption>J. D. "Pepper" Petersen, CEO of Aristotle Agentic, brings public-affairs, regulated-systems, and autonomous-systems experience into governed AI.</figcaption>
+            </figure>
+            <div class="panel">
+              <h3>J. D. "Pepper" Petersen</h3>
+              <p>Aristotle Agentic CEO Pepper Petersen is the author and architect of the G-Plane: a governance architecture for autonomous systems that turns human authority, institutional constraints, and evidence into operating infrastructure.</p>
+              <p>He has more than 20 years of experience in public affairs, regulated markets, energy policy, autonomous systems, and institutional trust. His work has involved major institutions and Fortune 100 companies, including Lockheed Martin on the F-22 program, Delta Air Lines, General Motors, and the National Mining Association.</p>
+              <p>Pepper has testified before Congress and regulatory bodies, managed congressional campaigns, raised nonprofit capital, organized regulated industries, and worked across defense, aerospace, transportation, mining, infrastructure, tribal affairs, union affairs, and federal policy.</p>
+              <p>He holds a bachelor's degree in political science, a master's degree in nonprofit management, and executive education in leadership and artificial intelligence from Harvard, MIT, and Oxford Said Business School. Aristotle Agentic draws on that background to study autonomous systems as problems of authority, legitimacy, risk, public trust, and institutional design.</p>
+            </div>
+          </div>
+          <div class="panel visual-panel">
+            <img src="/assets/founder-arc.svg" alt="Founder arc from autonomous field systems to governed autonomy" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap grid">
+        <h2>The arc behind the institute.</h2>
+        <div>
+          <div class="panel">
+            <h3>From autonomous machines to institutional authority.</h3>
+            <p>Aristotle Agentic grew from a question Pepper had been working through since the early UAV era: what happens when autonomous systems leave the lab and begin acting in the world, around fire, infrastructure, land, law, agencies, operators, insurance, and public trust?</p>
+            <p>Big Sky UAV placed that question in the field. Public-affairs and regulated-market work placed it inside institutions where technology, law, incentives, and trust all matter at once. Aristotle Agentic translates that experience into a governance thesis for AI systems that act.</p>
+          </div>
+          <div class="arc" aria-label="Pepper Petersen public operating arc">
+            <div class="arc-row"><b>2012</b><strong>Big Sky UAV</strong><span>Autonomous aerial systems, imaging, payload integration, field operations, and early drone use cases including wildfire recovery and UAS swarm research questions.</span></div>
+            <div class="arc-row"><b>2014-2016</b><strong>UAS public adoption</strong><span>Public materials show Pepper presenting on drones, data, and professional UAS adoption as the field moved from experimental hardware into institutions.</span></div>
+            <div class="arc-row"><b>2016</b><strong>20 Under 40 recognition</strong><span>Recognized by the Helena Independent Record for entrepreneurship and business leadership.</span></div>
+            <div class="arc-row"><b>1990s-2020s</b><strong>Regulated institutions</strong><span>Defense, aerospace, transportation, mining, energy, supply chains, campaigns, congressional work, regulatory testimony, tribal and union affairs, and public legitimacy in contested environments.</span></div>
+            <div class="arc-row"><b>2026</b><strong>Aristotle Agentic</strong><span>Governance architecture for agentic AI: authority envelopes, evidence ledgers, deterministic execution boundaries, and human authority over autonomous action.</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap grid">
+        <h2>Why this experience transfers.</h2>
+        <div>
+          <div class="panel visual-panel">
+            <img src="/assets/regulated-systems-map.svg" alt="Regulated systems credibility map" />
+          </div>
+          <div class="panel">
+            <h3>Complicated systems under public consequence.</h3>
+            <p>UAVs taught the operational side: sensors, autonomy, payloads, communications, distance, uncertainty, and field conditions. Regulated-market work taught the institutional side: statutes, agencies, public language, compliance, incentives, coalition-building, and trust.</p>
+            <p>Aristotle Agentic is the synthesis. Its claim is that autonomous AI will not be governed by values language alone. It needs operating architecture that institutions, workers, public agencies, and technical teams can understand before the system acts.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div class="row">
+        <div><strong>Aristotle Agentic</strong><br />Seeking human good in agentic AI.</div>
+        <div><a href="/privacy/">Privacy and trust</a> · <a href="/research/">Research</a> · <a href="/github">AristotleOS GitHub</a></div>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

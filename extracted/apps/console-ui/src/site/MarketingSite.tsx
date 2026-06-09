@@ -31,6 +31,7 @@ interface SiteProps {
 }
 
 const GITHUB = "https://github.com/AristotleAgentic/AristotleOS";
+const AGENTIC_HOME = import.meta.env.VITE_ARISTOTLE_AGENTIC_HOME ?? "https://aristotleagentic.com/";
 
 const PRIMITIVES = [
   { icon: ShieldHalf, name: "Ward", def: "Protected domain namespace — the sovereignty and legal-operational context authority lives in." },
@@ -80,6 +81,7 @@ function Nav({ onLaunchConsole, onTry }: SiteProps) {
           <a href={GITHUB} target="_blank" rel="noreferrer">Docs</a>
         </span>
         <span className="site-nav-cta">
+          <a className="s-btn ghost" href={AGENTIC_HOME}>Aristotle Agentic home</a>
           <button className="s-btn ghost" onClick={onTry}>Try the playground</button>
           <button className="s-btn primary" onClick={onLaunchConsole}>Launch Command Center <ArrowRight size={15} /></button>
         </span>
