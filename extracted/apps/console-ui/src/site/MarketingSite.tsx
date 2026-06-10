@@ -30,7 +30,7 @@ interface SiteProps {
   onTry: () => void;
 }
 
-const GITHUB = "https://github.com/AristotleAgentic/AristotleOS";
+const GITHUB = "https://github.com/AristotleAgentic/AristotleOS/tree/ward-warrant-execution-control/extracted";
 const AGENTIC_HOME = import.meta.env.VITE_ARISTOTLE_AGENTIC_HOME ?? "https://aristotleagentic.com/";
 
 const PRIMITIVES = [

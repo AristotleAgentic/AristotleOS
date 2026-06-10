@@ -79,7 +79,7 @@ function Landing({ onNavigate }: { onNavigate: (view: PublicView) => void }) {
           <div className="hero-actions">
             <button onClick={() => onNavigate("playground")}>Try AristotleOS</button>
             <a href="#quickstart">Quickstart</a>
-            <a href="https://github.com/" target="_blank" rel="noreferrer">View GitHub</a>
+            <a href="https://github.com/AristotleAgentic/AristotleOS/tree/ward-warrant-execution-control/extracted" target="_blank" rel="noreferrer">View GitHub</a>
           </div>
         </div>
         <TerminalPreview />

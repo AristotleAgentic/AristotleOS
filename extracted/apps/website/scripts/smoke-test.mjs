@@ -173,7 +173,7 @@ await check("privacy route", async () => {
 await check("github redirect", async () => {
   const res = await get("/github");
   assert(res.status === 302, `expected 302, got ${res.status}`);
-  assert(res.headers.get("location") === "https://github.com/AristotleAgentic/AristotleOS", "bad GitHub redirect target");
+  assert(res.headers.get("location") === "https://github.com/AristotleAgentic/AristotleOS/tree/ward-warrant-execution-control/extracted", "bad GitHub redirect target");
 });
 
 await check("ui prototype route", async () => {

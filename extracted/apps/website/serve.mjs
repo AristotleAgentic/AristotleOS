@@ -927,8 +927,8 @@ const server = createServer(async (req, res) => {
 
   if (method === "GET" && path === "/github") {
     send(res, 302, "", {
-      location: "https://github.com/AristotleAgentic/AristotleOS",
-      "cache-control": "public, max-age=3600"
+      location: "https://github.com/AristotleAgentic/AristotleOS/tree/ward-warrant-execution-control/extracted",
+      "cache-control": "no-store"
     });
     return;
   }
