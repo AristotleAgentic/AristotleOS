@@ -113,9 +113,9 @@ safe for public review and falls back to sample data when no live gateway is
 available.
 
 In the website build, the prototype's Command Center button links out to the
-protected Render console at `https://aristotle-console.onrender.com/` instead
-of opening the sample in-page console. The public route remains a reviewable
-prototype; the protected console is the production operator surface.
+public Render inspection console at `https://aristotle-console.onrender.com/public`
+instead of opening the sample in-page console. The protected console root remains
+the production operator surface.
 
 For an operator-facing console, deploy the `aristotle-console` Render service
 from `render.yaml`. The Blueprint also provisions the private gateway/runtime

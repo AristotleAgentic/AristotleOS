@@ -31,7 +31,7 @@ const result = spawnSync(
     env: {
       ...process.env,
       VITE_ARISTOTLE_AGENTIC_HOME: "/aristotleos/",
-      VITE_PRODUCTION_CONSOLE_URL: "https://aristotle-console.onrender.com/"
+      VITE_PRODUCTION_CONSOLE_URL: "https://aristotle-console.onrender.com/public"
     },
     stdio: "inherit"
   }
