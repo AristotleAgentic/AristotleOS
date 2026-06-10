@@ -1,4 +1,5 @@
 import type { ApprovalItem, CommitDecision, ConflictInboxItem, LedgerRecord, ShadowProfileSummary, SystemSnapshot, WardMarshalFinding } from "./types.js";
+import { isPublicDemoMode } from "./publicMode.js";
 
 /**
  * Live client for the AristotleOS execution-control boundary.
@@ -12,6 +13,7 @@ import type { ApprovalItem, CommitDecision, ConflictInboxItem, LedgerRecord, Sha
  */
 
 async function getJson<T>(path: string, signal?: AbortSignal): Promise<T | null> {
+  if (isPublicDemoMode()) return null;
   try {
     const res = await fetch(path, { signal, headers: { accept: "application/json" } });
     if (!res.ok) return null;
@@ -30,6 +32,12 @@ export interface PostResult<T> {
 }
 
 async function postJson<T>(path: string, body: unknown): Promise<PostResult<T>> {
+  if (isPublicDemoMode()) return {
+    reachable: true,
+    ok: false,
+    status: 403,
+    data: { error: "public_demo_read_only" } as T
+  };
   try {
     const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify(body) });
     const data = (await res.json().catch(() => null)) as T | null;

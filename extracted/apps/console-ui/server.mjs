@@ -20,6 +20,7 @@ const operatorRole = process.env.CONSOLE_OPERATOR_ROLE?.trim() ?? "operator";
 const root = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(root, "dist");
 const indexPath = path.join(distDir, "index.html");
+const publicAppPattern = /^\/(?:public|try)(?:\/.*)?$/;
 
 const proxyPaths = ["/operator", "/v1", "/health", "/ready", "/metrics"];
 let operatorSessionToken = "";
@@ -79,6 +80,14 @@ const loginPage = (error = "") => html(`<main>
     <button type="submit">Open console</button>
   </form>
 </main>`);
+
+const sendConsoleIndex = (res) => {
+  if (!existsSync(indexPath)) {
+    res.status(503).json({ error: "console_assets_missing", distDir });
+    return;
+  }
+  createReadStream(indexPath).pipe(res.type("html"));
+};
 
 const readFormBody = async (req) => {
   const chunks = [];
@@ -176,7 +185,7 @@ app.get("/console-health", (_req, res) => {
     gatewayBaseUrl,
     accessTokenConfigured: Boolean(consoleAccessToken),
     operatorProxyConfigured: Boolean(operatorApiKey),
-    publicRoutes: ["/public", "/try", "/"]
+    publicRoutes: ["/public", "/try"]
   });
 });
 
@@ -199,6 +208,14 @@ app.post("/console-login", async (req, res) => {
   res.end();
 });
 
+app.use("/assets", express.static(path.join(distDir, "assets"), {
+  etag: true,
+  fallthrough: true,
+  maxAge: "1h"
+}));
+
+app.get(publicAppPattern, (_req, res) => sendConsoleIndex(res));
+
 app.use(requireConsoleAccess);
 
 for (const route of proxyPaths) {
@@ -212,11 +229,7 @@ app.use(express.static(distDir, {
 }));
 
 app.get("*", (_req, res) => {
-  if (!existsSync(indexPath)) {
-    res.status(503).json({ error: "console_assets_missing", distDir });
-    return;
-  }
-  createReadStream(indexPath).pipe(res.type("html"));
+  sendConsoleIndex(res);
 });
 
 app.listen(port, "0.0.0.0", () => {

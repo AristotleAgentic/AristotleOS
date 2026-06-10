@@ -13,7 +13,7 @@ if (!rootElement) {
   throw new Error("console-ui root element not found");
 }
 
-type View = "site" | "console" | "try" | "comparison";
+type View = "site" | "console" | "public-console" | "try" | "comparison";
 const AGENTIC_HOME = import.meta.env.VITE_ARISTOTLE_AGENTIC_HOME ?? "https://aristotleagentic.com/";
 const PRODUCTION_CONSOLE_URL = (import.meta.env.VITE_PRODUCTION_CONSOLE_URL ?? "").trim();
 const BASE_PATH = new URL(import.meta.env.BASE_URL, window.location.origin).pathname.replace(/\/$/, "");
@@ -29,6 +29,7 @@ const toAppUrl = (path: string) => `${BASE_PATH}${path}`;
 
 const routeToView = (): View => {
   const path = appPath();
+  if (path === "/public" || path.startsWith("/public/")) return "public-console";
   if (path === "/try" || window.location.hash === "#try" || window.location.hash === "#playground") return "try";
   if (window.location.hash === "#ward-chain") return "comparison";
   if (PRODUCTION_CONSOLE_URL && (path === "/console" || window.location.hash === "#console")) {
@@ -54,6 +55,7 @@ function Root() {
 
   const select = (next: View) => {
     if (next === "try") window.history.pushState(null, "", toAppUrl("/try"));
+    else if (next === "public-console") window.history.pushState(null, "", toAppUrl("/public"));
     else if (next === "console") {
       if (PRODUCTION_CONSOLE_URL) {
         window.location.assign(PRODUCTION_CONSOLE_URL);
@@ -72,11 +74,20 @@ function Root() {
     return <MarketingSite onLaunchConsole={() => select("console")} onTry={() => select("try")} />;
   }
 
-  const tab = (id: View): React.CSSProperties => ({
-    background: view === id ? "rgba(56, 212, 232, 0.14)" : "transparent",
-    color: view === id ? "#38d4e8" : "#94a3b8",
+  const isConsoleView = view === "console" || view === "public-console";
+  const launchConsole = () => {
+    if (view === "public-console" || appPath() === "/public" || appPath().startsWith("/public/")) {
+      select("public-console");
+      return;
+    }
+    select("console");
+  };
+
+  const tab = (active: boolean): React.CSSProperties => ({
+    background: active ? "rgba(56, 212, 232, 0.14)" : "transparent",
+    color: active ? "#38d4e8" : "#94a3b8",
     border: "1px solid",
-    borderColor: view === id ? "rgba(56, 212, 232, 0.4)" : "rgba(148, 163, 184, 0.2)",
+    borderColor: active ? "rgba(56, 212, 232, 0.4)" : "rgba(148, 163, 184, 0.2)",
     borderRadius: 8,
     padding: "6px 14px",
     cursor: "pointer",
@@ -105,10 +116,10 @@ function Root() {
         >
           ← AristotleOS
         </button>
-        <button style={tab("console")} onClick={() => select("console")} aria-pressed={view === "console"}>Command Center</button>
-        <button style={tab("try")} onClick={() => select("try")} aria-pressed={view === "try"}>Try</button>
-        <button style={tab("comparison")} onClick={() => select("comparison")} aria-pressed={view === "comparison"}>Ward Chain compare</button>
-        {view !== "console" ? (
+        <button style={tab(isConsoleView)} onClick={launchConsole} aria-pressed={isConsoleView}>Command Center</button>
+        <button style={tab(view === "try")} onClick={() => select("try")} aria-pressed={view === "try"}>Try</button>
+        <button style={tab(view === "comparison")} onClick={() => select("comparison")} aria-pressed={view === "comparison"}>Ward Chain compare</button>
+        {!isConsoleView ? (
           <a
             href={AGENTIC_HOME}
             style={{
@@ -127,9 +138,9 @@ function Root() {
           </a>
         ) : null}
       </nav>
-      <div style={{ flex: 1, minHeight: 0, overflow: view === "console" ? "hidden" : "auto" }}>
+      <div style={{ flex: 1, minHeight: 0, overflow: isConsoleView ? "hidden" : "auto" }}>
         {view === "try" ? <PublicTrialApp initialView="playground" /> : null}
-        {view === "console" ? <CommandCenter /> : null}
+        {isConsoleView ? <CommandCenter publicMode={view === "public-console"} /> : null}
         {view === "comparison" ? <WardChainComparison /> : null}
       </div>
     </div>

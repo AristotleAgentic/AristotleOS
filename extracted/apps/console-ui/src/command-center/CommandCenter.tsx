@@ -197,7 +197,7 @@ function Toasts() {
   );
 }
 
-export default function CommandCenter() {
+export default function CommandCenter({ publicMode = false }: { publicMode?: boolean }) {
   const section = useCommandStore((s) => s.section);
   const setSection = useCommandStore((s) => s.setSection);
   const opsOpen = useCommandStore((s) => s.opsOpen);
@@ -206,13 +206,15 @@ export default function CommandCenter() {
   const selectMeshNode = useCommandStore((s) => s.selectMeshNode);
   const tick = useCommandStore((s) => s.tick);
   const hydrate = useCommandStore((s) => s.hydrate);
+  const setPublicDemo = useCommandStore((s) => s.setPublicDemo);
   const meta = SECTION_META[section];
 
   React.useEffect(() => {
-    void hydrate();
+    setPublicDemo(publicMode);
+    void hydrate(publicMode);
     const id = window.setInterval(() => tick(), 2000);
     return () => window.clearInterval(id);
-  }, [hydrate, tick]);
+  }, [hydrate, publicMode, setPublicDemo, tick]);
 
   return (
     <div className="ac-root">
@@ -229,10 +231,17 @@ export default function CommandCenter() {
             );
           })}
           <span className="ac-rail-spacer" />
-          <button className="ac-rail-btn is-danger" onClick={() => setOpsOpen(true)}>
-            <Siren size={19} />
-            Actions
-          </button>
+          {publicMode ? (
+            <span className="ac-rail-btn" title="Public Command Center runs read-only sample data and local simulations.">
+              <CheckCircle2 size={19} />
+              Read-only
+            </span>
+          ) : (
+            <button className="ac-rail-btn is-danger" onClick={() => setOpsOpen(true)}>
+              <Siren size={19} />
+              Actions
+            </button>
+          )}
         </nav>
 
         <main className="ac-main">
@@ -246,7 +255,7 @@ export default function CommandCenter() {
         </main>
       </div>
 
-      {opsOpen && <OperatorActionBar />}
+      {!publicMode && opsOpen && <OperatorActionBar />}
       {meshNode && (
         <Drawer title="Mesh Node" icon={<Network size={16} />} onClose={() => selectMeshNode(null)}>
           <MeshNodeDetail id={meshNode} />

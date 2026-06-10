@@ -1,4 +1,5 @@
 import { gatewayContract } from "../gateway-contract.js";
+import { isPublicDemoMode } from "./publicMode.js";
 import type { SystemSnapshot } from "./types.js";
 
 /**
@@ -7,6 +8,7 @@ import type { SystemSnapshot } from "./types.js";
  * store can fall back to mock data. This is the seam to wire real services.
  */
 async function getJson<T>(url: string, signal?: AbortSignal): Promise<T | null> {
+  if (isPublicDemoMode()) return null;
   try {
     const res = await fetch(url, { signal, headers: { accept: "application/json" } });
     if (!res.ok) return null;
@@ -50,6 +52,7 @@ export async function probeGateway(signal?: AbortSignal): Promise<Partial<System
 
 /** Post an operator command to the gateway (best-effort; returns ok flag). */
 export async function postOperator(path: string, body: unknown): Promise<boolean> {
+  if (isPublicDemoMode()) return false;
   try {
     const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     return res.ok;
@@ -66,6 +69,7 @@ export interface OperatorJsonResult<T = unknown> {
 
 /** Post an operator command and return the JSON envelope for live smoke checks. */
 export async function postOperatorJson<T = unknown>(path: string, body: unknown): Promise<OperatorJsonResult<T>> {
+  if (isPublicDemoMode()) return { ok: false, status: 403, data: { error: "public_demo_read_only" } as T };
   try {
     const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     const data = (await res.json().catch(() => null)) as T | null;

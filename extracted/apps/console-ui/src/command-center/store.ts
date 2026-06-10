@@ -112,6 +112,7 @@ interface CommandState {
   conflicts: ConflictInboxItem[] | null;
   approvals: ApprovalItem[] | null;
   swarmAirspaceSimulation: SwarmAirspaceSimulationResult | null;
+  publicDemo: boolean;
 
   section: SectionId;
   selectedRequestId: string | null;
@@ -135,7 +136,8 @@ interface CommandState {
 
   // lifecycle
   tick: () => void;
-  hydrate: () => Promise<void>;
+  hydrate: (publicDemo?: boolean) => Promise<void>;
+  setPublicDemo: (publicDemo: boolean) => void;
   toast: (message: string, tone?: Toast["tone"]) => void;
   dismissToast: (id: string) => void;
 
@@ -160,6 +162,12 @@ interface CommandState {
 
 let toastSeq = 0;
 
+function publicReadOnly(get: () => CommandState, action = "This operator action"): boolean {
+  if (!get().publicDemo) return false;
+  get().toast(`${action} is available in the protected Command Center. Public inspection stays read-only.`, "amber");
+  return true;
+}
+
 export const useCommandStore = create<CommandState>((set, get) => ({
   snapshot: deriveSnapshot(),
   requests: INITIAL_REQUESTS,
@@ -170,6 +178,7 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   conflicts: null,
   approvals: null,
   swarmAirspaceSimulation: null,
+  publicDemo: false,
 
   section: "overview",
   selectedRequestId: INITIAL_REQUESTS[0]?.id ?? null,
@@ -189,6 +198,10 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   selectVertical: (selectedVerticalId) => set({ selectedVerticalId }),
   setOpsOpen: (opsOpen) => set({ opsOpen }),
   setReplayT: (replayT) => set({ replayT }),
+  setPublicDemo: (publicDemo) => set((s) => ({
+    publicDemo,
+    snapshot: publicDemo ? { ...s.snapshot, source: "mock" } : s.snapshot
+  })),
 
   toast: (message, tone = "cyan") => {
     const id = `t-${toastSeq++}`;
@@ -232,7 +245,12 @@ export const useCommandStore = create<CommandState>((set, get) => ({
     set({ pipeline, requests, snapshot });
   },
 
-  hydrate: async () => {
+  hydrate: async (publicDemoOverride) => {
+    const isPublicDemo = publicDemoOverride ?? get().publicDemo;
+    if (isPublicDemo) {
+      set((s) => ({ snapshot: { ...s.snapshot, source: "mock" } }));
+      return;
+    }
     // Prefer the execution-control boundary (real metrics + signed ledger); fall back
     // to the operator gateway; otherwise stay on sample data and say so.
     const live = await fetchLiveState();
@@ -261,17 +279,20 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   },
 
   setMode: (mode) => {
+    if (publicReadOnly(get, "Changing operational mode")) return;
     set((s) => ({ snapshot: { ...s.snapshot, mode, posture: s.snapshot.killSwitchArmed ? "red" : MODE_POSTURE[mode] } }));
     get().toast(`Operational mode → ${mode.toUpperCase()}`, mode === "emergency" ? "red" : mode === "normal" ? "green" : "amber");
   },
 
   pauseWard: (wardId) => {
+    if (publicReadOnly(get, "Pausing a ward")) return;
     const ward = WARDS.find((w) => w.id === wardId);
     void postOperator(gatewayContract.killSwitch, { scope: wardId, action: "pause" });
     get().toast(`Ward paused — ${ward?.name ?? wardId}. Commit gate now fail-closed.`, "amber");
   },
 
   revokeEnvelope: (envelopeId) => {
+    if (publicReadOnly(get, "Revoking authority envelopes")) return;
     const env = ENVELOPES.find((e) => e.id === envelopeId);
     void postOperator(gatewayContract.govern, { revoke: envelopeId });
     set((s) => ({ ledger: prependLedger(s.ledger, "envelope.revoked", env?.wardId ?? "—") }));
@@ -279,12 +300,14 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   },
 
   forceReconcile: () => {
+    if (publicReadOnly(get, "Forcing reconciliation")) return;
     void postOperator(gatewayContract.govern, { reconcile: true });
     set((s) => ({ ledger: prependLedger(s.ledger, "reconcile.complete", "—") }));
     get().toast("Reconciliation forced across the governance mesh.", "cyan");
   },
 
   triggerKillSwitch: () => {
+    if (publicReadOnly(get, "Arming the kill switch")) return;
     void postOperator(gatewayContract.killSwitch, { action: "arm", scope: "global" });
     set((s) => ({
       snapshot: { ...s.snapshot, killSwitchArmed: true, posture: "red", mode: "emergency" },
@@ -294,16 +317,19 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   },
 
   exportEvidence: () => {
+    if (publicReadOnly(get, "Exporting evidence bundles")) return;
     void postOperator(gatewayContract.governanceChainExport, { format: "bundle" });
     get().toast(`Evidence bundle exported · bundle_hash ${shortHash("bundle-" + Date.now(), 16)}`, "green");
   },
 
   escalate: () => {
+    if (publicReadOnly(get, "Escalating to human authority")) return;
     void postOperator(gatewayContract.govern, { escalate: true });
     get().toast("Escalated to human authority. Awaiting sovereign decision.", "amber");
   },
 
   runAgentSmokeMission: async () => {
+    if (publicReadOnly(get, "Live Agent OS smoke missions")) return;
     const suffix = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
     const agentId = `agent-console-smoke-${suffix}`;
     const agentResult = await postOperatorJson<{ agent?: { id?: string }; committed?: unknown }>(gatewayContract.registerAgent, {
@@ -402,6 +428,62 @@ export const useCommandStore = create<CommandState>((set, get) => ({
       { id: "west-disconnected", label: "West TFR edge cell", state: "disconnected", units: 6, averageLinkQuality: 0.17, degradedNodes: ["relay.primary", "relay.secondary"], target: "uav-cohort-west", alternateAuthorityAnchor: "mesh-relay-authority-west" }
     ];
 
+    if (get().publicDemo) {
+      const results = cohorts.map((cohort) => {
+        const projectedOutcome: SwarmProjectionOutcome =
+          cohort.state === "connected" ? "continue" : cohort.state === "disconnected" ? "halt" : "reroute";
+        return {
+          id: cohort.id,
+          label: cohort.label,
+          state: cohort.state,
+          units: cohort.units,
+          averageLinkQuality: cohort.averageLinkQuality,
+          degradedNodes: cohort.degradedNodes,
+          projectedOutcome,
+          routeMode: projectedOutcome === "continue" ? "primary-authority" : projectedOutcome === "reroute" ? "mesh-continuity" : "fail-closed-hold",
+          selectedPath: projectedOutcome === "continue"
+            ? ["swarm-authority-root", "relay.primary", cohort.target]
+            : projectedOutcome === "reroute"
+              ? ["swarm-authority-root", cohort.alternateAuthorityAnchor ?? "swarm-authority-alt", cohort.target]
+              : ["swarm-authority-root", "hold-pattern", cohort.target],
+          recovery: projectedOutcome === "continue"
+            ? "Primary link remains inside warrant envelope; continue mission."
+            : projectedOutcome === "reroute"
+              ? "Continuity token remains valid through mesh authority; reroute and reduce autonomy band."
+              : "Connectivity below authority threshold; hold position and await renewed warrant authority.",
+          branchId: `public-${cohort.id}`,
+          hypotheticalId: `public-hyp-${cohort.id}`
+        };
+      });
+      const allowedUnits = results.filter((r) => r.projectedOutcome === "continue").reduce((n, r) => n + r.units, 0);
+      const reroutedUnits = results.filter((r) => r.projectedOutcome === "reroute").reduce((n, r) => n + r.units, 0);
+      const haltedUnits = results.filter((r) => r.projectedOutcome === "halt").reduce((n, r) => n + r.units, 0);
+      const averageLinkQuality = Math.round((results.reduce((n, r) => n + r.averageLinkQuality * r.units, 0) / 40) * 100) / 100;
+      set((s) => ({
+        swarmAirspaceSimulation: {
+          scenarioId,
+          generatedAt: new Date().toISOString(),
+          swarmSize: 40,
+          allowedUnits,
+          reroutedUnits,
+          haltedUnits,
+          averageLinkQuality,
+          airspace,
+          cohorts: results
+        },
+        snapshot: {
+          ...s.snapshot,
+          mode: "simulation",
+          posture: haltedUnits > 0 ? "amber" : "green",
+          activeAgents: Math.max(s.snapshot.activeAgents, 40),
+          openRequests: s.snapshot.openRequests + results.length,
+          source: "mock"
+        }
+      }));
+      get().toast(`Public swarm simulation generated locally - 40 UAVs: ${allowedUnits} continue, ${reroutedUnits} reroute, ${haltedUnits} hold.`, "green");
+      return;
+    }
+
     const results = [];
     for (const cohort of cohorts) {
       const response = await postOperatorJson<{
@@ -497,6 +579,7 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   // local preview when no gateway is connected. Honest about which path ran — the
   // backend is execution-control-runtime's POST /v1/execution-control/governance/compile.
   compileGovernance: async () => {
+    if (publicReadOnly(get, "Governance compilation")) return;
     // Real compile against the execution-control boundary's configured Ward + Authority.
     const result = await boundaryCompile({});
     if (!result.reachable) {
@@ -516,6 +599,7 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   // On success the console shows the engine's would-decisions; otherwise it keeps
   // the labeled sample profile.
   runShadowProfile: async () => {
+    if (publicReadOnly(get, "Live Shadow Mode profiling")) return;
     const profile = await runLiveShadowProfile(new Date().toISOString());
     if (!profile) {
       get().toast("Boundary offline — Shadow Mode is showing a sample profile. Run `aristotle execution-control serve` to profile live.", "amber");
@@ -529,6 +613,7 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   // engine (POST /v1/execution-control/marshal/census). On success the console
   // shows engine-computed findings; otherwise it keeps the labeled sample census.
   runMarshalCensus: async () => {
+    if (publicReadOnly(get, "Live Ward Marshal census")) return;
     const findings = await runLiveMarshalCensus(MARSHAL_CENSUS_SEED);
     if (!findings) {
       get().toast("Boundary offline — Ward Marshal is showing a sample census. Run `aristotle execution-control serve` to score live.", "amber");
@@ -544,6 +629,7 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   // — re-ingest never reopens an operator's resolution. Falls back to the sample
   // inbox when the boundary is offline.
   loadConflicts: async () => {
+    if (publicReadOnly(get, "Live Conflict Inbox reconciliation")) return;
     const conflicts = await runLiveConflicts(CONFLICT_EDGE_SEED);
     if (!conflicts) {
       get().toast("Boundary offline — Conflict Inbox is showing sample items. Run `aristotle execution-control serve` to reconcile live.", "amber");
@@ -558,6 +644,7 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   // then refresh the list from the boundary. The boundary records the operator and
   // reason; nothing is decided on the operator's behalf.
   resolveConflict: async (id, action, reason) => {
+    if (publicReadOnly(get, "Resolving conflicts")) return;
     const result = await boundaryResolveConflict(id, action, reason);
     if (!result.reachable) {
       get().toast("Boundary offline — resolution not recorded. Connect the boundary to resolve live.", "amber");
@@ -576,6 +663,7 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   // Dual-control approvals: list the live M-of-N queue (GET /approvals); fall back to
   // the labeled sample queue when the boundary is offline.
   loadApprovals: async () => {
+    if (publicReadOnly(get, "Live dual-control approvals")) return;
     const approvals = await runLiveApprovals();
     if (!approvals) {
       get().toast("Boundary offline — Approvals is showing a sample queue. Run `aristotle execution-control serve` to action live.", "amber");
@@ -587,6 +675,7 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   // Cast an attributed vote (POST /approvals/decide) then refresh the queue. The
   // boundary records the operator + enforces separation of duties.
   decideApproval: async (id, decision, reason) => {
+    if (publicReadOnly(get, "Casting approval votes")) return;
     const result = await boundaryDecideApproval(id, decision, reason);
     if (!result.reachable) {
       get().toast("Boundary offline — vote not recorded. Connect the boundary to approve live.", "amber");

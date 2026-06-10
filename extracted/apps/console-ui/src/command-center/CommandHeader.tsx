@@ -19,11 +19,19 @@ export function CommandHeader() {
   const snapshot = useCommandStore((s) => s.snapshot);
   const pipeline = useCommandStore((s) => s.pipeline);
   const setMode = useCommandStore((s) => s.setMode);
+  const publicDemo = useCommandStore((s) => s.publicDemo);
   const [modeOpen, setModeOpen] = React.useState(false);
 
   const postureClass = `p-${snapshot.posture}`;
   const PostureIcon = snapshot.posture === "green" ? ShieldCheck : ShieldAlert;
   const latency = pipeline.slice(-30).map((p) => p.latencyMs);
+  const sourceLabel = publicDemo ? "PUBLIC DEMO" : snapshot.source === "live" ? "LIVE" : "SAMPLE";
+  const sourceTitle = publicDemo
+    ? "Public read-only Command Center with sample data and local simulations"
+    : snapshot.source === "live"
+      ? "Connected to a live execution-control boundary"
+      : "No boundary connected - showing sample data";
+  const sourceLive = snapshot.source === "live" && !publicDemo;
 
   return (
     <header className="ac-header">
@@ -34,7 +42,7 @@ export function CommandHeader() {
           <div className="ac-brand-sub">Governance Command</div>
         </span>
         <span
-          title={snapshot.source === "live" ? "Connected to a live execution-control boundary" : "No boundary connected — showing sample data"}
+          title={sourceTitle}
           style={{
             marginLeft: 8,
             alignSelf: "center",
@@ -44,12 +52,12 @@ export function CommandHeader() {
             padding: "2px 6px",
             borderRadius: 5,
             border: "1px solid",
-            borderColor: snapshot.source === "live" ? "rgba(52,211,153,0.5)" : "rgba(148,163,184,0.35)",
-            color: snapshot.source === "live" ? "var(--ac-green)" : "var(--ac-text-3)",
-            background: snapshot.source === "live" ? "rgba(52,211,153,0.10)" : "transparent"
+            borderColor: publicDemo ? "rgba(56,212,232,0.55)" : sourceLive ? "rgba(52,211,153,0.5)" : "rgba(148,163,184,0.35)",
+            color: publicDemo ? "var(--ac-cyan)" : sourceLive ? "var(--ac-green)" : "var(--ac-text-3)",
+            background: publicDemo ? "rgba(56,212,232,0.10)" : sourceLive ? "rgba(52,211,153,0.10)" : "transparent"
           }}
         >
-          {snapshot.source === "live" ? "LIVE" : "SAMPLE"}
+          {sourceLabel}
         </span>
         {snapshot.degraded && (
           <span
@@ -74,12 +82,20 @@ export function CommandHeader() {
 
       <div className="ac-posture">
         <div style={{ position: "relative" }}>
-          <button className="ac-mode" onClick={() => setModeOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={modeOpen}>
+          <button
+            className="ac-mode"
+            onClick={() => { if (!publicDemo) setModeOpen((o) => !o); }}
+            aria-haspopup="listbox"
+            aria-expanded={modeOpen}
+            disabled={publicDemo}
+            title={publicDemo ? "Operational mode changes are available in the protected Command Center." : undefined}
+            style={publicDemo ? { cursor: "default", opacity: 0.9 } : undefined}
+          >
             <StatusDot tone={snapshot.posture} pulse={snapshot.posture !== "green"} />
             {snapshot.mode}
             <ChevronDown size={13} />
           </button>
-          {modeOpen && (
+          {!publicDemo && modeOpen && (
             <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 30, background: "rgba(8,12,22,0.98)", border: "1px solid var(--ac-line)", borderRadius: 8, padding: 6, minWidth: 170, boxShadow: "0 16px 40px rgba(0,0,0,0.5)" }} role="listbox">
               {MODES.map((m) => (
                 <button
