@@ -34,10 +34,24 @@ const uiPrototypeUrl = process.env.UI_PROTOTYPE_URL ?? "https://github.com/Arist
 const smtpHost = process.env.SMTP_HOST ?? "";
 const smtpPort = Number(process.env.SMTP_PORT ?? 465);
 const smtpSecure = process.env.SMTP_SECURE !== "0";
+const smtpStartTls = process.env.SMTP_STARTTLS === "1";
 const smtpUser = process.env.SMTP_USER ?? "";
 const smtpPass = process.env.SMTP_PASS ?? "";
 const contactTo = process.env.CONTACT_TO ?? "";
 const contactFrom = process.env.CONTACT_FROM ?? smtpUser;
+const canonicalHost = (() => {
+  try {
+    return publicOrigin ? new URL(publicOrigin).host.toLowerCase() : "";
+  } catch {
+    return "";
+  }
+})();
+const redirectHosts = new Set(
+  String(process.env.REDIRECT_HOSTS ?? "aristotleagentic.org,www.aristotleagentic.org,aristotleagentic.com")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean)
+);
 const rateBuckets = new Map();
 const publicStaticExtensions = new Set([".html", ".css", ".svg", ".png", ".jpg", ".jpeg", ".ico", ".webp", ".pdf", ".txt"]);
 const blockedStaticExtensions = new Set([".bak", ".config", ".env", ".log", ".map", ".md", ".mjs", ".old", ".orig", ".ps1", ".sh", ".tmp", ".toml", ".ts", ".tsx", ".yaml", ".yml"]);
@@ -136,6 +150,23 @@ function requestOrigin(req) {
   const hostHeader = String(req.headers.host ?? "localhost").trim().toLowerCase();
   const safeHost = /^[a-z0-9.-]+(?::\d{1,5})?$/.test(hostHeader) ? hostHeader : "localhost";
   return `http://${safeHost}`;
+}
+
+function requestHost(req) {
+  const forwardedHost = trustProxy ? String(req.headers["x-forwarded-host"] ?? "").split(",")[0].trim() : "";
+  return String(forwardedHost || req.headers.host || "").toLowerCase();
+}
+
+function maybeRedirectAlias(req, res, url) {
+  if (!canonicalHost) return false;
+  const hostHeader = requestHost(req);
+  if (!hostHeader || hostHeader === canonicalHost || !redirectHosts.has(hostHeader)) return false;
+  const target = new URL(`${url.pathname}${url.search}`, configuredOrigin());
+  send(res, 308, "", {
+    location: target.href,
+    "cache-control": "public, max-age=3600"
+  });
+  return true;
 }
 
 function send(res, status, body, headers = {}) {
@@ -604,7 +635,7 @@ async function sendInquiryEmail(record) {
     body
   ].join("\r\n");
 
-  const socket = smtpSecure
+  let socket = smtpSecure
     ? tlsConnect({ host: smtpHost, port: smtpPort, servername: smtpHost, timeout: 12_000 })
     : netConnect({ host: smtpHost, port: smtpPort, timeout: 12_000 });
 
@@ -612,6 +643,13 @@ async function sendInquiryEmail(record) {
     socket.setEncoding("utf8");
     await smtpLine(socket);
     await smtpCommand(socket, `EHLO aristotleagentic.com`);
+    if (!smtpSecure && smtpStartTls) {
+      await smtpCommand(socket, "STARTTLS", [220]);
+      const upgraded = tlsConnect({ socket, servername: smtpHost, timeout: 12_000 });
+      socket = upgraded;
+      socket.setEncoding("utf8");
+      await smtpCommand(socket, `EHLO aristotleagentic.com`);
+    }
     await smtpCommand(socket, "AUTH LOGIN", [334]);
     await smtpCommand(socket, Buffer.from(smtpUser).toString("base64"), [334]);
     await smtpCommand(socket, Buffer.from(smtpPass).toString("base64"), [235]);
@@ -826,6 +864,10 @@ const server = createServer(async (req, res) => {
   const method = req.method ?? "GET";
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
   const path = url.pathname;
+
+  if ((method === "GET" || method === "HEAD") && maybeRedirectAlias(req, res, url)) {
+    return;
+  }
 
   if (method === "GET" && path === "/healthz") {
     json(res, 200, {

@@ -91,12 +91,14 @@ Use `TRUST_PROXY=1` only behind a trusted reverse proxy that sets
 `X-Forwarded-For`. Keep `STORE_RAW_IP=0` unless a written operating policy
 requires raw IP retention.
 
-If inquiry notifications should go to the GoDaddy-hosted mailbox, also set:
+If inquiry notifications should go to the GoDaddy-hosted Microsoft 365 mailbox,
+also set:
 
 ```sh
-SMTP_HOST=smtpout.secureserver.net
-SMTP_PORT=465
-SMTP_SECURE=1
+SMTP_HOST=smtp.office365.com
+SMTP_PORT=587
+SMTP_SECURE=0
+SMTP_STARTTLS=1
 SMTP_USER=jdpepper@aristotleagentic.com
 SMTP_PASS=<mailbox-password-or-app-password>
 CONTACT_FROM=jdpepper@aristotleagentic.com

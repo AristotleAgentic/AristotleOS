@@ -30,12 +30,13 @@ STORE_RAW_IP=0
 REQUIRE_PRODUCTION_CONFIG=1
 ```
 
-Optional GoDaddy-hosted email notifications:
+Optional GoDaddy / Microsoft 365-hosted email notifications:
 
 ```sh
-SMTP_HOST=smtpout.secureserver.net
-SMTP_PORT=465
-SMTP_SECURE=1
+SMTP_HOST=smtp.office365.com
+SMTP_PORT=587
+SMTP_SECURE=0
+SMTP_STARTTLS=1
 SMTP_USER=jdpepper@aristotleagentic.com
 SMTP_PASS=<mailbox-password-or-app-password>
 CONTACT_FROM=jdpepper@aristotleagentic.com
