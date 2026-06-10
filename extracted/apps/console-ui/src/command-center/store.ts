@@ -8,6 +8,9 @@ import type {
   OperationalMode,
   Posture,
   ShadowProfileSummary,
+  SwarmAirspaceSimulationResult,
+  SwarmConnectivityState,
+  SwarmProjectionOutcome,
   SystemSnapshot,
   WardMarshalFinding
 } from "./types.js";
@@ -108,6 +111,7 @@ interface CommandState {
   marshalFindings: WardMarshalFinding[] | null;
   conflicts: ConflictInboxItem[] | null;
   approvals: ApprovalItem[] | null;
+  swarmAirspaceSimulation: SwarmAirspaceSimulationResult | null;
 
   section: SectionId;
   selectedRequestId: string | null;
@@ -144,6 +148,7 @@ interface CommandState {
   exportEvidence: () => void;
   escalate: () => void;
   runAgentSmokeMission: () => Promise<void>;
+  runSwarmAirspaceSimulation: () => Promise<void>;
   compileGovernance: () => Promise<void>;
   runShadowProfile: () => Promise<void>;
   runMarshalCensus: () => Promise<void>;
@@ -164,6 +169,7 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   marshalFindings: null,
   conflicts: null,
   approvals: null,
+  swarmAirspaceSimulation: null,
 
   section: "overview",
   selectedRequestId: INITIAL_REQUESTS[0]?.id ?? null,
@@ -363,6 +369,128 @@ export const useCommandStore = create<CommandState>((set, get) => ({
       ledger: prependLedger(prependLedger(prependLedger(s.ledger, "agent-os.agent.registered", "console-smoke"), "agent-os.mission.created", "console-smoke"), "agent-os.mission.advanced", "console-smoke")
     }));
     get().toast(`Live Agent OS smoke passed — ${agentResult.data.agent.id}, ${missionId}, ${taskCount} tasks, ${receiptCount} receipts.`, "green");
+  },
+
+  runSwarmAirspaceSimulation: async () => {
+    const suffix = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
+    const scenarioId = `swarm-40-dynamic-airspace-${suffix}`;
+    const airspace = {
+      authorization: `LAANC-SIM-${suffix}`,
+      corridorRevision: `UTM-MT-DYNAMIC-${suffix}`,
+      constraints: [
+        "Part 107 altitude ceiling 120m",
+        "Remote ID broadcast required",
+        "Detect-and-avoid armed",
+        "moving medevac corridor eastbound",
+        "temporary fire-response TFR western cell",
+        "return-to-launch reserve above 25%"
+      ]
+    };
+    const cohorts: Array<{
+      id: string;
+      label: string;
+      state: SwarmConnectivityState;
+      units: number;
+      averageLinkQuality: number;
+      degradedNodes: string[];
+      target: string;
+      alternateAuthorityAnchor?: string;
+    }> = [
+      { id: "north-connected", label: "North survey cell", state: "connected", units: 14, averageLinkQuality: 0.94, degradedNodes: [], target: "uav-cohort-north" },
+      { id: "east-degraded", label: "East perimeter cell", state: "degraded", units: 10, averageLinkQuality: 0.62, degradedNodes: ["relay.primary"], target: "uav-cohort-east", alternateAuthorityAnchor: "swarm-authority-alt" },
+      { id: "south-mesh", label: "South mesh-relay cell", state: "mesh-relay", units: 10, averageLinkQuality: 0.48, degradedNodes: ["relay.primary"], target: "uav-cohort-south", alternateAuthorityAnchor: "mesh-relay-authority-south" },
+      { id: "west-disconnected", label: "West TFR edge cell", state: "disconnected", units: 6, averageLinkQuality: 0.17, degradedNodes: ["relay.primary", "relay.secondary"], target: "uav-cohort-west", alternateAuthorityAnchor: "mesh-relay-authority-west" }
+    ];
+
+    const results = [];
+    for (const cohort of cohorts) {
+      const response = await postOperatorJson<{
+        branch?: { id?: string };
+        projection?: {
+          projectedOutcome?: SwarmProjectionOutcome;
+          projectedRoute?: { mode?: string; selectedPath?: string[] };
+          projectedRecoveryPaths?: Array<{ label?: string; summary?: string }>;
+        };
+        hypothetical?: { id?: string };
+      }>(gatewayContract.counterfactual, {
+        scenarioId: `${scenarioId}-${cohort.id}`,
+        scope: "domain",
+        scopeRef: "ward-montana-range:dynamic-airspace",
+        degradedNodes: cohort.degradedNodes,
+        route: {
+          source: "swarm-authority-root",
+          target: cohort.target,
+          domain: "uav-swarm-dynamic-airspace",
+          phase: "dispatch",
+          authorityAnchor: "swarm-authority-root",
+          alternateAuthorityAnchor: cohort.alternateAuthorityAnchor,
+          selectedPath: ["swarm-authority-root", "relay.primary", cohort.target],
+          rejectedPath: [cohort.alternateAuthorityAnchor ?? "swarm-authority-alt", "relay.secondary", cohort.target],
+          continuity: cohort.state === "connected" ? "stable" : cohort.state === "disconnected" ? "disconnected" : "degraded"
+        },
+        swarm: {
+          size: 40,
+          cohort: cohort.id,
+          cohortUnits: cohort.units,
+          unitIds: Array.from({ length: cohort.units }, (_, index) => `uav-${cohort.id}-${String(index + 1).padStart(2, "0")}`),
+          connectivityState: cohort.state,
+          averageLinkQuality: cohort.averageLinkQuality,
+          fluidityTokenTtlSeconds: cohort.state === "disconnected" ? 42 : cohort.state === "mesh-relay" ? 138 : 258,
+          meshRevocationLastGossipSeconds: cohort.state === "disconnected" ? 74 : cohort.state === "mesh-relay" ? 31 : 12
+        },
+        airspace
+      });
+      const outcome = response.data?.projection?.projectedOutcome;
+      if (!response.ok || !outcome) {
+        get().toast(`Swarm simulation failed for ${cohort.label} (${operatorFailureDetail(response.status, response.data)}).`, "red");
+        return;
+      }
+      results.push({
+        id: cohort.id,
+        label: cohort.label,
+        state: cohort.state,
+        units: cohort.units,
+        averageLinkQuality: cohort.averageLinkQuality,
+        degradedNodes: cohort.degradedNodes,
+        projectedOutcome: outcome,
+        routeMode: response.data?.projection?.projectedRoute?.mode ?? outcome,
+        selectedPath: response.data?.projection?.projectedRoute?.selectedPath ?? [],
+        recovery: response.data?.projection?.projectedRecoveryPaths?.[0]?.summary ?? "No recovery action returned.",
+        branchId: response.data?.branch?.id,
+        hypotheticalId: response.data?.hypothetical?.id
+      });
+    }
+
+    const allowedUnits = results.filter((r) => r.projectedOutcome === "continue").reduce((n, r) => n + r.units, 0);
+    const reroutedUnits = results.filter((r) => r.projectedOutcome === "reroute").reduce((n, r) => n + r.units, 0);
+    const haltedUnits = results.filter((r) => r.projectedOutcome === "halt").reduce((n, r) => n + r.units, 0);
+    const averageLinkQuality = Math.round((results.reduce((n, r) => n + r.averageLinkQuality * r.units, 0) / 40) * 100) / 100;
+    const simulation: SwarmAirspaceSimulationResult = {
+      scenarioId,
+      generatedAt: new Date().toISOString(),
+      swarmSize: 40,
+      allowedUnits,
+      reroutedUnits,
+      haltedUnits,
+      averageLinkQuality,
+      airspace,
+      cohorts: results
+    };
+
+    set((s) => ({
+      swarmAirspaceSimulation: simulation,
+      snapshot: {
+        ...s.snapshot,
+        mode: "simulation",
+        posture: haltedUnits > 0 ? "amber" : "green",
+        activeAgents: Math.max(s.snapshot.activeAgents, 40),
+        openRequests: s.snapshot.openRequests + results.length,
+        ledgerHeight: s.snapshot.ledgerHeight + results.length,
+        source: "live"
+      },
+      ledger: results.reduce((ledger, result) => prependLedger(ledger, `swarm.counterfactual.${result.projectedOutcome}`, "ward-montana-range"), s.ledger)
+    }));
+    get().toast(`Live swarm simulation recorded - 40 UAVs: ${allowedUnits} continue, ${reroutedUnits} reroute, ${haltedUnits} hold.`, haltedUnits ? "amber" : "green");
   },
 
   // Attempts a real compile against the gateway; falls back to the deterministic

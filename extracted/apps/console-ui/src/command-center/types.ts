@@ -214,6 +214,40 @@ export interface SimulationOutcome {
   invariants: GovernanceInvariant[];
 }
 
+export type SwarmConnectivityState = "connected" | "degraded" | "mesh-relay" | "disconnected";
+export type SwarmProjectionOutcome = "continue" | "reroute" | "halt";
+
+export interface SwarmAirspaceCohortResult {
+  id: string;
+  label: string;
+  state: SwarmConnectivityState;
+  units: number;
+  averageLinkQuality: number;
+  degradedNodes: string[];
+  projectedOutcome: SwarmProjectionOutcome;
+  routeMode: string;
+  selectedPath: string[];
+  recovery: string;
+  branchId?: string;
+  hypotheticalId?: string;
+}
+
+export interface SwarmAirspaceSimulationResult {
+  scenarioId: string;
+  generatedAt: string;
+  swarmSize: number;
+  allowedUnits: number;
+  reroutedUnits: number;
+  haltedUnits: number;
+  averageLinkQuality: number;
+  airspace: {
+    authorization: string;
+    corridorRevision: string;
+    constraints: string[];
+  };
+  cohorts: SwarmAirspaceCohortResult[];
+}
+
 export type PromotionStageKey = "draft" | "shadow" | "staged" | "enforced" | "retired";
 export type PromotionStageState = "complete" | "active" | "blocked" | "pending";
 

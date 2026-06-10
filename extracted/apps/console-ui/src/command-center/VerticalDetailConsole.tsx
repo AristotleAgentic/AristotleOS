@@ -9,6 +9,9 @@ import {
   FileCheck2,
   GitCommitHorizontal,
   Landmark,
+  Play,
+  Radar,
+  RadioTower,
   ShieldAlert,
   ShieldCheck,
   Workflow
@@ -252,6 +255,87 @@ function FailClosedPanel({ v }: { v: VerticalConfig }) {
   );
 }
 
+function SwarmLiveSimulationPanel() {
+  const runSwarmAirspaceSimulation = useCommandStore((s) => s.runSwarmAirspaceSimulation);
+  const result = useCommandStore((s) => s.swarmAirspaceSimulation);
+  const [running, setRunning] = React.useState(false);
+  const run = async () => {
+    setRunning(true);
+    try {
+      await runSwarmAirspaceSimulation();
+    } finally {
+      setRunning(false);
+    }
+  };
+  const outcomeTone = (outcome: string): "green" | "amber" | "red" =>
+    outcome === "continue" ? "green" : outcome === "reroute" ? "amber" : "red";
+
+  return (
+    <Panel
+      title="Live 40-UAV Dynamic Airspace Simulation"
+      icon={<Radar size={15} />}
+      right={<Badge tone="green">gateway + GEL</Badge>}
+    >
+      <div className="ac-grid" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 0.55fr)", gap: 14, alignItems: "start" }}>
+        <div>
+          <p className="ac-muted" style={{ marginTop: 0 }}>
+            Runs the swarm vertical through the production counterfactual path with dynamic airspace constraints, mixed C2 quality, mesh relay, and a disconnected TFR-edge cell.
+          </p>
+          <button className="ac-btn is-primary" onClick={() => void run()} disabled={running}>
+            <Play size={14} /> {running ? "Running..." : "Run 40-UAV swarm"}
+          </button>
+          {result ? (
+            <>
+              <div className="ac-divider" />
+              <div className="ac-detail-grid" style={{ gridTemplateColumns: "148px 1fr" }}>
+                <dt>Scenario</dt><dd className="mono">{result.scenarioId}</dd>
+                <dt>Airspace auth</dt><dd className="mono">{result.airspace.authorization}</dd>
+                <dt>Corridor revision</dt><dd className="mono">{result.airspace.corridorRevision}</dd>
+                <dt>Constraints</dt>
+                <dd>
+                  <div className="ac-chip-row">
+                    {result.airspace.constraints.map((constraint) => <span key={constraint} className="ac-chip">{constraint}</span>)}
+                  </div>
+                </dd>
+              </div>
+            </>
+          ) : null}
+        </div>
+        <div className="ac-adoption-kpis">
+          <Metric label="Swarm size" value={result?.swarmSize ?? 40} tone="cyan" />
+          <Metric label="Continue" value={result?.allowedUnits ?? "-"} tone="green" />
+          <Metric label="Reroute" value={result?.reroutedUnits ?? "-"} tone="amber" />
+          <Metric label="Hold-safe" value={result?.haltedUnits ?? "-"} tone="red" />
+        </div>
+      </div>
+
+      {result ? (
+        <div className="ac-grid ac-cols-2" style={{ marginTop: 14 }}>
+          {result.cohorts.map((cohort) => (
+            <div key={cohort.id} className="ac-slo-card">
+              <div className="ac-slo-head">
+                <span>{cohort.label}</span>
+                <Badge tone={outcomeTone(cohort.projectedOutcome)}>{cohort.projectedOutcome}</Badge>
+              </div>
+              <div className="ac-slo-current" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <RadioTower size={15} /> {cohort.units} units · {cohort.state} · link {Math.round(cohort.averageLinkQuality * 100)}%
+              </div>
+              <div className="ac-code-block" style={{ marginTop: 10, minHeight: 34 }}>
+                <span className="ac-code-line">{cohort.selectedPath.length ? cohort.selectedPath.join(" -> ") : "no admissible relay path"}</span>
+              </div>
+              <p>{cohort.recovery}</p>
+              <div className="ac-chip-row">
+                {cohort.degradedNodes.length ? cohort.degradedNodes.map((node) => <span key={node} className="ac-chip">{node}</span>) : <span className="ac-chip">nominal relays</span>}
+                {cohort.branchId ? <span className="ac-chip mono">{cohort.branchId}</span> : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </Panel>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Top-level
 // ---------------------------------------------------------------------------
@@ -322,6 +406,8 @@ export function VerticalDetailConsole() {
           </div>
         </div>
       </Panel>
+
+      {v.id === "swarm" ? <SwarmLiveSimulationPanel /> : null}
 
       {v.workflow?.length ? (
         <>
