@@ -280,7 +280,7 @@ services:
     name: http-gateway
     runtime: node
     rootDir: extracted
-    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/trial-engine -w @aristotle/http-gateway
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/trial-engine && node --check adapters/http-gateway/src/index.js && node --check adapters/http-gateway/src/operator-auth.js && node --check adapters/http-gateway/src/trial-api.js
     startCommand: npm run start -w @aristotle/http-gateway
     plan: starter
     envVars:
