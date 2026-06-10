@@ -3,7 +3,7 @@ services:
     name: aristotle-agentic
     runtime: node
     rootDir: extracted
-    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/website
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/website
     startCommand: npm run start -w @aristotle/website
     healthCheckPath: /readyz
     plan: starter
@@ -37,7 +37,7 @@ services:
     name: meta-authority-registry
     runtime: node
     rootDir: extracted
-    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/meta-authority-registry
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/meta-authority-registry
     startCommand: npm run start -w @aristotle/meta-authority-registry
     plan: starter
     envVars:
@@ -56,7 +56,7 @@ services:
     name: policy-compiler
     runtime: node
     rootDir: extracted
-    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/execution-control-runtime -w @aristotle/policy-compiler
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/execution-control-runtime -w @aristotle/policy-compiler
     startCommand: npm run start -w @aristotle/policy-compiler
     plan: starter
     envVars:
@@ -71,7 +71,7 @@ services:
     name: evidence-ledger
     runtime: node
     rootDir: extracted
-    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/execution-control-runtime -w @aristotle/evidence-ledger
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/execution-control-runtime -w @aristotle/evidence-ledger
     startCommand: npm run start -w @aristotle/evidence-ledger
     plan: starter
     envVars:
@@ -96,7 +96,7 @@ services:
     name: authority-router
     runtime: node
     rootDir: extracted
-    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/authority-router
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/authority-router
     startCommand: npm run start -w @aristotle/authority-router
     plan: starter
     envVars:
@@ -111,7 +111,7 @@ services:
     name: witness-service
     runtime: node
     rootDir: extracted
-    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/witness-service
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/witness-service
     startCommand: npm run start -w @aristotle/witness-service
     plan: starter
     envVars:
@@ -130,7 +130,7 @@ services:
     name: execution-gate
     runtime: node
     rootDir: extracted
-    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/execution-control-runtime -w @aristotle/execution-gate
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/execution-control-runtime -w @aristotle/execution-gate
     startCommand: npm run start -w @aristotle/execution-gate
     plan: starter
     envVars:
@@ -145,7 +145,7 @@ services:
     name: governance-kernel
     runtime: node
     rootDir: extracted
-    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/governance-core -w @aristotle/execution-control-runtime -w @aristotle/governance-kernel
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/governance-core -w @aristotle/execution-control-runtime -w @aristotle/governance-kernel
     startCommand: npm run start -w @aristotle/governance-kernel
     plan: starter
     envVars:
@@ -170,7 +170,7 @@ services:
     name: simulation-engine
     runtime: node
     rootDir: extracted
-    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/chaos-harness -w @aristotle/simulation-engine
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/chaos-harness -w @aristotle/simulation-engine
     startCommand: npm run start -w @aristotle/simulation-engine
     plan: starter
     envVars:
@@ -185,7 +185,7 @@ services:
     name: agent-os
     runtime: node
     rootDir: extracted
-    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/execution-control-runtime -w @aristotle/agent-os
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/execution-control-runtime -w @aristotle/agent-os
     startCommand: npm run start -w @aristotle/agent-os
     plan: starter
     envVars:
@@ -280,7 +280,7 @@ services:
     name: http-gateway
     runtime: node
     rootDir: extracted
-    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/trial-engine -w @aristotle/http-gateway
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/trial-engine -w @aristotle/http-gateway
     startCommand: npm run start -w @aristotle/http-gateway
     plan: starter
     envVars:
@@ -397,7 +397,7 @@ services:
     name: aristotle-console
     runtime: node
     rootDir: extracted
-    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/console-ui
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/console-ui
     startCommand: npm run serve -w @aristotle/console-ui
     healthCheckPath: /console-health
     plan: starter
@@ -419,3 +419,4 @@ services:
         value: operator:render-console
       - key: CONSOLE_OPERATOR_ROLE
         value: admin
+
