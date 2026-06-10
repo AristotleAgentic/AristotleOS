@@ -7,7 +7,7 @@
   "scripts": {
     "preview": "node serve.mjs",
     "start": "node serve.mjs",
-    "build": "node --check serve.mjs && node --check scripts/smoke-test.mjs && node --check scripts/production-check.mjs && node --check scripts/site-audit.mjs && node scripts/site-audit.mjs",
+    "build": "node scripts/build-ui-prototype.mjs && node --check serve.mjs && node --check scripts/smoke-test.mjs && node --check scripts/production-check.mjs && node --check scripts/site-audit.mjs && node scripts/site-audit.mjs",
     "preflight": "node scripts/site-audit.mjs && node scripts/production-check.mjs",
     "smoke": "node scripts/smoke-test.mjs"
   }

@@ -81,7 +81,6 @@ PORT=8080
 PUBLIC_ORIGIN=https://www.aristotleagentic.com
 ARISTOTLE_WEBSITE_DATA_DIR=/var/lib/aristotle-website
 ARISTOTLE_ADMIN_TOKEN=<long-random-secret>
-UI_PROTOTYPE_URL=<deployed-ui-prototype-url-or-github-folder>
 TRUST_PROXY=1
 STORE_RAW_IP=0
 ADMIN_SESSION_HOURS=12
@@ -106,6 +105,50 @@ CONTACT_TO=jdpepper@aristotleagentic.com
 ```
 
 The backend still writes every inquiry to durable storage if SMTP is down.
+
+## AristotleOS Console
+
+The public website embeds a browser prototype at `/ui-prototype/`. That route is
+safe for public review and falls back to sample data when no live gateway is
+available.
+
+For an operator-facing console, deploy the `aristotle-console` Render service
+from `render.yaml`. The Blueprint also provisions the private gateway/runtime
+stack it connects to:
+
+- `http-gateway`
+- `agent-os`
+- `governance-kernel`
+- `policy-compiler`
+- `evidence-ledger`
+- `meta-authority-registry`
+- `authority-router`
+- `witness-service`
+- `execution-gate`
+- `simulation-engine`
+
+The runtime services are private services. Render wires their internal host and
+port values through `fromService` references, and the public console service
+receives the private gateway host through `CONSOLE_GATEWAY_BASE_URL`.
+
+Configure these secrets when applying the Blueprint:
+
+```sh
+ARISTOTLE_ADMIN_TOKEN=<long-random-website-admin-token>
+EVIDENCE_LEDGER_SIGNING_SECRET=<long-random-ledger-signing-secret>
+MESH_SECRET=<same-long-random-mesh-secret-on-mesh-services>
+OPERATOR_API_KEY=<long-random-gateway-operator-api-key>
+OPERATOR_SESSION_SECRET=<long-random-gateway-session-secret>
+CONSOLE_ACCESS_TOKEN=<long-random-console-access-token>
+CONSOLE_OPERATOR_API_KEY=<same-value-as-OPERATOR_API_KEY>
+CONSOLE_OPERATOR_ACTOR=operator:render-console
+CONSOLE_OPERATOR_ROLE=admin
+```
+
+`CONSOLE_ACCESS_TOKEN` protects the console URL. `CONSOLE_OPERATOR_API_KEY` is
+held server-side by the console proxy and is not compiled into browser
+JavaScript. The console shows `LIVE` only when it can reach the configured
+gateway/boundary; otherwise it clearly shows sample data.
 
 ## Commands
 
@@ -137,7 +180,7 @@ npm run smoke
 - `/aristotleos/` - AristotleOS product subsite
 - `/privacy/` - privacy, data handling, and sponsor independence
 - `/github` - redirect to the AristotleOS GitHub repository
-- `/ui-prototype/` - redirect to the configured AristotleOS UI prototype
+- `/ui-prototype/` - embedded AristotleOS interactive browser prototype
 - `/api/inquiries` - inquiry intake
 - `/api/inquiries/summary` - token/session protected summary
 - `/api/inquiries.csv` - token/session protected CSV export
@@ -178,7 +221,7 @@ storage. Back this directory up. The admin CSV export reads from the same log.
 - `/papers/files/*.pdf` files are present on the deployed host.
 - `/about/`, `/research/`, `/papers/gplane/`, `/support/`, `/governance-thesis/`, `/training-hub/`, `/montana-ai-x/`, and `/aristotleos/` render.
 - `/privacy/` renders and `/github` redirects to the AristotleOS GitHub repo.
-- `/ui-prototype/` redirects to the deployed UI prototype or repo folder.
+- `/ui-prototype/` renders the embedded AristotleOS browser prototype and loads its local assets.
 - Contact forms submit and redirect to `/thank-you/`.
 - `/admin/` requires login and CSV export works.
 - `/serve.mjs`, `/package.json`, `/scripts/smoke-test.mjs`, markdown docs,

@@ -52,10 +52,6 @@ if (dataDir) {
   if (resolvedData.startsWith(appDir)) warn("ARISTOTLE_WEBSITE_DATA_DIR is inside the app directory; use durable external storage for production.");
 }
 
-const uiPrototypeUrl = process.env.UI_PROTOTYPE_URL;
-if (!uiPrototypeUrl) warn("UI_PROTOTYPE_URL is not set; /ui-prototype/ will redirect to the source repo folder.");
-if (uiPrototypeUrl) checkUrl("UI_PROTOTYPE_URL", uiPrototypeUrl, { httpsRequired: !uiPrototypeUrl.includes("127.0.0.1") && !uiPrototypeUrl.includes("localhost") });
-
 if (process.env.TRUST_PROXY !== "1") warn("TRUST_PROXY is not enabled. Set TRUST_PROXY=1 when deployed behind a trusted reverse proxy.");
 if (process.env.STORE_RAW_IP === "1") warn("STORE_RAW_IP=1 stores raw IP addresses; confirm this is required by policy.");
 
@@ -70,6 +66,7 @@ const requiredFiles = [
   "aristotleos/index.html",
   "governance-thesis/index.html",
   "privacy/index.html",
+  "ui-prototype/index.html",
   "BACKEND.md",
   "DEPLOY.md",
   "ASSETS.md",

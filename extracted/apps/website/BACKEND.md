@@ -24,7 +24,6 @@ PORT=8080
 PUBLIC_ORIGIN=https://www.aristotleagentic.com
 ARISTOTLE_WEBSITE_DATA_DIR=/var/lib/aristotle-website
 ARISTOTLE_ADMIN_TOKEN=replace-with-long-random-secret
-UI_PROTOTYPE_URL=https://github.com/AristotleAgentic/AristotleOS/tree/main/extracted/apps/console-ui
 TRUST_PROXY=1
 STORE_RAW_IP=0
 REQUIRE_PRODUCTION_CONFIG=1
@@ -62,7 +61,7 @@ raw IP address. Set `STORE_RAW_IP=1` only if operational policy requires it.
 - `GET /privacy/` - privacy, data handling, and sponsor independence
 - `GET /papers/files/*.pdf` - public PDF research downloads linked from `/research/`
 - `GET /github` - redirect to the AristotleOS GitHub repository
-- `GET /ui-prototype/` - redirect to the configured AristotleOS UI prototype
+- `GET /ui-prototype/` - embedded AristotleOS interactive browser prototype
 - `GET /healthz` - health check
 - `GET /readyz` - readiness check including writable inquiry storage
 - `POST /api/inquiries` - inquiry intake
@@ -156,7 +155,6 @@ Production preflight:
 PUBLIC_ORIGIN=https://www.aristotleagentic.com \
 ARISTOTLE_ADMIN_TOKEN=<long-random-secret> \
 ARISTOTLE_WEBSITE_DATA_DIR=/var/lib/aristotle-website \
-UI_PROTOTYPE_URL=<deployed-ui-prototype-url> \
 TRUST_PROXY=1 \
 npm run preflight
 ```
@@ -206,7 +204,6 @@ docker build -t aristotle-website .
 docker run --rm -p 8080:8080 \
   -e PUBLIC_ORIGIN=https://www.aristotleagentic.com \
   -e ARISTOTLE_ADMIN_TOKEN=<long-random-secret> \
-  -e UI_PROTOTYPE_URL=<deployed-ui-prototype-url> \
   -e REQUIRE_PRODUCTION_CONFIG=1 \
   -v aristotle-website-data:/data \
   aristotle-website

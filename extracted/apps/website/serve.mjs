@@ -30,7 +30,6 @@ const storeRawIp = process.env.STORE_RAW_IP === "1";
 const publicOrigin = process.env.PUBLIC_ORIGIN ?? "";
 const adminToken = process.env.ARISTOTLE_ADMIN_TOKEN ?? "";
 const adminSessionHours = Number(process.env.ADMIN_SESSION_HOURS ?? 12);
-const uiPrototypeUrl = process.env.UI_PROTOTYPE_URL ?? "https://github.com/AristotleAgentic/AristotleOS/tree/main/extracted/apps/console-ui";
 const smtpHost = process.env.SMTP_HOST ?? "";
 const smtpPort = Number(process.env.SMTP_PORT ?? 465);
 const smtpSecure = process.env.SMTP_SECURE !== "0";
@@ -53,9 +52,9 @@ const redirectHosts = new Set(
     .filter(Boolean)
 );
 const rateBuckets = new Map();
-const publicStaticExtensions = new Set([".html", ".css", ".svg", ".png", ".jpg", ".jpeg", ".ico", ".webp", ".pdf", ".txt"]);
+const publicStaticExtensions = new Set([".html", ".css", ".js", ".svg", ".png", ".jpg", ".jpeg", ".ico", ".webp", ".pdf", ".txt"]);
 const blockedStaticExtensions = new Set([".bak", ".config", ".env", ".log", ".map", ".md", ".mjs", ".old", ".orig", ".ps1", ".sh", ".tmp", ".toml", ".ts", ".tsx", ".yaml", ".yml"]);
-const allowedStaticRoots = new Set(["", "about", "admin", "aristotleos", "assets", "governance-thesis", "montana-ai-x", "papers", "privacy", "research", "scripts", "support", "training-hub"]);
+const allowedStaticRoots = new Set(["", "about", "admin", "aristotleos", "assets", "governance-thesis", "montana-ai-x", "papers", "privacy", "research", "scripts", "support", "training-hub", "ui-prototype"]);
 
 function dataStoreReady() {
   try {
@@ -126,10 +125,27 @@ const baseSecurityHeaders = {
   "permissions-policy": "accelerometer=(), autoplay=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
 };
 
-function securityHeaders() {
+function securityHeaders(path = "") {
+  const csp = path.startsWith("/ui-prototype/")
+    ? [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "form-action 'self' mailto:",
+      "img-src 'self' data:",
+      "style-src 'self' 'unsafe-inline'",
+      "script-src 'self'",
+      "connect-src 'self'",
+      "frame-ancestors 'none'",
+      "upgrade-insecure-requests"
+    ].join("; ")
+    : baseSecurityHeaders["content-security-policy"];
+  const headers = {
+    ...baseSecurityHeaders,
+    "content-security-policy": csp
+  };
   return publicOrigin.startsWith("https://")
-    ? { ...baseSecurityHeaders, "strict-transport-security": "max-age=31536000; includeSubDomains; preload" }
-    : baseSecurityHeaders;
+    ? { ...headers, "strict-transport-security": "max-age=31536000; includeSubDomains; preload" }
+    : headers;
 }
 
 function configuredOrigin() {
@@ -187,19 +203,21 @@ function sendStatic(req, res, method, target) {
   };
 
   if (method === "HEAD") {
-    send(res, 200, "", baseHeaders);
+    res.writeHead(200, { ...securityHeaders(url.pathname), ...baseHeaders });
+    res.end("");
     return;
   }
 
   if (extension !== ".pdf") {
-    send(res, 200, readFileSync(target), baseHeaders);
+    res.writeHead(200, { ...securityHeaders(url.pathname), ...baseHeaders });
+    res.end(readFileSync(target));
     return;
   }
 
   const range = String(req.headers.range ?? "");
   const match = /^bytes=(\d*)-(\d*)$/.exec(range);
   if (!match) {
-    res.writeHead(200, { ...securityHeaders(), ...baseHeaders });
+    res.writeHead(200, { ...securityHeaders(url.pathname), ...baseHeaders });
     createReadStream(target).pipe(res);
     return;
   }
@@ -226,7 +244,7 @@ function sendStatic(req, res, method, target) {
   end = Math.min(end, stat.size - 1);
   const chunkLength = end - start + 1;
   res.writeHead(206, {
-    ...securityHeaders(),
+    ...securityHeaders(url.pathname),
     ...baseHeaders,
     "content-length": String(chunkLength),
     "content-range": `bytes ${start}-${end}/${stat.size}`
@@ -695,6 +713,7 @@ function publicStaticAllowed(rel) {
   if (!allowedStaticRoots.has(root)) return false;
   if (blockedStaticExtensions.has(extension)) return false;
   if (!publicStaticExtensions.has(extension)) return false;
+  if (extension === ".js" && root !== "ui-prototype") return false;
   if (root === "scripts") return false;
   if (root === "papers" && parts[1] !== "files") return extension === ".html";
   return true;
@@ -914,14 +933,6 @@ const server = createServer(async (req, res) => {
     return;
   }
 
-  if (method === "GET" && path === "/ui-prototype/") {
-    send(res, 302, "", {
-      location: uiPrototypeUrl,
-      "cache-control": uiPrototypeUrl.startsWith("http://127.0.0.1") || uiPrototypeUrl.startsWith("http://localhost") ? "no-store" : "public, max-age=3600"
-    });
-    return;
-  }
-
   if (method === "GET" && path === "/thank-you/") {
     send(res, 200, thankYouPage(url.searchParams.get("type") ?? "general"), { "content-type": "text/html; charset=utf-8" });
     return;
@@ -971,7 +982,9 @@ const server = createServer(async (req, res) => {
     return;
   }
 
-  const result = staticTarget(path);
+  const result = path.startsWith("/ui-prototype/") && !extname(path)
+    ? staticTarget("/ui-prototype/")
+    : staticTarget(path);
   if (result.error === 400) {
     send(res, 400, "bad request", { "content-type": "text/plain; charset=utf-8" });
     return;

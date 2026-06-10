@@ -15,11 +15,22 @@ if (!rootElement) {
 
 type View = "site" | "console" | "try" | "comparison";
 const AGENTIC_HOME = import.meta.env.VITE_ARISTOTLE_AGENTIC_HOME ?? "https://aristotleagentic.com/";
+const BASE_PATH = new URL(import.meta.env.BASE_URL, window.location.origin).pathname.replace(/\/$/, "");
+
+const appPath = () => {
+  const path = window.location.pathname;
+  if (BASE_PATH && path.startsWith(`${BASE_PATH}/`)) return path.slice(BASE_PATH.length);
+  if (BASE_PATH && path === BASE_PATH) return "/";
+  return path;
+};
+
+const toAppUrl = (path: string) => `${BASE_PATH}${path}`;
 
 const routeToView = (): View => {
-  if (window.location.pathname === "/try" || window.location.hash === "#try" || window.location.hash === "#playground") return "try";
+  const path = appPath();
+  if (path === "/try" || window.location.hash === "#try" || window.location.hash === "#playground") return "try";
   if (window.location.hash === "#ward-chain") return "comparison";
-  if (window.location.pathname === "/console" || window.location.hash === "#console") return "console";
+  if (path === "/console" || window.location.hash === "#console") return "console";
   return "site";
 };
 
@@ -37,10 +48,10 @@ function Root() {
   }, []);
 
   const select = (next: View) => {
-    if (next === "try") window.history.pushState(null, "", "/try");
-    else if (next === "console") { window.history.pushState(null, "", "/"); window.location.hash = "console"; }
-    else if (next === "comparison") { window.history.pushState(null, "", "/"); window.location.hash = "ward-chain"; }
-    else { window.history.pushState(null, "", "/"); window.location.hash = ""; }
+    if (next === "try") window.history.pushState(null, "", toAppUrl("/try"));
+    else if (next === "console") { window.history.pushState(null, "", toAppUrl("/")); window.location.hash = "console"; }
+    else if (next === "comparison") { window.history.pushState(null, "", toAppUrl("/")); window.location.hash = "ward-chain"; }
+    else { window.history.pushState(null, "", toAppUrl("/")); window.location.hash = ""; }
     setView(next);
   };
 

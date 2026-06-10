@@ -109,14 +109,14 @@ await check("gplane publication route", async () => {
   assert(res.status === 200, `expected 200, got ${res.status}`);
   const text = await res.text();
   assert(text.includes("The G-Plane Architecture"), "missing G-Plane publication title");
-  assert(text.includes("Download PDF"), "missing G-Plane download action");
+  assert(text.includes("Download Book PDF"), "missing G-Plane download action");
 });
 
 await check("support route", async () => {
   const res = await get("/support/");
   assert(res.status === 200, `expected 200, got ${res.status}`);
   const text = await res.text();
-  assert(text.includes("Help build the civic layer"), "missing support hero");
+  assert(text.includes("Advance the civic layer"), "missing support hero");
   assert(text.includes("Support does not buy conclusions"), "missing independence standard");
 });
 
@@ -176,10 +176,12 @@ await check("github redirect", async () => {
   assert(res.headers.get("location") === "https://github.com/AristotleAgentic/AristotleOS", "bad GitHub redirect target");
 });
 
-await check("ui prototype redirect", async () => {
+await check("ui prototype route", async () => {
   const res = await get("/ui-prototype/");
-  assert(res.status === 302, `expected 302, got ${res.status}`);
-  assert(res.headers.get("location")?.includes("apps/console-ui") || res.headers.get("location")?.includes("127.0.0.1:4173"), "bad UI prototype redirect target");
+  assert(res.status === 200, `expected 200, got ${res.status}`);
+  const html = await res.text();
+  assert(html.includes("Aristotle Governance OS Canvas"), "missing UI prototype app shell");
+  assert(html.includes("/ui-prototype/assets/"), "missing UI prototype asset references");
 });
 
 await check("security headers", async () => {
