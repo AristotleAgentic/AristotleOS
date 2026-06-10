@@ -70,6 +70,14 @@ const MODE_POSTURE: Record<OperationalMode, Posture> = {
   emergency: "red"
 };
 
+function operatorFailureDetail(status: number, data: unknown): string {
+  const record = data && typeof data === "object" ? data as Record<string, unknown> : null;
+  const error = typeof record?.error === "string" ? record.error : "";
+  const message = typeof record?.message === "string" ? record.message : "";
+  const prefix = status ? `HTTP ${status}` : "network";
+  return [prefix, error, message].filter(Boolean).join(" · ");
+}
+
 function deriveSnapshot(partial?: Partial<SystemSnapshot>): SystemSnapshot {
   const base: SystemSnapshot = {
     mode: "normal",
@@ -305,7 +313,7 @@ export const useCommandStore = create<CommandState>((set, get) => ({
       workspaceAffinity: "console-smoke"
     });
     if (!agentResult.ok || !agentResult.data?.agent?.id) {
-      get().toast(`Agent smoke failed at registration (HTTP ${agentResult.status || "network"}).`, "red");
+      get().toast(`Agent smoke failed at registration (${operatorFailureDetail(agentResult.status, agentResult.data)}).`, "red");
       return;
     }
 
@@ -328,7 +336,7 @@ export const useCommandStore = create<CommandState>((set, get) => ({
     });
     const missionId = missionResult.data?.mission?.id;
     if (!missionResult.ok || !missionId) {
-      get().toast(`Agent smoke failed at mission creation (HTTP ${missionResult.status || "network"}).`, "red");
+      get().toast(`Agent smoke failed at mission creation (${operatorFailureDetail(missionResult.status, missionResult.data)}).`, "red");
       return;
     }
 
@@ -338,7 +346,7 @@ export const useCommandStore = create<CommandState>((set, get) => ({
       committed?: unknown;
     }>(gatewayContract.advanceMission(missionId), { action: "execute", actor: agentResult.data.agent.id });
     if (!advanceResult.ok) {
-      get().toast(`Agent smoke failed at mission advance (HTTP ${advanceResult.status || "network"}).`, "red");
+      get().toast(`Agent smoke failed at mission advance (${operatorFailureDetail(advanceResult.status, advanceResult.data)}).`, "red");
       return;
     }
 
