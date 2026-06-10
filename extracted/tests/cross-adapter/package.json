@@ -2,7 +2,7 @@
   "name": "@aristotle/tests-cross-adapter",
   "version": "0.1.0",
   "description": "Cross-adapter invariant tests. Lives in its own workspace package so it can resolve every protocol adapter as a workspace dep, and so the substrate invariants it asserts are exercised against the same artifacts that ship.",
-  "license": "BUSL-1.1",
+  "license": "MPL-2.0",
   "private": true,
   "type": "module",
   "scripts": {

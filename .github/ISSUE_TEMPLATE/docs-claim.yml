@@ -1,0 +1,31 @@
+name: Documentation claim
+description: Flag a website, README, or docs claim that needs narrowing or support.
+title: "[docs] "
+labels: ["documentation", "claims-review", "needs-triage"]
+body:
+  - type: input
+    id: location
+    attributes:
+      label: Location
+      placeholder: File path, URL, heading, or line number.
+    validations:
+      required: true
+  - type: textarea
+    id: claim
+    attributes:
+      label: Claim at issue
+    validations:
+      required: true
+  - type: textarea
+    id: concern
+    attributes:
+      label: Concern
+      description: Why is the claim overbroad, unsupported, unclear, or risky?
+    validations:
+      required: true
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed correction
+    validations:
+      required: false

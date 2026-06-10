@@ -2,7 +2,7 @@
   "name": "@aristotle/gel-timestamp",
   "version": "0.1.0",
   "description": "External timestamp anchoring for AristotleOS GEL records. TimestampAuthority interface + LocalTimestampAuthority (filesystem-backed, Ed25519-signed (record_hash, ts) tuples) + verifyTimestampAnchor helper. Closes the shippable portion of LIMITATIONS.md § 3 'no external timestamp authority'; real Sigstore / RFC 3161 TSA clients can implement the same interface in separate packages.",
-  "license": "BUSL-1.1",
+  "license": "MPL-2.0",
   "private": false,
   "type": "module",
   "main": "src/index.ts",

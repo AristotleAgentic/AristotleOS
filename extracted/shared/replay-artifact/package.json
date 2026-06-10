@@ -2,7 +2,7 @@
   "name": "@aristotle/replay-artifact",
   "version": "0.1.0",
   "description": "Published replay artifact format for AristotleOS scenarios. Wraps a deterministic scenario report with provenance + reproducibility metadata so a third party can verify the result by re-running the scenario.",
-  "license": "BUSL-1.1",
+  "license": "MPL-2.0",
   "private": false,
   "type": "module",
   "main": "src/index.ts",

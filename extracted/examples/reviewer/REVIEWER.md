@@ -213,4 +213,4 @@ For deeper diagnostic info, the JSON report's structure mirrors the stage / chec
 
 ## License
 
-BUSL-1.1 for substrate material. See the repository root `LICENSE`, `LICENSING.md`, and workspace `NOTICE`.
+MPL-2.0 for AristotleOS source code unless a more specific package states otherwise. See the repository root `LICENSE`, `LICENSING.md`, and workspace `NOTICE`.

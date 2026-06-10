@@ -159,4 +159,4 @@ pnpm test:core
 
 ## License
 
-BUSL-1.1. See `LICENSE`, `NOTICE`, and the repository root `LICENSING.md`.
+MPL-2.0. See `LICENSE`, `NOTICE`, and the repository root `LICENSING.md`.

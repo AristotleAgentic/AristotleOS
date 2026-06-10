@@ -750,6 +750,6 @@ Enterprise stack:
 
 ## License
 
-AristotleOS substrate material is BUSL-1.1. Adapter packages under `packages/*` are Apache-2.0, and root `docs/` material is CC-BY-4.0. See the repository root `LICENSE`, workspace `LICENSE`, `NOTICE`, and `LICENSING.md` for the current license posture, Additional Use Grant, and demonstration-material disclaimer.
+AristotleOS source code is MPL-2.0 unless a more specific package states otherwise. Adapter packages under `packages/*` may be Apache-2.0 where marked, and root `docs/` material is CC-BY-4.0. See the repository root `LICENSE`, workspace `LICENSE`, `NOTICE`, and `LICENSING.md` for the current license posture, trademark note, and demonstration-material disclaimer.
 
 Demonstration material — including the Title vertical's MT/OR/CA/TX/FL `JURISDICTION_RULE_PRESETS`, the demonstration outbound submission transport, and sample APL policies under `examples/` — is explicitly labeled and is not validated for production use. Real deployments require counsel review and per-jurisdiction certification onboarding before promotion past `rule_validation_state: "demonstration"` or `production_validated: false`.

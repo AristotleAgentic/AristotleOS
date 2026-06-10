@@ -8,7 +8,7 @@ No Faramesh source code, documentation, examples, tests, schemas, comments, file
 
 AristotleOS is not affiliated with, certified by, sponsored by, or endorsed by Faramesh.
 
-All AristotleOS-original files remain governed by the AristotleOS repository license unless otherwise stated.
+All AristotleOS-original files remain governed by the AristotleOS repository license unless otherwise stated. The repository's use of MPL-2.0 is a project licensing choice and does not indicate that Faramesh source or expressive material was copied.
 
 No MPL-covered Faramesh files should be copied, modified, vendored, or imported.
 
@@ -33,7 +33,7 @@ Hard rules:
 11. Do not use Faramesh logos, branding, or marks.
 12. Do not imply affiliation, endorsement, certification, sponsorship, partnership, or official compatibility with Faramesh.
 13. Do not describe Faramesh as a partner unless there is a separate written agreement.
-14. Do not add MPL-2.0 license obligations unless an actual MPL-covered file was copied or modified, which should not happen.
+14. Do not copy, vendor, or modify any third-party MPL-covered source unless it has been separately reviewed and approved. AristotleOS's own MPL-2.0 licensing does not authorize copying Faramesh expressive material.
 15. If any proposed code, docs, test, schema, or example appears derived from Faramesh expressive material, stop and replace it with an original AristotleOS-native design.
 
 Allowed:

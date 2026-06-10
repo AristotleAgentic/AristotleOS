@@ -6,11 +6,11 @@ This memo answers the questions a technical due-diligence reviewer would ask in 
 
 ## 1. What is AristotleOS?
 
-AristotleOS is an experimental BUSL-1.1 TypeScript runtime substrate that interposes a signed, replayable authority chain between an autonomous agent and any consequential action the agent might take. The chain is `Meta Authority Envelope → Ward → Authority Envelope → Warrant → Commit Gate → Execution → GEL Record`. The substrate refuses unauthorized actions before they reach the wire and produces hash-chained, signed evidence of every decision.
+AristotleOS is an experimental MPL-2.0 TypeScript runtime substrate that interposes a signed, replayable authority chain between an autonomous agent and any consequential action the agent might take. The chain is `Meta Authority Envelope -> Ward -> Authority Envelope -> Warrant -> Commit Gate -> Execution -> GEL Record`. The substrate refuses unauthorized actions before they reach the wire and produces hash-chained, signed evidence of every decision.
 
 The repository implements the substrate end-to-end, ships seven protocol-level governance adapters (MAVLink, ROS2, OPC-UA, DNP3, Modbus, BACnet, Kubernetes admission), demonstrates partition-tolerant operation across 40 simulated assets, and produces a content-addressed replay artifact that a third party can verify by re-running the scenario locally.
 
-License: split licensing; substrate material is BUSL-1.1, adapter packages are Apache-2.0, root docs are CC-BY-4.0, and third-party dependencies remain governed by their own licenses. Repository organization: pnpm monorepo, ~47 packages, ~820 test cases.
+License: open-core licensing; AristotleOS source code is MPL-2.0 unless a more specific package states otherwise, some adapter packages are Apache-2.0 where marked, root docs are CC-BY-4.0, and third-party dependencies remain governed by their own licenses. Repository organization: pnpm monorepo, ~47 packages, ~820 test cases.
 
 ## 2. What is the core technical claim?
 

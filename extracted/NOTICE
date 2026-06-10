@@ -1,27 +1,17 @@
 AristotleOS
-Copyright 2026 AristotleAgentic
+Copyright (c) AristotleAgentic and contributors.
 
-AristotleOS-original substrate material in this extracted workspace is licensed
-under the Business Source License 1.1. The BSL Change Date is 2030-06-06, and
-the Change License is the Apache License, Version 2.0. See LICENSE and the
-repository root LICENSING.md for the license map and Additional Use Grant.
+AristotleOS-original source code in this workspace is licensed under the Mozilla
+Public License, version 2.0, unless a more specific file, directory, or package
+manifest states otherwise. See LICENSE and the repository root LICENSING.md.
 
-Public adapter and integration packages under packages/* are intended to be
-licensed under Apache-2.0 unless a package says otherwise. Documentation under
-the repository root docs/ is licensed under CC-BY-4.0.
+Documentation is licensed under Creative Commons Attribution 4.0 International
+(CC-BY-4.0) unless a more specific file states otherwise.
 
-Third-party components remain governed by their own license terms. See
-dependency package metadata, lockfiles, generated SBOMs, and dependency notices
-for dependency terms.
+The Aristotle Agentic and AristotleOS names, logos, marks, and trade dress are
+not licensed for unrestricted use by the source code license. Do not use them to
+imply endorsement, certification, partnership, official status, or origin
+without permission.
 
-Demonstration material disclaimer
----------------------------------
-
-Several modules in this workspace ship JURISDICTION_RULE_PRESETS, sample policy
-fixtures, and example actions explicitly marked as DEMONSTRATION ONLY. These
-materials illustrate the shape of deployable rule sets and transports; they are
-not legal advice and are not validated for production use against any regulator,
-government endpoint, safety authority, or external system. Real deployments
-require counsel review, safety review, cybersecurity review, and per-jurisdiction
-certification onboarding before any rule pack or transport may be promoted past
-demonstration status.
+Third-party components remain governed by their own license terms. See package
+metadata, lockfiles, generated SBOMs, and dependency notices.

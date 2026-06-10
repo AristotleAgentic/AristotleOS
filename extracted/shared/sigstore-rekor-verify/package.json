@@ -2,7 +2,7 @@
   "name": "@aristotle/sigstore-rekor-verify",
   "version": "0.1.0",
   "description": "SET signature + inclusion-proof validation companion to @aristotle/sigstore-rekor. Verifies a Rekor TimestampAnchor's signedEntryTimestamp against a caller-supplied Rekor public key + checks the inclusion proof against the published log root. Closes the verification loop the Rekor client deliberately deferred. Parallel to @aristotle/gel-timestamp-rfc3161-verify.",
-  "license": "BUSL-1.1",
+  "license": "MPL-2.0",
   "private": false,
   "type": "module",
   "main": "src/index.ts",

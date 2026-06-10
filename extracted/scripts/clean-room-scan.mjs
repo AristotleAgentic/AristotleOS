@@ -24,6 +24,7 @@ const ALLOWLIST = new Set([
   "docs/auditor-guide.md",
   "docs/release-checklist.md",
   "docs/execution-control-runtime.md",
+  "apps/website/scripts/make-gplane-paper-version.py",
   "scripts/clean-room-scan.mjs"
 ].map((p) => p.replace(/\//g, path.sep)));
 

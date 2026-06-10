@@ -1,0 +1,43 @@
+name: Reviewer finding
+description: Report a technical review finding against an AristotleOS claim.
+title: "[review] "
+labels: ["review", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reviewing AristotleOS. Please ground the finding in a file, command, trace, invariant, or reproducible scenario when possible.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Commit Gate
+        - Warrant binding
+        - Governance Evidence Ledger
+        - Adapter refusal before emission
+        - Mesh / disconnected operation
+        - Documentation claim
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: finding
+    attributes:
+      label: Finding
+      description: What claim appears wrong, incomplete, overbroad, or unproven?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction or evidence
+      description: Commands, files, traces, test output, screenshots, or reasoning.
+    validations:
+      required: false
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior or correction
+    validations:
+      required: false

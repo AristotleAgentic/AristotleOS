@@ -45,11 +45,16 @@ Secondary wedge:
 
 The implementation workspace currently lives under [`extracted/`](extracted/).
 
-Licensing is split by tree: AristotleOS substrate material is licensed under
-BUSL-1.1 with a Change Date of 2030-06-06, adapter and integration packages
-under `extracted/packages/*` are Apache-2.0, and documentation under `docs/` is
-CC-BY-4.0. See [`LICENSING.md`](LICENSING.md) for the authoritative map and
-Additional Use Grant.
+Licensing is designed for public review and collaboration: AristotleOS source
+code is licensed under MPL-2.0 unless a more specific package says otherwise,
+adapter and integration packages under `extracted/packages/*` may remain
+Apache-2.0 where marked, and documentation under `docs/` is CC-BY-4.0. See
+[`LICENSING.md`](LICENSING.md) for the authoritative map.
+
+Researchers, security reviewers, agent-framework maintainers, robotics and
+critical-infrastructure engineers, and governance practitioners are invited to
+review the boundary claims: Commit Gate behavior, Warrant binding, GEL replay,
+adapter refusal before emission, and disconnected-operation evidence.
 
 ## Why This Is Different
 
@@ -323,7 +328,7 @@ Broader test suites are defined in [`extracted/package.json`](extracted/package.
 
 Near-term hardening areas:
 
-- Keep split licensing, package metadata, and third-party dependency notices aligned before external release.
+- Keep MPL-2.0 licensing, package metadata, and third-party dependency notices aligned as the public review surface grows.
 - Publish a versioned reason-code and policy-artifact specification.
 - Add deeper property/fuzz testing around canonicalization and Commit Gate behavior.
 - Integrate production-grade KMS/HSM signing.
@@ -337,14 +342,16 @@ See [`extracted/ROADMAP_TO_100.md`](extracted/ROADMAP_TO_100.md), [`extracted/VA
 
 ## License
 
-AristotleOS uses a split licensing model. Substrate material is licensed under
-BUSL-1.1 with a Change Date of 2030-06-06, adapter and integration packages
-under `extracted/packages/*` are Apache-2.0, and root `docs/` material is
-CC-BY-4.0. See [`LICENSING.md`](LICENSING.md) for the authoritative map and
-Additional Use Grant.
+AristotleOS source code is licensed under the Mozilla Public License 2.0
+(`MPL-2.0`) unless a more specific file or package states otherwise. Some
+adapter and integration packages under `extracted/packages/*` remain Apache-2.0
+where marked, and root `docs/` material is CC-BY-4.0. See
+[`LICENSING.md`](LICENSING.md) for the authoritative map.
 
-The BSL-licensed substrate becomes available under Apache-2.0 on the Change
-Date, subject to the BSL terms.
+The code license does not grant trademark rights in the Aristotle Agentic or
+AristotleOS names, logos, marks, or trade dress. Commercial hosting, enterprise
+support, implementation services, and separately developed modules may be
+offered by AristotleOS LLC or other providers around the open code.
 
 Third-party dependencies remain governed by their own licenses. See [`extracted/sbom.json`](extracted/sbom.json), package metadata, and dependency notices for dependency terms.
 

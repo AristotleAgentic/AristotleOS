@@ -2,7 +2,7 @@
   "name": "@aristotle/warrant-verifier",
   "version": "0.1.0",
   "description": "Standalone public warrant verifier for AristotleOS. A third party who only holds the warrant + the canonical action hash + the trust anchors can validate a Warrant without access to the Commit Gate or any private state. Pure function + Node http handler.",
-  "license": "BUSL-1.1",
+  "license": "MPL-2.0",
   "private": false,
   "type": "module",
   "main": "src/index.ts",

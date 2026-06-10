@@ -2,7 +2,7 @@
   "name": "@aristotle/mesh-runtime",
   "version": "0.1.0",
   "description": "Multi-process governance mesh: root-authority, witness, and edge-gate roles communicating over HTTP. Implements authority-envelope propagation, revocation gossip, Fluidity Tokens, disconnected commit gate, and partition reconciliation.",
-  "license": "BUSL-1.1",
+  "license": "MPL-2.0",
   "private": false,
   "type": "module",
   "main": "dist/index.js",

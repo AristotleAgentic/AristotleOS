@@ -14,7 +14,7 @@ export const OPENAPI_YAML: string = `{
       "url": "https://github.com/AristotleAgentic/AristotleOS"
     },
     "license": {
-      "name": "Apache-2.0"
+      "name": "MPL-2.0"
     }
   },
   "servers": [
@@ -2031,7 +2031,7 @@ export const OPENAPI_SPEC: Readonly<Record<string, unknown>> = Object.freeze({
       "url": "https://github.com/AristotleAgentic/AristotleOS"
     },
     "license": {
-      "name": "Apache-2.0"
+      "name": "MPL-2.0"
     }
   },
   "servers": [

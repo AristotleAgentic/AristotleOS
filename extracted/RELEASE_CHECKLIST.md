@@ -33,7 +33,7 @@ Run through every item before tagging a release. Skip nothing.
 
 ### Security
 - [ ] `SECURITY.md` reviewed — any new disclosure path or contact change?
-- [ ] No new dependency without owner-approved license review; copyleft and source-available terms require explicit approval.
+- [ ] No new dependency without owner-approved license review; reciprocal, copyleft, proprietary, and source-available terms require explicit approval.
 - [ ] Signing-key handling code touched? Pair-reviewed.
 
 ## Release artifacts

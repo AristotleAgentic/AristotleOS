@@ -2,7 +2,7 @@
   "name": "@aristotle/nonce-store",
   "version": "0.1.0",
   "description": "Durable replay-protection nonce store for AristotleOS. Implements the NonceSeenSet interface from @aristotle/execution-control-runtime with in-memory + filesystem-backed (append-only JSONL) backends and TTL eviction. Closes ROADMAP_TO_100.md Category 1 'durable NonceSeenSet'.",
-  "license": "BUSL-1.1",
+  "license": "MPL-2.0",
   "private": false,
   "type": "module",
   "main": "src/index.ts",

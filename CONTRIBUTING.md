@@ -1,8 +1,20 @@
 # Contributing to AristotleOS
 
-Thank you for contributing to AristotleOS. This repository uses a split
-licensing model, so contributions must follow the license of the file or package
-being changed.
+Thank you for contributing to AristotleOS. The project is open for public
+review, security diligence, documentation improvements, framework adapters,
+governance patterns, and implementation work.
+
+## What We Especially Want Reviewed
+
+- Whether the Commit Gate actually blocks consequential actions before
+  execution.
+- Whether Warrants are correctly scoped, signed, single-use, and bound to a
+  canonical action hash.
+- Whether Governance Evidence Ledger records are replayable and tamper-evident.
+- Whether the mesh and disconnected-operation story is technically credible.
+- Whether adapter boundaries refuse before emission rather than logging after
+  the fact.
+- Whether documentation claims are narrower than the implementation supports.
 
 ## Sign-Off Requirement
 
@@ -29,13 +41,22 @@ directory you are changing.
 
 For example:
 
-- Contributions to BUSL-1.1 substrate material are submitted under BUSL-1.1.
+- Contributions to MPL-2.0 source files are submitted under MPL-2.0.
 - Contributions to Apache-2.0 adapter packages are submitted under Apache-2.0.
 - Contributions to CC-BY-4.0 documentation are submitted under CC-BY-4.0.
 
 If a contribution combines material from multiple licenses, clearly identify the
 source material and ensure you have the right to submit it under the applicable
 terms.
+
+## Review Etiquette
+
+High-quality criticism is welcome. Please ground review comments in a file,
+test, threat model, failed invariant, missing evidence path, or reproducible
+scenario when possible.
+
+Security-sensitive reports should follow the process in `SECURITY.md` rather
+than being opened as public issues.
 
 ## Developer Certificate of Origin 1.1
 

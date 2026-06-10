@@ -2,7 +2,7 @@
   "name": "@aristotle/sigstore-rekor",
   "version": "0.1.0",
   "description": "Sigstore Rekor transparency-log client for AristotleOS. Implements the TimestampAuthority interface from @aristotle/gel-timestamp by posting hashedrekord entries to a Rekor server (default: the public Sigstore Rekor at https://rekor.sigstore.dev) and capturing the returned logIndex + UUID + signed entry timestamp in the anchor. Sigstore-flavored sibling of @aristotle/gel-timestamp-rfc3161.",
-  "license": "BUSL-1.1",
+  "license": "MPL-2.0",
   "private": false,
   "type": "module",
   "main": "src/index.ts",

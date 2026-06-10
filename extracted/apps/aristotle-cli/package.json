@@ -44,7 +44,7 @@
   "bugs": {
     "url": "https://github.com/AristotleAgentic/AristotleOS/issues"
   },
-  "license": "BUSL-1.1",
+  "license": "MPL-2.0",
   "scripts": {
     "build": "node build.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
