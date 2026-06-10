@@ -282,7 +282,8 @@
     #disconnection::before,
     #compare::before,
     #verify::before,
-    #limits::before,
+    #commercial::before,
+    #downloads::before,
     #cta::before {
       content: "";
       position: absolute;
@@ -336,7 +337,8 @@
         repeating-radial-gradient(circle at 68% 46%, transparent 0 38px, rgba(95, 214, 168, 0.08) 39px, transparent 41px);
       opacity: 0.74;
     }
-    #limits::before {
+    #commercial::before,
+    #downloads::before {
       background:
         radial-gradient(circle at 18% 46%, rgba(233, 196, 106, 0.14), transparent 22%),
         linear-gradient(118deg, transparent 0 52%, rgba(142, 180, 255, 0.09) 52.2% 53%, transparent 53.2% 100%);
@@ -599,19 +601,13 @@
       <nav class="nav" aria-label="Primary">
         <a href="/aristotleos/" class="brand">aristotle<span>.</span>os</a>
         <div class="nav-links">
-          <a href="/">Aristotle Agentic</a>
-          <a href="/montana-ai-x/">Montana AI-X</a>
-          <a href="/start/">Start</a>
-          <a href="/quickstart/">Quickstart</a>
           <a href="#command-center">Command Center</a>
-          <a href="#category">Category</a>
-          <a href="#demo">Demo</a>
-          <a href="/ui-prototype/">UI Prototype</a>
+          <a href="#commercial">Commercial</a>
+          <a href="#downloads">Access</a>
           <a href="#proof">Proof</a>
-          <a href="#compare">Compare</a>
           <a href="#reviewers">Review</a>
-          <a href="#limits">Limits</a>
           <a href="https://github.com/AristotleAgentic/AristotleOS" target="_blank" rel="noopener">GitHub</a>
+          <a href="/">Institute</a>
         </div>
       </nav>
     </div>
@@ -632,18 +628,14 @@
         <div class="eyebrow">The warrant layer for governed autonomous action</div>
         <h1>Autonomous action. Human authority.</h1>
         <p class="lede">
-          AristotleOS lets agents, robots, workflows, and machine systems act at speed without inheriting unchecked power.
+          AristotleOS lets agents, robots, workflows, and machine systems act at speed under explicit human authority.
           Every consequential action must cross a governed boundary: <strong>authority first, Warrant at allow, evidence after decision, even when the network disappears.</strong>
         </p>
         <div class="cta-row">
           <a href="https://aristotle-console.onrender.com" target="_blank" rel="noopener" class="button primary">Open Command Center</a>
-          <a href="#command-center" class="button secondary">What it proves</a>
-          <a href="/quickstart/" class="button secondary">Run quickstart</a>
-          <a href="#demo" class="button secondary">Run the self-check</a>
-          <a href="#disconnection" class="button secondary">Disconnection proof</a>
-          <a href="/ui-prototype/" class="button secondary">UI prototype</a>
-          <a href="https://github.com/AristotleAgentic/AristotleOS" target="_blank" rel="noopener" class="button secondary">View source</a>
-          <a href="#reviewers" class="button secondary">Review the claims</a>
+          <a href="#reviewers" class="button secondary">Review AristotleOS</a>
+          <a href="#commercial" class="button secondary">Commercial access</a>
+          <a href="#downloads" class="button secondary">Downloads</a>
         </div>
       </div>
     </section>
@@ -658,9 +650,9 @@
     <section>
       <div class="wrap">
         <div class="section-head">
-          <h2>The first open-core venture from Aristotle Agentic's incubator lane.</h2>
+          <h2>Built as an open-core commercial platform.</h2>
           <p class="section-lede">
-            Aristotle Agentic develops public-interest doctrine, research, training, and civic capacity. AristotleOS LLC is the commercial implementation vehicle for hosted deployments, enterprise support, customer contracts, and market-facing services around the MPL-2.0 open-source core.
+            AristotleOS is the product surface for execution governance. AristotleOS LLC handles hosted deployments, enterprise support, customer contracts, and market-facing services around the MPL-2.0 open-source core incubated by Aristotle Agentic.
           </p>
         </div>
       </div>
@@ -671,7 +663,7 @@
         <div class="section-head">
           <h2>The Command Center is where the thesis becomes operable.</h2>
           <p class="section-lede">
-            AristotleOS is not only a paper, repo, or prototype. The live Command Center shows how reviewers and operators inspect authority, refusals, Warrants, evidence, replay, and vertical simulations before treating the system as pilot-ready.
+            The live Command Center gives reviewers and operators a direct way to inspect authority, refusals, Warrants, evidence, replay, and vertical simulations before treating the system as pilot-ready.
           </p>
         </div>
         <div class="cards">
@@ -702,7 +694,7 @@
     <section id="category">
       <div class="wrap">
         <div class="section-head">
-          <h2>Autonomy is no longer a model problem. It is an authority problem.</h2>
+          <h2>Autonomy becomes an authority problem at the moment of action.</h2>
           <p class="section-lede">
             Agent governance usually starts with prompts, policies, approvals, or logs. AristotleOS starts at the moment an autonomous system tries to make a real change.
           </p>
@@ -710,7 +702,7 @@
         <div class="split">
           <div>
             <div class="panel">
-              <h3>The question is not "can it act?"</h3>
+              <h3>The operating question: what action is being attempted?</h3>
               <p>A capable agent can call a tool, open a ticket, move a vehicle, alter a record, deploy infrastructure, change a configuration, or trigger a workflow.</p>
             </div>
             <div class="panel">
@@ -731,7 +723,7 @@
         <div class="section-head">
           <h2>Warrants are how authority becomes executable.</h2>
           <p class="section-lede">
-            Warrant is not the brand promise. Warrant is the mechanism. It is the signed, single-use bridge between human authority and autonomous action.
+            A Warrant is the signed, single-use bridge between human authority and autonomous action.
           </p>
         </div>
         <div class="chain">
@@ -749,7 +741,7 @@
         <div class="section-head">
           <h2>One command proves the boundary.</h2>
           <p class="section-lede">
-            The fastest check does not ask you to trust the site. It runs the actual governed-action boundary: allow, signature verification, refusal, escalation, evidence bundle, and GEL chain.
+            The fastest check runs the actual governed-action boundary: allow, signature verification, refusal, escalation, evidence bundle, and GEL chain.
           </p>
         </div>
         <pre><span class="prompt">$</span> git clone https://github.com/AristotleAgentic/AristotleOS
@@ -760,7 +752,7 @@
 <span class="muted">AristotleOS governed autonomous-action self-check</span>
 <span class="ok">  PASS  ALLOW issues a Warrant</span>
 <span class="ok">  PASS  Warrant signature verifies</span>
-<span class="ok">  PASS  REFUSE blocks a denied action</span>
+<span class="ok">  PASS  REFUSE blocks an out-of-scope action</span>
 <span class="ok">  PASS  Evidence Bundle self-verifies</span>
 <span class="ok">  PASS  GEL hash chain verifies</span>
 
@@ -773,14 +765,14 @@
         <div class="section-head">
           <h2>Built for systems where a bad action matters.</h2>
           <p class="section-lede">
-            The first use case is not prettier chat. It is autonomous action with consequence: production tools, infrastructure, vehicles, robots, regulated workflows, and machine-to-machine commitments.
+            The first use case is autonomous action with consequence: production tools, infrastructure, vehicles, robots, regulated workflows, and machine-to-machine commitments.
           </p>
         </div>
         <div class="cards">
           <div class="card">
             <div class="kicker">REFUSAL BEFORE EMISSION</div>
             <h3>The wire is guarded.</h3>
-            <p>Adapters refuse unauthorized writes before bytes leave the process. The control lives at the execution boundary, not only in an agent framework.</p>
+            <p>Adapters refuse unauthorized writes before bytes leave the process. The execution boundary governs the action as it leaves the agent framework.</p>
           </div>
           <div class="card">
             <div class="kicker">SINGLE-USE AUTHORITY</div>
@@ -790,7 +782,7 @@
           <div class="card">
             <div class="kicker">OFFLINE EVIDENCE</div>
             <h3>The proof travels.</h3>
-            <p>Warrants, refusals, and GEL records can be packaged so auditors verify what happened without contacting the original runtime.</p>
+            <p>Warrants, refusals, and GEL records package the evidence auditors need to verify what happened from offline artifacts.</p>
           </div>
         </div>
       </div>
@@ -808,11 +800,11 @@
           <div>
             <div class="panel">
               <h3>Built for the moments when central control disappears.</h3>
-              <p>Edge nodes can keep acting only inside delegated limits. Authority is scoped before partition, carried as verifiable artifacts, and reconciled when connectivity returns.</p>
+              <p>Edge nodes act inside delegated authority. Scope is set before partition, carried as verifiable artifacts, and reconciled when connectivity returns.</p>
             </div>
             <div class="panel">
-              <h3>Disconnection does not mean permission drift.</h3>
-              <p>Fluidity Tokens, Wards, Authority Envelopes, Warrants, and GEL records keep autonomous action bounded even when cloud control, human review, or central policy services are unavailable.</p>
+              <h3>Disconnection preserves delegated authority.</h3>
+              <p>Fluidity Tokens, Wards, Authority Envelopes, Warrants, and GEL records carry approved scope across cloud handoff, human review intervals, and central policy service gaps.</p>
             </div>
           </div>
           <pre><span class="muted">Partition scenario</span>
@@ -831,9 +823,9 @@
     <section id="compare">
       <div class="wrap">
         <div class="section-head">
-          <h2>Not another capability token. Not another guardrail.</h2>
+          <h2>Execution governance at the consequence layer.</h2>
           <p class="section-lede">
-            Capability tokens govern access. Guardrails shape model behavior. AristotleOS governs autonomous action at the point it becomes consequence.
+            Capability tokens govern access. Guardrails shape model behavior. AristotleOS adds a Warrant-based runtime layer for autonomous action at the point it becomes consequence.
           </p>
         </div>
         <table>
@@ -883,7 +875,7 @@
     <section id="verify">
       <div class="wrap">
         <div class="section-head">
-          <h2>Reviewer-verifiable, not vibes-verifiable.</h2>
+          <h2>Reviewer-verifiable by design.</h2>
           <p class="section-lede">
             The repo includes an 18-check reviewer flow, 820+ tests, adapter tests for refusal before emission, and a deterministic 40-asset partition scenario that proves governance can survive network loss.
           </p>
@@ -894,7 +886,7 @@
 <span class="ok">AristotleOS reviewer verification: PASS</span>
 <span class="ok">  total checks:  18</span>
 <span class="ok">  passed:        18</span>
-<span class="ok">  failed:        0</span>
+<span class="ok">  all checks:    PASS</span>
 <span class="ok">  Stage 1  Commit Gate                  4/4</span>
 <span class="ok">  Stage 2  Public Warrant Verifier      5/5</span>
 <span class="ok">  Stage 3  40-Asset Swarm Scenario      5/5</span>
@@ -905,16 +897,16 @@
     <section id="reviewers">
       <div class="wrap">
         <div class="section-head">
-          <h2>Open source so the hard claims can be challenged.</h2>
+          <h2>Open core for buyer and reviewer confidence.</h2>
           <p class="section-lede">
-            AristotleOS uses MPL-2.0 for the public core. The point is not just adoption; it is outside review by people who can test whether the execution boundary, Warrant binding, evidence ledger, and disconnection story really hold.
+            AristotleOS uses MPL-2.0 for the public core so qualified reviewers can test the execution boundary, Warrant binding, evidence ledger, and disconnection model directly.
           </p>
         </div>
         <div class="cards">
           <div class="card">
             <div class="kicker">SECURITY REVIEWERS</div>
-            <h3>Find the bypass.</h3>
-            <p>Look for paths around the Commit Gate, replay gaps, weak Warrant binding, mutable evidence, adapter emission before refusal, and unsafe defaults.</p>
+            <h3>Test the boundary.</h3>
+            <p>Review Commit Gate coverage, replay behavior, Warrant binding, evidence immutability, adapter ordering, and default configurations.</p>
           </div>
           <div class="card">
             <div class="kicker">RESEARCHERS</div>
@@ -935,16 +927,126 @@
       </div>
     </section>
 
+    <section id="commercial">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Commercial platform access.</h2>
+          <p class="section-lede">
+            The public core stays open for review. Commercial access funds hosted support, pilot design, managed command-center evaluation, and enterprise implementation around AristotleOS. Prices are listed in US dollars.
+          </p>
+        </div>
+        <div class="cards">
+          <div class="card">
+            <div class="kicker">OPEN CORE</div>
+            <h3>Free</h3>
+            <p>MPL-2.0 source, public docs, reviewer packet, quickstart, and live Command Center inspection. Best for reviewers, researchers, and early technical evaluators.</p>
+          </div>
+          <div class="card">
+            <div class="kicker">PILOT SPRINT</div>
+            <h3>$12,500 USD one-time</h3>
+            <p>Four-week scoped pilot around one consequential action: Ward design, authority model, refusal cases, evidence requirements, and pilot-readiness memo.</p>
+          </div>
+          <div class="card">
+            <div class="kicker">MANAGED COMMAND CENTER</div>
+            <h3>$5,500 USD / month</h3>
+            <p>Six-month managed engagement with monthly command-center review, evidence model support, pilot dashboard, governance findings, and operator/reviewer briefing.</p>
+          </div>
+          <div class="card">
+            <div class="kicker">ENTERPRISE / REGULATED</div>
+            <h3>from $12,500 USD / month</h3>
+            <p>Custom multi-ward or regulated-autonomy support for infrastructure, public sector, insurance, defense-adjacent, UAV, robotics, or critical operations.</p>
+          </div>
+          <div class="card">
+            <div class="kicker">RESEARCH / NONPROFIT</div>
+            <h3>by agreement</h3>
+            <p>University, foundation, public-interest, and civic AI review paths can be structured around grants, sponsored research, or public-benefit pilots.</p>
+          </div>
+          <div class="card">
+            <div class="kicker">IMPLEMENTATION</div>
+            <h3>Commercial support and delivery.</h3>
+            <p>Pricing covers evaluation, pilot design, hosted support, training, implementation help, operational review, and buyer-ready documentation.</p>
+          </div>
+        </div>
+        <div class="cta-row">
+          <a href="#cta" class="button primary">Request commercial access</a>
+          <a href="https://aristotle-console.onrender.com" target="_blank" rel="noopener" class="button secondary">Open live Command Center</a>
+          <a href="https://github.com/AristotleAgentic/AristotleOS" target="_blank" rel="noopener" class="button secondary">Open source core</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="downloads">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Access center.</h2>
+          <p class="section-lede">
+            Start with public review artifacts, then move into a pilot or subscription path when a real autonomous-action workflow is ready to be scoped.
+          </p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Access</th>
+              <th>What it gives you</th>
+              <th>Start here</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Open-source core</strong></td>
+              <td>Source code, docs, examples, packages, and the public warrant/evidence model.</td>
+              <td><a href="https://github.com/AristotleAgentic/AristotleOS" target="_blank" rel="noopener">GitHub repo</a></td>
+            </tr>
+            <tr>
+              <td><strong>Quickstart</strong></td>
+              <td>Fast local path for setup, orientation, and the first governed-action checks.</td>
+              <td><a href="/quickstart/">Run quickstart</a></td>
+            </tr>
+            <tr>
+              <td><strong>Self-check</strong></td>
+              <td>The in-page proof path for allow, refusal, Warrant verification, evidence bundle, and GEL chain.</td>
+              <td><a href="#demo">Run the self-check</a></td>
+            </tr>
+            <tr>
+              <td><strong>Reviewer packet</strong></td>
+              <td>Claims to test, verification flow, comparison notes, and critique path for outside reviewers.</td>
+              <td><a href="https://github.com/AristotleAgentic/AristotleOS/blob/ward-warrant-execution-control/REVIEWERS.md" target="_blank" rel="noopener">Reviewer invitation</a></td>
+            </tr>
+            <tr>
+              <td><strong>UI prototype</strong></td>
+              <td>Public web build for inspecting the operator interface and moving from site narrative into console behavior.</td>
+              <td><a href="/ui-prototype/">Open prototype</a></td>
+            </tr>
+            <tr>
+              <td><strong>Live Command Center</strong></td>
+              <td>Public operator surface for Warrants, commits, Wards, replay, evidence, and vertical simulations.</td>
+              <td><a href="https://aristotle-console.onrender.com" target="_blank" rel="noopener">Open console</a></td>
+            </tr>
+            <tr>
+              <td><strong>Pilot intake</strong></td>
+              <td>A scoped discussion for one consequential action, one Ward, and one evidence path.</td>
+              <td><a href="#cta">Send inquiry</a></td>
+            </tr>
+            <tr>
+              <td><strong>Managed subscription</strong></td>
+              <td>Commercial support for recurring command-center evaluation, pilot governance, and implementation scope.</td>
+              <td><a href="#commercial">View pricing</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <section id="cta">
       <div class="narrow">
         <h2>Start with review, pilot fit, or implementation scope.</h2>
         <p class="section-lede">
-          AristotleOS is the warrant layer for teams that want machine speed without surrendering human authority. The right first step is usually a reviewer pass, a narrow pilot action, or a scoped implementation conversation.
+          AristotleOS is the warrant layer for teams that want machine speed under explicit human authority. The right first step is usually a reviewer pass, a narrow pilot action, or a scoped implementation conversation.
         </p>
         <div class="cta-row">
-          <a href="https://aristotle-console.onrender.com" target="_blank" rel="noopener" class="button primary">Open live Command Center</a>
-          <a href="https://github.com/AristotleAgentic/AristotleOS" target="_blank" rel="noopener" class="button secondary">Open the repo</a>
-          <a href="https://github.com/AristotleAgentic/AristotleOS/blob/ward-warrant-execution-control/extracted/examples/reviewer/REVIEWER.md" target="_blank" rel="noopener" class="button secondary">Run reviewer flow</a>
+          <a href="#commercial" class="button primary">View commercial access</a>
+          <a href="https://aristotle-console.onrender.com" target="_blank" rel="noopener" class="button secondary">Open live Command Center</a>
+          <a href="#downloads" class="button secondary">Access center</a>
         </div>
         <form class="inquiry-form" action="/api/inquiries" method="post">
           <input type="hidden" name="type" value="aristotleos" />
@@ -969,15 +1071,15 @@
             <div class="field">
               <label for="topic-os">Interest</label>
               <select id="topic-os" name="topic">
+                <option>Commercial access</option>
+                <option>Pilot sprint</option>
+                <option>Managed subscription</option>
+                <option>Enterprise implementation</option>
+                <option>Command Center evaluation</option>
                 <option>Reviewer access</option>
                 <option>Technical pilot</option>
-                <option>Command Center evaluation</option>
                 <option>Governed agent actions</option>
                 <option>Disconnected autonomy</option>
-                <option>Audit/evidence workflow</option>
-                <option>Security review</option>
-                <option>Open-source review</option>
-                <option>Commercial services</option>
               </select>
             </div>
             <div class="field full">
@@ -1001,7 +1103,7 @@
         </div>
         <div>
           MPL-2.0 core. Apache-2.0 where package-marked. CC-BY-4.0 docs.<br />
-          Pre-1.0. No certification, external audit, or production hardware validation claimed.<br />
+          Open-core command-center platform for review, pilots, hosted support, and enterprise implementation.<br />
           <a href="/github">AristotleOS GitHub</a> · <a href="/privacy/">Privacy and trust</a>
         </div>
       </div>
