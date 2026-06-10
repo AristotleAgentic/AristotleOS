@@ -23,7 +23,7 @@ import {
   seedPipeline,
   shortHash
 } from "./mockData.js";
-import { gatewayContract, postOperator, probeGateway } from "./service.js";
+import { gatewayContract, postOperator, postOperatorJson, probeGateway } from "./service.js";
 import { boundaryCompile, boundaryDecideApproval, boundaryListApprovals, boundaryListConflicts, boundaryResolveConflict, fetchLiveState, mapApprovalsToUi, mapConflictsToInbox, runLiveApprovals, runLiveConflicts, runLiveMarshalCensus, runLiveShadowProfile } from "./boundary.js";
 
 export type SectionId =
@@ -135,6 +135,7 @@ interface CommandState {
   triggerKillSwitch: () => void;
   exportEvidence: () => void;
   escalate: () => void;
+  runAgentSmokeMission: () => Promise<void>;
   compileGovernance: () => Promise<void>;
   runShadowProfile: () => Promise<void>;
   runMarshalCensus: () => Promise<void>;
@@ -286,6 +287,74 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   escalate: () => {
     void postOperator(gatewayContract.govern, { escalate: true });
     get().toast("Escalated to human authority. Awaiting sovereign decision.", "amber");
+  },
+
+  runAgentSmokeMission: async () => {
+    const suffix = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
+    const agentId = `agent-console-smoke-${suffix}`;
+    const agentResult = await postOperatorJson<{ agent?: { id?: string }; committed?: unknown }>(gatewayContract.registerAgent, {
+      id: agentId,
+      name: "Console Smoke Executor",
+      role: "executor",
+      model: "operator-smoke",
+      provider: "aristotle-console",
+      specializations: ["runtime-governance", "mission-smoke-test"],
+      toolchains: ["policy", "ledger", "execution-queue"],
+      trustTier: "sandboxed",
+      maxConcurrency: 1,
+      workspaceAffinity: "console-smoke"
+    });
+    if (!agentResult.ok || !agentResult.data?.agent?.id) {
+      get().toast(`Agent smoke failed at registration (HTTP ${agentResult.status || "network"}).`, "red");
+      return;
+    }
+
+    const missionResult = await postOperatorJson<{
+      mission?: { id?: string; status?: string };
+      compiledPolicy?: unknown;
+      committed?: unknown;
+    }>(gatewayContract.osMissions, {
+      title: `Console smoke mission ${suffix}`,
+      objective: "Verify that the production console can register an agent, create a governed mission, compile policy, and advance execution.",
+      priority: "medium",
+      riskLevel: "low",
+      governanceProfile: "console-smoke",
+      targetSystem: "aristotle-console-production",
+      assignedAgents: [agentResult.data.agent.id],
+      requiredAuthorities: ["mission.command", "ledger.write"],
+      requiredTools: ["policy", "ledger", "execution-queue"],
+      successMetrics: ["agent registered", "mission created", "policy compiled", "mission advanced"],
+      requestedBy: "console-ui"
+    });
+    const missionId = missionResult.data?.mission?.id;
+    if (!missionResult.ok || !missionId) {
+      get().toast(`Agent smoke failed at mission creation (HTTP ${missionResult.status || "network"}).`, "red");
+      return;
+    }
+
+    const advanceResult = await postOperatorJson<{
+      mission?: { id?: string; status?: string };
+      execution?: { tasks?: unknown[]; receipts?: unknown[] };
+      committed?: unknown;
+    }>(gatewayContract.advanceMission(missionId), { action: "execute", actor: agentResult.data.agent.id });
+    if (!advanceResult.ok) {
+      get().toast(`Agent smoke failed at mission advance (HTTP ${advanceResult.status || "network"}).`, "red");
+      return;
+    }
+
+    const taskCount = advanceResult.data?.execution?.tasks?.length ?? 0;
+    const receiptCount = advanceResult.data?.execution?.receipts?.length ?? 0;
+    set((s) => ({
+      snapshot: {
+        ...s.snapshot,
+        activeAgents: s.snapshot.activeAgents + 1,
+        openRequests: s.snapshot.openRequests + Math.max(taskCount, 1),
+        ledgerHeight: s.snapshot.ledgerHeight + 3,
+        source: "live"
+      },
+      ledger: prependLedger(prependLedger(prependLedger(s.ledger, "agent-os.agent.registered", "console-smoke"), "agent-os.mission.created", "console-smoke"), "agent-os.mission.advanced", "console-smoke")
+    }));
+    get().toast(`Live Agent OS smoke passed — ${agentResult.data.agent.id}, ${missionId}, ${taskCount} tasks, ${receiptCount} receipts.`, "green");
   },
 
   // Attempts a real compile against the gateway; falls back to the deterministic

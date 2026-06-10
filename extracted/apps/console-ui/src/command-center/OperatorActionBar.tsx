@@ -1,4 +1,4 @@
-import { AlertOctagon, ArrowUpRight, Download, FlaskConical, History, PauseOctagon, Power, RefreshCw, ShieldOff, Siren } from "lucide-react";
+import { AlertOctagon, ArrowUpRight, Bot, Download, FlaskConical, History, PauseOctagon, Power, RefreshCw, ShieldOff, Siren } from "lucide-react";
 import React from "react";
 import { WARDS, ENVELOPES } from "./mockData.js";
 import { useCommandStore } from "./store.js";
@@ -15,6 +15,7 @@ export function OperatorActionBar() {
   const triggerKillSwitch = useCommandStore((s) => s.triggerKillSwitch);
   const exportEvidence = useCommandStore((s) => s.exportEvidence);
   const escalate = useCommandStore((s) => s.escalate);
+  const runAgentSmokeMission = useCommandStore((s) => s.runAgentSmokeMission);
 
   const [wardId, setWardId] = React.useState(WARDS[0]?.id ?? "");
   const [envId, setEnvId] = React.useState(ENVELOPES.find((e) => !e.revoked)?.id ?? ENVELOPES[0]?.id ?? "");
@@ -43,6 +44,10 @@ export function OperatorActionBar() {
         <button className="ac-ops-btn" onClick={() => { forceReconcile(); }}>
           <span className="ic"><RefreshCw size={15} /></span>
           <span><span className="t">Force reconciliation</span><span className="d">Re-align runtime with evidence</span></span>
+        </button>
+        <button className="ac-ops-btn" onClick={() => { void runAgentSmokeMission(); }}>
+          <span className="ic"><Bot size={15} /></span>
+          <span><span className="t">Run Agent OS smoke</span><span className="d">Register agent, create mission, advance execution</span></span>
         </button>
       </div>
 

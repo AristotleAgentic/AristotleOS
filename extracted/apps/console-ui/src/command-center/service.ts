@@ -58,4 +58,21 @@ export async function postOperator(path: string, body: unknown): Promise<boolean
   }
 }
 
+export interface OperatorJsonResult<T = unknown> {
+  ok: boolean;
+  status: number;
+  data: T | null;
+}
+
+/** Post an operator command and return the JSON envelope for live smoke checks. */
+export async function postOperatorJson<T = unknown>(path: string, body: unknown): Promise<OperatorJsonResult<T>> {
+  try {
+    const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const data = (await res.json().catch(() => null)) as T | null;
+    return { ok: res.ok, status: res.status, data };
+  } catch {
+    return { ok: false, status: 0, data: null };
+  }
+}
+
 export { gatewayContract };
