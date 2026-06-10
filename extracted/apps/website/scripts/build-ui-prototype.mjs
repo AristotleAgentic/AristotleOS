@@ -30,7 +30,8 @@ const result = spawnSync(
     cwd: consoleDir,
     env: {
       ...process.env,
-      VITE_ARISTOTLE_AGENTIC_HOME: "/aristotleos/"
+      VITE_ARISTOTLE_AGENTIC_HOME: "/aristotleos/",
+      VITE_PRODUCTION_CONSOLE_URL: "https://aristotle-console.onrender.com/"
     },
     stdio: "inherit"
   }

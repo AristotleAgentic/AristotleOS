@@ -15,6 +15,7 @@ if (!rootElement) {
 
 type View = "site" | "console" | "try" | "comparison";
 const AGENTIC_HOME = import.meta.env.VITE_ARISTOTLE_AGENTIC_HOME ?? "https://aristotleagentic.com/";
+const PRODUCTION_CONSOLE_URL = (import.meta.env.VITE_PRODUCTION_CONSOLE_URL ?? "").trim();
 const BASE_PATH = new URL(import.meta.env.BASE_URL, window.location.origin).pathname.replace(/\/$/, "");
 
 const appPath = () => {
@@ -30,6 +31,10 @@ const routeToView = (): View => {
   const path = appPath();
   if (path === "/try" || window.location.hash === "#try" || window.location.hash === "#playground") return "try";
   if (window.location.hash === "#ward-chain") return "comparison";
+  if (PRODUCTION_CONSOLE_URL && (path === "/console" || window.location.hash === "#console")) {
+    window.location.replace(PRODUCTION_CONSOLE_URL);
+    return "site";
+  }
   if (path === "/console" || window.location.hash === "#console") return "console";
   return "site";
 };
@@ -49,7 +54,14 @@ function Root() {
 
   const select = (next: View) => {
     if (next === "try") window.history.pushState(null, "", toAppUrl("/try"));
-    else if (next === "console") { window.history.pushState(null, "", toAppUrl("/")); window.location.hash = "console"; }
+    else if (next === "console") {
+      if (PRODUCTION_CONSOLE_URL) {
+        window.location.assign(PRODUCTION_CONSOLE_URL);
+        return;
+      }
+      window.history.pushState(null, "", toAppUrl("/"));
+      window.location.hash = "console";
+    }
     else if (next === "comparison") { window.history.pushState(null, "", toAppUrl("/")); window.location.hash = "ward-chain"; }
     else { window.history.pushState(null, "", toAppUrl("/")); window.location.hash = ""; }
     setView(next);
