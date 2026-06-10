@@ -76,7 +76,7 @@ function Root() {
 
   const isConsoleView = view === "console" || view === "public-console";
   const launchConsole = () => {
-    if (view === "public-console" || appPath() === "/public" || appPath().startsWith("/public/")) {
+    if (view === "public-console" || view === "try" || appPath() === "/public" || appPath().startsWith("/public/")) {
       select("public-console");
       return;
     }
