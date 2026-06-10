@@ -31,6 +31,7 @@ interface SiteProps {
 }
 
 const GITHUB = "https://github.com/AristotleAgentic/AristotleOS/tree/ward-warrant-execution-control/extracted";
+const SECURITY = "https://github.com/AristotleAgentic/AristotleOS/blob/ward-warrant-execution-control/extracted/SECURITY.md";
 const AGENTIC_HOME = import.meta.env.VITE_ARISTOTLE_AGENTIC_HOME ?? "https://aristotleagentic.com/";
 
 const PRIMITIVES = [
@@ -333,7 +334,7 @@ export default function MarketingSite({ onLaunchConsole, onTry }: SiteProps) {
               <h5>Develop</h5>
               <a href={GITHUB} target="_blank" rel="noreferrer">GitHub</a>
               <a href={GITHUB} target="_blank" rel="noreferrer">CLI reference</a>
-              <a href={`${GITHUB}/blob/main/SECURITY.md`} target="_blank" rel="noreferrer">Threat model</a>
+              <a href={SECURITY} target="_blank" rel="noreferrer">Threat model</a>
             </div>
             <div>
               <h5>Use cases</h5>
