@@ -339,6 +339,12 @@ What should not be assumed:
 
 Read [`LIMITATIONS.md`](LIMITATIONS.md) and [`PROOF_STATUS.md`](PROOF_STATUS.md) before treating any claim as established.
 
+New readers should start with:
+
+- [`docs/start-here.md`](docs/start-here.md)
+- [`docs/quickstart.md`](docs/quickstart.md)
+- [`docs/reviewer-packet.md`](docs/reviewer-packet.md)
+
 ## Quickstart
 
 From this workspace directory:
@@ -370,7 +376,7 @@ npm run test:space
 npm run proof:status
 ```
 
-For more detail, see [`docs/quickstart.md`](docs/quickstart.md), [`docs/getting-started.md`](docs/getting-started.md), and [`examples/reviewer/REVIEWER.md`](examples/reviewer/REVIEWER.md).
+For more detail, see [`docs/start-here.md`](docs/start-here.md), [`docs/quickstart.md`](docs/quickstart.md), [`docs/getting-started.md`](docs/getting-started.md), [`docs/reviewer-packet.md`](docs/reviewer-packet.md), and [`examples/reviewer/REVIEWER.md`](examples/reviewer/REVIEWER.md).
 
 ## Repository Structure
 

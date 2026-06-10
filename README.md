@@ -56,6 +56,13 @@ critical-infrastructure engineers, and governance practitioners are invited to
 review the boundary claims: Commit Gate behavior, Warrant binding, GEL replay,
 adapter refusal before emission, and disconnected-operation evidence.
 
+Start here if you are new:
+
+- [`extracted/docs/start-here.md`](extracted/docs/start-here.md)
+- [`extracted/docs/quickstart.md`](extracted/docs/quickstart.md)
+- [`extracted/docs/reviewer-packet.md`](extracted/docs/reviewer-packet.md)
+- [`REVIEWERS.md`](REVIEWERS.md)
+
 ## Why This Is Different
 
 AristotleOS is not another capability token, guardrail, or agent policy wrapper.

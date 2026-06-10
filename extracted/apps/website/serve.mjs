@@ -54,7 +54,7 @@ const redirectHosts = new Set(
 const rateBuckets = new Map();
 const publicStaticExtensions = new Set([".html", ".css", ".js", ".svg", ".png", ".jpg", ".jpeg", ".ico", ".webp", ".pdf", ".txt"]);
 const blockedStaticExtensions = new Set([".bak", ".config", ".env", ".log", ".map", ".md", ".mjs", ".old", ".orig", ".ps1", ".sh", ".tmp", ".toml", ".ts", ".tsx", ".yaml", ".yml"]);
-const allowedStaticRoots = new Set(["", "about", "admin", "aristotleos", "assets", "governance-thesis", "montana-ai-x", "papers", "privacy", "research", "scripts", "support", "training-hub", "ui-prototype"]);
+const allowedStaticRoots = new Set(["", "about", "admin", "aristotleos", "assets", "governance-thesis", "montana-ai-x", "papers", "privacy", "quickstart", "research", "review", "scripts", "start", "support", "training-hub", "ui-prototype"]);
 
 function dataStoreReady() {
   try {

@@ -38,6 +38,9 @@ pnpm reviewer:verify
 
 Then read:
 
+- `extracted/docs/start-here.md`
+- `extracted/docs/quickstart.md`
+- `extracted/docs/reviewer-packet.md`
 - `extracted/examples/reviewer/REVIEWER.md`
 - `extracted/PROOF_STATUS.md`
 - `extracted/LIMITATIONS.md`
