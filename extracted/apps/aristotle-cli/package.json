@@ -54,6 +54,11 @@
     "prepublishOnly": "node build.mjs"
   },
   "devDependencies": {
+    "@aristotle/execution-control-runtime": "workspace:*",
+    "@aristotle/governance-core": "workspace:*",
+    "@aristotle/shared-schemas": "workspace:*",
+    "@aristotle/shared-types": "workspace:*",
+    "@aristotle/trial-engine": "workspace:*",
     "esbuild": "^0.28.0"
   }
 }

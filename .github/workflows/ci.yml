@@ -147,7 +147,7 @@ jobs:
         run: corepack enable
 
       - name: Install dependencies
-        run: corepack pnpm install --frozen-lockfile
+        run: corepack pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Audit production dependencies (gate)
         # Blocking gate: any prod-dependency advisory at or above the threshold
