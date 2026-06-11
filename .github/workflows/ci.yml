@@ -82,7 +82,7 @@ jobs:
         run: corepack enable
 
       - name: Install dependencies
-        run: corepack pnpm install --frozen-lockfile
+        run: corepack pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Validate @aristotle/os-cli is publish-ready
         # Packs the CLI, asserts tarball contents, installs it into a throwaway

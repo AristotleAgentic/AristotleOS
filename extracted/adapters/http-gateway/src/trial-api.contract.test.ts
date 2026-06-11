@@ -2,7 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const gatewaySource = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
+const gatewaySource = [
+  readFileSync(new URL("./index.ts", import.meta.url), "utf8"),
+  readFileSync(new URL("./trial-api.ts", import.meta.url), "utf8")
+].join("\n");
 
 test("gateway exposes public trial API routes", () => {
   for (const route of [
