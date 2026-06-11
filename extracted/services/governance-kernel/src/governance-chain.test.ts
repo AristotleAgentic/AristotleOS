@@ -200,7 +200,9 @@ test("kernel /v2 chain state survives a restart (durable store)", async () => {
   try {
     // Boot 1: build the chain and consume a warrant.
     const c1 = createGovernanceChain({ signingSecret: "test-secret", keyId: "governance-kernel-key", statePath });
-    const mae = createMae(c1.store, c1.keyring, c1.signKeyId, maeBody());
+    const mae = createMae(c1.store, c1.keyring, c1.signKeyId, maeBody({
+      signing_keys: [{ key_id: "governance-kernel-key", algorithm: "hmac-sha256" }]
+    }));
     const ward = constituteWard(c1.store, c1.keyring, c1.signKeyId, wardBody(mae.mae_id));
     const env = createAuthorityEnvelope(c1.store, c1.keyring, c1.signKeyId, envBody(mae.mae_id, ward.ward_id));
     const action = { proposed_action_id: "act-d", action_type: "payment.refund", actor: "agent.payments", resource: "customer:X", parameters: { amount: 100, currency: "USD" } };
@@ -247,7 +249,9 @@ test("kernel /v2 chain signs and verifies with ed25519 when key paths are provid
     const c = createGovernanceChain({ keyId: "governance-kernel-key", signingPrivateKeyPath: privPath, signingPublicKeyPath: pubPath });
     assert.equal(c.signingMode, "ed25519");
 
-    const mae = createMae(c.store, c.keyring, c.signKeyId, maeBody());
+    const mae = createMae(c.store, c.keyring, c.signKeyId, maeBody({
+      signing_keys: [{ key_id: "governance-kernel-key", algorithm: "ed25519" }]
+    }));
     const ward = constituteWard(c.store, c.keyring, c.signKeyId, wardBody(mae.mae_id));
     const env = createAuthorityEnvelope(c.store, c.keyring, c.signKeyId, envBody(mae.mae_id, ward.ward_id));
     const action = { proposed_action_id: "act-ed", action_type: "payment.refund", actor: "agent.payments", resource: "customer:X", parameters: { amount: 50, currency: "USD" } };
@@ -343,7 +347,12 @@ test("kernel /v2 exposes federated commit across a trust bridge", async () => {
 
 test("kernel /v2 signing-key rotation: records signed before and after both verify", async () => {
   const c = createGovernanceChain({ signingSecret: "secret-v1", keyId: "k1" });
-  const mae = createMae(c.store, c.keyring, c.signKeyId, maeBody());
+  const mae = createMae(c.store, c.keyring, c.signKeyId, maeBody({
+    signing_keys: [
+      { key_id: "k1", algorithm: "hmac-sha256" },
+      { key_id: "k2", algorithm: "hmac-sha256" }
+    ]
+  }));
   const ward = constituteWard(c.store, c.keyring, c.signKeyId, wardBody(mae.mae_id));
   const env = createAuthorityEnvelope(c.store, c.keyring, c.signKeyId, envBody(mae.mae_id, ward.ward_id));
   const commitAct = (id: string) => {
