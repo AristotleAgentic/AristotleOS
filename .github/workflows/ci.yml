@@ -38,11 +38,10 @@ jobs:
         run: corepack pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Typecheck (runtime · CLI · console-ui · adapters)
-        # Build the runtime first so consumers resolve its emitted .d.ts, then
-        # strict-typecheck every project (tsc --noEmit) — the whole source tree,
-        # including the console UI that Vite/esbuild would otherwise build untyped.
+        # Install scripts are disabled, so build package entrypoints explicitly
+        # before tests import workspace packages through their package mains.
         run: |
-          corepack pnpm -F @aristotle/execution-control-runtime build
+          corepack pnpm -r --filter @aristotle/shared-types --filter @aristotle/shared-schemas --filter @aristotle/governance-core --filter @aristotle/trial-engine --filter @aristotle/execution-control-runtime --filter @aristotle/mesh-runtime --filter @aristotle/os-sdk --workspace-concurrency=1 build
           corepack pnpm typecheck
 
       - name: Test (governance · execution-control · cli · api · chain)
