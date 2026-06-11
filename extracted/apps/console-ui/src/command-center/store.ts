@@ -8,6 +8,7 @@ import type {
   OperationalMode,
   Posture,
   ShadowProfileSummary,
+  SwarmAirspaceCohortResult,
   SwarmAirspaceSimulationResult,
   SwarmConnectivityState,
   SwarmProjectionOutcome,
@@ -484,7 +485,7 @@ export const useCommandStore = create<CommandState>((set, get) => ({
       return;
     }
 
-    const results = [];
+    const results: SwarmAirspaceCohortResult[] = [];
     for (const cohort of cohorts) {
       const response = await postOperatorJson<{
         branch?: { id?: string };

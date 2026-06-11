@@ -79,7 +79,7 @@ try {
   record(existsSync(installedEntry), "installs into a clean consumer project");
 
   const pilotOut = run(process.execPath, [installedEntry, "pilot"], { cwd: installDir, stdio: ["ignore", "pipe", "pipe"], shell: false });
-  record(/PILOT READY/.test(pilotOut), "packed `aristotle pilot` passes", "all boundary checks green");
+  record(/DEMO READY/.test(pilotOut), "packed `aristotle pilot` passes", "all boundary checks green");
 } catch (error) {
   const detail = (error?.stdout || "") + (error?.stderr || error?.message || String(error));
   record(false, "packed `aristotle pilot` passes", detail.split(/\r?\n/).slice(-3).join(" | "));
