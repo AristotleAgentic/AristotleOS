@@ -14,3 +14,7 @@ Thumbs.db
 # Local-only env overrides at repo root (extracted/.gitignore covers extracted/.env)
 .env
 .env.local
+
+# Local launch artifacts
+static-server*.log
+aristotle-agentic-website-*.zip

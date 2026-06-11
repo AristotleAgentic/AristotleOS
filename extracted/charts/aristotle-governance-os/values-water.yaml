@@ -1,0 +1,122 @@
+# Vertical: water / wastewater SCADA
+# Doctrine alignment: Every chemical-dose change, every pump start/stop, every
+# valve operation, every clarifier setpoint adjustment must transit a Warrant.
+# Demo transports must never be loaded on production deployments — a misissued
+# chlorination command has a direct public-health blast radius and operators
+# must explicitly sign off on any wire-level adapter before it goes live.
+# Compliance reference: EPA Risk Management Program (40 CFR Part 68 — RMP rule),
+#   America's Water Infrastructure Act of 2018 §2013 risk and resilience
+#   assessment + emergency response plan obligations — DEMONSTRATION ONLY.
+#   Production deployments require the operator's chief operator and the
+#   compliance officer to sign off on the physical-invariant policy bundle
+#   plus the at-rest-encryption posture before any wire-level adapter is
+#   enabled.
+# Last reviewed: 2026-06-05
+#
+# Apply as a base profile under another overlay (e.g. hardened) for a pilot:
+#
+#   helm template aristotle charts/aristotle-governance-os \
+#     -f charts/aristotle-governance-os/values-water.yaml \
+#     -f charts/aristotle-governance-os/values-hardened.yaml
+#
+# Field provenance
+# ────────────────
+#   `runtimeConfig.*`     — template-consumed (passed straight into pod env).
+#   `secrets.*`           — template-consumed.
+#   `services.*`          — template-consumed (resource sizing per deployment).
+#   `mesh.*`              — operator-facing documentation.
+#   `gel.*`               — operator-facing documentation.
+#   `adapters.*`          — operator-facing posture statement.
+#   `global.vertical`     — discovery tag.
+#   `global.doctrine`     — operator-facing prose.
+
+global:
+  vertical: "water"
+  doctrine: |
+    Water / wastewater SCADA: every chemical-dose change, every pump
+    start/stop, every valve operation, and every clarifier setpoint transits
+    the gate with a single-use Warrant. Mesh quorum is three so a single
+    compromised plant node cannot revoke peers silently. Encryption at rest
+    is required on the GEL archive — operator records contain process-control
+    history that is sensitive both for incident-response and competitive
+    reasons. Demo transports are explicitly blocked because the public-health
+    blast radius of a misissued command is immediate. GEL retention is 7
+    years to match EPA RMP recordkeeping.
+
+mesh:
+  productionMode: true
+  revocationQuorum: 3                  # three independent witnesses required
+  rateLimit:
+    perPeerPerMinute: 150              # plant SCADA polling is steady, lower volume than grid
+  replayCache:
+    ttlMs: 60000                       # 60 s replay window
+  partition:
+    disconnectedWarrantCap: 3          # tight cap — wastewater control should not auto-issue under partition
+
+gel:
+  retention:
+    maxAgeDays: 2555                   # 7 years — matches EPA RMP recordkeeping
+  timestamp:
+    enabled: true
+    kind: "rfc3161"
+  archive:
+    enabled: true
+    minimumRetentionDays: 2555
+    encryptAtRest: true                # process-control history is sensitive — encrypt at rest
+
+adapters:
+  demonstrationOnlyBlocked: true        # demonstration_only blocked — public health blast radius
+
+runtimeConfig:
+  NODE_ENV: "production"
+  ALLOW_INSECURE_PRODUCTION_BOOT: "false"
+  GOVERNANCE_CHAIN_MODE: "enforce"
+  OPERATOR_SESSION_ENFORCEMENT: "true"
+  OPERATOR_ROLE_ENFORCEMENT: "true"
+  WITNESS_QUORUM: "3"
+  # Vertical tag picked up by OTel.
+  OTEL_RESOURCE_ATTRIBUTES_VERTICAL: "vertical=water"
+
+telemetry:
+  otel:
+    enabled: true
+    resourceAttributes: "deployment.environment=pilot,service.namespace=aristotle-governance-os,vertical=water"
+
+# Water SCADA is moderate volume; bias for steady-state with reliable witness.
+services:
+  governance-kernel:
+    replicas: 2
+    resources:
+      requests: { cpu: 500m, memory: 1Gi }
+      limits:   { cpu: 2000m, memory: 4Gi }
+  execution-gate:
+    replicas: 2
+    resources:
+      requests: { cpu: 500m, memory: 512Mi }
+      limits:   { cpu: 2000m, memory: 2Gi }
+  evidence-ledger:
+    replicas: 1
+    persistentVolume:
+      enabled: true
+      size: 100Gi                       # 7-year retention, moderate write volume
+      mountPath: /var/lib/aristotle
+    resources:
+      requests: { cpu: 250m, memory: 512Mi }
+      limits:   { cpu: 1500m, memory: 2Gi }
+  witness-service:
+    replicas: 3                         # matches mesh.revocationQuorum
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits:   { cpu: 1000m, memory: 1Gi }
+  policy-compiler:
+    replicas: 2
+  meta-authority-registry:
+    replicas: 2
+  authority-router:
+    replicas: 2
+  agent-os:
+    replicas: 1
+    persistentVolume:
+      enabled: true
+      size: 20Gi
+      mountPath: /var/lib/aristotle

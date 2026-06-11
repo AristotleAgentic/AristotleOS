@@ -1,0 +1,41 @@
+[
+  {
+    "observation_id": "obs-payments-approved-001",
+    "source": "kubernetes",
+    "observed_at": "2026-05-24T12:00:00.000Z",
+    "location": "cluster/prod/ns/payments/deploy/remediation-agent",
+    "declared_agent_id": "payments-remediation",
+    "owner": "finance-automation",
+    "ward_id": "enterprise-autonomy-ward",
+    "container_image": "registry.local/payments-remediation:2026.05.24",
+    "service_account": "agent:payments-remediation",
+    "tool_targets": ["stripe.refunds.write", "crm.customer.update"],
+    "credential_refs": ["spiffe://enterprise/payments/remediation"],
+    "llm_endpoints": ["https://api.openai.com/v1/responses"]
+  },
+  {
+    "observation_id": "obs-shadow-finance-001",
+    "source": "developer-workstation",
+    "observed_at": "2026-05-24T12:01:00.000Z",
+    "location": "workstation/finance-17/process/4421",
+    "process_name": "langgraph-worker",
+    "command_line": "node refund-workflow.js --agent --prod",
+    "outbound_hosts": ["api.openai.com", "crm.internal", "stripe.internal"],
+    "llm_endpoints": ["https://api.openai.com/v1/responses"],
+    "tool_targets": ["stripe.refunds.write", "crm.customer.update", "secrets.vault.read"],
+    "credential_refs": ["oauth:finance-user", "vault:stripe-prod"],
+    "labels": {
+      "subject": "agent:shadow-refund-runner"
+    }
+  },
+  {
+    "observation_id": "obs-prod-shell-001",
+    "source": "mcp",
+    "observed_at": "2026-05-24T12:02:00.000Z",
+    "location": "mcp/server/prod-shell",
+    "process_name": "mcp-tool-server",
+    "service_account": "cluster-admin-agent",
+    "tool_targets": ["shell.exec", "kubectl.production.deploy", "firewall.rules.write"],
+    "credential_refs": ["kubeconfig:prod-admin"]
+  }
+]

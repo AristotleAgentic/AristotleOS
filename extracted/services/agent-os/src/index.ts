@@ -1,6 +1,25 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { createApp, id, now } from "./lib.js";
+import { createChainClient, type ChainCommitResult, type ChainMode } from "./governance-chain-client.js";
+import { mountMissionsRoutes } from "./routes/missions.js";
+import { mountAgentsRoutes } from "./routes/agents.js";
+import { mountWorkspacesRoutes } from "./routes/workspaces.js";
+import { mountTasksReadRoutes } from "./routes/tasks-read.js";
+import { fingerprint, createMissionSteps as buildMissionSteps } from "./lib/mission-helpers.js";
+import {
+  EdgeNode,
+  type NodeId,
+  type MeshMessage,
+  type CommitRequest as MeshCommitRequest
+} from "@aristotle/mesh-runtime";
+import {
+  evaluateCommitGate,
+  type AuthorityEnvelope as SubstrateEnvelope,
+  type CanonicalActionInput,
+  type WardManifest
+} from "@aristotle/execution-control-runtime";
+import { ReadinessChecks, mountHealthEndpoints } from "@aristotle/service-runtime";
 import type {
   AgentCapability,
   AgentOSSnapshot,
@@ -47,6 +66,15 @@ const authorityRouterBase = serviceOrigin("authority-router", "HOST_AUTHORITY_RO
 const simulationEngineBase = serviceOrigin("simulation-engine", "HOST_SIMULATION_ENGINE", Number(process.env.PORT_SIMULATION_ENGINE ?? 7005));
 const witnessServiceBase = serviceOrigin("witness-service", "HOST_WITNESS_SERVICE", Number(process.env.PORT_WITNESS_SERVICE ?? 7007));
 const executionGateBase = serviceOrigin("execution-gate", "HOST_EXECUTION_GATE", Number(process.env.PORT_EXECUTION_GATE ?? 7008));
+const chainV2Enabled = (process.env.GOVERNANCE_CHAIN_V2 ?? "false").toLowerCase() === "true";
+const chainV2Mode: ChainMode = chainV2Enabled ? ((process.env.GOVERNANCE_CHAIN_MODE ?? "shadow").toLowerCase() as ChainMode) : "off";
+const governanceChainClient =
+  chainV2Mode === "off"
+    ? undefined
+    : createChainClient({ kernelBase: governanceKernelBase, mode: chainV2Mode, keyId: process.env.GOVERNANCE_CHAIN_KEY_ID });
+if (governanceChainClient) {
+  console.log(`agent-os: GOVERNANCE_CHAIN_V2 ${chainV2Mode} — task acts routed through kernel /v2/commit`);
+}
 const heartbeatTimeoutMs = Number(process.env.AGENT_OS_HEARTBEAT_TIMEOUT_MS ?? 300000);
 const leaseRenewalWindowMs = Number(process.env.AGENT_OS_LEASE_RENEWAL_WINDOW_MS ?? 900000);
 const leaseExtensionMs = Number(process.env.AGENT_OS_LEASE_EXTENSION_MS ?? 1800000);
@@ -68,6 +96,7 @@ type GovernanceDecision = {
   finalityCertificateId?: string;
   witnessStatus?: "satisfied" | "unsatisfied" | "not-required";
   route?: AuthorityRoute;
+  chain?: ChainCommitResult;
 };
 
 const defaultAgents: AgentCapability[] = [
@@ -130,8 +159,7 @@ const executionTasks = new Map<string, ExecutionTask>();
 const executionReceipts = new Map<string, ExecutionReceipt>();
 const toolActions = new Map<string, ToolAction>();
 
-const fingerprint = (namespace: string, seed: string) =>
-  `${namespace}-${seed.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "unknown"}`;
+// fingerprint() moved to ./lib/mission-helpers.ts in stage 12 (imported above).
 
 const agentIdentityContext = (agentId: string) => {
   const agent = agents.get(agentId);
@@ -170,40 +198,11 @@ let meshTelemetrySnapshot: { degradedNodes: string[]; checkedAt: number } = { de
 let persistQueue = Promise.resolve();
 let autonomyLoopRunning = false;
 
-const createMissionSteps = (requiredTools: string[]): MissionStep[] => [
-  {
-    id: id("step"),
-    title: "Frame mission and allocate governance posture",
-    status: "completed",
-    ownerRole: "planner",
-    requiredTools: [],
-    completionSignal: "mission brief accepted"
-  },
-  {
-    id: id("step"),
-    title: "Prepare workspace and attach execution agents",
-    status: "in_progress",
-    ownerRole: "executor",
-    requiredTools: ["shell", "editor"],
-    completionSignal: "workspace sealed with initial context"
-  },
-  {
-    id: id("step"),
-    title: "Lease tools and verify runtime boundaries",
-    status: "pending",
-    ownerRole: "auditor",
-    requiredTools,
-    completionSignal: "tool leases satisfy governance profile"
-  },
-  {
-    id: id("step"),
-    title: "Execute mission loop and record evidence",
-    status: "pending",
-    ownerRole: "executor",
-    requiredTools,
-    completionSignal: "success metrics reached"
-  }
-];
+// createMissionSteps() moved to ./lib/mission-helpers.ts in stage 12 (imported as
+// buildMissionSteps to avoid shadowing). Local wrapper preserves the prior
+// (requiredTools) → MissionStep[] signature so existing call sites don't change.
+const createMissionSteps = (requiredTools: string[]): MissionStep[] =>
+  buildMissionSteps(id, requiredTools);
 
 const ensureMissionMemory = (missionId: string) => {
   const records = memory.get(missionId);
@@ -1192,6 +1191,40 @@ const assessToolActionExecutionGovernance = async (
     }
   }
 
+  // GOVERNANCE_CHAIN_V2: route the tool action through the kernel's Commit Gate.
+  // ToolAction.governance is a shared-types shape we deliberately do not modify,
+  // so the chain verdict is surfaced via enforce-mode reasons + a ledger record
+  // (cross-referencing the kernel GEL) rather than attached to the object.
+  if (governanceChainClient && (governanceChainClient.mode === "shadow" || reasons.length === 0)) {
+    const chain = await governanceChainClient.commitToolAct({
+      mission,
+      task,
+      action,
+      killSwitchActive: killSwitchState === "active"
+    });
+    if (governanceChainClient.mode === "enforce") {
+      if (!chain.ran) {
+        reasons.push(`Ward/Warrant chain unavailable (fail-closed): ${chain.error ?? "unknown"}.`);
+      } else if (chain.decision !== "Allow") {
+        reasons.push(...(chain.reasons?.length ? chain.reasons : [`Ward/Warrant chain returned ${chain.decision}.`]));
+      }
+    }
+    await commitLedgerEvent(mission.id, "agent-os.tool-action.chain", {
+      missionId: mission.id,
+      taskId: task.id,
+      actionId: action.id,
+      toolId: action.toolId,
+      kind: action.kind,
+      chainMode: chain.mode,
+      chainRan: chain.ran,
+      chainDecision: chain.decision,
+      chainWarrantId: chain.warrant_id,
+      gelRecordId: chain.gel_record_id,
+      wardId: chain.ward_id,
+      reasons: chain.reasons
+    });
+  }
+
   return {
     status: reasons.length === 0 ? "approved" : "blocked",
     reasons: reasons.length === 0 ? [`Tool action approved at commit point for ${action.toolId}.`] : reasons,
@@ -1398,6 +1431,32 @@ const assessTaskGovernance = async (
     }
   }
 
+  // GOVERNANCE_CHAIN_V2: route the act through the kernel's Ward/Warrant Commit
+  // Gate. In shadow mode the decision is recorded but never gates; in enforce
+  // mode a non-Allow decision (or an unreachable chain) blocks the act fail-closed.
+  let chain: ChainCommitResult | undefined;
+  // Dispatch acts run through the chain here. Completion acts are committed in
+  // finalizeGovernedCompletion AFTER witness verification, so the witness duty is
+  // enforced against the real outcome. Dispatch never carries a witness obligation.
+  if (governanceChainClient && phase === "dispatch" && (governanceChainClient.mode === "shadow" || reasons.length === 0)) {
+    chain = await governanceChainClient.commitTaskAct({
+      mission,
+      task,
+      phase,
+      killSwitchActive: killSwitchState === "active",
+      witnessRequired: false,
+      witnessAccepted: true,
+      missingLeaseTools
+    });
+    if (governanceChainClient.mode === "enforce") {
+      if (!chain.ran) {
+        reasons.push(`Ward/Warrant chain unavailable (fail-closed): ${chain.error ?? "unknown"}.`);
+      } else if (chain.decision !== "Allow") {
+        reasons.push(...(chain.reasons?.length ? chain.reasons : [`Ward/Warrant chain returned ${chain.decision}.`]));
+      }
+    }
+  }
+
   return {
     status: reasons.length === 0 ? "approved" : "blocked",
     reasons: reasons.length === 0 ? [`Task ${phase} approved under governed admissibility.`] : reasons,
@@ -1406,7 +1465,8 @@ const assessTaskGovernance = async (
     envelopeId,
     warrantId,
     commitDecisionId,
-    route
+    route,
+    chain
   };
 };
 
@@ -1560,6 +1620,40 @@ const finalizeGovernedCompletion = async (
       };
     }
 
+    // GOVERNANCE_CHAIN_V2: completion runs through the chain HERE — after witness
+    // verification — so the witness obligation is enforced with the real outcome.
+    let chain: ChainCommitResult | undefined;
+    if (governanceChainClient) {
+      const killSwitchActive = (await readKillSwitchState()) === "active";
+      chain = await governanceChainClient.commitTaskAct({
+        mission,
+        task,
+        phase: "completion",
+        killSwitchActive,
+        witnessRequired,
+        witnessAccepted: witnessReceipt ? witnessReceipt.accepted : true,
+        missingLeaseTools: []
+      });
+      if (governanceChainClient.mode === "enforce" && (!chain.ran || chain.decision !== "Allow")) {
+        return {
+          ...governance,
+          status: "blocked",
+          reasons: [
+            ...governance.reasons,
+            ...(chain.ran
+              ? chain.reasons?.length
+                ? chain.reasons
+                : [`Ward/Warrant chain returned ${chain.decision}.`]
+              : [`Ward/Warrant chain unavailable (fail-closed): ${chain.error ?? "unknown"}.`])
+          ],
+          witnessReceiptId: witnessReceipt?.id,
+          decisionId: decision.id,
+          witnessStatus: decision.witnessStatus,
+          chain
+        };
+      }
+    }
+
     const finalityCertificate: FinalityCertificate = {
       id: id("fin"),
       artifactType: "finality-certificate",
@@ -1597,7 +1691,8 @@ const finalizeGovernedCompletion = async (
       finalityCertificateId: finalityCertificate.id,
       witnessStatus: decision.witnessStatus,
       status: "approved",
-      evaluatedAt: now()
+      evaluatedAt: now(),
+      chain
     };
   } catch {
     return {
@@ -1655,6 +1750,10 @@ const dispatchNextEligibleTask = async (
     envelopeId: governance.envelopeId,
     warrantId: governance.warrantId,
     route: governance.route,
+    wardId: governance.chain?.ward_id,
+    chainWarrantId: governance.chain?.warrant_id,
+    chainDecision: governance.chain?.decision,
+    gelRecordId: governance.chain?.gel_record_id,
     ...agentIdentityContext(nextQueued.assignedAgentId),
     ...workspaceIdentityContext(nextQueued.execution?.workspaceId ?? mission.workspaceId)
   });
@@ -2440,18 +2539,25 @@ app.get("/health", (_req, res) =>
   })
 );
 app.get("/state", (_req, res) => res.json(snapshot()));
-app.get("/missions", (_req, res) => res.json({ items: [...missions.values()] }));
-app.get("/tasks/next", (req, res) => {
-  const agentId = typeof req.query.agentId === "string" ? req.query.agentId : undefined;
-  const task = selectNextQueuedTask(agentId)?.task;
-  if (!task) return res.status(404).json({ error: "task_not_found" });
-  res.json(task);
+
+// GET /missions + POST /missions are mounted from ./routes/missions.ts
+// (stage 10 of prototype-hardening). /missions/:missionId/advance still
+// lives inline because it depends on progressExecutionLoop +
+// ~10 more helpers; deferred to a follow-on stage.
+// fingerprint + createMissionSteps used to be in this deps bag; stage 13
+// dropped them after stage 12 moved them to ./lib/mission-helpers.ts —
+// routes/missions.ts now imports those directly.
+mountMissionsRoutes(app, {
+  missions, workspaces, toolLeases,
+  id, now,
+  ensureMissionMemory, schedulePersist
 });
-app.get("/tasks/:taskId/actions", (req, res) => {
-  const task = executionTasks.get(req.params.taskId);
-  if (!task) return res.status(404).json({ error: "task_not_found" });
-  res.json({ items: taskToolActions(task.id) });
-});
+
+// GET /tasks/next + GET /tasks/:taskId/actions moved to ./routes/tasks-read.ts
+// in stage 20. The mutating /tasks/* handlers (claim, actions POST, execute,
+// heartbeat, complete, retry) stay inline — they each pull in 10+ helpers
+// and belong in focused future stages as those helpers extract.
+mountTasksReadRoutes(app, { executionTasks, selectNextQueuedTask, taskToolActions });
 app.post("/tasks/:taskId/claim", async (req, res) => {
   const task = executionTasks.get(req.params.taskId);
   if (!task) return res.status(404).json({ error: "task_not_found" });
@@ -2701,138 +2807,13 @@ app.post("/leases/:leaseId/renew", async (req, res) => {
   res.json({ renewed });
 });
 
-app.post("/agents/register", async (req, res) => {
-  const timestamp = now();
-  const agent: AgentCapability = {
-    id: req.body.id ?? id("agent"),
-    name: req.body.name ?? "Unnamed Agent",
-    role: req.body.role ?? "executor",
-    status: req.body.status ?? "ready",
-    model: req.body.model ?? "unknown",
-    provider: req.body.provider ?? "unknown",
-    specializations: req.body.specializations ?? [],
-    toolchains: req.body.toolchains ?? [],
-    trustTier: req.body.trustTier ?? "sandboxed",
-    maxConcurrency: req.body.maxConcurrency ?? 1,
-    workspaceAffinity: req.body.workspaceAffinity,
-    deviceId: req.body.deviceId,
-    identityFingerprint: req.body.identityFingerprint ?? fingerprint("agentfp", req.body.id ?? "agent"),
-    verificationStatus: req.body.verificationStatus ?? "verified",
-    lastHeartbeat: timestamp
-  };
-  agents.set(agent.id, agent);
-  await schedulePersist();
-  res.status(201).json(agent);
-});
+// POST /agents/register + POST /workspaces moved to ./routes/{agents,workspaces}.ts
+// in stage 15 of prototype-hardening. Behavior pinned by stage-14 tests.
+mountAgentsRoutes(app, { agents, id, now, schedulePersist });
+mountWorkspacesRoutes(app, { workspaces, id, now, schedulePersist });
 
-app.post("/workspaces", async (req, res) => {
-  const timestamp = now();
-  const workspace: WorkspaceSession = {
-    id: req.body.id ?? id("ws"),
-    missionId: req.body.missionId ?? "unassigned",
-    state: req.body.state ?? "prepared",
-    cwd: req.body.cwd ?? "/workspace",
-    branchName: req.body.branchName ?? `codex/${req.body.missionId ?? "mission"}`,
-    memoryNamespace: req.body.memoryNamespace ?? `mission.${req.body.missionId ?? "shared"}`,
-    attachedAgents: req.body.attachedAgents ?? [],
-    deviceFingerprint: req.body.deviceFingerprint ?? fingerprint("devicefp", req.body.id ?? "workspace"),
-    verificationStatus: req.body.verificationStatus ?? "verified",
-    createdAt: timestamp,
-    lastActiveAt: timestamp
-  };
-  workspaces.set(workspace.id, workspace);
-  await schedulePersist();
-  res.status(201).json(workspace);
-});
-
-app.post("/missions", async (req, res) => {
-  const timestamp = now();
-  const missionId = req.body.id ?? id("mission");
-  const assignedAgents: string[] = req.body.assignedAgents ?? ["agent-planner", "agent-executor", "agent-auditor"];
-  const requiredTools: string[] = req.body.requiredTools ?? ["shell", "editor", "ledger"];
-  const leasedToolIds = [...new Set([...requiredTools, "policy", "ledger"])];
-  const workspaceId = req.body.workspaceId ?? id("ws");
-  const mission: OperatingMission = {
-    id: missionId,
-    title: req.body.title ?? "Untitled Mission",
-    objective: req.body.objective ?? "No objective supplied",
-    status: req.body.status ?? "planned",
-    priority: req.body.priority ?? "high",
-    riskLevel: req.body.riskLevel ?? "medium",
-    requestedBy: req.body.requestedBy ?? "operator",
-    targetSystem: req.body.targetSystem ?? "workspace",
-    governanceProfile: req.body.governanceProfile ?? "supervised-build",
-    assignedAgents,
-    workspaceId,
-    requiredAuthorities: req.body.requiredAuthorities ?? ["mission.command"],
-    requiredTools,
-    successMetrics: req.body.successMetrics ?? ["mission completes without governance violations"],
-    steps: createMissionSteps(requiredTools),
-    createdAt: timestamp,
-    updatedAt: timestamp
-  };
-
-  const workspace: WorkspaceSession = {
-    id: workspaceId,
-    missionId,
-    state: "active",
-    cwd: req.body.cwd ?? "/workspace",
-    branchName:
-      req.body.branchName ??
-      `codex/${mission.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || missionId}`,
-    memoryNamespace: `mission.${missionId}`,
-    attachedAgents: assignedAgents,
-    deviceFingerprint: req.body.deviceFingerprint ?? fingerprint("devicefp", workspaceId),
-    verificationStatus: req.body.verificationStatus ?? "verified",
-    createdAt: timestamp,
-    lastActiveAt: timestamp
-  };
-
-  const leases = leasedToolIds.map((toolId, index) => {
-    const lease: ToolLease = {
-      id: id("lease"),
-      toolId,
-      missionId,
-      agentId: assignedAgents[Math.min(index, assignedAgents.length - 1)] ?? "agent-executor",
-      state: "leased",
-      scope: req.body.targetSystem ?? "workspace",
-      grantedAt: timestamp,
-      expiresAt: req.body.expiresAt,
-      constraints: req.body.toolConstraints?.[toolId] ?? ["operator approval required for destructive actions"]
-    };
-    toolLeases.set(lease.id, lease);
-    return lease;
-  });
-
-  const missionMemory = ensureMissionMemory(missionId);
-  missionMemory.push(
-    {
-      id: id("mem"),
-      missionId,
-      kind: "objective",
-      summary: mission.objective,
-      tags: ["objective", mission.priority, mission.riskLevel],
-      createdAt: timestamp,
-      author: mission.requestedBy
-    },
-    {
-      id: id("mem"),
-      missionId,
-      kind: "decision",
-      summary: `Mission scheduled with governance profile ${mission.governanceProfile}.`,
-      tags: ["governance", "mission"],
-      createdAt: timestamp,
-      author: "agent-os"
-    }
-  );
-
-  missions.set(mission.id, mission);
-  workspaces.set(workspace.id, workspace);
-  await schedulePersist();
-
-  res.status(201).json({ mission, workspace, leases });
-});
-
+// POST /missions moved to ./routes/missions.ts in stage 10 (mounted above).
+// /missions/:missionId/advance stays inline — see comment by mountMissionsRoutes.
 app.post("/missions/:missionId/advance", async (req, res) => {
   const mission = missions.get(req.params.missionId);
   if (!mission) return res.status(404).json({ error: "mission_not_found" });
@@ -2899,4 +2880,134 @@ app.post("/missions/:missionId/advance", async (req, res) => {
   });
 });
 
-app.listen(port, () => console.log(`agent-os on ${port}`));
+// ---------------------------------------------------------------------------
+// Substrate-backed EdgeNode + Commit Gate (mesh-runtime + execution-control-runtime)
+//
+// This service also acts as a mesh EDGE: it accepts envelope
+// propagation + revocation gossip + Fluidity Token issuance from
+// the root and witnesses, and can issue local Warrants under a
+// Fluidity Token during partition. /v1/mesh/evaluate also exposes
+// the in-process Commit Gate for direct action evaluation.
+// ---------------------------------------------------------------------------
+
+const meshSecret = process.env.MESH_SECRET ?? "aos-demo-mesh-secret";
+const meshHost = process.env.HOST_AGENT_OS ?? "127.0.0.1";
+const edge = new EdgeNode({
+  id: process.env.MESH_EDGE_ID ?? "edge-aos",
+  host: meshHost,
+  port,
+  secret: meshSecret,
+  urlFor: (t: NodeId) => `http://${t.host}:${t.port}/mesh`,
+  maxWarrantsWhileDisconnected: Number(process.env.MESH_EDGE_QUOTA ?? 100)
+});
+
+const peerSpec = process.env.MESH_PEERS ?? "root-mae:127.0.0.1:7004,witness-mae:127.0.0.1:7007";
+const peers: NodeId[] = peerSpec
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean)
+  .map((spec) => {
+    const [pid, phost, pportStr] = spec.split(":");
+    return {
+      id: pid,
+      role: pid.startsWith("witness")
+        ? ("witness" as const)
+        : pid.startsWith("edge")
+          ? ("edge" as const)
+          : ("root" as const),
+      host: phost,
+      port: Number(pportStr)
+    };
+  });
+edge.setPeers(peers);
+
+// /healthz + /readyz mounted via the shared service-runtime helper
+// after the EdgeNode + peers are constructed so the readiness closure
+// can reference them. mountLegacyHealth: false because the legacy
+// /health handler above already surfaces extra fields
+// (persistedStatePath, missions, agents, executionTasks, autonomyTickMs)
+// the operator UI and other services rely on.
+mountHealthEndpoints(app, {
+  service: "agent-os",
+  mountLegacyHealth: false,
+  readiness: () => ReadinessChecks.start()
+    .addTry("mesh_signer", () => typeof edge.getId() === "string")
+    .addPeersConfiguredCheck(peers.length)
+    .addDemoSecretCheck(meshSecret)
+    .build()
+});
+
+app.post("/mesh", async (req, res) => {
+  try {
+    const msg = req.body as MeshMessage;
+    if (msg.from && edge.partitions.has(msg.from)) {
+      return res.status(504).json({ ok: false, reason: "partitioned" });
+    }
+    const out = await edge.direct(msg);
+    res.json(out);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Disconnected commit gate — issues a Warrant locally when the edge
+// holds a valid Fluidity Token for the referenced envelope.
+app.post("/v1/mesh/evaluate-disconnected", async (req, res) => {
+  try {
+    const commitReq = req.body as MeshCommitRequest;
+    const decision = await edge.evaluate(commitReq);
+    res.json({
+      ok: true,
+      decision
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Connected commit gate — direct invocation of evaluateCommitGate.
+app.post("/v1/mesh/evaluate", (req, res) => {
+  try {
+    const { ward, authorityEnvelope, action } = req.body as {
+      ward: WardManifest;
+      authorityEnvelope: SubstrateEnvelope;
+      action: CanonicalActionInput;
+    };
+    if (!ward || !authorityEnvelope || !action) {
+      return res.status(400).json({ ok: false, error: "missing_required_fields" });
+    }
+    const decision = evaluateCommitGate({ ward, authorityEnvelope, action, now: now() });
+    res.json({ ok: true, decision });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+app.post("/v1/mesh/reconcile", async (_req, res) => {
+  try {
+    const conflicts = await edge.reconcile();
+    res.json({
+      ok: true,
+      conflicts_count: conflicts.length,
+      conflicts
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+app.get("/v1/mesh/state", (_req, res) => {
+  res.json({
+    ok: true,
+    role: "edge",
+    node_id: edge.getId(),
+    peers,
+    cached_envelopes: edge.cachedEnvelopeCount(),
+    cached_revocations: edge.cachedRevocationCount(),
+    valid_fluidity_tokens: edge.validFluidityTokens().length,
+    local_decisions: edge.localDecisionCount(),
+    partitions: [...edge.partitions]
+  });
+});
+
+app.listen(port, () => console.log(`agent-os on ${port} (substrate-wired: EdgeNode at /mesh, Commit Gate at /v1/mesh/*)`));

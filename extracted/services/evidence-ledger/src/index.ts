@@ -3,6 +3,25 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { createHash, createHmac, createPrivateKey, createPublicKey, sign as cryptoSign, verify as cryptoVerify } from "node:crypto";
 import { createApp, id, now } from "./lib.js";
+// Substrate GEL — hash-chained, signed, offline-verifiable evidence chain.
+// See shared/execution-control-runtime/src/index.ts.
+import {
+  appendGelRecord,
+  loadGelChain,
+  verifyGelChain,
+  exportEvidenceBundle,
+  type WardManifest,
+  type CanonicalActionInput,
+  type CommitGateDecision,
+  type Warrant,
+  // Substrate has its own AuthorityEnvelope shape distinct from
+  // shared-types::AuthorityEnvelope; import under an alias so both
+  // can coexist in this service.
+  type AuthorityEnvelope as SubstrateAuthorityEnvelope
+} from "@aristotle/execution-control-runtime";
+import { ReadinessChecks, mountHealthEndpoints } from "@aristotle/service-runtime";
+import { mountGelRoutes } from "./routes/gel.js";
+import { mountReplayEventsRoutes } from "./routes/replay-events.js";
 import type {
   AssuranceAttestationArtifact,
   ArtifactType,
@@ -631,88 +650,28 @@ const artifactTimeline = (traceId?: string, artifactType?: ArtifactType, related
 
 await loadState();
 
+// Keep the custom /health handler because it surfaces extra fields
+// (persistedStatePath, committedEvents) operators rely on; mount only
+// the structured /healthz + /readyz from the shared helper.
 app.get("/health", (_req, res) =>
   res.json({ ok: true, service: "evidence-ledger", persistedStatePath: statePath, committedEvents: committed.length })
 );
-
-app.post("/events/commit", async (req, res) => {
-  const ev: ReplayEvent = {
-    id: req.body.id ?? id("evt"),
-    artifactType: "replay-event",
-    timestamp: now(),
-    actor: req.body.actor ?? "unknown",
-    eventKind: req.body.eventKind ?? "unknown",
-    committed: true,
-    payload: req.body.payload ?? {},
-    traceId: req.body.traceId,
-    chainId: req.body.chainId
-  };
-  committed.push(ev);
-  ingestArtifactsFromPayload(ev);
-  await schedulePersist();
-  res.status(201).json({ index: committed.length - 1, event: ev });
+mountHealthEndpoints(app, {
+  service: "evidence-ledger",
+  mountLegacyHealth: false,
+  readiness: () => ReadinessChecks.start()
+    .add("service_initialized", true)
+    .build()
 });
 
-app.post("/branches", async (req, res) => {
-  const branch: CounterfactualBranch = {
-    id: req.body.id ?? id("cfb"),
-    artifactType: "counterfactual-branch",
-    timestamp: now(),
-    actor: req.body.actor ?? "simulator",
-    parentTraceId: req.body.parentTraceId ?? "unknown",
-    label: req.body.label ?? "branch",
-    status: "open",
-    hypothetical: true
-  };
-  branches.set(branch.id, branch);
-  hypothetical.set(branch.id, []);
-  await schedulePersist();
-  res.status(201).json(branch);
-});
-
-app.post("/branches/:id/events", async (req, res) => {
-  const branch = branches.get(req.params.id);
-  if (!branch) return res.status(404).json({ error: "branch_not_found" });
-  const ev: ReplayEvent = {
-    id: req.body.id ?? id("evt"),
-    artifactType: "replay-event",
-    timestamp: now(),
-    actor: req.body.actor ?? "simulator",
-    eventKind: req.body.eventKind ?? "counterfactual",
-    committed: false,
-    branchId: branch.id,
-    payload: req.body.payload ?? {}
-  };
-  hypothetical.get(branch.id)!.push(ev);
-  await schedulePersist();
-  res.status(201).json(ev);
-});
-
-app.get("/replay", (req, res) => {
-  const { traceId, branchId, relatedId } = req.query;
-  if (branchId && typeof branchId === "string") {
-    const items = (hypothetical.get(branchId) ?? []).filter((event) =>
-      eventMatchesRelatedId(event, typeof relatedId === "string" ? relatedId : undefined)
-    );
-    return res.json({ committed: false, items });
-  }
-  const items = committed.filter(
-    (event) =>
-      (typeof traceId === "string" ? event.traceId === traceId : true) &&
-      eventMatchesRelatedId(event, typeof relatedId === "string" ? relatedId : undefined)
-  );
-  res.json({ committed: true, items });
-});
-
-app.get("/timeline", (req, res) => {
-  const traceId = typeof req.query.traceId === "string" ? req.query.traceId : undefined;
-  const relatedId = typeof req.query.relatedId === "string" ? req.query.relatedId : undefined;
-  res.json({
-    committed: committed.filter(
-      (event) => (traceId ? event.traceId === traceId : true) && eventMatchesRelatedId(event, relatedId)
-    ),
-    branches: [...branches.values()]
-  });
+// /events/commit + /branches + /branches/:id/events + /replay + /timeline
+// moved to ./routes/replay-events.ts in stage 19. Behavior pinned by stage-2
+// services/evidence-ledger/src/index.test.ts.
+mountReplayEventsRoutes(app, {
+  committed, branches, hypothetical,
+  id, now,
+  ingestArtifactsFromPayload, eventMatchesRelatedId,
+  schedulePersist
 });
 app.get("/artifacts", (req, res) => {
   const traceId = typeof req.query.traceId === "string" ? req.query.traceId : undefined;
@@ -730,4 +689,31 @@ app.get("/artifacts/:id", (req, res) => {
   res.json(artifact);
 });
 
-app.listen(port, () => console.log(`evidence-ledger on ${port}`));
+// ---------------------------------------------------------------------------
+// Substrate GEL chain — hash-chained, signed evidence records.
+//
+// This sits ALONGSIDE the legacy event store above. The legacy store powers
+// the operator UI's mission timeline and artifact browser. The GEL chain
+// below is the cryptographic source of truth that an auditor / insurance
+// carrier / regulator would verify offline.
+//
+// The two are complementary:
+//   /events/commit, /timeline, /artifacts/*  → operator-facing event log
+//   /gel/append, /gel/chain, /gel/verify     → substrate hash-chained ledger
+//
+// They share no state today. A future iteration could derive GEL records
+// from /events/commit payloads automatically when the event represents a
+// governance decision.
+// ---------------------------------------------------------------------------
+
+const gelPath = resolve(
+  process.cwd(),
+  process.env.EVIDENCE_LEDGER_GEL_PATH ?? "./data/evidence-ledger.gel.jsonl"
+);
+
+// /gel/* surface moved to ./routes/gel.ts in stage 18 of prototype-hardening.
+// Behavior pinned by stage-3 services/evidence-ledger/src/gel-chain.test.ts
+// (5 tests covering append + chain-linkage + verify + missing-fields envelope).
+mountGelRoutes(app, { gelPath, now });
+
+app.listen(port, () => console.log(`evidence-ledger on ${port} (substrate-wired: GEL chain at /gel/*)`));

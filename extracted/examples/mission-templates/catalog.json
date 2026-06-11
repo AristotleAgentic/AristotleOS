@@ -1,0 +1,75 @@
+{
+  "schema": "aristotle.mission-template.catalog/v0.1",
+  "templates": [
+    {
+      "id": "payments-remediation",
+      "name": "Payments remediation",
+      "ward": {
+        "id": "ward-payments",
+        "sovereignty": "Treasury Risk"
+      },
+      "authorityEnvelope": {
+        "subject": "agent:remediation",
+        "allowedActions": ["stripe.refund"],
+        "refusedActions": ["stripe.payout"],
+        "autonomousLimitUsd": 500,
+        "escalationLimitUsd": 10000,
+        "warrantRequired": true
+      },
+      "evidenceRequired": ["policy_hash", "authority_hash", "operator_identity", "warrant", "gel_record"],
+      "expectedDefaultDecision": "ESCALATE"
+    },
+    {
+      "id": "kubernetes-production-deploy",
+      "name": "Kubernetes production deployment",
+      "ward": {
+        "id": "ward-infrastructure",
+        "sovereignty": "Platform Operations"
+      },
+      "authorityEnvelope": {
+        "subject": "agent:platform-deployer",
+        "allowedActions": ["k8s.deployment.rollout", "k8s.configmap.update"],
+        "refusedActions": ["k8s.clusterrole.bind-admin"],
+        "requiresImageDigest": true,
+        "warrantRequired": true
+      },
+      "evidenceRequired": ["manifest_diff", "image_digest", "approver", "runtime_registers", "warrant", "gel_record"],
+      "expectedDefaultDecision": "ESCALATE"
+    },
+    {
+      "id": "disconnected-drone-patrol",
+      "name": "Disconnected drone patrol",
+      "ward": {
+        "id": "ward-montana-range",
+        "sovereignty": "Range Safety Authority"
+      },
+      "authorityEnvelope": {
+        "subject": "agent:survey-planner",
+        "allowedActions": ["drone.takeoff", "drone.scan_area", "drone.return_home"],
+        "refusedActions": ["drone.disable_geofence", "drone.leave_boundary"],
+        "maxAltitudeM": 120,
+        "permittedBoundaryId": "ranch-test-grid-a",
+        "warrantRequired": true
+      },
+      "evidenceRequired": ["physical_invariants", "cached_authority", "edge_clock", "warrant", "replay_bundle"],
+      "expectedDefaultDecision": "ALLOW"
+    },
+    {
+      "id": "protected-record-correction",
+      "name": "Protected record correction",
+      "ward": {
+        "id": "ward-protected-records",
+        "sovereignty": "Clinical Compliance"
+      },
+      "authorityEnvelope": {
+        "subject": "agent:records-correction",
+        "allowedActions": ["record.correct"],
+        "refusedActions": ["record.delete", "record.export.bulk"],
+        "requiresHumanApproval": true,
+        "warrantRequired": true
+      },
+      "evidenceRequired": ["patient_scope", "approver_identity", "policy_version", "warrant", "audit_export"],
+      "expectedDefaultDecision": "REFUSE"
+    }
+  ]
+}

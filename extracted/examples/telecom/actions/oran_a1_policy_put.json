@@ -1,0 +1,34 @@
+{
+  "action_id": "telco-oran-a1-001",
+  "ward_id": "ward-ran-region-west",
+  "subject": "agent:noc-change-orchestrator",
+  "action_type": "oran.a1.policy.put",
+  "target": "non-rt-ric-west:A1:energy-saving-policy:cell-dtx-west-01",
+  "params": {
+    "adapter": "oran-a1-r1",
+    "ric_id": "non-rt-ric-west",
+    "interface": "A1",
+    "policy_type_id": "energy-saving-policy",
+    "policy_instance_id": "cell-dtx-west-01",
+    "operation": "create",
+    "target_cells": ["cell-1703", "cell-1704"],
+    "payload": {
+      "max_dtx_ratio": 0.25,
+      "protected_service": "emergency-calling"
+    }
+  },
+  "requested_at": "2026-05-25T15:03:00.000Z",
+  "request_id": "req-telco-oran-001",
+  "telemetry": {
+    "change_ticket": "CHG-2026-0517",
+    "maintenance_window": "approved",
+    "noc_operator": "operator:netops-west",
+    "precheck_passed": true,
+    "ric_policy_type": "energy-saving-policy",
+    "impact_assessment": "low"
+  },
+  "classification": {
+    "level": "CUI",
+    "caveats": ["CPNI"]
+  }
+}

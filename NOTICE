@@ -1,0 +1,17 @@
+AristotleOS
+Copyright (c) AristotleAgentic and contributors.
+
+AristotleOS-original source code is licensed under the Mozilla Public License,
+version 2.0, unless a more specific file, directory, or package manifest states
+otherwise. See LICENSE and LICENSING.md.
+
+Documentation under docs/ is licensed under Creative Commons Attribution 4.0
+International (CC-BY-4.0) unless a more specific file states otherwise.
+
+The Aristotle Agentic and AristotleOS names, logos, marks, and trade dress are
+not licensed for unrestricted use by the source code license. Do not use them to
+imply endorsement, certification, partnership, official status, or origin
+without permission.
+
+Third-party components remain governed by their own license terms. See package
+metadata, lockfiles, generated SBOMs, and dependency notices.

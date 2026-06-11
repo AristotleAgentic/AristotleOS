@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 900" role="img" aria-labelledby="title desc">
+  <title id="title">Deterministic governance enforcement for autonomous infrastructure</title>
+  <desc id="desc">A vertical governance enforcement diagram showing institutional authority compiled into invariants, checked at a commit-point gate, and bound to software, physical infrastructure, and evidence.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1110"/>
+      <stop offset="1" stop-color="#1a2521"/>
+    </linearGradient>
+    <linearGradient id="signal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e9c46a"/>
+      <stop offset=".48" stop-color="#8eb4ff"/>
+      <stop offset="1" stop-color="#62d6a7"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="720" height="900" rx="34" fill="url(#bg)"/>
+  <g opacity=".13" stroke="#f6f1e8" stroke-width="1">
+    <path d="M76 90h568M76 810h568M76 90v720M644 90v720"/>
+    <path d="M112 130h496M112 170h496M112 210h496M112 250h496M112 290h496M112 330h496M112 370h496M112 410h496M112 450h496M112 490h496M112 530h496M112 570h496M112 610h496M112 650h496M112 690h496M112 730h496M112 770h496"/>
+  </g>
+
+  <text x="76" y="70" fill="#e9c46a" font-family="Consolas,monospace" font-size="17" font-weight="700">DETERMINISTIC GOVERNANCE ENFORCEMENT</text>
+  <text x="76" y="824" fill="#8f8678" font-family="Consolas,monospace" font-size="15">governance shifts from post-hoc review to compiled control</text>
+
+  <g font-family="Georgia" font-weight="700">
+    <rect x="96" y="122" width="228" height="58" rx="13" fill="#151d1b" stroke="#e9c46a" stroke-opacity=".62"/>
+    <text x="122" y="158" fill="#f6f1e8" font-size="20">Institutional authority</text>
+    <rect x="96" y="204" width="228" height="58" rx="13" fill="#151d1b" stroke="#e9c46a" stroke-opacity=".5"/>
+    <text x="122" y="240" fill="#f6f1e8" font-size="20">Authority envelope</text>
+    <rect x="96" y="286" width="228" height="58" rx="13" fill="#151d1b" stroke="#8eb4ff" stroke-opacity=".62"/>
+    <text x="122" y="322" fill="#f6f1e8" font-size="20">Invariant compiler</text>
+    <rect x="96" y="368" width="228" height="58" rx="13" fill="#151d1b" stroke="#62d6a7" stroke-opacity=".62"/>
+    <text x="122" y="404" fill="#f6f1e8" font-size="20">Runtime registers</text>
+  </g>
+
+  <path d="M210 180v24M210 262v24M210 344v24" stroke="url(#signal)" stroke-width="4" filter="url(#glow)"/>
+  <path d="M324 397C392 405 430 430 462 470" stroke="#62d6a7" stroke-width="4" fill="none" filter="url(#glow)"/>
+
+  <g>
+    <rect x="366" y="432" width="248" height="190" rx="22" fill="#101816" stroke="url(#signal)" stroke-width="2.5"/>
+    <text x="398" y="492" fill="#f6f1e8" font-family="Georgia" font-size="28" font-weight="700">Commit-Point</text>
+    <text x="398" y="528" fill="#f6f1e8" font-family="Georgia" font-size="28" font-weight="700">Execution Gate</text>
+    <text x="400" y="574" fill="#c8c0b2" font-family="Arial" font-size="16">ALLOW</text>
+    <text x="496" y="574" fill="#c8c0b2" font-family="Arial" font-size="16">REFUSE</text>
+    <text x="400" y="606" fill="#c8c0b2" font-family="Arial" font-size="16">ESCALATE</text>
+    <text x="524" y="606" fill="#c8c0b2" font-family="Arial" font-size="16">EXPIRE</text>
+  </g>
+
+  <g font-family="Arial">
+    <rect x="96" y="540" width="186" height="72" rx="13" fill="#151d1b" stroke="#8eb4ff" stroke-opacity=".54"/>
+    <text x="120" y="572" fill="#8eb4ff" font-family="Consolas,monospace" font-size="14" font-weight="700">SOFTWARE</text>
+    <text x="120" y="596" fill="#c8c0b2" font-size="15">tool/action</text>
+
+    <rect x="96" y="642" width="186" height="72" rx="13" fill="#151d1b" stroke="#62d6a7" stroke-opacity=".54"/>
+    <text x="120" y="674" fill="#62d6a7" font-family="Consolas,monospace" font-size="14" font-weight="700">PHYSICAL</text>
+    <text x="120" y="698" fill="#c8c0b2" font-size="15">interlock</text>
+
+    <rect x="366" y="672" width="248" height="72" rx="13" fill="#151d1b" stroke="#e9c46a" stroke-opacity=".54"/>
+    <text x="398" y="704" fill="#e9c46a" font-family="Consolas,monospace" font-size="14" font-weight="700">EVIDENCE LEDGER</text>
+    <text x="398" y="728" fill="#c8c0b2" font-size="15">auditable execution record</text>
+  </g>
+
+  <path d="M462 622C392 650 346 660 282 678" stroke="url(#signal)" stroke-width="3.5" fill="none"/>
+  <path d="M366 548C328 550 308 558 282 574" stroke="#8eb4ff" stroke-width="3.5" fill="none"/>
+  <path d="M490 622v50" stroke="#e9c46a" stroke-width="3.5" filter="url(#glow)"/>
+</svg>

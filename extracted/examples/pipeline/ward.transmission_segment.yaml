@@ -1,0 +1,54 @@
+ward_id: ward-pipeline-transmission-segment-west
+name: Transmission Segment Operations West
+sovereignty_context: operator-west-control-authority
+authority_domain: pipeline-transmission-ops
+policy_version: 0.1.0
+evidence_ledger_path: .aristotle/pipeline-transmission-segment-west.gel.jsonl
+permitted_subjects:
+  - agent:pipeline-ops-orchestrator
+  - agent:segment-edge-controller
+physical_bounds:
+  permitted_segment_id: segment-transmission-west
+  permitted_system_model_id: model-west-2026-05-25
+  permitted_asset_types:
+    - pump
+    - compressor
+    - valve
+    - pressure-monitor
+    - regulator
+  permitted_pipeline_states:
+    - normal
+    - maintenance
+    - startup
+  max_pressure_psig: 1200
+  min_pressure_psig: 150
+  max_pressure_pct_maop: 100
+  max_flow_bbl_per_day: 50000
+  max_telemetry_age_ms: 5000
+  require_leak_detection_armed: true
+  require_overpressure_protection: true
+  require_esd_ready: true
+  require_segment_isolation_ready: true
+  require_pump_primed: true
+  require_pipeline_scada_fresh: true
+  require_operator_qualified: true
+metadata:
+  pipeline_domain: hazardous-liquid-transmission
+  regulatory_evidence_profile:
+    - PHMSA_195
+    - CONTROL_ROOM_MANAGEMENT
+    - OPERATOR_QUALIFICATION
+    - INTEGRITY_MANAGEMENT
+    - API_1164
+    - API_1173
+    - API_RP_1175
+  protected_scope:
+    - pump-control
+    - valve-isolation
+    - pressure-control
+    - leak-detection
+criticality: safety_critical
+classification:
+  level: CUI
+  caveats:
+    - PIPELINE_OPS

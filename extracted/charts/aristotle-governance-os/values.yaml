@@ -1,0 +1,209 @@
+global:
+  image:
+    registry: ghcr.io
+    repositoryPrefix: aristotle-os
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+  namespace:
+    create: true
+    name: aristotle-governance-os
+  serviceAccount:
+    create: true
+    name: aristotle-governance-os
+
+secrets:
+  existingSecret: aristotle-runtime-secrets
+
+runtimeConfig:
+  NODE_ENV: "production"
+  SERVICE_DISCOVERY_MODE: "container"
+  ALLOW_INSECURE_PRODUCTION_BOOT: "false"
+  GOVERNANCE_CHAIN_V2: "true"
+  GOVERNANCE_CHAIN_MODE: "enforce"
+  GOVERNANCE_CHAIN_KEY_ID: "governance-kernel-production"
+  GOVERNANCE_CHAIN_STATE_PATH: "/var/lib/aristotle/governance-chain.json"
+  EVIDENCE_LEDGER_STATE_PATH: "/var/lib/aristotle/evidence-ledger.json"
+  AGENT_OS_STATE_PATH: "/var/lib/aristotle/agent-os.json"
+  PORT_GATEWAY: "8080"
+  PORT_GOVERNANCE_KERNEL: "7001"
+  PORT_POLICY_COMPILER: "7002"
+  PORT_EVIDENCE_LEDGER: "7003"
+  PORT_META_AUTHORITY_REGISTRY: "7004"
+  PORT_SIMULATION_ENGINE: "7005"
+  PORT_AUTHORITY_ROUTER: "7006"
+  PORT_WITNESS_SERVICE: "7007"
+  PORT_EXECUTION_GATE: "7008"
+  PORT_AGENT_OS: "7009"
+  EVIDENCE_LEDGER_SIGNER: "evidence-ledger.production"
+  OPERATOR_SESSION_ENFORCEMENT: "true"
+  OPERATOR_SESSION_TTL_MS: "900000"
+  OPERATOR_SESSION_SKEW_MS: "60000"
+  OPERATOR_ROLE_ENFORCEMENT: "true"
+  OPERATOR_DEFAULT_ROLE: "operator"
+  OPERATOR_READ_ROLES: "viewer,operator,admin"
+  OPERATOR_MUTATION_ROLES: "operator,admin"
+  OPERATOR_READ_ACTORS: "enterprise-console,enterprise-validation"
+  OPERATOR_MUTATION_ACTORS: "enterprise-console,enterprise-validation"
+  WITNESS_QUORUM: "2"
+  KILL_SWITCH_DEFAULT: "inactive"
+  REPLAY_TICK_MS: "1500"
+  AGENT_OS_HEARTBEAT_TIMEOUT_MS: "300000"
+  AGENT_OS_LEASE_RENEWAL_WINDOW_MS: "900000"
+  AGENT_OS_LEASE_EXTENSION_MS: "1800000"
+  AGENT_OS_TASK_MAX_ATTEMPTS: "3"
+  GATEWAY_READINESS_TIMEOUT_MS: "2000"
+  GATEWAY_CRITICAL_SERVICES: "governance-kernel,policy-compiler,evidence-ledger,meta-authority-registry,simulation-engine,witness-service,execution-gate,agent-os"
+
+identity:
+  spiffe:
+    enabled: false
+    trustDomain: "cluster.local"
+    socketPath: "/run/spire/sockets/spire-agent.sock"
+    socketMountPath: "/run/spire/sockets"
+    csiDriver: "csi.spiffe.io"
+    workloadSelector: "aristotle-governance-os"
+  mesh:
+    inject: false
+    annotations:
+      sidecar.istio.io/inject: "true"
+
+telemetry:
+  otel:
+    enabled: true
+    serviceNamePrefix: "aristotle"
+    exporterEndpoint: "http://otel-collector.monitoring.svc.cluster.local:4318"
+    tracesExporter: "otlp"
+    resourceAttributes: "deployment.environment=pilot,service.namespace=aristotle-governance-os"
+
+observability:
+  serviceMonitor:
+    enabled: true
+  prometheusRules:
+    enabled: true
+
+networkPolicy:
+  enabled: true
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: aristotle.local
+      paths:
+        - path: /
+          pathType: Prefix
+          serviceName: console-ui
+          servicePort: 4173
+  tls: []
+
+podSecurity:
+  enforceRestricted: true
+  # Recommended hardening: mount the container root filesystem read-only and give
+  # each pod a writable emptyDir at /tmp. Off by default to stay non-breaking on
+  # arbitrary clusters; enable via values-hardened.yaml (state still persists to
+  # the mounted PV at /var/lib/aristotle).
+  readOnlyRootFilesystem: false
+
+services:
+  http-gateway:
+    kind: gateway
+    path: adapters/http-gateway
+    port: 8080
+    replicas: 2
+    critical: true
+    readinessPath: /ready
+    livenessPath: /health
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: 1000m, memory: 512Mi }
+  governance-kernel:
+    path: services/governance-kernel
+    port: 7001
+    replicas: 1
+    persistentVolume:
+      enabled: true
+      size: 5Gi
+      mountPath: /var/lib/aristotle
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: 1000m, memory: 512Mi }
+  policy-compiler:
+    path: services/policy-compiler
+    port: 7002
+    replicas: 2
+    resources:
+      requests: { cpu: 50m, memory: 96Mi }
+      limits: { cpu: 500m, memory: 256Mi }
+  evidence-ledger:
+    path: services/evidence-ledger
+    port: 7003
+    replicas: 1
+    persistentVolume:
+      enabled: true
+      size: 10Gi
+      mountPath: /var/lib/aristotle
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: 1000m, memory: 512Mi }
+  meta-authority-registry:
+    path: services/meta-authority-registry
+    port: 7004
+    replicas: 2
+    resources:
+      requests: { cpu: 50m, memory: 96Mi }
+      limits: { cpu: 500m, memory: 256Mi }
+  simulation-engine:
+    path: services/simulation-engine
+    port: 7005
+    replicas: 2
+    resources:
+      requests: { cpu: 50m, memory: 96Mi }
+      limits: { cpu: 500m, memory: 256Mi }
+  authority-router:
+    path: services/authority-router
+    port: 7006
+    replicas: 2
+    resources:
+      requests: { cpu: 50m, memory: 96Mi }
+      limits: { cpu: 500m, memory: 256Mi }
+  witness-service:
+    path: services/witness-service
+    port: 7007
+    replicas: 2
+    resources:
+      requests: { cpu: 50m, memory: 96Mi }
+      limits: { cpu: 500m, memory: 256Mi }
+  execution-gate:
+    path: services/execution-gate
+    port: 7008
+    replicas: 2
+    resources:
+      requests: { cpu: 50m, memory: 96Mi }
+      limits: { cpu: 500m, memory: 256Mi }
+  agent-os:
+    path: services/agent-os
+    port: 7009
+    replicas: 1
+    persistentVolume:
+      enabled: true
+      size: 10Gi
+      mountPath: /var/lib/aristotle
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: 1000m, memory: 512Mi }
+
+console:
+  enabled: true
+  port: 4173
+  replicas: 1
+  gatewayBaseUrl: "http://http-gateway:8080"
+  publicRoutes:
+    landing: /public
+    playground: /try
+    operatorConsole: /
+  readinessPath: /console-health
+  livenessPath: /console-health
+  resources:
+    requests: { cpu: 50m, memory: 96Mi }
+    limits: { cpu: 500m, memory: 256Mi }

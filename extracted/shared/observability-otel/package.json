@@ -1,0 +1,23 @@
+{
+  "name": "@aristotle/observability-otel",
+  "version": "0.1.0",
+  "description": "First-party OpenTelemetry tracer adapter for AristotleOS. Wraps any structurally-OTel-shaped Tracer as an AristotleTracer so the substrate's gate spans land in your OTel-compatible backend (Tempo, Jaeger, Honeycomb, Langfuse, LangSmith, Phoenix, Datadog, AWS X-Ray) without forcing @opentelemetry/api as a hard dep on every substrate consumer.",
+  "license": "MPL-2.0",
+  "private": false,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test src/index.test.ts"
+  },
+  "dependencies": {
+    "@aristotle/execution-control-runtime": "workspace:*"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": ">=1.6.0 <2"
+  },
+  "peerDependenciesMeta": {
+    "@opentelemetry/api": { "optional": true }
+  }
+}

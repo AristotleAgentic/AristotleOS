@@ -1,0 +1,15 @@
+observability:
+  serviceMonitor:
+    enabled: false
+  prometheusRules:
+    enabled: false
+
+telemetry:
+  otel:
+    enabled: false
+
+ingress:
+  enabled: false
+
+console:
+  gatewayBaseUrl: "http://http-gateway:8080"

@@ -1,0 +1,93 @@
+envelope_id: ae-logistics-dispatch-001
+ward_id: ward-logistics-network-west
+subject: agent:logistics-dispatch-orchestrator
+allowed_actions:
+  - tms.load.dispatch
+  - tms.trip.assign
+  - broker.load.tender
+  - carrier.load.accept
+  - carrier.vetting.approve
+  - driver.qualification.attest
+  - eld.hos.attest
+  - hos.dispatch.clear
+  - route.plan.authorize
+  - route.reroute.authorize
+  - telematics.location.attest
+  - wms.cargo.release
+  - warehouse.shipment.release
+  - yms.dock.assign
+  - yard.gate.release
+  - fuel.advance.authorize
+  - fuel.card.limit.set
+  - accessorial.approve
+  - payment.carrier.release
+  - coldchain.setpoint.update
+  - coldchain.alarm.ack
+  - hazmat.route.authorize
+  - hazmat.placard.attest
+  - dvir.vehicle.release
+  - maintenance.hold.release
+  - customs.entry.submit
+  - crossborder.dispatch.authorize
+denied_actions:
+  - logistics.dispatch_over_hos
+  - eld.disable
+  - carrier.vetting.override
+  - driver.qualification.override
+  - hazmat.route.override
+  - coldchain.temp_alarm.override
+  - pod.force_accept
+  - payment.force_release
+  - fuel.unbounded_advance
+  - yard.force_gate_open
+  - load.double_broker.override
+  - telematics.spoof_override
+constraints:
+  required_runtime_registers:
+    - telemetry.load_id
+    - telemetry.driver_id
+    - telemetry.carrier_id
+    - telemetry.remaining_drive_minutes
+    - telemetry.remaining_duty_minutes
+    - telemetry.required_drive_minutes
+    - telemetry.eld_event_age_ms
+    - telemetry.eld_fresh
+    - telemetry.hos_available
+    - telemetry.carrier_authority_active
+    - telemetry.carrier_insurance_valid
+    - telemetry.driver_qualified
+    - telemetry.medical_card_valid
+    - telemetry.route_permitted
+    - telemetry.restricted_area_clear
+    - telemetry.vehicle_maintenance_clear
+    - telemetry.dvir_clear
+    - telemetry.trailer_seal_intact
+    - telemetry.cargo_secured
+    - telemetry.temperature_in_range
+    - telemetry.appointment_valid
+    - telemetry.dock_available
+    - telemetry.yard_gate_access_granted
+    - telemetry.fraud_score
+    - telemetry.double_broker_risk_score
+    - telemetry.double_broker_flag
+    - telemetry.telematics_age_ms
+    - telemetry.dispatcher_id
+    - telemetry.manual_fallback_ready
+    - telemetry.operator_id
+  dual_control:
+    actions:
+      - fuel.advance.authorize
+      - fuel.card.limit.set
+      - accessorial.approve
+      - payment.carrier.release
+      - broker.load.tender
+      - hazmat.route.authorize
+      - coldchain.setpoint.update
+    required: 2
+    ttl_ms: 900000
+expires_at: 2026-12-31T23:59:59Z
+issuer: aristotle-logistics-root
+classification:
+  level: CUI
+  caveats:
+    - LOGISTICS_OPS

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reviewer Packet - AristotleOS</title>
+  <meta name="description" content="Reviewer packet for AristotleOS: claims to test, quick verification path, research links, limitations, comparison notes, and contribution channels." />
+  <meta name="theme-color" content="#0b1110" />
+  <link rel="canonical" href="https://www.aristotleagentic.com/review/" />
+  <style>
+    :root { --bg:#0b1110; --panel:#151d1b; --ink:#f6f1e8; --muted:#c8c0b2; --quiet:#8f8678; --gold:#e9c46a; --mint:#62d6a7; --rose:#ff8f7d; --line:rgba(246,241,232,.14); --mono:"SF Mono","Cascadia Mono",Consolas,monospace; --sans:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:radial-gradient(circle at 78% 18%, rgba(233,196,106,.12), transparent 24%), radial-gradient(circle at 18% 64%, rgba(98,214,167,.1), transparent 22%), var(--bg); color:var(--ink); font-family:var(--sans); line-height:1.6; }
+    a { color:inherit; }
+    .wrap { width:min(1120px, calc(100% - 40px)); margin:0 auto; position:relative; z-index:1; }
+    header { position:sticky; top:0; z-index:2; background:rgba(11,17,16,.9); border-bottom:1px solid var(--line); backdrop-filter:blur(16px); }
+    nav { min-height:68px; display:flex; align-items:center; justify-content:space-between; gap:22px; }
+    .brand { text-decoration:none; font-family:var(--mono); font-weight:800; }
+    .brand span { color:var(--gold); }
+    .links { display:flex; gap:18px; flex-wrap:wrap; color:var(--muted); font-size:13px; }
+    .links a { text-decoration:none; }
+    .hero { padding:88px 0 54px; border-bottom:1px solid var(--line); }
+    .eyebrow { color:var(--gold); font:700 12px var(--mono); text-transform:uppercase; letter-spacing:.08em; }
+    h1 { margin:16px 0; max-width:920px; font-size:clamp(42px,7vw,78px); line-height:.98; }
+    .lede { max-width:780px; color:var(--muted); font-size:20px; margin:0; }
+    section { padding:56px 0; border-bottom:1px solid var(--line); }
+    .grid { display:grid; grid-template-columns:.75fr 1.25fr; gap:32px; align-items:start; }
+    h2 { margin:0; font-size:clamp(28px,4vw,44px); line-height:1.08; }
+    h3 { margin:0 0 8px; }
+    p { color:var(--muted); margin:0 0 14px; }
+    ul { margin:0; padding-left:20px; color:var(--muted); }
+    li + li { margin-top:8px; }
+    .panel { border:1px solid var(--line); border-radius:8px; background:rgba(21,29,27,.84); padding:24px; }
+    .panel + .panel { margin-top:14px; }
+    .cards { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+    .card { border:1px solid var(--line); border-radius:8px; background:rgba(21,29,27,.84); padding:24px; min-height:160px; }
+    .card b { color:var(--gold); font:700 11px var(--mono); display:block; margin-bottom:18px; }
+    .cta-row { display:flex; flex-wrap:wrap; gap:12px; margin-top:26px; }
+    .button { display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:0 16px; border-radius:8px; border:1px solid rgba(246,241,232,.18); text-decoration:none; font-weight:700; font-size:14px; }
+    .button.primary { background:var(--gold); color:#15110a; border-color:var(--gold); }
+    footer { padding:42px 0 64px; color:var(--quiet); font-size:13px; }
+    @media (max-width:850px) { nav,.grid { grid-template-columns:1fr; flex-direction:column; align-items:flex-start; } .cards { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <nav aria-label="Primary">
+        <a href="/" class="brand">aristotle<span>.</span>os</a>
+        <div class="links">
+          <a href="/start/">Start Here</a>
+          <a href="/quickstart/">Quickstart</a>
+          <a href="/aristotleos/">AristotleOS</a>
+          <a href="/research/">Research</a>
+          <a href="https://github.com/AristotleAgentic/AristotleOS/tree/ward-warrant-execution-control/extracted" target="_blank" rel="noopener">GitHub</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+  <main>
+    <section class="hero">
+      <div class="wrap">
+        <div class="eyebrow">Reviewer packet</div>
+        <h1>Do not trust the thesis. Test the boundary.</h1>
+        <p class="lede">This packet gives reviewers the shortest route into AristotleOS: claims to challenge, local verification, research context, limitations, comparison notes, and contribution channels.</p>
+        <div class="cta-row">
+          <a href="https://github.com/AristotleAgentic/AristotleOS/blob/ward-warrant-execution-control/extracted/docs/reviewer-packet.md" target="_blank" rel="noopener" class="button primary">Open reviewer brief</a>
+          <a href="/quickstart/" class="button">Run quickstart</a>
+          <a href="https://aristotle-console.onrender.com/public" target="_blank" rel="noopener" class="button">Try live console</a>
+        </div>
+      </div>
+    </section>
+    <section>
+      <div class="wrap grid">
+        <h2>Claims to test.</h2>
+        <div class="panel">
+          <ul>
+            <li>Commit Gate enforcement happens before consequential execution.</li>
+            <li>Warrants are scoped to one canonical action and cannot be repurposed safely.</li>
+            <li>Governed adapters refuse before emission rather than merely logging after the fact.</li>
+            <li>GEL records and replay artifacts can be independently verified.</li>
+            <li>Disconnected operation stays bounded by delegated authority and reconciles without silent permission drift.</li>
+            <li>Website and documentation claims remain narrower than the implementation supports.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+    <section>
+      <div class="wrap">
+        <div class="cards">
+          <div class="card"><b>RUN</b><h3>Reviewer verification</h3><p><a href="/quickstart/">Run the 18-check flow</a> covering Commit Gate, Warrant verification, swarm partition, and replay artifact equality.</p></div>
+          <div class="card"><b>READ</b><h3>Research library</h3><p><a href="/research/">Read the papers</a> behind authority routing, evidence ledgers, G-Plane architecture, insurability, 6G governance, and governance kernels.</p></div>
+          <div class="card"><b>COMPARE</b><h3>Adjacent systems</h3><p><a href="https://github.com/AristotleAgentic/AristotleOS/blob/ward-warrant-execution-control/extracted/docs/COMPARISON.md" target="_blank" rel="noopener">Compare AristotleOS</a> against policy engines, provenance systems, agent frameworks, and execution-control peers.</p></div>
+          <div class="card"><b>LIMITS</b><h3>Non-claims</h3><p><a href="https://github.com/AristotleAgentic/AristotleOS/blob/ward-warrant-execution-control/extracted/LIMITATIONS.md" target="_blank" rel="noopener">Read limitations</a> before treating any claim as certified, audited, or production validated.</p></div>
+        </div>
+      </div>
+    </section>
+    <section>
+      <div class="wrap grid">
+        <h2>What useful feedback looks like.</h2>
+        <div>
+          <div class="panel"><h3>Technical finding</h3><p>A reproducible bypass, weak invariant, Warrant-binding problem, replay mismatch, or adapter emission path.</p></div>
+          <div class="panel"><h3>Claims finding</h3><p>A website, README, paper, or demo claim that is broader than the current implementation proves.</p></div>
+          <div class="panel"><h3>Integration finding</h3><p>A framework, runtime, protocol, or deployment path where the governed boundary is unclear or incomplete.</p></div>
+          <div class="cta-row">
+            <a href="https://github.com/AristotleAgentic/AristotleOS/issues/new/choose" target="_blank" rel="noopener" class="button primary">Open a review issue</a>
+            <a href="https://github.com/AristotleAgentic/AristotleOS/security" target="_blank" rel="noopener" class="button">Security reports</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer><div class="wrap"><a href="/">Aristotle Agentic home</a> · <a href="/privacy/">Privacy and trust</a></div></footer>
+</body>
+</html>

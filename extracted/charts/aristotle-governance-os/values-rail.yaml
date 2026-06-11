@@ -1,0 +1,134 @@
+# Vertical: rail / signaling (CBTC, PTC)
+# Doctrine alignment: Every signal-aspect change, every interlocking command,
+# every train-control authority must transit a Warrant before it is committed.
+# Disconnected operation is bounded by a tight cap — signals MUST NOT issue
+# authority under partition beyond a short window because the physical
+# consequences of misissued signals are immediate and irreversible.
+# Compliance reference: 49 CFR Part 234 (Grade Crossing Signal System Safety
+#   and State Action Plans), 49 CFR Part 236 (Standards for Railroad Signal
+#   and Train Control Systems) — DEMONSTRATION ONLY. Production deployments
+#   require the operator's railroad signal engineer and an FRA-recognized
+#   independent reviewer to sign off on the physical-invariant policy bundle
+#   this overlay supports plus the per-territory revocation propagation
+#   posture before any wire-level adapter is enabled.
+# Last reviewed: 2026-06-05
+#
+# Apply as a base profile under another overlay (e.g. hardened) for a pilot:
+#
+#   helm template aristotle charts/aristotle-governance-os \
+#     -f charts/aristotle-governance-os/values-rail.yaml \
+#     -f charts/aristotle-governance-os/values-hardened.yaml
+#
+# Field provenance
+# ────────────────
+#   `runtimeConfig.*`     — template-consumed (passed straight into pod env).
+#   `secrets.*`           — template-consumed.
+#   `services.*`          — template-consumed (resource sizing per deployment).
+#   `mesh.*`              — operator-facing documentation; operators should bind
+#                           these into their own mesh-runtime config (see
+#                           shared/mesh-runtime/README.md). Sizing is a
+#                           recommendation, not a template-rendered value.
+#   `gel.*`               — operator-facing documentation; operators bind into
+#                           their evidence-ledger configuration secret.
+#   `adapters.*`          — operator-facing posture statement; the substrate's
+#                           DemonstrationTransport defaults already fail closed,
+#                           so this records the vertical-specific posture for
+#                           reviewers and auditors.
+#   `global.vertical`     — discovery tag for tooling; operator-facing.
+#   `global.doctrine`     — operator-facing prose.
+
+global:
+  vertical: "rail"
+  doctrine: |
+    Rail / signaling: every signal-aspect change, every interlocking command,
+    and every train-control authority transits the gate with a single-use
+    Warrant. Mesh quorum is three so a single compromised dispatch node cannot
+    revoke peers silently. Disconnected-warrant cap is tight (5) — signals
+    MUST NOT issue authority under partition beyond a short window because the
+    physical consequences of misissued signals are immediate and irreversible.
+    GEL retention is 7 years to match FRA incident-record retention.
+
+# Mesh (operator-facing documentation for operator's mesh-runtime config).
+mesh:
+  productionMode: true
+  revocationQuorum: 3                  # three independent witnesses required for revocation propagation
+  rateLimit:
+    perPeerPerMinute: 250              # CBTC trackside RTUs poll frequently; allow headroom but cap
+  replayCache:
+    ttlMs: 30000                       # 30 s replay window — surface duplicate-command attacks fast
+  revocation:
+    autoPullIntervalMs: 5000           # aggressive: withdrawn signal authority stops the next interlocking call
+  partition:
+    disconnectedWarrantCap: 5          # tight cap — signals do not auto-issue authority under partition
+
+# GEL (operator-facing documentation for the evidence-ledger config).
+gel:
+  retention:
+    maxAgeDays: 2555                   # 7 years — matches FRA incident-record retention
+  timestamp:
+    enabled: true
+    kind: "rfc3161"                    # operator overrides endpoint in their own secret
+  archive:
+    enabled: true
+    minimumRetentionDays: 2555
+
+# Adapters posture (operator-facing).
+adapters:
+  demonstrationOnlyBlocked: true        # production deployments must not load demo transports
+
+# Runtime config (template-consumed).
+runtimeConfig:
+  NODE_ENV: "production"
+  ALLOW_INSECURE_PRODUCTION_BOOT: "false"
+  GOVERNANCE_CHAIN_MODE: "enforce"
+  OPERATOR_SESSION_ENFORCEMENT: "true"
+  OPERATOR_ROLE_ENFORCEMENT: "true"
+  WITNESS_QUORUM: "3"
+  REVOCATION_AUTO_PULL_MS: "5000"
+  # Vertical tag picked up by OTel; downstream dashboards filter on this.
+  OTEL_RESOURCE_ATTRIBUTES_VERTICAL: "vertical=rail"
+
+telemetry:
+  otel:
+    enabled: true
+    resourceAttributes: "deployment.environment=pilot,service.namespace=aristotle-governance-os,vertical=rail"
+
+# Rail signaling is steady, latency-sensitive, and ledger-write-heavy.
+# Bias kernel + gate up, agent-os down (signaling is the consumer).
+services:
+  governance-kernel:
+    replicas: 3
+    resources:
+      requests: { cpu: 750m, memory: 1Gi }
+      limits:   { cpu: 3000m, memory: 4Gi }
+  execution-gate:
+    replicas: 3
+    resources:
+      requests: { cpu: 750m, memory: 1Gi }
+      limits:   { cpu: 3000m, memory: 4Gi }
+  evidence-ledger:
+    replicas: 1
+    persistentVolume:
+      enabled: true
+      size: 150Gi                       # 7-year retention; steady commit rate
+      mountPath: /var/lib/aristotle
+    resources:
+      requests: { cpu: 500m, memory: 1Gi }
+      limits:   { cpu: 2000m, memory: 4Gi }
+  witness-service:
+    replicas: 3                         # matches mesh.revocationQuorum
+    resources:
+      requests: { cpu: 250m, memory: 512Mi }
+      limits:   { cpu: 1500m, memory: 2Gi }
+  policy-compiler:
+    replicas: 2
+  meta-authority-registry:
+    replicas: 2
+  authority-router:
+    replicas: 2
+  agent-os:
+    replicas: 1
+    persistentVolume:
+      enabled: true
+      size: 20Gi
+      mountPath: /var/lib/aristotle

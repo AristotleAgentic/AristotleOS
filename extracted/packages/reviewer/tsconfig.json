@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": "../..",
+    "paths": {
+      "@aristotle/execution-control-runtime": ["shared/execution-control-runtime/src/index.ts"],
+      "@aristotle/warrant-verifier": ["shared/warrant-verifier/src/index.ts"],
+      "@aristotle/replay-artifact": ["shared/replay-artifact/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts"]
+}

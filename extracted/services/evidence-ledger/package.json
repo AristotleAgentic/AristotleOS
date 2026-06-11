@@ -1,17 +1,21 @@
 {
   "name": "@aristotle/evidence-ledger",
   "version": "0.1.0",
+  "license": "MPL-2.0",
   "type": "module",
   "main": "src/index.js",
   "types": "src/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx watch src/index.ts",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "node --import tsx --test src/index.test.ts src/gel-chain.test.ts"
   },
   "dependencies": {
     "@aristotle/shared-types": "workspace:*",
     "@aristotle/shared-schemas": "workspace:*",
+    "@aristotle/execution-control-runtime": "workspace:*",
+    "@aristotle/service-runtime": "workspace:*",
     "express": "^4.21.1",
     "cors": "^2.8.5",
     "zod": "^3.23.8"

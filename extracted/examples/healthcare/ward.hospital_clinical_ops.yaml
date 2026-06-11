@@ -1,0 +1,83 @@
+ward_id: ward-healthcare-clinical-ops
+name: West Hospital Clinical Operations
+sovereignty_context: hospital-patient-care-and-privacy
+authority_domain: healthcare-clinical-operations
+policy_version: 0.1.0
+evidence_ledger_path: ./.tmp/healthcare-clinical.gel.jsonl
+permitted_subjects:
+  - agent:clinical-ops-coordinator
+physical_bounds:
+  permitted_healthcare_system_id: west-health-system
+  permitted_healthcare_facility_id: west-hospital
+  permitted_clinical_units:
+    - emergency-department
+    - icu
+    - pharmacy
+    - radiology
+    - care-coordination
+  permitted_fhir_resource_types:
+    - Patient
+    - Encounter
+    - Observation
+    - Condition
+    - MedicationRequest
+    - MedicationStatement
+    - ServiceRequest
+    - DocumentReference
+    - Claim
+  permitted_order_types:
+    - lab
+    - imaging
+    - medication
+    - referral
+  permitted_medication_classes:
+    - non-controlled
+    - antibiotic
+    - antihypertensive
+    - insulin
+  permitted_healthcare_device_ids:
+    - infusion-pump-7
+    - monitor-icu-2
+  permitted_phi_purposes:
+    - treatment
+    - payment
+    - operations
+    - prior-authorization
+    - emergency
+    - research
+  max_phi_record_count: 25
+  max_claim_amount_usd: 25000
+  max_patient_message_risk_score: 0.35
+  max_clinical_context_age_ms: 300000
+  max_medication_reconciliation_age_ms: 86400000
+  max_device_telemetry_age_ms: 60000
+  require_patient_context: true
+  require_patient_identity_verified: true
+  require_tpo_basis_or_consent: true
+  require_clinician_privilege_active: true
+  require_pharmacist_authority: true
+  require_allergy_checked: true
+  require_no_allergy_conflict: true
+  require_medication_interaction_clear: true
+  require_order_signing_authority: true
+  require_diagnosis_context: true
+  require_device_safety_limits: true
+  require_device_alarm_active: true
+  require_privacy_officer_approval: false
+  require_deidentification_valid: false
+  require_break_glass_attestation: true
+  require_chart_lock_clear: true
+  require_human_review_for_patient_message: true
+  require_claim_attestation: true
+  require_manual_fallback_ready: true
+  require_operator_identity: true
+  require_healthcare_audit_context: true
+criticality: safety_critical
+classification:
+  level: PHI
+  caveats:
+    - HIPAA
+    - CLINICAL_OPS
+metadata:
+  pilot: west-hospital-clinical-ops
+  doctrine: authority-before-patient-consequence

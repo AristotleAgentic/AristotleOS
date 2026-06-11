@@ -1,0 +1,32 @@
+name: Adapter or integration
+description: Propose or review an agent, framework, protocol, or runtime adapter.
+title: "[adapter] "
+labels: ["adapter", "needs-triage"]
+body:
+  - type: input
+    id: target
+    attributes:
+      label: Target framework or system
+      placeholder: LangGraph, MCP, OpenAI Agents, ROS2, Kubernetes, etc.
+    validations:
+      required: true
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Consequential action boundary
+      description: What action must be governed before it reaches the wire?
+    validations:
+      required: true
+  - type: textarea
+    id: refusal
+    attributes:
+      label: Refusal-before-emission plan
+      description: How should the adapter prevent unauthorized emission?
+    validations:
+      required: false
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and replay needs
+    validations:
+      required: false

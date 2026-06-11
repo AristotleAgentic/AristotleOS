@@ -1,0 +1,62 @@
+ward_id: ward-rail-subdivision-west
+name: West Subdivision Rail Operations
+sovereignty_context: host-railroad-west-dispatch
+authority_domain: railroad-dispatch-ptc-wayside-ops
+policy_version: 0.1.0
+evidence_ledger_path: .aristotle/rail-subdivision-west.gel.jsonl
+permitted_subjects:
+  - agent:rail-dispatch-orchestrator
+  - agent:ptc-backoffice-bridge
+physical_bounds:
+  permitted_boundary_id: west-subdivision
+  permitted_territory_id: west-subdivision
+  permitted_route_classes:
+    - mainline
+    - siding
+  permitted_track_classes:
+    - class-4
+    - class-5
+  permitted_signal_aspects:
+    - clear
+    - approach
+    - restricting
+  permitted_train_types:
+    - freight
+    - passenger
+  permitted_operating_states:
+    - normal
+    - restricted
+  max_authority_speed_mph: 60
+  min_train_separation_m: 1800
+  max_train_length_ft: 8500
+  max_train_tonnage: 18000
+  max_ptc_telemetry_age_ms: 5000
+  require_ptc_active: true
+  require_switch_proven: true
+  require_signal_not_stop: true
+  require_work_zone_released: true
+  require_track_bulletin_ack: true
+  require_dispatcher_identity: true
+  require_brake_test_current: true
+  require_consist_verified: true
+  require_grade_crossing_protected: true
+  require_crew_acknowledged: true
+  require_no_conflicting_authority: true
+metadata:
+  rail_domain: ptc-mainline
+  host_railroad: Northstar Rail
+  evidence_profile:
+    - FRA_PTC
+    - FRA_SIGNAL_TRAIN_CONTROL
+    - TSA_RAIL_CYBER
+    - DISPATCH_LOG
+  protected_scope:
+    - movement-authority
+    - wayside-signal
+    - switch-machine
+    - maintenance-of-way
+criticality: safety_critical
+classification:
+  level: CUI
+  caveats:
+    - RAIL_OPS

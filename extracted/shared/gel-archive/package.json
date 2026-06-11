@@ -1,0 +1,17 @@
+{
+  "name": "@aristotle/gel-archive",
+  "version": "0.1.0",
+  "description": "Retention policy + archive / restore for AristotleOS Governance Evidence Ledger chains. Operator sets a maxRecords or maxAgeMs threshold; older records are moved to a separate archive ledger preserving chain hash linkage to the rollover point. Closes the operational gap for long-running deployments whose ledgers would otherwise grow unbounded.",
+  "license": "MPL-2.0",
+  "private": false,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test src/index.test.ts"
+  },
+  "dependencies": {
+    "@aristotle/execution-control-runtime": "workspace:*"
+  }
+}

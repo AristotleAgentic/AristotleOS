@@ -1,0 +1,18 @@
+{{- range $name, $svc := .Values.services }}
+{{- if and $svc.persistentVolume $svc.persistentVolume.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $name }}-data
+  namespace: {{ include "aristotle.namespace" $ }}
+  labels:
+{{ include "aristotle.commonLabels" $ | indent 4 }}
+    app: {{ $name }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: {{ $svc.persistentVolume.size | quote }}
+{{- end }}
+{{- end }}

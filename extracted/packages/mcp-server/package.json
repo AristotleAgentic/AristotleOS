@@ -1,0 +1,41 @@
+{
+  "name": "@aristotle/mcp-server",
+  "version": "0.1.0",
+  "description": "AristotleOS as a Model Context Protocol (MCP) server that gates tool calls through the substrate's commit gate. Any MCP-speaking agent (Claude Desktop, IDEs, custom clients) that connects gets governance on every tool call: evaluate -> warrant -> execute -> evidence, with refusals surfacing as MCP tool errors. Wraps caller-supplied tool implementations with the AristotleClient.evaluate -> governThroughAdapter pipeline.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }
+  },
+  "files": ["dist", "README.md", "LICENSE", "NOTICE"],
+  "keywords": [
+    "aristotle",
+    "mcp",
+    "model-context-protocol",
+    "agent-governance",
+    "tool-call",
+    "claude"
+  ],
+  "homepage": "https://github.com/AristotleAgentic/AristotleOS",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AristotleAgentic/AristotleOS.git",
+    "directory": "packages/mcp-server"
+  },
+  "bugs": { "url": "https://github.com/AristotleAgentic/AristotleOS/issues" },
+  "publishConfig": { "access": "public" },
+  "engines": { "node": ">=18" },
+  "sideEffects": false,
+  "dependencies": {
+    "@aristotle/adapter-sdk": "workspace:*",
+    "@aristotle/os-sdk": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test src/index.test.ts",
+    "prepublishOnly": "npm run build"
+  }
+}

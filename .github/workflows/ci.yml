@@ -1,0 +1,155 @@
+name: CI
+
+# AristotleOS continuous integration: typecheck, test, build, and dependency
+# audit for the execution-control boundary, CLI, and console UI.
+# The workspace lives under extracted/ in this repository.
+
+on:
+  push:
+    branches: [main, ward-warrant-execution-control]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: extracted
+
+jobs:
+  build-test:
+    name: typecheck · test · build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          # Node >= 22.5 is required for the built-in node:sqlite ledger backend.
+          node-version: '22'
+
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Typecheck (runtime · CLI · console-ui · adapters)
+        # Install scripts are disabled, so build package entrypoints explicitly
+        # before tests import workspace packages through their package mains.
+        run: |
+          corepack pnpm -r --filter @aristotle/shared-types --filter @aristotle/shared-schemas --filter @aristotle/governance-core --filter @aristotle/trial-engine --filter @aristotle/execution-control-runtime --filter @aristotle/mesh-runtime --filter @aristotle/os-sdk --workspace-concurrency=1 build
+          corepack pnpm typecheck
+
+      - name: Test (governance · execution-control · cli · api · chain)
+        run: corepack pnpm test
+
+      - name: Build CLI bundle
+        run: corepack pnpm -F @aristotle/os-cli build
+
+      - name: Build console UI
+        run: corepack pnpm -F @aristotle/console-ui build
+
+      - name: Boundary self-check
+        run: node apps/aristotle-cli/dist/index.js pilot
+
+      - name: Evaluator demo (self-verifying end-to-end walkthrough)
+        run: corepack pnpm demo:evaluator
+
+      - name: Generate SBOM (smoke)
+        run: corepack pnpm sbom
+
+      - name: Clean-room scan
+        run: corepack pnpm clean-room
+
+  cli-package:
+    name: CLI package (pack + packed pilot smoke)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Validate @aristotle/os-cli is publish-ready
+        # Packs the CLI, asserts tarball contents, installs it into a throwaway
+        # project, and runs `aristotle pilot` from the installed package.
+        run: corepack pnpm package:cli:check
+
+  helm-validate:
+    name: helm chart (lint + template)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate chart (lint + template, default + kind-smoke)
+        run: node scripts/validate-helm.mjs
+
+  e2e-layout:
+    name: console UI layout (Playwright, desktop + mobile)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Install Playwright Chromium
+        run: corepack pnpm -F @aristotle/console-ui exec playwright install --with-deps chromium
+
+      - name: Layout check (build + desktop/mobile, no horizontal overflow)
+        run: corepack pnpm -F @aristotle/console-ui test:e2e
+
+  dependency-audit:
+    name: dependency audit (prod, blocking)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Audit production dependencies (gate)
+        # Blocking gate: any prod-dependency advisory at or above the threshold
+        # (high+critical) fails the build unless triaged in .audit-allowlist.json
+        # with a reason and an expiry. Expired exceptions are themselves failures.
+        run: corepack pnpm audit:ci

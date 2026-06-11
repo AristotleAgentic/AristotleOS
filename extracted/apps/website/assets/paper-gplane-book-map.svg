@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" role="img" aria-labelledby="title desc">
+  <title id="title">G-Plane architecture concept map</title>
+  <desc id="desc">A concept map connecting institutional authority, autonomous systems, infrastructure domains, evidence, and human good.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1110"/><stop offset="1" stop-color="#17231f"/></linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="960" height="560" rx="28" fill="url(#bg)"/>
+  <g opacity=".17" stroke="#f6f1e8" stroke-width="1">
+    <circle cx="480" cy="280" r="80"/><circle cx="480" cy="280" r="150"/><circle cx="480" cy="280" r="220"/><circle cx="480" cy="280" r="290"/>
+  </g>
+  <g stroke-width="3" fill="none" opacity=".78">
+    <path d="M480 280L212 132" stroke="#e9c46a"/>
+    <path d="M480 280L748 130" stroke="#8eb4ff"/>
+    <path d="M480 280L792 356" stroke="#62d6a7"/>
+    <path d="M480 280L548 462" stroke="#d58aa7"/>
+    <path d="M480 280L188 384" stroke="#e9c46a"/>
+  </g>
+  <g filter="url(#glow)">
+    <circle cx="480" cy="280" r="74" fill="#101816" stroke="#e9c46a" stroke-width="2"/>
+    <text x="480" y="270" text-anchor="middle" fill="#f6f1e8" font-family="Georgia" font-size="28" font-weight="700">G-Plane</text>
+    <text x="480" y="301" text-anchor="middle" fill="#c8c0b2" font-family="Arial" font-size="15">governance infrastructure</text>
+  </g>
+  <g>
+    <rect x="86" y="82" width="252" height="100" rx="16" fill="#151d1b" stroke="#e9c46a" stroke-opacity=".5"/>
+    <text x="112" y="122" fill="#e9c46a" font-family="Consolas,monospace" font-size="15" font-weight="700">INSTITUTIONAL AUTHORITY</text>
+    <text x="112" y="151" fill="#c8c0b2" font-family="Arial" font-size="17">Who may authorize machine action?</text>
+  </g>
+  <g>
+    <rect x="622" y="80" width="252" height="104" rx="16" fill="#151d1b" stroke="#8eb4ff" stroke-opacity=".5"/>
+    <text x="648" y="120" fill="#8eb4ff" font-family="Consolas,monospace" font-size="15" font-weight="700">AUTONOMOUS SYSTEMS</text>
+    <text x="648" y="150" fill="#c8c0b2" font-family="Arial" font-size="17">Agents acting across infrastructure</text>
+  </g>
+  <g>
+    <rect x="660" y="318" width="264" height="104" rx="16" fill="#151d1b" stroke="#62d6a7" stroke-opacity=".5"/>
+    <text x="686" y="358" fill="#62d6a7" font-family="Consolas,monospace" font-size="15" font-weight="700">INFRASTRUCTURE DOMAINS</text>
+    <text x="686" y="388" fill="#c8c0b2" font-family="Arial" font-size="17">Telecom, logistics, finance, robotics</text>
+  </g>
+  <g>
+    <rect x="414" y="430" width="268" height="90" rx="16" fill="#151d1b" stroke="#d58aa7" stroke-opacity=".55"/>
+    <text x="440" y="466" fill="#d58aa7" font-family="Consolas,monospace" font-size="15" font-weight="700">HUMAN GOOD</text>
+    <text x="440" y="493" fill="#c8c0b2" font-family="Arial" font-size="17">Agency, legitimacy, public trust</text>
+  </g>
+  <g>
+    <rect x="68" y="340" width="248" height="104" rx="16" fill="#151d1b" stroke="#e9c46a" stroke-opacity=".5"/>
+    <text x="94" y="380" fill="#e9c46a" font-family="Consolas,monospace" font-size="15" font-weight="700">EVIDENCE + AUDIT</text>
+    <text x="94" y="410" fill="#c8c0b2" font-family="Arial" font-size="17">What happened, why, and under whose authority?</text>
+  </g>
+  <text x="70" y="512" fill="#8f8678" font-family="Consolas,monospace" font-size="16">core thesis: institutions must maintain authority over machines that increasingly act on their own</text>
+</svg>

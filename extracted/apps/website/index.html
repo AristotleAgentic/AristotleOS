@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aristotle Agentic - Seeking human good in agentic AI</title>
+  <meta name="description" content="Aristotle Agentic advances research, training, civic AI, responsible venture incubation, and governance for autonomous systems." />
+  <meta name="theme-color" content="#0b1110" />
+  <link rel="canonical" href="https://www.aristotleagentic.com/" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%230b1110'/%3E%3Ctext x='16' y='22' font-size='18' font-family='Georgia' fill='%23e9c46a' text-anchor='middle' font-weight='700'%3EA%3C/text%3E%3C/svg%3E" />
+  <meta property="og:title" content="Aristotle Agentic - Seeking human good in agentic AI" />
+  <meta property="og:description" content="Research, training, civic AI, responsible venture incubation, and governance for autonomous systems." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://aristotleagentic.com" />
+  <style>
+    :root {
+      --bg: #0b1110;
+      --bg-2: #101816;
+      --panel: #151d1b;
+      --panel-2: #1c2723;
+      --ink: #f6f1e8;
+      --muted: #b9b1a4;
+      --quiet: #837b70;
+      --line: #34423d;
+      --gold: #e9c46a;
+      --mint: #62d6a7;
+      --blue: #8eb4ff;
+      --rose: #ff8f7d;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --serif: Georgia, "Times New Roman", serif;
+      --mono: "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    a { color: inherit; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { width: min(1160px, calc(100% - 40px)); margin: 0 auto; }
+    .narrow { width: min(900px, calc(100% - 40px)); margin: 0 auto; }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: rgba(11, 17, 16, 0.88);
+      border-bottom: 1px solid rgba(246, 241, 232, 0.1);
+      backdrop-filter: blur(14px);
+    }
+    .nav {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 22px;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--serif);
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      display: inline-grid;
+      place-items: center;
+      border: 1px solid rgba(233, 196, 106, 0.52);
+      border-radius: 6px;
+      color: var(--gold);
+      font-family: var(--serif);
+      line-height: 1;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .nav-links a:hover { color: var(--ink); }
+    .nav-pill {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 12px;
+      border: 1px solid rgba(233, 196, 106, 0.34);
+      border-radius: 999px;
+      color: var(--gold);
+    }
+    @media (max-width: 880px) { .nav-links { display: none; } }
+
+    .hero {
+      position: relative;
+      min-height: 88vh;
+      display: grid;
+      align-items: center;
+      overflow: hidden;
+      border-bottom: 1px solid rgba(246, 241, 232, 0.1);
+      isolation: isolate;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background:
+        radial-gradient(circle at 78% 20%, rgba(142, 180, 255, 0.18), transparent 30%),
+        radial-gradient(circle at 16% 12%, rgba(233, 196, 106, 0.14), transparent 28%),
+        radial-gradient(circle at 72% 82%, rgba(98, 214, 167, 0.13), transparent 32%),
+        linear-gradient(135deg, #0b1110 0%, #0d1615 54%, #141d1a 100%);
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      opacity: 0.2;
+      background-image:
+        linear-gradient(rgba(246, 241, 232, 0.09) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(246, 241, 232, 0.09) 1px, transparent 1px);
+      background-size: 72px 72px;
+      mask-image: linear-gradient(90deg, black 0%, black 55%, transparent 100%);
+    }
+    .hero-orbit {
+      position: absolute;
+      right: max(24px, 7vw);
+      top: 122px;
+      width: min(42vw, 520px);
+      aspect-ratio: 1;
+      z-index: -1;
+      opacity: 0.88;
+      pointer-events: none;
+    }
+    .hero-bust {
+      position: absolute;
+      left: max(-36px, -2vw);
+      top: 70px;
+      width: min(52vw, 700px);
+      height: min(78vh, 720px);
+      z-index: 0;
+      opacity: 0.69;
+      background:
+        linear-gradient(90deg, rgba(11, 17, 16, 0), rgba(11, 17, 16, 0.72)),
+        url("/assets/aristotle-bust-hero.png") 38% top / cover no-repeat;
+      filter: grayscale(0.08) sepia(0.18) contrast(1.32) brightness(1.08);
+      mix-blend-mode: screen;
+      mask-image:
+        radial-gradient(ellipse at 38% 30%, black 0 52%, rgba(0, 0, 0, 0.82) 66%, transparent 91%),
+        linear-gradient(180deg, black 0%, transparent 96%);
+      pointer-events: none;
+    }
+    .hero-bust::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 44% 22%, rgba(233, 196, 106, 0.1), transparent 32%),
+        linear-gradient(90deg, transparent, rgba(11, 17, 16, 0.78));
+    }
+    .orbit-ring {
+      position: absolute;
+      inset: var(--inset);
+      border: 1px solid rgba(246, 241, 232, 0.13);
+      border-radius: 50%;
+      transform: rotate(var(--tilt));
+      box-shadow: inset 0 0 36px rgba(142, 180, 255, 0.08);
+    }
+    .orbit-ring::after {
+      content: "";
+      position: absolute;
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      left: 50%;
+      top: -5px;
+      background: var(--color);
+      box-shadow: 0 0 24px var(--color);
+      animation: pulse 4.8s ease-in-out infinite;
+    }
+    .civic-core {
+      position: absolute;
+      inset: 34%;
+      border-radius: 50%;
+      border: 1px solid rgba(233, 196, 106, 0.38);
+      background:
+        radial-gradient(circle, rgba(233, 196, 106, 0.22), transparent 64%),
+        rgba(11, 17, 16, 0.72);
+      box-shadow: 0 0 80px rgba(233, 196, 106, 0.16);
+    }
+    .civic-core::before,
+    .civic-core::after {
+      content: "";
+      position: absolute;
+      inset: 22%;
+      border: 1px solid rgba(233, 196, 106, 0.25);
+      transform: rotate(45deg);
+    }
+    .signal-thread {
+      position: absolute;
+      height: 1px;
+      width: 68%;
+      background: linear-gradient(90deg, transparent, rgba(142, 180, 255, 0.65), transparent);
+      transform-origin: left center;
+      opacity: 0.72;
+      animation: breathe 6s ease-in-out infinite;
+    }
+    .thread-a { left: 8%; top: 34%; transform: rotate(19deg); }
+    .thread-b { left: 13%; top: 56%; transform: rotate(-16deg); animation-delay: 1.2s; }
+    .thread-c { left: 2%; top: 68%; transform: rotate(9deg); animation-delay: 2.1s; }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.55; transform: scale(0.85); }
+      50% { opacity: 1; transform: scale(1.12); }
+    }
+    @keyframes breathe {
+      0%, 100% { opacity: 0.28; }
+      50% { opacity: 0.82; }
+    }
+    .hero-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 56px;
+      align-items: center;
+      padding: 78px 0 88px;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--gold);
+      font-family: var(--mono);
+      font-size: 12px;
+      margin-bottom: 22px;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 28px;
+      height: 1px;
+      background: var(--gold);
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(44px, 7vw, 84px);
+      line-height: 0.98;
+      letter-spacing: 0;
+      font-weight: 760;
+      max-width: 760px;
+    }
+    .hero p {
+      margin: 28px 0 0;
+      max-width: 680px;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 21px);
+      line-height: 1.55;
+    }
+    .hero strong { color: var(--ink); }
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 34px;
+      align-items: center;
+    }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 18px;
+      border-radius: 8px;
+      border: 1px solid rgba(246, 241, 232, 0.16);
+      font-weight: 680;
+      font-size: 14px;
+      transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+    }
+    .button:hover { transform: translateY(-1px); text-decoration: none; }
+    .primary { background: var(--gold); border-color: var(--gold); color: #15110a; }
+    .secondary { background: rgba(246, 241, 232, 0.06); color: var(--ink); }
+    .secondary:hover { border-color: rgba(246, 241, 232, 0.32); }
+    .institute-panel {
+      position: relative;
+      border: 1px solid rgba(246, 241, 232, 0.13);
+      border-radius: 8px;
+      background: rgba(21, 29, 27, 0.78);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(12px);
+      overflow: hidden;
+    }
+    .institute-panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(135deg, rgba(233, 196, 106, 0.14), transparent 32%),
+        linear-gradient(220deg, rgba(142, 180, 255, 0.12), transparent 38%);
+      pointer-events: none;
+    }
+    .panel-top {
+      padding: 22px;
+      border-bottom: 1px solid rgba(246, 241, 232, 0.1);
+    }
+    .panel-top b {
+      display: block;
+      font-family: var(--mono);
+      color: var(--gold);
+      font-size: 11px;
+      margin-bottom: 10px;
+    }
+    .panel-top span {
+      display: block;
+      font-family: var(--serif);
+      color: var(--ink);
+      font-size: 28px;
+      line-height: 1.2;
+    }
+    .panel-list { padding: 10px 22px 22px; }
+    .panel-item {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(246, 241, 232, 0.08);
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .panel-item:last-child { border-bottom: 0; }
+    .panel-item i {
+      width: 10px;
+      height: 10px;
+      margin-top: 8px;
+      border-radius: 999px;
+      background: var(--mint);
+      box-shadow: 0 0 22px rgba(98, 214, 167, 0.6);
+    }
+    @media (max-width: 960px) {
+      .hero { min-height: auto; }
+      .hero-bust {
+        width: min(72vw, 620px);
+        height: 62vh;
+        left: 0;
+        top: 82px;
+        opacity: 0.69;
+        background:
+          linear-gradient(90deg, rgba(11, 17, 16, 0), rgba(11, 17, 16, 0.78)),
+          url("/assets/aristotle-bust-hero.png") left top / cover no-repeat;
+      }
+      .hero-grid { grid-template-columns: 1fr; gap: 34px; }
+    }
+
+    .signal-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: rgba(246, 241, 232, 0.1);
+      border-bottom: 1px solid rgba(246, 241, 232, 0.1);
+    }
+    .signal {
+      background: var(--bg-2);
+      padding: 22px;
+    }
+    .signal b { display: block; margin-bottom: 5px; color: var(--ink); }
+    .signal span { color: var(--muted); font-size: 13px; line-height: 1.45; }
+    @media (max-width: 850px) { .signal-row { grid-template-columns: 1fr; } }
+
+    section {
+      position: relative;
+      overflow: hidden;
+      padding: 82px 0;
+      border-bottom: 1px solid rgba(246, 241, 232, 0.1);
+    }
+    section > .wrap,
+    section > .narrow {
+      position: relative;
+      z-index: 1;
+    }
+    #mission::before,
+    #programs::before,
+    #concerns::before,
+    #lab::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: 0.69;
+      pointer-events: none;
+      mask-image: linear-gradient(90deg, transparent 0%, black 18%, black 72%, transparent 100%);
+    }
+    #mission::before {
+      background:
+        radial-gradient(circle at 82% 34%, rgba(233, 196, 106, 0.22), transparent 18%),
+        radial-gradient(circle at 72% 58%, rgba(95, 214, 168, 0.12), transparent 24%),
+        linear-gradient(115deg, transparent 0 58%, rgba(233, 196, 106, 0.09) 58.2% 59%, transparent 59.2% 100%),
+        linear-gradient(62deg, transparent 0 54%, rgba(142, 180, 255, 0.08) 54.2% 55%, transparent 55.2% 100%),
+        repeating-radial-gradient(circle at 78% 48%, transparent 0 38px, rgba(246, 241, 232, 0.08) 39px, transparent 41px);
+      opacity: 0.69;
+      filter: none;
+    }
+    #programs::before {
+      background:
+        radial-gradient(circle at 82% 30%, rgba(95, 214, 168, 0.15), transparent 24%),
+        linear-gradient(90deg, transparent 0 44%, rgba(246, 241, 232, 0.06) 44.2% 56%, transparent 56.2% 100%),
+        repeating-linear-gradient(0deg, transparent 0 36px, rgba(95, 214, 168, 0.08) 37px, transparent 39px),
+        repeating-linear-gradient(90deg, transparent 0 96px, rgba(233, 196, 106, 0.07) 97px, transparent 99px);
+      opacity: 0.69;
+      filter: none;
+    }
+    #concerns::before {
+      background:
+        radial-gradient(circle at 18% 36%, rgba(142, 180, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 70% 58%, rgba(233, 196, 106, 0.12), transparent 22%),
+        linear-gradient(128deg, transparent 0 42%, rgba(142, 180, 255, 0.08) 42.2% 43%, transparent 43.2% 100%),
+        repeating-radial-gradient(circle at 30% 48%, transparent 0 44px, rgba(246, 241, 232, 0.07) 45px, transparent 47px);
+      opacity: 0.69;
+      filter: none;
+    }
+    #lab::before {
+      background:
+        radial-gradient(circle at 76% 28%, rgba(199, 121, 63, 0.14), transparent 22%),
+        linear-gradient(146deg, transparent 0 56%, rgba(95, 214, 168, 0.09) 56.2% 57%, transparent 57.2% 100%),
+        repeating-linear-gradient(11deg, transparent 0 28px, rgba(246, 241, 232, 0.07) 29px, transparent 31px);
+      opacity: 0.69;
+      filter: none;
+    }
+    .section-head {
+      display: grid;
+      grid-template-columns: 0.88fr 1.12fr;
+      gap: 48px;
+      align-items: end;
+      margin-bottom: 34px;
+    }
+    h2 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 52px);
+      line-height: 1.06;
+      letter-spacing: 0;
+    }
+    .section-lede {
+      margin: 0;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.58;
+    }
+    @media (max-width: 880px) { .section-head { grid-template-columns: 1fr; gap: 16px; } }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+    .card {
+      min-height: 210px;
+      padding: 24px;
+      border: 1px solid rgba(246, 241, 232, 0.12);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+    .card .kicker {
+      color: var(--gold);
+      font-family: var(--mono);
+      font-size: 11px;
+      margin-bottom: 28px;
+    }
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 20px;
+      line-height: 1.22;
+    }
+    .card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.58; }
+    @media (max-width: 960px) { .cards { grid-template-columns: 1fr; } }
+
+    .mission {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+    .quote {
+      margin: 0;
+      padding: 34px;
+      border-left: 3px solid var(--gold);
+      border-radius: 0 8px 8px 0;
+      background: rgba(233, 196, 106, 0.06);
+      color: var(--ink);
+      font-size: clamp(23px, 3vw, 34px);
+      line-height: 1.2;
+      font-family: var(--serif);
+    }
+    .quote cite {
+      display: block;
+      margin-top: 22px;
+      color: var(--muted);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.5;
+      font-style: normal;
+    }
+    .mission-copy {
+      padding: 32px;
+      border: 1px solid rgba(246, 241, 232, 0.12);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+    .mission-copy h3 { margin: 0 0 12px; font-size: 22px; }
+    .mission-copy p { margin: 0 0 16px; color: var(--muted); }
+    .mission-copy p:last-child { margin-bottom: 0; }
+    @media (max-width: 900px) { .mission { grid-template-columns: 1fr; } }
+
+    .concern-map {
+      position: relative;
+      min-height: 620px;
+      border: 1px solid rgba(246, 241, 232, 0.12);
+      border-radius: 8px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 47%, rgba(233, 196, 106, 0.13), transparent 20%),
+        radial-gradient(circle at 24% 24%, rgba(142, 180, 255, 0.12), transparent 26%),
+        radial-gradient(circle at 78% 72%, rgba(98, 214, 167, 0.12), transparent 24%),
+        var(--panel);
+    }
+    .concern-map::before {
+      content: "";
+      position: absolute;
+      inset: 28px;
+      border: 1px solid rgba(246, 241, 232, 0.08);
+      border-radius: 50%;
+      box-shadow:
+        0 0 0 86px rgba(246, 241, 232, 0.025),
+        0 0 0 172px rgba(246, 241, 232, 0.018);
+    }
+    .concern-map::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(246, 241, 232, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(246, 241, 232, 0.07) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(circle at center, black 0%, black 52%, transparent 84%);
+      opacity: 0.42;
+    }
+    .map-line {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: var(--w);
+      height: 1px;
+      background: linear-gradient(90deg, rgba(233, 196, 106, 0.42), rgba(142, 180, 255, 0.1));
+      transform: rotate(var(--r));
+      transform-origin: left center;
+      z-index: 1;
+    }
+    .map-center {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 180px;
+      min-height: 180px;
+      transform: translate(-50%, -50%);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 22px;
+      border-radius: 999px;
+      border: 1px solid rgba(233, 196, 106, 0.44);
+      background: rgba(11, 17, 16, 0.82);
+      box-shadow: 0 0 90px rgba(233, 196, 106, 0.14);
+      z-index: 2;
+      font-family: var(--serif);
+      font-size: 22px;
+      line-height: 1.14;
+    }
+    .concern-node {
+      position: absolute;
+      width: min(242px, 30%);
+      min-height: 124px;
+      padding: 18px;
+      border-radius: 8px;
+      border: 1px solid rgba(246, 241, 232, 0.13);
+      background: rgba(21, 29, 27, 0.9);
+      z-index: 3;
+      backdrop-filter: blur(10px);
+    }
+    .concern-node::before {
+      content: "";
+      display: block;
+      width: 9px;
+      height: 9px;
+      margin-bottom: 14px;
+      border-radius: 999px;
+      background: var(--node);
+      box-shadow: 0 0 22px var(--node);
+    }
+    .concern-node b {
+      display: block;
+      color: var(--ink);
+      margin-bottom: 7px;
+      font-size: 16px;
+    }
+    .concern-node span { color: var(--muted); font-size: 13px; line-height: 1.48; }
+    .n1 { left: 7%; top: 8%; --node: var(--blue); }
+    .n2 { left: 38%; top: 5%; --node: var(--gold); }
+    .n3 { right: 7%; top: 13%; --node: var(--mint); }
+    .n4 { left: 5%; top: 40%; --node: var(--rose); }
+    .n5 { right: 5%; top: 43%; --node: var(--blue); }
+    .n6 { left: 12%; bottom: 8%; --node: var(--mint); }
+    .n7 { left: 40%; bottom: 5%; --node: var(--gold); }
+    .n8 { right: 10%; bottom: 11%; --node: var(--rose); }
+    @media (max-width: 900px) {
+      .concern-map {
+        min-height: auto;
+        display: grid;
+        gap: 12px;
+        padding: 16px;
+      }
+      .concern-map::before,
+      .concern-map::after,
+      .map-line,
+      .map-center { display: none; }
+      .concern-node {
+        position: relative;
+        inset: auto;
+        width: auto;
+        min-height: 0;
+      }
+    }
+
+    .os-band {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(233, 196, 106, 0.22);
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, rgba(233, 196, 106, 0.1), rgba(98, 214, 167, 0.05)),
+        var(--panel);
+      padding: 34px;
+    }
+    .os-band.montana-portal {
+      border-color: rgba(199, 121, 63, 0.34);
+      background:
+        linear-gradient(90deg, rgba(21, 29, 27, 0.92), rgba(21, 29, 27, 0.7)),
+        url("/assets/montana-ai-x-hero-bg.png") right center / cover no-repeat,
+        var(--panel);
+    }
+    .os-band.training-portal {
+      border-color: rgba(98, 214, 167, 0.32);
+      background:
+        linear-gradient(90deg, rgba(21, 29, 27, 0.94), rgba(21, 29, 27, 0.72)),
+        url("/assets/training-hub-hero-bg.png") right center / cover no-repeat,
+        var(--panel);
+    }
+    .os-band.montana-portal::after {
+      background: linear-gradient(90deg, transparent, rgba(199, 121, 63, 0.62));
+    }
+    .os-band.tech-portal {
+      border-color: rgba(142, 180, 255, 0.28);
+      background:
+        linear-gradient(90deg, rgba(21, 29, 27, 0.94), rgba(21, 29, 27, 0.74)),
+        url("/assets/aristotleos-hero-bg.png") right center / cover no-repeat,
+        var(--panel);
+    }
+    .os-band::before {
+      content: "";
+      position: absolute;
+      right: -120px;
+      top: -120px;
+      width: 360px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      border: 1px solid rgba(246, 241, 232, 0.1);
+      box-shadow:
+        inset 0 0 48px rgba(142, 180, 255, 0.08),
+        0 0 0 70px rgba(246, 241, 232, 0.025),
+        0 0 0 140px rgba(246, 241, 232, 0.016);
+      pointer-events: none;
+    }
+    .os-band::after {
+      content: "";
+      position: absolute;
+      right: 24px;
+      bottom: 24px;
+      width: 42%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(233, 196, 106, 0.5));
+      transform: rotate(-13deg);
+      pointer-events: none;
+    }
+    .os-band h2 { max-width: 780px; }
+    .os-band p {
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 17px;
+      margin: 18px 0 0;
+    }
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 24px;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border: 1px solid rgba(246, 241, 232, 0.14);
+      border-radius: 999px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+    .inquiry-form {
+      display: grid;
+      gap: 14px;
+      margin-top: 28px;
+      padding: 24px;
+      border: 1px solid rgba(246, 241, 232, 0.12);
+      border-radius: 8px;
+      background: rgba(21, 29, 27, 0.74);
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+    .field { display: grid; gap: 6px; }
+    .field.full { grid-column: 1 / -1; }
+    label {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid rgba(246, 241, 232, 0.16);
+      border-radius: 8px;
+      background: rgba(11, 17, 16, 0.72);
+      color: var(--ink);
+      font: inherit;
+      padding: 12px 13px;
+    }
+    textarea { min-height: 128px; resize: vertical; }
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: 2px solid rgba(233, 196, 106, 0.5);
+      outline-offset: 2px;
+    }
+    .hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+    @media (max-width: 760px) { .form-grid { grid-template-columns: 1fr; } }
+
+    .lab-list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+    .lab-note {
+      min-height: 170px;
+      padding: 22px;
+      border-radius: 8px;
+      background: var(--panel);
+      border: 1px solid rgba(246, 241, 232, 0.12);
+    }
+    .lab-note b { color: var(--gold); font-family: var(--mono); font-size: 11px; }
+    .lab-note h3 { margin: 22px 0 8px; font-size: 18px; }
+    .lab-note p { margin: 0; color: var(--muted); font-size: 14px; }
+    @media (max-width: 960px) { .lab-list { grid-template-columns: 1fr; } }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    footer {
+      padding: 48px 0 68px;
+      color: var(--quiet);
+      font-size: 13px;
+    }
+    footer .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+      padding-top: 26px;
+      border-top: 1px solid rgba(246, 241, 232, 0.1);
+    }
+    footer strong { color: var(--ink); }
+    footer a { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <nav class="nav" aria-label="Primary">
+        <a href="/" class="brand"><span class="brand-mark">A</span> Aristotle Agentic</a>
+        <div class="nav-links">
+          <a href="/about/">About</a>
+          <a href="/start/">Start Here</a>
+          <a href="/research/">Research</a>
+          <a href="/training-hub/">Training</a>
+          <a href="/montana-ai-x/" class="nav-pill">Montana AI-X</a>
+          <a href="/aristotleos/" class="nav-pill">AristotleOS</a>
+          <a href="/support/" class="nav-pill">Partner</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-bust" aria-hidden="true"></div>
+      <div class="hero-orbit" aria-hidden="true">
+        <div class="signal-thread thread-a"></div>
+        <div class="signal-thread thread-b"></div>
+        <div class="signal-thread thread-c"></div>
+        <div class="orbit-ring" style="--inset: 2%; --tilt: 12deg; --color: var(--gold);"></div>
+        <div class="orbit-ring" style="--inset: 14%; --tilt: -24deg; --color: var(--blue);"></div>
+        <div class="orbit-ring" style="--inset: 27%; --tilt: 52deg; --color: var(--mint);"></div>
+        <div class="civic-core"></div>
+      </div>
+      <div class="wrap hero-grid">
+        <div>
+          <div class="eyebrow">Nonprofit institute and civic AI incubator</div>
+          <h1>Seeking human good in agentic AI.</h1>
+          <p>
+            Aristotle Agentic advances research, training, civic AI, responsible venture incubation, and governance for autonomous systems.
+            We help communities, institutions, and technical teams ask the harder question:
+            <strong>under whose authority, for whose benefit, and with what evidence?</strong>
+          </p>
+          <div class="cta-row">
+            <a href="#mission" class="button primary">Explore the mission</a>
+            <a href="/start/" class="button secondary">Start Here</a>
+            <a href="/about/" class="button secondary">About</a>
+            <a href="/research/" class="button secondary">Research</a>
+            <a href="/support/" class="button secondary">Partner / Support</a>
+            <a href="/training-hub/" class="button secondary">Training Hub</a>
+            <a href="/montana-ai-x/" class="button secondary">Montana AI-X</a>
+            <a href="/aristotleos/" class="button secondary">View AristotleOS</a>
+            <a href="#involve" class="button secondary">Get involved</a>
+          </div>
+        </div>
+        <aside class="institute-panel" aria-label="Aristotle Agentic focus areas">
+          <div class="panel-top">
+            <b>THE CIVIC QUESTION</b>
+            <span>How should autonomous systems serve human flourishing?</span>
+          </div>
+          <div class="panel-list">
+            <div class="panel-item"><i></i><span>Training for institutions facing agentic AI.</span></div>
+            <div class="panel-item"><i></i><span>Workforce pathways for white collar, blue collar, and civic AI readiness.</span></div>
+            <div class="panel-item"><i></i><span>Research into authority, evidence, and autonomous action.</span></div>
+            <div class="panel-item"><i></i><span>Montana AI-X for place-based civic AI capacity.</span></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <div class="signal-row">
+      <div class="signal"><b>Human agency</b><span>AI should expand human capacity without dissolving responsibility.</span></div>
+      <div class="signal"><b>Civic purpose</b><span>Public institutions need tools, literacy, and governance before crisis.</span></div>
+      <div class="signal"><b>Training Hub</b><span>AI readiness for white collar, blue collar, civic, apprenticeship, and fellowship pathways.</span></div>
+      <div class="signal"><b>Montana AI-X</b><span>AI for Good, for Montana: plain-English adoption, roadshow, and civic trust work.</span></div>
+    </div>
+
+    <section id="institution">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Institutional proof, not just atmosphere.</h2>
+          <p class="section-lede">
+            Aristotle Agentic turns governance research into training, civic programs, and working software for institutions facing autonomous systems.
+          </p>
+        </div>
+        <div class="cards">
+          <div class="card">
+            <div class="kicker">ABOUT</div>
+            <h3>Founder arc and institutional posture.</h3>
+            <p>Read how Pepper Petersen's path through UAV systems, regulated markets, public affairs, and governance research shapes Aristotle Agentic.</p>
+            <p><a href="/about/">Open About</a></p>
+          </div>
+          <div class="card">
+            <div class="kicker">RESEARCH</div>
+            <h3>Papers, manuscripts, and agenda.</h3>
+            <p>Read the PDF library and research stack behind the core thesis: authority, evidence, disconnection, insurability, civic AI, and autonomous infrastructure.</p>
+            <p><a href="/research/">Open Research</a></p>
+          </div>
+          <div class="card">
+            <div class="kicker">THESIS</div>
+            <h3>Authority before consequence.</h3>
+            <p>The core argument: as software begins to act, human authority must become operational architecture.</p>
+            <p><a href="/governance-thesis/">Read the thesis</a></p>
+          </div>
+          <div class="card">
+            <div class="kicker">PROOF</div>
+            <h3>Working technical surface.</h3>
+            <p>AristotleOS, its GitHub repository, and the live UI prototype show the governance thesis becoming usable software that outside reviewers can inspect and test.</p>
+            <p><a href="/aristotleos/">Open AristotleOS</a> · <a href="/ui-prototype/">UI prototype</a> · <a href="/review/">Reviewer packet</a></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="mission">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Agentic AI is not just software. It is delegated action.</h2>
+          <p class="section-lede">
+            Systems that plan, call tools, change records, deploy infrastructure, route resources, and act across organizations need more than model evaluation. They need civic imagination and operational governance.
+          </p>
+        </div>
+        <div class="mission">
+          <blockquote class="quote">
+            We work so autonomous systems remain accountable to human authority, civic purpose, and the common good.
+            <cite>Aristotle Agentic mission statement</cite>
+          </blockquote>
+          <div class="mission-copy">
+            <h3>What we are building</h3>
+            <p>Aristotle Agentic is a public-interest institute for research, public education, community practice, applied governance, civic AI, and responsible venture incubation.</p>
+            <p>We serve the space between technical teams and public institutions: schools, cities, nonprofits, civic leaders, operators, researchers, and communities that need to understand what autonomous systems can do before those systems reshape their world.</p>
+            <p><a href="/training-hub/" class="button secondary">Open the Training Hub</a></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="programs">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Programs for the age of autonomous systems.</h2>
+          <p class="section-lede">
+            Aristotle Agentic combines public-interest research with hands-on training and civic technology development.
+          </p>
+        </div>
+        <div class="cards">
+          <div class="card">
+            <div class="kicker">TRAINING</div>
+            <h3>AI governance literacy</h3>
+            <p>Workshops, curricula, and institutional readiness programs for leaders, educators, operators, and civic organizations preparing for agentic AI.</p>
+            <p><a href="/training-hub/">Explore the Training Hub</a></p>
+          </div>
+          <div class="card">
+            <div class="kicker">RESEARCH</div>
+            <h3>Authority, evidence, and autonomy</h3>
+            <p>PDF papers and working manuscripts on governance planes, authority routing, evidence ledgers, physical invariant gates, insurable autonomy, civic AI, and institutional accountability.</p>
+            <p><a href="/research/#papers">Read the research</a></p>
+          </div>
+          <div class="card">
+            <div class="kicker">DEVELOPMENT</div>
+            <h3>Public-interest prototypes</h3>
+            <p>Open tools, reference patterns, policy artifacts, and experimental systems that help communities govern agentic AI in practice.</p>
+          </div>
+          <div class="card">
+            <div class="kicker">COMMUNITY</div>
+            <h3>Local capacity</h3>
+            <p>Convenings, fellowships, working groups, and civic learning programs that make AI literacy less elite and more locally useful.</p>
+          </div>
+          <div class="card">
+            <div class="kicker">CIVIC AI</div>
+            <h3>Tools for public institutions</h3>
+            <p>Guidance and prototypes for cities, schools, nonprofits, agencies, and public-service teams using AI under democratic accountability.</p>
+          </div>
+          <div class="card">
+            <div class="kicker">ADVOCACY</div>
+            <h3>Human good as design constraint</h3>
+            <p>Clear public positions on autonomy, labor, safety, transparency, institutional authority, and the right of communities to shape AI deployment.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="concerns">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Core areas of concern.</h2>
+          <p class="section-lede">
+            We advocate for governance before deployment, not after harm. These concerns guide our research agenda, public education, and applied projects.
+          </p>
+        </div>
+        <div class="concern-map" aria-label="Governance constellation of Aristotle Agentic concerns">
+          <div class="map-line" style="--w: 280px; --r: -138deg;"></div>
+          <div class="map-line" style="--w: 230px; --r: -92deg;"></div>
+          <div class="map-line" style="--w: 280px; --r: -34deg;"></div>
+          <div class="map-line" style="--w: 260px; --r: 174deg;"></div>
+          <div class="map-line" style="--w: 265px; --r: 6deg;"></div>
+          <div class="map-line" style="--w: 280px; --r: 132deg;"></div>
+          <div class="map-line" style="--w: 230px; --r: 90deg;"></div>
+          <div class="map-line" style="--w: 285px; --r: 42deg;"></div>
+          <div class="map-center">Human good under autonomous power</div>
+          <div class="concern-node n1"><b>Human agency</b><span>People must remain able to understand, contest, redirect, and refuse consequential AI-mediated action.</span></div>
+          <div class="concern-node n2"><b>Democratic accountability</b><span>Public systems should not hide autonomous decisions behind vendors, dashboards, or inscrutable workflows.</span></div>
+          <div class="concern-node n3"><b>Autonomous action and authority</b><span>Capability is not legitimacy. Agentic systems need clear authority boundaries before they act.</span></div>
+          <div class="concern-node n4"><b>Evidence and transparency</b><span>AI governance needs records that can be inspected, verified, and replayed, not just assurances.</span></div>
+          <div class="concern-node n5"><b>Labor and institutional change</b><span>Automation should be debated openly with workers, communities, and institutions that bear the consequences.</span></div>
+          <div class="concern-node n6"><b>Civic infrastructure</b><span>Schools, cities, nonprofits, and local agencies need public-interest AI capacity, not only private platforms.</span></div>
+          <div class="concern-node n7"><b>Safety under disconnection</b><span>Governance must survive outages, partitions, field operations, and real-world messiness.</span></div>
+          <div class="concern-node n8"><b>Public participation</b><span>AI literacy is a civic requirement. Communities deserve a voice in the systems that act on them.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="training">
+      <div class="wrap">
+        <div class="os-band training-portal">
+          <div class="eyebrow">Workforce readiness initiative</div>
+          <h2>The Training Hub prepares people for the AI-enabled economy.</h2>
+          <p>
+            Aristotle Agentic trains white collar, blue collar, and civic institutions to use AI with judgment, supervision, and accountability.
+            The work includes internships, apprenticeships, fellowships, train-the-trainer programs, and workforce development partnerships.
+          </p>
+          <div class="tag-row">
+            <span class="tag">white collar AI</span>
+            <span class="tag">blue collar AI</span>
+            <span class="tag">civic AI</span>
+            <span class="tag">apprenticeships</span>
+            <span class="tag">fellowships</span>
+            <span class="tag">workforce development</span>
+          </div>
+          <div class="cta-row">
+            <a href="/training-hub/" class="button primary">Open Training Hub</a>
+            <a href="/training-hub/#contact" class="button secondary">Bring training</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="montana">
+      <div class="wrap">
+        <div class="os-band montana-portal">
+          <div class="eyebrow">Place-based civic AI initiative</div>
+          <h2>Montana AI-X brings the mission home.</h2>
+          <p>
+            Montana AI-X is Aristotle Agentic's nonpartisan Montana-facing initiative for practical AI adoption, public trust, workforce readiness, institutional governance, and statewide civic learning.
+            Its line is direct: <strong>AI for Good, for Montana.</strong>
+          </p>
+          <div class="tag-row">
+            <span class="tag">AI for Montana Roadshow</span>
+            <span class="tag">executive briefings</span>
+            <span class="tag">grand challenges</span>
+            <span class="tag">sponsor independence</span>
+            <span class="tag">plain English over hype</span>
+          </div>
+          <div class="cta-row">
+            <a href="/montana-ai-x/" class="button primary">Open Montana AI-X</a>
+            <a href="/montana-ai-x/#roadshow" class="button secondary">Bring the roadshow</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="os">
+      <div class="wrap">
+        <div class="os-band tech-portal">
+          <div class="eyebrow">Applied infrastructure initiative</div>
+          <h2>AristotleOS turns the governance thesis into working software.</h2>
+          <p>
+            AristotleOS is the working software surface for the Aristotle Agentic governance thesis. Its product language is direct:
+            <strong>Autonomous action. Human authority.</strong>
+          </p>
+          <div class="tag-row">
+            <span class="tag">signed Warrants</span>
+            <span class="tag">refusal before emission</span>
+            <span class="tag">offline evidence</span>
+            <span class="tag">governance that survives disconnection</span>
+          </div>
+          <div class="cta-row">
+            <a href="/aristotleos/" class="button primary">Open AristotleOS subsite</a>
+            <a href="/aristotleos/#demo" class="button secondary">Run the self-check</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="lab">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Research as the institute spine.</h2>
+          <p class="section-lede">
+            The Research area carries the institute's intellectual spine: formal papers, the book-length G-Plane manuscript, and applied lanes connecting Aristotle Agentic, AristotleOS, Training Hub, and Montana AI-X.
+          </p>
+        </div>
+        <div class="lab-list">
+          <article class="lab-note">
+            <b>GOVERNANCE</b>
+            <h3>Warrants and delegated authority</h3>
+            <p>How human authority can be represented, scoped, and verified when machines act autonomously.</p>
+          </article>
+          <article class="lab-note">
+            <b>CIVIC AI</b>
+            <h3>Public-sector agent readiness</h3>
+            <p>Practical patterns for schools, cities, nonprofits, and agencies evaluating agentic AI.</p>
+          </article>
+          <article class="lab-note">
+            <b>COMMUNITY</b>
+            <h3>AI literacy as civic infrastructure</h3>
+            <p>Training communities to reason about AI capability, risk, authority, and public benefit.</p>
+          </article>
+          <article class="lab-note">
+            <b>MONTANA AI-X</b>
+            <h3>From copper to code</h3>
+            <p>Field notes on AI as infrastructure for Montana's workforce, public agencies, regulated industries, and civic trust.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="involve">
+      <div class="narrow">
+        <div class="eyebrow">Get involved</div>
+        <h2>Build the civic layer for agentic AI.</h2>
+        <p class="section-lede">
+          Partner on research, bring training to your organization, support the nonprofit, collaborate on civic AI projects, explore responsible venture incubation, or help shape the public conversation around autonomous systems and human good.
+        </p>
+        <div class="cta-row">
+          <a href="/training-hub/" class="button secondary">Explore Training Hub</a>
+          <a href="/support/" class="button secondary">Partner / Support</a>
+          <a href="/montana-ai-x/" class="button secondary">Join Montana AI-X</a>
+          <a href="/aristotleos/" class="button secondary">Explore AristotleOS</a>
+          <a href="/quickstart/" class="button secondary">Run quickstart</a>
+          <a href="/review/" class="button secondary">Review AristotleOS</a>
+        </div>
+        <form class="inquiry-form" action="/api/inquiries" method="post">
+          <input type="hidden" name="type" value="aristotle-agentic" />
+          <input type="hidden" name="sourcePath" value="/" />
+          <div class="hp">
+            <label for="website-root">Website</label>
+            <input id="website-root" name="website" tabindex="-1" autocomplete="off" />
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="name-root">Name</label>
+              <input id="name-root" name="name" autocomplete="name" required />
+            </div>
+            <div class="field">
+              <label for="email-root">Email</label>
+              <input id="email-root" name="email" type="email" autocomplete="email" required />
+            </div>
+            <div class="field">
+              <label for="org-root">Organization</label>
+              <input id="org-root" name="organization" autocomplete="organization" />
+            </div>
+            <div class="field">
+              <label for="topic-root">Topic</label>
+              <select id="topic-root" name="topic">
+                <option>Partnership</option>
+                <option>Training</option>
+                <option>Research</option>
+                <option>Civic AI</option>
+                <option>Support the nonprofit</option>
+                <option>Media</option>
+              </select>
+            </div>
+            <div class="field full">
+              <label for="message-root">What are you trying to govern, teach, build, or understand?</label>
+              <textarea id="message-root" name="message" required></textarea>
+            </div>
+          </div>
+          <button class="button primary" type="submit">Send inquiry</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div class="row">
+        <div>
+          <strong>Aristotle Agentic</strong><br />
+          Seeking human good in agentic AI.
+        </div>
+        <div>
+          Public-interest institute for research, training, civic AI, responsible venture incubation, and autonomous-system governance.<br />
+          <a href="/training-hub/">Training Hub</a> prepares the workforce for the AI-enabled economy. <a href="/aristotleos/">AristotleOS</a> is the working software surface for governed autonomous action.<br />
+          <a href="/about/">About</a> · <a href="/start/">Start Here</a> · <a href="/quickstart/">Quickstart</a> · <a href="/review/">Review</a> · <a href="/research/">Research</a> · <a href="/support/">Partner / Support</a> · <a href="/governance-thesis/">Governance thesis</a> · <a href="/privacy/">Privacy and trust</a> · <a href="/github">AristotleOS GitHub</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

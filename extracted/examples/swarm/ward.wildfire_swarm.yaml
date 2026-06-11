@@ -1,0 +1,77 @@
+ward_id: ward-swarm-wildfire-west
+name: Wildfire Response Swarm West
+sovereignty_context: incident-command-authority
+authority_domain: swarm-disconnected-ops
+policy_version: 0.1.0
+evidence_ledger_path: .aristotle/swarm-wildfire-west.gel.jsonl
+permitted_subjects:
+  - agent:swarm-ops-orchestrator
+  - agent:swarm-edge-controller
+physical_bounds:
+  permitted_swarm_id: swarm-wildfire-west-1
+  permitted_mission_classes:
+    - wildfire
+    - disaster-response
+    - temporary-comms-mesh
+  permitted_flight_states:
+    - preflight
+    - connected
+    - degraded
+    - mesh-relay
+    - hold-safe
+    - recover
+    - landing
+    - landed
+  permitted_asset_types:
+    - swarm-lead
+    - swarm-member
+  min_swarm_size: 3
+  max_swarm_size: 12
+  max_swarm_radius_m: 1500
+  min_unit_separation_m: 10
+  max_unit_separation_m: 200
+  min_swarm_battery_soc_pct: 30
+  min_mesh_link_quality: 0.5
+  max_mesh_hops: 4
+  max_lost_link_seconds: 30
+  max_authority_sync_age_ms: 10000
+  max_telemetry_age_ms: 5000
+  max_altitude_agl_ft: 400
+  max_groundspeed_kts: 80
+  max_wind_speed_kts: 25
+  max_payload_kg: 30
+  require_mesh_relay_healthy: true
+  require_fluidity_token_valid: true
+  require_launch_readiness_approved: true
+  require_recovery_plan_active: true
+  require_geofence_active: true
+  require_remote_id_broadcasting: true
+  require_daa_active: true
+  require_airspace_authorization: true
+  require_no_active_tfr: true
+  require_weather_within_limits: true
+  require_operator_qualified: true
+metadata:
+  swarm_mission_class: wildfire
+  disconnected_doctrine: mesh-relay-with-fluidity-token
+  regulatory_evidence_profile:
+    - PART_107
+    - PART_107_WAIVER
+    - PART_108_BVLOS
+    - PART_89_REMOTE_ID
+    - LAANC
+    - ASTM_F3548_UTM
+    - SORA
+    - DISCONNECTED_OPS
+    - MESH_REVOCATION
+    - FLUIDITY_TOKEN
+  protected_scope:
+    - swarm-orchestration
+    - mesh-relay
+    - airspace-authority
+    - mission-reconstruction
+criticality: safety_critical
+classification:
+  level: CUI
+  caveats:
+    - SWARM_OPS

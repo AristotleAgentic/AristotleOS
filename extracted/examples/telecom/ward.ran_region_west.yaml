@@ -1,0 +1,25 @@
+ward_id: ward-ran-region-west
+name: RAN Region West
+sovereignty_context: csp-west-market-network-operations
+authority_domain: autonomous-network-ran
+policy_version: 0.1.0
+evidence_ledger_path: .aristotle/telecom-ran.gel.jsonl
+permitted_subjects:
+  - agent:noc-change-orchestrator
+  - agent:ran-optimization-rapp
+physical_bounds:
+  permitted_boundary_id: ran-market-west
+metadata:
+  telecom_domain: ran
+  standards_profile:
+    - ORAN_A1_R1
+    - ORAN_O1
+    - 3GPP_NWDAF
+  protected_services:
+    - mobile-broadband
+    - emergency-calling
+criticality: mission_critical
+classification:
+  level: CUI
+  caveats:
+    - CPNI

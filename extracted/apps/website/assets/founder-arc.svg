@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Founder arc from UAV systems to governance architecture</title>
+  <desc id="desc">A portable editorial diagram showing Pepper Petersen's arc from autonomous aerial systems through regulated markets into Aristotle Agentic governance architecture.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1110"/>
+      <stop offset=".52" stop-color="#13211d"/>
+      <stop offset="1" stop-color="#211a12"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#e9c46a"/>
+      <stop offset=".55" stop-color="#62d6a7"/>
+      <stop offset="1" stop-color="#8eb4ff"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="720" fill="url(#sky)"/>
+  <path d="M0 517 C178 446 290 493 430 438 C588 376 690 286 850 324 C1000 360 1090 283 1200 225 L1200 720 L0 720 Z" fill="#14251f"/>
+  <path d="M0 585 C190 512 316 562 472 496 C650 420 744 382 912 420 C1037 448 1125 387 1200 348 L1200 720 L0 720 Z" fill="#0d1715"/>
+  <g opacity=".24">
+    <path d="M88 92 H1116 M88 184 H1116 M88 276 H1116 M88 368 H1116 M88 460 H1116 M88 552 H1116" stroke="#f6f1e8" stroke-width="1"/>
+    <path d="M148 62 V646 M298 62 V646 M448 62 V646 M598 62 V646 M748 62 V646 M898 62 V646 M1048 62 V646" stroke="#f6f1e8" stroke-width="1"/>
+  </g>
+  <path d="M150 520 C290 420 386 381 520 363 C664 344 768 281 910 180" fill="none" stroke="url(#gold)" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+  <g font-family="Georgia,serif">
+    <text x="88" y="80" fill="#e9c46a" font-size="22">PEPPER PETERSEN: OPERATING ARC</text>
+    <text x="88" y="120" fill="#f6f1e8" font-size="46">From autonomous field systems to governed autonomy.</text>
+  </g>
+  <g font-family="Arial,sans-serif">
+    <g transform="translate(108 468)">
+      <circle cx="42" cy="42" r="38" fill="#0b1110" stroke="#8eb4ff" stroke-width="3"/>
+      <path d="M42 17 v50 M17 42 h50 M24 24 l36 36 M60 24 L24 60" stroke="#8eb4ff" stroke-width="4" stroke-linecap="round"/>
+      <text x="0" y="104" fill="#f6f1e8" font-size="25" font-family="Georgia,serif">2012</text>
+      <text x="0" y="132" fill="#c8c0b2" font-size="18">Big Sky UAV</text>
+      <text x="0" y="156" fill="#8f8678" font-size="15">field robotics, imaging, payloads</text>
+    </g>
+    <g transform="translate(408 310)">
+      <rect x="0" y="0" width="118" height="86" rx="10" fill="#0b1110" stroke="#e9c46a" stroke-width="3"/>
+      <path d="M18 62 h82 M26 62 V34 h18 v28 M54 62 V22 h18 v40 M82 62 V42 h18 v20" stroke="#e9c46a" stroke-width="5" stroke-linecap="round"/>
+      <text x="-6" y="128" fill="#f6f1e8" font-size="25" font-family="Georgia,serif">Regulated markets</text>
+      <text x="-6" y="156" fill="#c8c0b2" font-size="18">campaigns, compliance, public trust</text>
+    </g>
+    <g transform="translate(762 138)">
+      <circle cx="74" cy="74" r="66" fill="#0b1110" stroke="#62d6a7" stroke-width="3"/>
+      <circle cx="74" cy="74" r="32" fill="none" stroke="#62d6a7" stroke-width="3"/>
+      <path d="M74 8 v132 M8 74 h132 M30 30 l88 88 M118 30 L30 118" stroke="#62d6a7" stroke-width="2" opacity=".76"/>
+      <text x="-18" y="178" fill="#f6f1e8" font-size="25" font-family="Georgia,serif">Aristotle Agentic</text>
+      <text x="-18" y="206" fill="#c8c0b2" font-size="18">governance architecture</text>
+      <text x="-18" y="230" fill="#8f8678" font-size="15">authority, evidence, disconnection</text>
+    </g>
+  </g>
+  <g fill="#e9c46a" opacity=".78">
+    <circle cx="150" cy="520" r="7"/>
+    <circle cx="520" cy="363" r="7"/>
+    <circle cx="910" cy="180" r="7"/>
+  </g>
+</svg>

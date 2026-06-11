@@ -1,0 +1,64 @@
+{
+  "name": "@aristotle/os-cli",
+  "version": "0.2.0",
+  "description": "AristotleOS CLI - govern autonomous action with signed single-use Warrants and tamper-evident evidence.",
+  "type": "module",
+  "bin": {
+    "aristotle": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "examples",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "governance",
+    "authorization",
+    "execution-control",
+    "commit-gate",
+    "policy",
+    "audit",
+    "cli"
+  ],
+  "homepage": "https://github.com/AristotleAgentic/AristotleOS#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AristotleAgentic/AristotleOS.git",
+    "directory": "apps/aristotle-cli"
+  },
+  "bugs": {
+    "url": "https://github.com/AristotleAgentic/AristotleOS/issues"
+  },
+  "license": "MPL-2.0",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "tsx src/index.ts",
+    "test": "tsx src/index.test.ts",
+    "prepack": "node build.mjs",
+    "prepublishOnly": "node build.mjs"
+  },
+  "devDependencies": {
+    "@aristotle/execution-control-runtime": "workspace:*",
+    "@aristotle/governance-core": "workspace:*",
+    "@aristotle/shared-schemas": "workspace:*",
+    "@aristotle/shared-types": "workspace:*",
+    "@aristotle/trial-engine": "workspace:*",
+    "esbuild": "^0.28.0"
+  }
+}

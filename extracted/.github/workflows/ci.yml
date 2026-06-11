@@ -1,0 +1,257 @@
+name: CI
+
+on:
+  push:
+    branches: [ ward-warrant-execution-control, main ]
+  pull_request:
+    branches: [ ward-warrant-execution-control, main ]
+  workflow_dispatch:
+
+# Cancel in-progress runs on the same branch when a new commit lands.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reviewer-and-core:
+    name: Reviewer verification + core packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Set pnpm version
+        run: corepack prepare pnpm@10.32.1 --activate
+
+      - name: Install
+        run: corepack pnpm@10.32.1 install --frozen-lockfile
+
+      - name: Reviewer verification (the headline check)
+        run: corepack pnpm@10.32.1 run reviewer:verify
+
+      - name: Reviewer tests
+        run: corepack pnpm@10.32.1 run reviewer:test
+
+      - name: Published replay artifact verification
+        run: node --import tsx --test examples/mesh/published.replay.test.ts
+
+      - name: Core packages (governance-core + execution-control-runtime + mesh-runtime + warrant-verifier + replay-artifact)
+        run: corepack pnpm@10.32.1 run test:core
+
+  protocol-adapters:
+    name: Protocol adapters
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - run: corepack enable
+      - run: corepack prepare pnpm@10.32.1 --activate
+      - run: corepack pnpm@10.32.1 install --frozen-lockfile
+      - name: Protocol adapter test suite (7 adapters)
+        run: corepack pnpm@10.32.1 run test:protocol-adapters
+      - name: Cross-adapter refusal-before-emission invariant
+        run: corepack pnpm@10.32.1 run test:refusal-before-emission
+
+  nonce-store:
+    name: Nonce store (durable replay protection)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - run: corepack enable
+      - run: corepack prepare pnpm@10.32.1 --activate
+      - run: corepack pnpm@10.32.1 install --frozen-lockfile
+      - name: Nonce store (in-memory + filesystem + WARRANT_REPLAYED integration)
+        run: corepack pnpm@10.32.1 run test:nonce-store
+
+  mesh-and-chaos:
+    name: Mesh runtime + chaos harness + scenario engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - run: corepack enable
+      - run: corepack prepare pnpm@10.32.1 --activate
+      - run: corepack pnpm@10.32.1 install --frozen-lockfile
+      - name: Mesh runtime + chaos + scenarios
+        run: corepack pnpm@10.32.1 run test:mesh
+
+  tenancy-and-pipeline:
+    name: Tenancy + policy pipeline + time machine + event stream
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - run: corepack enable
+      - run: corepack prepare pnpm@10.32.1 --activate
+      - run: corepack pnpm@10.32.1 install --frozen-lockfile
+      - name: Tenancy + pipeline + time-machine + event-stream
+        run: corepack pnpm@10.32.1 run test:tenancy
+
+  framework-adapters:
+    name: Agent framework adapters (worked examples)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - run: corepack enable
+      - run: corepack prepare pnpm@10.32.1 --activate
+      - run: corepack pnpm@10.32.1 install --frozen-lockfile
+      - name: Framework adapters
+        run: corepack pnpm@10.32.1 run test:framework-adapters
+
+  # Documentation hygiene: make sure the diligence docs exist and the
+  # proof-status orientation runs clean.
+  diligence-docs-present:
+    name: Diligence docs present
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - run: corepack enable
+      - run: corepack prepare pnpm@10.32.1 --activate
+      - run: corepack pnpm@10.32.1 install --frozen-lockfile
+      - name: proof:status orientation
+        run: corepack pnpm@10.32.1 run proof:status
+      - name: Required diligence docs are present
+        shell: bash
+        run: |
+          required=(
+            PROOF_STATUS.md
+            VALIDATION_MATRIX.md
+            THREAT_MODEL.md
+            LIMITATIONS.md
+            ARCHITECTURE.md
+            VERSIONING.md
+            SECURITY.md
+            CONTRIBUTING.md
+            CHANGELOG.md
+            README.md
+            ROADMAP_TO_100.md
+            RELEASE_CHECKLIST.md
+            docs/DILIGENCE_MEMO.md
+            docs/MARKET_POSITIONING.md
+            docs/ADAPTER_VALIDATION.md
+            examples/reviewer/REVIEWER.md
+            examples/reviewer/verify.ts
+            examples/mesh/published.replay.json
+            examples/mesh/published.replay.report.md
+          )
+          missing=()
+          for f in "${required[@]}"; do
+            if [ ! -f "$f" ]; then missing+=("$f"); fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "Missing required diligence docs:"
+            printf '  - %s\n' "${missing[@]}"
+            exit 1
+          fi
+          echo "All required diligence docs present."
+
+  # TLA+ spec model-check — gives CI teeth to the docs/specs/mesh-reconciliation.tla
+  # spec. Runs TLC under bounded constants (state space ~10^4 states; completes
+  # in seconds). Failure means the spec disagrees with the asserted invariants
+  # — investigate immediately; either the spec or the asserted invariant is wrong.
+  mesh-spec:
+    name: TLA+ mesh-reconciliation spec
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Java (TLC needs JRE 11+)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Download TLA+ tools
+        run: |
+          curl -fsSL -o /tmp/tla2tools.jar https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar
+          ls -l /tmp/tla2tools.jar
+      - name: Write TLC config
+        shell: bash
+        run: |
+          cat > /tmp/mesh.cfg <<'EOF'
+          SPECIFICATION Spec
+          INVARIANTS
+            Inv_NoWarrantAfterKnownRevocation
+            Inv_QuotaCap
+            Inv_ReconcileDetectsConflict
+          CONSTANTS
+            Edges = {"e1", "e2"}
+            MaxRevocations = 3
+            MaxDisconnectedWarrants = 2
+            MaxTime = 6
+          EOF
+          cat /tmp/mesh.cfg
+      - name: Run TLC against mesh-reconciliation.tla
+        shell: bash
+        run: |
+          cd docs/specs
+          # -workers auto uses all available cores; -deadlock disables deadlock
+          # detection (we have a fair-weak-condition spec that's intentionally
+          # not deadlock-free under bounded MaxTime).
+          java -XX:+UseParallelGC -jar /tmp/tla2tools.jar tlc2.TLC \
+            -config /tmp/mesh.cfg \
+            -workers auto \
+            -deadlock \
+            MeshReconciliation.tla
+
+  # CLI typecheck — required check.
+  #
+  # Was advisory in earlier revisions because the CLI tsconfig had a
+  # narrow `rootDir` and missing path entries for workspace substrate
+  # packages. Both fixed in apps/aristotle-cli/{tsconfig.json,package.json}:
+  # rootDir/outDir dropped (this is a noEmit-only config), full paths
+  # block restored, and the four workspace deps the CLI actually imports
+  # are now declared explicitly. ROADMAP_TO_100.md Category 2 "Quick fix"
+  # closed.
+  cli-typecheck:
+    name: CLI typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - run: corepack enable
+      - run: corepack prepare pnpm@10.32.1 --activate
+      - run: corepack pnpm@10.32.1 install --frozen-lockfile
+      - name: CLI typecheck
+        run: corepack pnpm@10.32.1 exec tsc --noEmit -p apps/aristotle-cli/tsconfig.json

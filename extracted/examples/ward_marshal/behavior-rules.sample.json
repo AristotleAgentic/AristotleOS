@@ -1,0 +1,14 @@
+[
+  {
+    "id": "exfiltration-chain",
+    "name": "read then external egress then delete",
+    "steps": [
+      { "match": "data\\.read" },
+      { "match": "net\\.egress|http\\.post|http\\.put" },
+      { "match": "data\\.delete|data\\.purge" }
+    ],
+    "withinMs": 600000,
+    "crossSubject": true,
+    "severity": "critical"
+  }
+]

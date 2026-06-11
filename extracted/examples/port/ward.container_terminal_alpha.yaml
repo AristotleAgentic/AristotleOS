@@ -1,0 +1,67 @@
+ward_id: ward-port-terminal-alpha
+name: Container Terminal Alpha Port Operations
+sovereignty_context: port-authority-and-terminal-operator-alpha
+authority_domain: maritime-terminal-ops
+policy_version: 0.1.0
+evidence_ledger_path: ./.tmp/port-alpha.gel.jsonl
+permitted_subjects:
+  - agent:terminal-orchestrator
+physical_bounds:
+  permitted_boundary_id: terminal-alpha
+  permitted_port_id: port-of-aristotle
+  permitted_terminal_id: terminal-alpha
+  permitted_berth_ids:
+    - berth-7
+  permitted_yard_blocks:
+    - A12
+    - B04
+    - C03
+  permitted_gate_ids:
+    - gate-3
+    - gate-4
+  permitted_cargo_types:
+    - container
+    - reefer
+    - hazmat
+  permitted_hazmat_classes:
+    - none
+    - "3"
+    - "8"
+  permitted_terminal_zones:
+    - tos
+    - ot
+    - gate
+    - vessel-interface
+  max_container_weight_kg: 32500
+  min_pnt_confidence: 0.97
+  max_ais_track_age_ms: 5000
+  max_port_telemetry_age_ms: 4000
+  max_wind_speed_kn: 35
+  min_reefer_temp_c: -30
+  max_reefer_temp_c: 20
+  require_customs_release: true
+  require_no_security_hold: true
+  require_no_inspection_hold: true
+  require_vgm_verified: true
+  require_crane_exclusion_clear: true
+  require_spreader_safe: true
+  require_berth_clear: true
+  require_tide_window_open: true
+  require_vessel_clearance: true
+  require_truck_appointment: true
+  require_driver_identity: true
+  require_manual_fallback_ready: true
+  require_cold_chain_valid: true
+  require_fire_watch_ready: true
+  require_hazmat_route_approved: true
+  require_gate_access_granted: true
+  require_operator_identity: true
+  require_no_vendor_remote_session: true
+criticality: safety_critical
+classification:
+  level: CUI
+  caveats:
+    - PORT_OPS
+metadata:
+  pilot: container-terminal-alpha
+  doctrine: authority-before-port-consequence

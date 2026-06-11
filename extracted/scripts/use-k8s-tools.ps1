@@ -1,0 +1,10 @@
+$toolsRoot = "C:\Users\Pepper\Downloads\aristotle-k8s-tools"
+$bin = Join-Path $toolsRoot "bin"
+$env:PATH = "$bin;$env:PATH"
+$env:MINIKUBE_HOME = Join-Path $toolsRoot "minikube-home"
+$env:DOCKER_CONFIG = Join-Path $toolsRoot "docker-config"
+New-Item -ItemType Directory -Force -Path $env:MINIKUBE_HOME,$env:DOCKER_CONFIG | Out-Null
+Write-Host "AristotleOS Kubernetes tools enabled:"
+Write-Host "  PATH += $bin"
+Write-Host "  MINIKUBE_HOME=$env:MINIKUBE_HOME"
+Write-Host "  DOCKER_CONFIG=$env:DOCKER_CONFIG"

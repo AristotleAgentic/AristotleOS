@@ -1,0 +1,85 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: aristotle-governance-os
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateway-ingress
+  namespace: aristotle-governance-os
+spec:
+  podSelector:
+    matchLabels:
+      app: http-gateway
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-governance-control-plane
+  namespace: aristotle-governance-os
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}
+      ports:
+        - { protocol: TCP, port: 7001 }
+        - { protocol: TCP, port: 7002 }
+        - { protocol: TCP, port: 7003 }
+        - { protocol: TCP, port: 7004 }
+        - { protocol: TCP, port: 7005 }
+        - { protocol: TCP, port: 7006 }
+        - { protocol: TCP, port: 7007 }
+        - { protocol: TCP, port: 7008 }
+        - { protocol: TCP, port: 7009 }
+        - { protocol: TCP, port: 8080 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-monitoring-scrape
+  namespace: aristotle-governance-os
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 7001
+        - protocol: TCP
+          port: 7002
+        - protocol: TCP
+          port: 7003
+        - protocol: TCP
+          port: 7004
+        - protocol: TCP
+          port: 7005
+        - protocol: TCP
+          port: 7006
+        - protocol: TCP
+          port: 7007
+        - protocol: TCP
+          port: 7008
+        - protocol: TCP
+          port: 7009

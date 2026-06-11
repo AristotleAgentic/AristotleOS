@@ -1,36 +1,21 @@
-import { createHmac, timingSafeEqual, randomUUID } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { createApp } from "./lib.js";
 import { runGatewayPreflight } from "./preflight.js";
+import { createGovernanceChainProxy } from "./governance-chain-proxy.js";
+import { createOperatorAuthFromEnv } from "./operator-auth.js";
+import { mountTrialApiRoutes } from "./trial-api.js";
+import { PAYMENTS_GOVERNANCE_SOURCE, TRIAL_SCENARIOS, evaluateTrialAction } from "@aristotle/trial-engine";
 const port = Number(process.env.PORT_GATEWAY ?? 8080);
 const app = createApp();
 const serviceDiscoveryMode = process.env.SERVICE_DISCOVERY_MODE ?? "container";
-const operatorApiKey = process.env.OPERATOR_API_KEY?.trim();
-const operatorSessionSecret = process.env.OPERATOR_SESSION_SECRET?.trim();
-const operatorSessionEnforcement = process.env.OPERATOR_SESSION_ENFORCEMENT === "1" ||
-    process.env.OPERATOR_SESSION_ENFORCEMENT === "true" ||
-    process.env.OPERATOR_SESSION_ENFORCEMENT === "TRUE";
-const operatorSessionTtlMs = Number(process.env.OPERATOR_SESSION_TTL_MS ?? 15 * 60 * 1000);
-const operatorSessionSkewMs = Number(process.env.OPERATOR_SESSION_SKEW_MS ?? 60 * 1000);
-const operatorRoleEnforcement = process.env.OPERATOR_ROLE_ENFORCEMENT === "1" ||
-    process.env.OPERATOR_ROLE_ENFORCEMENT === "true" ||
-    process.env.OPERATOR_ROLE_ENFORCEMENT === "TRUE";
-const operatorDefaultRole = process.env.OPERATOR_DEFAULT_ROLE?.trim() || "operator";
-const operatorReadRoles = new Set((process.env.OPERATOR_READ_ROLES ?? "viewer,operator,admin")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean));
-const operatorMutationRoles = new Set((process.env.OPERATOR_MUTATION_ROLES ?? "operator,admin")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean));
-const operatorReadActors = new Set((process.env.OPERATOR_READ_ACTORS ?? "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean));
-const operatorMutationActors = new Set((process.env.OPERATOR_MUTATION_ACTORS ?? "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean));
+// Operator-auth surface (config + helpers + session endpoint + middleware)
+// lives in ./operator-auth.ts. Extraction in stage 6 of prototype-hardening;
+// behavior is preserved exactly, pinned by adapters/http-gateway/src/
+// index.test.ts (the stage-2 RBAC suite). Destructure the helpers other
+// handlers use for event attribution + method-based RBAC so the call sites
+// below didn't have to change.
+const operatorAuth = createOperatorAuthFromEnv();
+const { readOperatorActor } = operatorAuth;
 const preflight = runGatewayPreflight();
 if (!preflight.ok) {
     const failed = preflight.checks.filter((check) => check.status === "fail").map((check) => `${check.name}: ${check.detail}`);
@@ -51,6 +36,26 @@ const authorityRouterBase = serviceBase("authority-router", "HOST_AUTHORITY_ROUT
 const witnessServiceBase = serviceBase("witness-service", "HOST_WITNESS_SERVICE", Number(process.env.PORT_WITNESS_SERVICE ?? 7007));
 const executionGateBase = serviceBase("execution-gate", "HOST_EXECUTION_GATE", Number(process.env.PORT_EXECUTION_GATE ?? 7008));
 const agentOsBase = serviceBase("agent-os", "HOST_AGENT_OS", Number(process.env.PORT_AGENT_OS ?? 7009));
+const chainV2Enabled = (process.env.GOVERNANCE_CHAIN_V2 ?? "false").toLowerCase() === "true";
+const readinessTimeoutMs = Number(process.env.GATEWAY_READINESS_TIMEOUT_MS ?? 2000);
+const otelTracesExporter = (process.env.OTEL_TRACES_EXPORTER ?? "").toLowerCase();
+const otelExporterEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT?.replace(/\/+$/, "");
+const otelServiceName = process.env.OTEL_SERVICE_NAME?.trim() || "aristotle-http-gateway";
+const otelResourceAttributes = process.env.OTEL_RESOURCE_ATTRIBUTES?.trim() || "";
+const readinessCriticalServices = new Set((process.env.GATEWAY_CRITICAL_SERVICES ?? "governance-kernel,policy-compiler,evidence-ledger,meta-authority-registry,simulation-engine,witness-service,execution-gate,agent-os")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean));
+const observedServices = [
+    { name: "governance-kernel", base: governanceKernelBase, path: "/health" },
+    { name: "policy-compiler", base: policyCompilerBase, path: "/health" },
+    { name: "evidence-ledger", base: evidenceLedgerBase, path: "/health" },
+    { name: "meta-authority-registry", base: metaAuthorityRegistryBase, path: "/health" },
+    { name: "simulation-engine", base: simulationEngineBase, path: "/health" },
+    { name: "witness-service", base: witnessServiceBase, path: "/health" },
+    { name: "execution-gate", base: executionGateBase, path: "/health" },
+    { name: "agent-os", base: agentOsBase, path: "/health" }
+];
 console.log("http-gateway upstream bases", {
     governanceKernelBase,
     policyCompilerBase,
@@ -77,39 +82,155 @@ const call = async (base, path, init) => {
     }
     return res.json();
 };
-const encodeSessionPayload = (claims) => Buffer.from(JSON.stringify(claims), "utf8").toString("base64url");
-const signSessionPayload = (payload) => {
-    if (!operatorSessionSecret) {
-        throw new Error("Operator session secret is not configured.");
-    }
-    return createHmac("sha256", operatorSessionSecret).update(payload).digest("base64url");
-};
-const createOperatorSessionToken = (claims) => {
-    const payload = encodeSessionPayload(claims);
-    const signature = signSessionPayload(payload);
-    return `ost.${payload}.${signature}`;
-};
-const parseOperatorSessionToken = (token) => {
-    if (!operatorSessionSecret || !token.startsWith("ost.")) {
-        return null;
-    }
-    const [, payload, signature] = token.split(".");
-    if (!payload || !signature) {
-        return null;
-    }
-    const expected = Buffer.from(signSessionPayload(payload), "utf8");
-    const actual = Buffer.from(signature, "utf8");
-    if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
-        return null;
-    }
+const roundMs = (value) => Math.round(value * 1000) / 1000;
+const probeService = async (service, timeoutMs = readinessTimeoutMs) => {
+    const startedAt = performance.now();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-        const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-        return claims;
+        const response = await fetch(`http://${service.base}${service.path}`, { signal: controller.signal });
+        const text = await response.text().catch(() => "");
+        let json = null;
+        try {
+            json = text ? JSON.parse(text) : null;
+        }
+        catch {
+            json = null;
+        }
+        return {
+            name: service.name,
+            base: service.base,
+            critical: readinessCriticalServices.has(service.name),
+            ok: response.ok && json?.ok === true,
+            status: response.status,
+            latencyMs: roundMs(performance.now() - startedAt),
+            service: typeof json?.service === "string" ? json.service : undefined,
+            killSwitchState: typeof json?.killSwitchState === "string" ? json.killSwitchState : undefined,
+            activeKillScopes: Array.isArray(json?.activeKillScopes) ? json.activeKillScopes : undefined
+        };
     }
-    catch {
-        return null;
+    catch (error) {
+        return {
+            name: service.name,
+            base: service.base,
+            critical: readinessCriticalServices.has(service.name),
+            ok: false,
+            latencyMs: roundMs(performance.now() - startedAt),
+            error: error instanceof Error ? error.message : String(error)
+        };
+    }
+    finally {
+        clearTimeout(timeout);
     }
 };
+const evaluateReadiness = async () => {
+    const services = await Promise.all(observedServices.map((service) => probeService(service)));
+    const failedCritical = services.filter((service) => service.critical && !service.ok);
+    const activeGovernanceHalt = services.some((service) => (service.name === "governance-kernel" || service.name === "execution-gate") && service.killSwitchState === "active");
+    const ok = preflight.ok && failedCritical.length === 0;
+    return {
+        ok,
+        generatedAt: new Date().toISOString(),
+        mode: preflight.mode,
+        failClosed: !ok,
+        activeGovernanceHalt,
+        timeoutMs: readinessTimeoutMs,
+        criticalServices: [...readinessCriticalServices],
+        failedCritical: failedCritical.map((service) => service.name),
+        preflight,
+        services
+    };
+};
+const prometheusEscape = (value) => value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
+const renderGatewayMetrics = (readiness) => {
+    const lines = [
+        "# HELP aristotle_gateway_ready Gateway readiness posture; 1 means all critical upstreams and preflight checks pass.",
+        "# TYPE aristotle_gateway_ready gauge",
+        `aristotle_gateway_ready ${readiness.ok ? 1 : 0}`,
+        "# HELP aristotle_gateway_fail_closed Gateway fail-closed posture; 1 means the gateway must refuse readiness.",
+        "# TYPE aristotle_gateway_fail_closed gauge",
+        `aristotle_gateway_fail_closed ${readiness.failClosed ? 1 : 0}`,
+        "# HELP aristotle_gateway_preflight_ok Gateway enterprise preflight posture.",
+        "# TYPE aristotle_gateway_preflight_ok gauge",
+        `aristotle_gateway_preflight_ok{mode="${prometheusEscape(readiness.mode)}"} ${readiness.preflight.ok ? 1 : 0}`,
+        "# HELP aristotle_upstream_ready Upstream readiness by service.",
+        "# TYPE aristotle_upstream_ready gauge",
+    ];
+    for (const service of readiness.services) {
+        lines.push(`aristotle_upstream_ready{service="${prometheusEscape(service.name)}",critical="${service.critical ? "true" : "false"}"} ${service.ok ? 1 : 0}`);
+    }
+    lines.push("# HELP aristotle_upstream_latency_ms Upstream readiness probe latency in milliseconds.");
+    lines.push("# TYPE aristotle_upstream_latency_ms gauge");
+    for (const service of readiness.services) {
+        lines.push(`aristotle_upstream_latency_ms{service="${prometheusEscape(service.name)}"} ${service.latencyMs}`);
+    }
+    lines.push("# HELP aristotle_governance_halt_active Active governance halt observed at the kernel or execution gate.");
+    lines.push("# TYPE aristotle_governance_halt_active gauge");
+    lines.push(`aristotle_governance_halt_active ${readiness.activeGovernanceHalt ? 1 : 0}`);
+    return `${lines.join("\n")}\n`;
+};
+const randomHex = (bytes) => randomBytes(bytes).toString("hex");
+const hrTimeUnixNano = () => String(BigInt(Date.now()) * 1000000n);
+const parseOtelResourceAttributes = () => Object.fromEntries(otelResourceAttributes
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+    const [key, ...rest] = entry.split("=");
+    return [key, rest.join("=")];
+})
+    .filter(([key]) => Boolean(key)));
+const emitOtelSpan = (span) => {
+    if (otelTracesExporter !== "otlp" || !otelExporterEndpoint)
+        return;
+    const resourceAttributes = {
+        "service.name": otelServiceName,
+        "service.namespace": "aristotle-governance-os",
+        ...parseOtelResourceAttributes()
+    };
+    const body = {
+        resourceSpans: [
+            {
+                resource: {
+                    attributes: Object.entries(resourceAttributes).map(([key, value]) => ({
+                        key,
+                        value: { stringValue: String(value) }
+                    }))
+                },
+                scopeSpans: [
+                    {
+                        scope: { name: "aristotle.http-gateway", version: "0.1.0" },
+                        spans: [
+                            {
+                                traceId: span.traceId,
+                                spanId: span.spanId,
+                                name: span.name,
+                                kind: 2,
+                                startTimeUnixNano: span.startTimeUnixNano,
+                                endTimeUnixNano: span.endTimeUnixNano,
+                                attributes: Object.entries(span.attributes).map(([key, value]) => ({
+                                    key,
+                                    value: typeof value === "boolean"
+                                        ? { boolValue: value }
+                                        : typeof value === "number"
+                                            ? { doubleValue: value }
+                                            : { stringValue: value }
+                                })),
+                                status: { code: span.statusCode >= 500 ? 2 : 1 }
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    };
+    void fetch(`${otelExporterEndpoint}/v1/traces`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body)
+    }).catch(() => undefined);
+};
+// Session-token codec moved to ./operator-auth.ts (createOperatorAuth(...)).
 const handleAsync = (handler) => (req, res) => {
     void handler(req, res).catch((error) => {
         const message = error instanceof Error ? error.message : "unknown_gateway_error";
@@ -118,56 +239,11 @@ const handleAsync = (handler) => (req, res) => {
         }
     });
 };
-const readOperatorCredential = (req) => {
-    const keyHeader = req.header("x-operator-key")?.trim();
-    if (keyHeader)
-        return keyHeader;
-    const authorization = req.header("authorization")?.trim();
-    if (authorization?.toLowerCase().startsWith("bearer ")) {
-        return authorization.slice(7).trim();
-    }
-    return undefined;
-};
-const readOperatorSession = (req) => {
-    const authorization = req.header("authorization")?.trim();
-    if (!authorization?.toLowerCase().startsWith("bearer ")) {
-        return undefined;
-    }
-    const token = authorization.slice(7).trim();
-    return token.startsWith("ost.") ? token : undefined;
-};
-const readOperatorActor = (req, fallback = "http-gateway") => {
-    const actorHeader = req.header("x-operator-actor")?.trim();
-    if (actorHeader)
-        return actorHeader;
-    const bodyActor = typeof req.body?.actor === "string" ? req.body.actor.trim() : "";
-    return bodyActor || fallback;
-};
-const readOperatorRole = (req) => req.header("x-operator-role")?.trim() || operatorDefaultRole;
-const isReadMethod = (method) => method === "GET" || method === "HEAD";
-const validateSessionClaims = (claims, req) => {
-    const issuedAt = Date.parse(claims.issuedAt);
-    const expiresAt = Date.parse(claims.expiresAt);
-    const now = Date.now();
-    if (!Number.isFinite(issuedAt) || !Number.isFinite(expiresAt)) {
-        return { ok: false, error: "operator_session_invalid", message: "Operator session timestamps are invalid." };
-    }
-    if (issuedAt - operatorSessionSkewMs > now) {
-        return { ok: false, error: "operator_session_not_yet_valid", message: "Operator session is not yet valid." };
-    }
-    if (expiresAt + operatorSessionSkewMs < now) {
-        return { ok: false, error: "operator_session_expired", message: "Operator session has expired." };
-    }
-    const actor = readOperatorActor(req).trim();
-    if (actor && actor !== claims.actor) {
-        return { ok: false, error: "operator_session_actor_mismatch", message: "Operator actor does not match session claims." };
-    }
-    const role = readOperatorRole(req);
-    if (role && role !== claims.role) {
-        return { ok: false, error: "operator_session_role_mismatch", message: "Operator role does not match session claims." };
-    }
-    return { ok: true };
-};
+// Header helpers (readOperatorCredential/Session/Actor/Role, isReadMethod)
+// and validateSessionClaims moved to ./operator-auth.ts. The auth surface is
+// constructed at the top of this file; `readOperatorActor` is destructured
+// at module scope so the existing call sites in /operator/* handlers don't
+// need to change. All other helpers are accessed via `operatorAuth.<name>`.
 const deriveAssurancePosture = (mission) => {
     if (mission.status === "halted" || mission.activeKillSwitch)
         return "halted";
@@ -304,16 +380,16 @@ const getAssuranceReport = async () => {
 const getDeploymentPosture = () => ({
     generatedAt: new Date().toISOString(),
     mode: preflight.mode,
-    operatorAuthEnabled: Boolean(operatorApiKey),
-    operatorSessionEnabled: Boolean(operatorSessionSecret),
-    operatorSessionEnforced: operatorSessionEnforcement,
-    operatorSessionTtlMs,
-    roleEnforcementEnabled: operatorRoleEnforcement,
-    defaultRole: operatorDefaultRole,
-    readRoles: [...operatorReadRoles],
-    mutationRoles: [...operatorMutationRoles],
-    readActors: [...operatorReadActors],
-    mutationActors: [...operatorMutationActors],
+    operatorAuthEnabled: Boolean(operatorAuth.config.apiKey),
+    operatorSessionEnabled: Boolean(operatorAuth.config.sessionSecret),
+    operatorSessionEnforced: operatorAuth.config.sessionEnforcement,
+    operatorSessionTtlMs: operatorAuth.config.sessionTtlMs,
+    roleEnforcementEnabled: operatorAuth.config.roleEnforcement,
+    defaultRole: operatorAuth.config.defaultRole,
+    readRoles: [...operatorAuth.config.readRoles],
+    mutationRoles: [...operatorAuth.config.mutationRoles],
+    readActors: [...operatorAuth.config.readActors],
+    mutationActors: [...operatorAuth.config.mutationActors],
     serviceDiscoveryMode,
     serviceBases: {
         governanceKernelBase,
@@ -415,140 +491,88 @@ const deployableProfiles = [
         assuranceFocus: "assurance attestations, finality, and replayable counterfactuals"
     }
 ];
-app.post("/operator/auth/session", (req, res) => {
-    if (!operatorApiKey) {
-        res.status(503).json({ error: "operator_auth_disabled", message: "Operator authentication is not configured." });
-        return;
-    }
-    if (!operatorSessionSecret) {
-        res.status(503).json({ error: "operator_session_disabled", message: "Operator session signing is not configured." });
-        return;
-    }
-    const credential = readOperatorCredential(req);
-    if (credential !== operatorApiKey) {
-        res.status(401).json({ error: "operator_auth_required", message: "Valid operator credential required." });
-        return;
-    }
-    const actor = readOperatorActor(req).trim();
-    const role = readOperatorRole(req);
-    const allowedActors = isReadMethod(req.method) ? operatorReadActors : operatorMutationActors;
-    if (allowedActors.size > 0 && !allowedActors.has(actor)) {
-        res.status(403).json({
-            error: "operator_actor_forbidden",
-            message: `Operator actor '${actor}' is not permitted for ${req.method} ${req.path}.`
-        });
-        return;
-    }
-    const allowedRoles = isReadMethod(req.method) ? operatorReadRoles : operatorMutationRoles;
-    if (operatorRoleEnforcement && !allowedRoles.has(role)) {
-        res.status(403).json({
-            error: "operator_role_forbidden",
-            message: `Operator role '${role}' is not permitted for ${req.method} ${req.path}.`
-        });
-        return;
-    }
-    const issuedAt = new Date();
-    const expiresAt = new Date(issuedAt.getTime() + operatorSessionTtlMs);
-    const claims = {
-        actor,
-        role,
-        issuedAt: issuedAt.toISOString(),
-        expiresAt: expiresAt.toISOString(),
-        sessionId: randomUUID()
-    };
-    res.json({
-        token: createOperatorSessionToken(claims),
-        tokenType: "Bearer",
-        actor,
-        role,
-        issuedAt: claims.issuedAt,
-        expiresAt: claims.expiresAt,
-        sessionId: claims.sessionId
+// Trial-API state: stage 17 wrapped the formerly-`let`-bound
+// trialPolicySource in a mutable object so the carved-out
+// adapters/http-gateway/src/trial-api.ts can share the mutation
+// (let bindings don't cross module boundaries; mutable fields do).
+const trialState = { source: PAYMENTS_GOVERNANCE_SOURCE };
+const trialGelRecords = [];
+const trialApprovals = new Map();
+const appendTrialRecord = (evaluation) => {
+    trialGelRecords.unshift(evaluation.gelRecord);
+    if (trialGelRecords.length > 100)
+        trialGelRecords.pop();
+};
+const evaluateTrialRequest = (body, approval) => {
+    const scenarioId = typeof body.scenarioId === "string" ? body.scenarioId : undefined;
+    const scenario = scenarioId ? TRIAL_SCENARIOS.find((item) => item.id === scenarioId) : undefined;
+    const intent = (body.intent && typeof body.intent === "object" ? body.intent : scenario?.intent ?? TRIAL_SCENARIOS[0]?.intent);
+    const source = typeof body.policy === "string" ? body.policy : trialState.source;
+    const evaluation = evaluateTrialAction({
+        source,
+        intent,
+        approval,
+        previousHash: trialGelRecords[0]?.currentHash
     });
-});
-app.use("/operator", (req, res, next) => {
-    if (!operatorApiKey) {
-        next();
-        return;
+    appendTrialRecord(evaluation);
+    if (evaluation.deferToken) {
+        trialApprovals.set(evaluation.deferToken, { intent, source, evaluation });
     }
-    const sessionToken = readOperatorSession(req);
-    if (sessionToken) {
-        const claims = parseOperatorSessionToken(sessionToken);
-        if (!claims) {
-            res.status(401).json({ error: "operator_session_invalid", message: "Valid operator session required." });
-            return;
-        }
-        const validity = validateSessionClaims(claims, req);
-        if (!validity.ok) {
-            res.status(401).json({ error: validity.error, message: validity.message });
-            return;
-        }
-        const allowedActors = isReadMethod(req.method) ? operatorReadActors : operatorMutationActors;
-        if (allowedActors.size > 0 && !allowedActors.has(claims.actor)) {
-            res.status(403).json({
-                error: "operator_actor_forbidden",
-                message: `Operator actor '${claims.actor}' is not permitted for ${req.method} ${req.path}.`
-            });
-            return;
-        }
-        if (operatorRoleEnforcement) {
-            const allowedRoles = isReadMethod(req.method) ? operatorReadRoles : operatorMutationRoles;
-            if (!allowedRoles.has(claims.role)) {
-                res.status(403).json({
-                    error: "operator_role_forbidden",
-                    message: `Operator role '${claims.role}' is not permitted for ${req.method} ${req.path}.`
-                });
-                return;
+    return { scenario: scenario ?? null, intent, evaluation };
+};
+app.use((req, res, next) => {
+    const traceId = randomHex(16);
+    const spanId = randomHex(8);
+    const start = performance.now();
+    const startTimeUnixNano = hrTimeUnixNano();
+    res.setHeader("traceparent", `00-${traceId}-${spanId}-01`);
+    res.on("finish", () => {
+        emitOtelSpan({
+            traceId,
+            spanId,
+            name: `${req.method} ${req.route?.path ?? req.path}`,
+            startTimeUnixNano,
+            endTimeUnixNano: hrTimeUnixNano(),
+            statusCode: res.statusCode,
+            attributes: {
+                "http.request.method": req.method,
+                "http.route": req.route?.path?.toString() ?? req.path,
+                "http.response.status_code": res.statusCode,
+                "url.path": req.path,
+                "aristotle.execution_boundary": req.path.includes("/operator/governance-chain") || req.path.includes("/operator/os") || req.path.includes("/operator/govern"),
+                "aristotle.gateway.fail_closed": res.statusCode === 503 && (req.path === "/ready" || req.path.startsWith("/operator")),
+                "duration.ms": Math.round((performance.now() - start) * 1000) / 1000
             }
-        }
-        next();
-        return;
-    }
-    if (operatorSessionEnforcement && req.path !== "/auth/session") {
-        res.status(401).json({ error: "operator_session_required", message: "Signed operator session required." });
-        return;
-    }
-    const credential = readOperatorCredential(req);
-    if (credential === operatorApiKey) {
-        const actor = readOperatorActor(req).trim();
-        const allowedActors = isReadMethod(req.method) ? operatorReadActors : operatorMutationActors;
-        if (allowedActors.size > 0 && !allowedActors.has(actor)) {
-            res.status(403).json({
-                error: "operator_actor_forbidden",
-                message: `Operator actor '${actor}' is not permitted for ${req.method} ${req.path}.`
-            });
-            return;
-        }
-        if (!operatorRoleEnforcement) {
-            next();
-            return;
-        }
-        const role = readOperatorRole(req);
-        const allowedRoles = isReadMethod(req.method) ? operatorReadRoles : operatorMutationRoles;
-        if (allowedRoles.has(role)) {
-            next();
-            return;
-        }
-        res.status(403).json({
-            error: "operator_role_forbidden",
-            message: `Operator role '${role}' is not permitted for ${req.method} ${req.path}.`
         });
-        return;
-    }
-    res.status(401).json({ error: "operator_auth_required", message: "Valid operator credential required." });
+    });
+    next();
 });
+// /v1/* trial-API surface moved to ./trial-api.ts in stage 17 of
+// prototype-hardening. Behavior pinned by stage-16
+// adapters/http-gateway/src/trial-api.test.ts.
+mountTrialApiRoutes(app, {
+    trialState, trialGelRecords, trialApprovals,
+    appendTrialRecord, evaluateTrialRequest
+});
+// POST /operator/auth/session — see ./operator-auth.ts ::createOperatorAuth.
+// Registered BEFORE the /operator middleware below so the session endpoint
+// itself is reachable without already holding a session.
+app.post("/operator/auth/session", operatorAuth.sessionEndpoint);
+// /operator/* path-prefixed RBAC gate — see ./operator-auth.ts.
+// Mounted AFTER the /operator/auth/session POST above so an unauthenticated
+// caller can reach the session endpoint to obtain a token.
+app.use("/operator", operatorAuth.middleware);
 app.get("/health", handleAsync(async (_req, res) => {
-    const services = await Promise.allSettled([
-        call(governanceKernelBase, "/health"),
-        call(policyCompilerBase, "/health"),
-        call(evidenceLedgerBase, "/health"),
-        call(metaAuthorityRegistryBase, "/health"),
-        call(simulationEngineBase, "/health"),
-        call(witnessServiceBase, "/health"),
-        call(executionGateBase, "/health"),
-        call(agentOsBase, "/health")
-    ]);
-    res.json({ ok: true, services, preflight });
+    const services = await Promise.allSettled(observedServices.map((service) => call(service.base, service.path)));
+    const readiness = await evaluateReadiness();
+    res.json({ ok: true, services, preflight, readiness });
+}));
+app.get("/ready", handleAsync(async (_req, res) => {
+    const readiness = await evaluateReadiness();
+    res.status(readiness.ok ? 200 : 503).json(readiness);
+}));
+app.get("/metrics", handleAsync(async (_req, res) => {
+    res.type("text/plain; version=0.0.4; charset=utf-8").send(renderGatewayMetrics(await evaluateReadiness()));
 }));
 app.get("/operator/mesh", handleAsync(async (_req, res) => res.json(await call(simulationEngineBase, "/telemetry"))));
 app.get("/operator/deployables", handleAsync(async (_req, res) => res.json({ generatedAt: new Date().toISOString(), items: deployableProfiles })));
@@ -580,6 +604,10 @@ app.get("/operator/ledger/artifacts/:artifactId", handleAsync(async (req, res) =
 }));
 app.get("/operator/meta-authority", handleAsync(async (_req, res) => res.json(await call(metaAuthorityRegistryBase, "/artifacts"))));
 app.get("/operator/envelopes", handleAsync(async (_req, res) => res.json(await call(governanceKernelBase, "/envelopes"))));
+// GOVERNANCE_CHAIN_V2: status-preserving proxy to the kernel's Ward/Warrant chain
+// so it can be observed/exercised next to the original surface above. Inherits the
+// /operator auth + method RBAC applied by the middleware registered earlier.
+app.use("/operator/governance-chain", createGovernanceChainProxy(governanceKernelBase, chainV2Enabled));
 app.get("/operator/deployment/posture", handleAsync(async (_req, res) => res.json(getDeploymentPosture())));
 app.get("/operator/assurance/report", handleAsync(async (_req, res) => res.json(await getAssuranceReport())));
 app.post("/operator/assurance/attest", handleAsync(async (req, res) => {

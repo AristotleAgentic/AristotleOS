@@ -1,0 +1,71 @@
+envelope_id: ae-swarm-operations-001
+ward_id: ward-swarm-wildfire-west
+subject: agent:swarm-ops-orchestrator
+allowed_actions:
+  - swarm.mission.tick
+  - swarm.launch.execute
+  - swarm.recover.execute
+  - swarm.hold.safe
+  - swarm.payload.coordinate
+  - swarm.payload.release
+  - mesh.relay.activate
+  - mesh.relay.handover
+  - mesh.revocation.propagate
+  - airspace.authority.compile
+  - launch.readiness.approve
+  - flight_warrant.issue
+  - flight_warrant.refresh
+  - flight_warrant.verify
+  - mission.reconstruction.export
+  - mission.reconstruction.verify
+  - fluidity_token.issue
+  - fluidity_token.refresh
+  - fluidity_token.revoke
+  - balloon.launch
+  - balloon.position.report
+  - balloon.release_stack
+  - balloon.recover
+  - historian.record.write
+denied_actions:
+  - swarm.disable_mesh
+  - swarm.bypass_launch_readiness
+  - swarm.override_fluidity_token
+  - swarm.override_lost_link_failsafe
+  - swarm.disable_evidence_ledger
+  - balloon.disable_position_monitor
+  - balloon.override_envelope_protection
+constraints:
+  required_runtime_registers:
+    - telemetry.swarm_id
+    - telemetry.mission_id
+    - telemetry.flight_state
+    - telemetry.swarm_size
+    - telemetry.mesh_relay_healthy
+    - telemetry.fluidity_token_valid
+    - telemetry.launch_readiness_approved
+    - telemetry.recovery_plan_active
+    - telemetry.airspace_authorization_active
+    - telemetry.geofence_active
+    - telemetry.remote_id_broadcasting
+    - telemetry.daa_active
+    - telemetry.operator_qualified
+    - telemetry.operator_id
+  permitted_swarm_id: swarm-wildfire-west-1
+  dual_control:
+    actions:
+      - swarm.launch.execute
+      - swarm.recover.execute
+      - swarm.payload.release
+      - balloon.launch
+      - balloon.release_stack
+    required: 2
+    ttl_ms: 600000
+  budget:
+    maxCallsPerWindow: 1200
+    windowMs: 3600000
+expires_at: 2026-12-31T23:59:59Z
+issuer: aristotle-swarm-ops-root
+classification:
+  level: CUI
+  caveats:
+    - SWARM_OPS

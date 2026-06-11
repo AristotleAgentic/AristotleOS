@@ -1,0 +1,63 @@
+envelope_id: ae-healthcare-clinical-ops-001
+ward_id: ward-healthcare-clinical-ops
+subject: agent:clinical-ops-coordinator
+allowed_actions:
+  - fhir.resource.write
+  - hl7.message.send
+  - ehr.note.append
+  - ehr.problem_list.update
+  - ehr.medication_list.update
+  - order.lab.request
+  - order.imaging.request
+  - pharmacy.prior_auth.submit
+  - pharmacy.dispense.request
+  - claims.submit
+  - claims.adjust
+  - phi.export
+  - patient.message.send
+  - device.setting.update
+  - imaging.study.release
+  - research.dataset.export
+denied_actions:
+  - medication.override_allergy
+  - pharmacy.force_dispense_controlled_substance
+  - device.disable_alarm
+  - device.disable_safety_limit
+  - ehr.delete_patient_record
+  - phi.export_without_consent
+  - claims.force_submit_without_attestation
+  - research.export_identified_dataset
+  - order.force_without_clinician_authority
+  - ehr.modify_record_without_patient_context
+constraints:
+  required_runtime_registers:
+    - telemetry.patient_context_hash
+    - telemetry.patient_context_present
+    - telemetry.patient_identity_verified
+    - telemetry.tpo_basis
+    - telemetry.clinician_privilege_active
+    - telemetry.clinical_context_age_ms
+    - telemetry.chart_lock_clear
+    - telemetry.allergy_checked
+    - telemetry.medication_interaction_clear
+    - telemetry.order_signing_authority
+    - telemetry.diagnosis_context_present
+    - telemetry.audit_context_present
+    - telemetry.manual_fallback_ready
+    - telemetry.operator_id
+  dual_control:
+    actions:
+      - ehr.medication_list.update
+      - pharmacy.dispense.request
+      - phi.export
+      - device.setting.update
+      - research.dataset.export
+    required: 2
+    ttl_ms: 900000
+expires_at: 2026-12-31T23:59:59Z
+issuer: aristotle-healthcare-root
+classification:
+  level: PHI
+  caveats:
+    - HIPAA
+    - CLINICAL_OPS

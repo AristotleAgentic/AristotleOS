@@ -1,0 +1,30 @@
+{
+  "action_id": "telco-tmf-service-order-001",
+  "ward_id": "ward-ran-region-west",
+  "subject": "agent:noc-change-orchestrator",
+  "action_type": "tmf.service-order.patch",
+  "target": "PATCH /tmf-api/serviceOrdering/v4/serviceOrder/SO-481516",
+  "params": {
+    "adapter": "tmf-open-api",
+    "api": "TMF641",
+    "method": "PATCH",
+    "path": "/tmf-api/serviceOrdering/v4/serviceOrder/SO-481516",
+    "operation": "service-order",
+    "body": {
+      "state": "inProgress",
+      "note": "governed network maintenance update"
+    }
+  },
+  "requested_at": "2026-05-25T15:00:00.000Z",
+  "request_id": "req-telco-tmf-001",
+  "telemetry": {
+    "change_ticket": "CHG-2026-0517",
+    "maintenance_window": "approved",
+    "noc_operator": "operator:netops-west",
+    "precheck_passed": true
+  },
+  "classification": {
+    "level": "CUI",
+    "caveats": ["CPNI"]
+  }
+}

@@ -1,0 +1,9 @@
+# AristotleOS — security contact (RFC 9116)
+# https://github.com/AristotleAgentic/AristotleOS
+
+Contact: https://github.com/AristotleAgentic/AristotleOS/security/advisories/new
+Contact: mailto:security@aristotleos.dev
+Expires: 2027-05-23T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://github.com/AristotleAgentic/AristotleOS/blob/main/extracted/apps/console-ui/public/.well-known/security.txt
+Policy: https://github.com/AristotleAgentic/AristotleOS/blob/main/extracted/SECURITY.md

@@ -1,0 +1,50 @@
+{
+  "action_id": "grid-derms-dispatch-001",
+  "ward_id": "ward-grid-transmission-west",
+  "subject": "agent:grid-ops-orchestrator",
+  "action_type": "derms.dispatch.set",
+  "target": "derms:DER-FLEET-WEST-12:dispatch",
+  "params": {
+    "adapter": "derms",
+    "resource_id": "DER-FLEET-WEST-12",
+    "operation": "dispatch",
+    "target_mw": 32,
+    "asset_id": "DER-FLEET-WEST-12",
+    "asset_type": "derms-resource",
+    "boundary_id": "transmission-west",
+    "grid_boundary_id": "transmission-west",
+    "topology_model_id": "topo-west-2026-05-25",
+    "voltage_class": "230kV",
+    "voltage_kv": 230.7,
+    "frequency_hz": 60,
+    "feeder_load_pct": 68.2,
+    "transformer_load_pct": 73.1,
+    "der_export_mw": 32,
+    "grid_state": "normal",
+    "switching_order_id": "SWO-2026-0525-DER-12",
+    "crew_clearance_released": true,
+    "protection_state_known": true,
+    "scada_fresh": true,
+    "telemetry_age_ms": 900,
+    "manual_fallback_ready": true,
+    "operator_id": "operator:grid-west"
+  },
+  "requested_at": "2026-05-25T15:00:00.000Z",
+  "request_id": "req-grid-derms-001",
+  "telemetry": {
+    "asset_id": "DER-FLEET-WEST-12",
+    "asset_type": "derms-resource",
+    "grid_boundary_id": "transmission-west",
+    "topology_model_id": "topo-west-2026-05-25",
+    "switching_order_id": "SWO-2026-0525-DER-12",
+    "crew_clearance_released": true,
+    "protection_state_known": true,
+    "scada_fresh": true,
+    "manual_fallback_ready": true,
+    "operator_id": "operator:grid-west"
+  },
+  "classification": {
+    "level": "CUI",
+    "caveats": ["BES_OPS"]
+  }
+}

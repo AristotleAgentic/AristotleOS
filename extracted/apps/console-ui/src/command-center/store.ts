@@ -1,0 +1,717 @@
+import { create } from "zustand";
+import type {
+  ApprovalItem,
+  CommitRequest,
+  ConflictInboxItem,
+  GatePipelineSample,
+  LedgerRecord,
+  OperationalMode,
+  Posture,
+  ShadowProfileSummary,
+  SwarmAirspaceCohortResult,
+  SwarmAirspaceSimulationResult,
+  SwarmConnectivityState,
+  SwarmProjectionOutcome,
+  SystemSnapshot,
+  WardMarshalFinding
+} from "./types.js";
+import {
+  AGENTS,
+  CONFLICT_EDGE_SEED,
+  ENVELOPES,
+  INITIAL_REQUESTS,
+  MARSHAL_CENSUS_SEED,
+  WARDS,
+  buildLedger,
+  makeCommitRequest,
+  seedPipeline,
+  shortHash
+} from "./mockData.js";
+import { gatewayContract, postOperator, postOperatorJson, probeGateway } from "./service.js";
+import { boundaryCompile, boundaryDecideApproval, boundaryListApprovals, boundaryListConflicts, boundaryResolveConflict, fetchLiveState, mapApprovalsToUi, mapConflictsToInbox, runLiveApprovals, runLiveConflicts, runLiveMarshalCensus, runLiveShadowProfile } from "./boundary.js";
+
+export type SectionId =
+  | "overview"
+  | "builder"
+  | "shadow"
+  | "approvals"
+  | "noc"
+  | "fleet"
+  | "grid"
+  | "rail"
+  | "port"
+  | "water"
+  | "logistics"
+  | "healthcare"
+  | "title"
+  | "verticals"
+  | "vertical-detail"
+  | "conflicts"
+  | "adoption"
+  | "failure"
+  | "marshal"
+  | "mesh"
+  | "commit"
+  | "warrants"
+  | "wards"
+  | "ledger"
+  | "replay"
+  | "simulation"
+  | "safety";
+
+export interface Toast {
+  id: string;
+  message: string;
+  tone: "green" | "amber" | "red" | "cyan";
+}
+
+const MODE_POSTURE: Record<OperationalMode, Posture> = {
+  normal: "green",
+  simulation: "green",
+  replay: "green",
+  degraded: "amber",
+  partitioned: "amber",
+  emergency: "red"
+};
+
+function operatorFailureDetail(status: number, data: unknown): string {
+  const record = data && typeof data === "object" ? data as Record<string, unknown> : null;
+  const error = typeof record?.error === "string" ? record.error : "";
+  const message = typeof record?.message === "string" ? record.message : "";
+  const prefix = status ? `HTTP ${status}` : "network";
+  return [prefix, error, message].filter(Boolean).join(" · ");
+}
+
+function deriveSnapshot(partial?: Partial<SystemSnapshot>): SystemSnapshot {
+  const base: SystemSnapshot = {
+    mode: "normal",
+    posture: "green",
+    activeWards: WARDS.filter((w) => w.state !== "revoked").length,
+    activeAgents: AGENTS.filter((a) => a.state === "active" || a.state === "awaiting-warrant").length,
+    openRequests: WARDS.reduce((n, w) => n + w.openRequests, 0),
+    warrantsToday: 1284,
+    refusalsToday: 37,
+    escalationsToday: 9,
+    ledgerIntact: true,
+    ledgerHeight: 128402,
+    killSwitchArmed: false,
+    gateLatencyMs: 7,
+    source: "mock"
+  };
+  return { ...base, ...partial };
+}
+
+interface CommandState {
+  snapshot: SystemSnapshot;
+  requests: CommitRequest[];
+  ledger: LedgerRecord[];
+  pipeline: GatePipelineSample[];
+
+  // Live engine results (null ⇒ console renders curated sample data instead).
+  shadowProfile: ShadowProfileSummary | null;
+  marshalFindings: WardMarshalFinding[] | null;
+  conflicts: ConflictInboxItem[] | null;
+  approvals: ApprovalItem[] | null;
+  swarmAirspaceSimulation: SwarmAirspaceSimulationResult | null;
+  publicDemo: boolean;
+
+  section: SectionId;
+  selectedRequestId: string | null;
+  selectedLedgerSeq: number | null;
+  selectedWardId: string | null;
+  selectedMeshNodeId: string | null;
+  selectedVerticalId: string | null;
+  opsOpen: boolean;
+  replayT: number; // 0..100 percent of history
+  toasts: Toast[];
+
+  // navigation / selection
+  setSection: (s: SectionId) => void;
+  selectRequest: (id: string | null) => void;
+  selectLedger: (seq: number | null) => void;
+  selectWard: (id: string | null) => void;
+  selectMeshNode: (id: string | null) => void;
+  selectVertical: (id: string | null) => void;
+  setOpsOpen: (open: boolean) => void;
+  setReplayT: (t: number) => void;
+
+  // lifecycle
+  tick: () => void;
+  hydrate: (publicDemo?: boolean) => Promise<void>;
+  setPublicDemo: (publicDemo: boolean) => void;
+  toast: (message: string, tone?: Toast["tone"]) => void;
+  dismissToast: (id: string) => void;
+
+  // operator actions
+  setMode: (mode: OperationalMode) => void;
+  pauseWard: (wardId: string) => void;
+  revokeEnvelope: (envelopeId: string) => void;
+  forceReconcile: () => void;
+  triggerKillSwitch: () => void;
+  exportEvidence: () => void;
+  escalate: () => void;
+  runAgentSmokeMission: () => Promise<void>;
+  runSwarmAirspaceSimulation: () => Promise<void>;
+  compileGovernance: () => Promise<void>;
+  runShadowProfile: () => Promise<void>;
+  runMarshalCensus: () => Promise<void>;
+  loadConflicts: () => Promise<void>;
+  resolveConflict: (id: string, action: "accept" | "reject" | "escalate" | "reconcile", reason?: string) => Promise<void>;
+  loadApprovals: () => Promise<void>;
+  decideApproval: (id: string, decision: "approve" | "reject", reason?: string) => Promise<void>;
+}
+
+let toastSeq = 0;
+
+function publicReadOnly(get: () => CommandState, action = "This operator action"): boolean {
+  if (!get().publicDemo) return false;
+  get().toast(`${action} is available in the protected Command Center. Public inspection stays read-only.`, "amber");
+  return true;
+}
+
+export const useCommandStore = create<CommandState>((set, get) => ({
+  snapshot: deriveSnapshot(),
+  requests: INITIAL_REQUESTS,
+  ledger: buildLedger(28),
+  pipeline: seedPipeline(60),
+  shadowProfile: null,
+  marshalFindings: null,
+  conflicts: null,
+  approvals: null,
+  swarmAirspaceSimulation: null,
+  publicDemo: false,
+
+  section: "overview",
+  selectedRequestId: INITIAL_REQUESTS[0]?.id ?? null,
+  selectedLedgerSeq: null,
+  selectedWardId: null,
+  selectedMeshNodeId: null,
+  selectedVerticalId: null,
+  opsOpen: false,
+  replayT: 100,
+  toasts: [],
+
+  setSection: (section) => set({ section }),
+  selectRequest: (selectedRequestId) => set({ selectedRequestId }),
+  selectLedger: (selectedLedgerSeq) => set({ selectedLedgerSeq }),
+  selectWard: (selectedWardId) => set({ selectedWardId }),
+  selectMeshNode: (selectedMeshNodeId) => set({ selectedMeshNodeId }),
+  selectVertical: (selectedVerticalId) => set({ selectedVerticalId }),
+  setOpsOpen: (opsOpen) => set({ opsOpen }),
+  setReplayT: (replayT) => set({ replayT }),
+  setPublicDemo: (publicDemo) => set((s) => ({
+    publicDemo,
+    snapshot: publicDemo ? { ...s.snapshot, source: "mock" } : s.snapshot
+  })),
+
+  toast: (message, tone = "cyan") => {
+    const id = `t-${toastSeq++}`;
+    set((s) => ({ toasts: [...s.toasts, { id, message, tone }] }));
+    setTimeout(() => get().dismissToast(id), 4200);
+  },
+  dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+
+  tick: () => {
+    const s = get();
+    if (s.snapshot.mode === "replay") return; // freeze live feed while scrubbing
+    // advance pipeline telemetry
+    const last = s.pipeline[s.pipeline.length - 1];
+    const t = (last?.t ?? 0) + 1;
+    const latencyMs = Math.max(3.5, 6 + Math.sin(t / 5) * 2 + Math.random() * 3 + (s.snapshot.mode === "degraded" ? 9 : 0));
+    const pipeline = [...s.pipeline.slice(-59), { t, latencyMs, throughput: 40 + Math.sin(t / 8) * 14 + Math.random() * 8 }];
+
+    let requests = s.requests;
+    let snapshot = { ...s.snapshot, gateLatencyMs: Math.round(latencyMs * 10) / 10 };
+
+    // occasionally synthesize a new governed request
+    if (Math.random() < 0.28 && s.snapshot.mode !== "emergency") {
+      const roll = Math.random();
+      const decision = roll < 0.7 ? "allow" : roll < 0.86 ? "escalate" : "refuse";
+      const next = makeCommitRequest(
+        decision === "allow"
+          ? { decision: "allow", reasonCodes: ["ALLOWED"], latencyMs: Math.round(latencyMs) }
+          : decision === "escalate"
+            ? { decision: "escalate", reasonCodes: ["RUNTIME_STATE_MISSING"], warrantId: undefined, action: "breaker.open", agentCallsign: "GRID-BAL-1", agentId: "agent:grid-balancer", ward: "ward-grid", risk: "critical", latencyMs: Math.round(latencyMs) }
+            : { decision: "refuse", reasonCodes: ["ACTION_DENIED"], warrantId: undefined, action: "drone.leave_boundary", risk: "critical", latencyMs: Math.round(latencyMs) }
+      );
+      requests = [next, ...s.requests].slice(0, 60);
+      snapshot = {
+        ...snapshot,
+        warrantsToday: snapshot.warrantsToday + (decision === "allow" ? 1 : 0),
+        refusalsToday: snapshot.refusalsToday + (decision === "refuse" ? 1 : 0),
+        escalationsToday: snapshot.escalationsToday + (decision === "escalate" ? 1 : 0),
+        ledgerHeight: snapshot.ledgerHeight + 1
+      };
+    }
+    set({ pipeline, requests, snapshot });
+  },
+
+  hydrate: async (publicDemoOverride) => {
+    const isPublicDemo = publicDemoOverride ?? get().publicDemo;
+    if (isPublicDemo) {
+      set((s) => ({ snapshot: { ...s.snapshot, source: "mock" } }));
+      return;
+    }
+    // Prefer the execution-control boundary (real metrics + signed ledger); fall back
+    // to the operator gateway; otherwise stay on sample data and say so.
+    const live = await fetchLiveState();
+    if (live) {
+      set((s) => ({
+        snapshot: { ...s.snapshot, ...live.snapshot },
+        ledger: live.ledger.length ? live.ledger : s.ledger
+      }));
+      get().toast("Live boundary connected — metrics and ledger are real.", "green");
+      // Boundary is up: profile Shadow Mode, run the Ward Marshal census, and
+      // load the Conflict Inbox against the real engines so those consoles render
+      // live results too.
+      void get().runShadowProfile();
+      void get().runMarshalCensus();
+      void get().loadConflicts();
+      void get().loadApprovals();
+      return;
+    }
+    const partial = await probeGateway();
+    if (partial) {
+      set((s) => ({ snapshot: { ...s.snapshot, ...partial } }));
+      get().toast("Live gateway connected", "green");
+      return;
+    }
+    set((s) => ({ snapshot: { ...s.snapshot, source: "mock" } }));
+  },
+
+  setMode: (mode) => {
+    if (publicReadOnly(get, "Changing operational mode")) return;
+    set((s) => ({ snapshot: { ...s.snapshot, mode, posture: s.snapshot.killSwitchArmed ? "red" : MODE_POSTURE[mode] } }));
+    get().toast(`Operational mode → ${mode.toUpperCase()}`, mode === "emergency" ? "red" : mode === "normal" ? "green" : "amber");
+  },
+
+  pauseWard: (wardId) => {
+    if (publicReadOnly(get, "Pausing a ward")) return;
+    const ward = WARDS.find((w) => w.id === wardId);
+    void postOperator(gatewayContract.killSwitch, { scope: wardId, action: "pause" });
+    get().toast(`Ward paused — ${ward?.name ?? wardId}. Commit gate now fail-closed.`, "amber");
+  },
+
+  revokeEnvelope: (envelopeId) => {
+    if (publicReadOnly(get, "Revoking authority envelopes")) return;
+    const env = ENVELOPES.find((e) => e.id === envelopeId);
+    void postOperator(gatewayContract.govern, { revoke: envelopeId });
+    set((s) => ({ ledger: prependLedger(s.ledger, "envelope.revoked", env?.wardId ?? "—") }));
+    get().toast(`Authority envelope revoked — ${envelopeId}. Propagating on revocation bus.`, "red");
+  },
+
+  forceReconcile: () => {
+    if (publicReadOnly(get, "Forcing reconciliation")) return;
+    void postOperator(gatewayContract.govern, { reconcile: true });
+    set((s) => ({ ledger: prependLedger(s.ledger, "reconcile.complete", "—") }));
+    get().toast("Reconciliation forced across the governance mesh.", "cyan");
+  },
+
+  triggerKillSwitch: () => {
+    if (publicReadOnly(get, "Arming the kill switch")) return;
+    void postOperator(gatewayContract.killSwitch, { action: "arm", scope: "global" });
+    set((s) => ({
+      snapshot: { ...s.snapshot, killSwitchArmed: true, posture: "red", mode: "emergency" },
+      ledger: prependLedger(s.ledger, "kill-switch.armed", "global")
+    }));
+    get().toast("KILL SWITCH ARMED — global fail-closed. All commit gates refusing.", "red");
+  },
+
+  exportEvidence: () => {
+    if (publicReadOnly(get, "Exporting evidence bundles")) return;
+    void postOperator(gatewayContract.governanceChainExport, { format: "bundle" });
+    get().toast(`Evidence bundle exported · bundle_hash ${shortHash("bundle-" + Date.now(), 16)}`, "green");
+  },
+
+  escalate: () => {
+    if (publicReadOnly(get, "Escalating to human authority")) return;
+    void postOperator(gatewayContract.govern, { escalate: true });
+    get().toast("Escalated to human authority. Awaiting sovereign decision.", "amber");
+  },
+
+  runAgentSmokeMission: async () => {
+    if (publicReadOnly(get, "Live Agent OS smoke missions")) return;
+    const suffix = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
+    const agentId = `agent-console-smoke-${suffix}`;
+    const agentResult = await postOperatorJson<{ agent?: { id?: string }; committed?: unknown }>(gatewayContract.registerAgent, {
+      id: agentId,
+      name: "Console Smoke Executor",
+      role: "executor",
+      model: "operator-smoke",
+      provider: "aristotle-console",
+      specializations: ["runtime-governance", "mission-smoke-test"],
+      toolchains: ["policy", "ledger", "execution-queue"],
+      trustTier: "sandboxed",
+      maxConcurrency: 1,
+      workspaceAffinity: "console-smoke"
+    });
+    if (!agentResult.ok || !agentResult.data?.agent?.id) {
+      get().toast(`Agent smoke failed at registration (${operatorFailureDetail(agentResult.status, agentResult.data)}).`, "red");
+      return;
+    }
+
+    const missionResult = await postOperatorJson<{
+      mission?: { id?: string; status?: string };
+      compiledPolicy?: unknown;
+      committed?: unknown;
+    }>(gatewayContract.osMissions, {
+      title: `Console smoke mission ${suffix}`,
+      objective: "Verify that the production console can register an agent, create a governed mission, compile policy, and advance execution.",
+      priority: "medium",
+      riskLevel: "low",
+      governanceProfile: "console-smoke",
+      targetSystem: "aristotle-console-production",
+      assignedAgents: [agentResult.data.agent.id],
+      requiredAuthorities: ["mission.command", "ledger.write"],
+      requiredTools: ["policy", "ledger", "execution-queue"],
+      successMetrics: ["agent registered", "mission created", "policy compiled", "mission advanced"],
+      requestedBy: "console-ui"
+    });
+    const missionId = missionResult.data?.mission?.id;
+    if (!missionResult.ok || !missionId) {
+      get().toast(`Agent smoke failed at mission creation (${operatorFailureDetail(missionResult.status, missionResult.data)}).`, "red");
+      return;
+    }
+
+    const advanceResult = await postOperatorJson<{
+      mission?: { id?: string; status?: string };
+      execution?: { tasks?: unknown[]; receipts?: unknown[] };
+      committed?: unknown;
+    }>(gatewayContract.advanceMission(missionId), { action: "execute", actor: agentResult.data.agent.id });
+    if (!advanceResult.ok) {
+      get().toast(`Agent smoke failed at mission advance (${operatorFailureDetail(advanceResult.status, advanceResult.data)}).`, "red");
+      return;
+    }
+
+    const taskCount = advanceResult.data?.execution?.tasks?.length ?? 0;
+    const receiptCount = advanceResult.data?.execution?.receipts?.length ?? 0;
+    set((s) => ({
+      snapshot: {
+        ...s.snapshot,
+        activeAgents: s.snapshot.activeAgents + 1,
+        openRequests: s.snapshot.openRequests + Math.max(taskCount, 1),
+        ledgerHeight: s.snapshot.ledgerHeight + 3,
+        source: "live"
+      },
+      ledger: prependLedger(prependLedger(prependLedger(s.ledger, "agent-os.agent.registered", "console-smoke"), "agent-os.mission.created", "console-smoke"), "agent-os.mission.advanced", "console-smoke")
+    }));
+    get().toast(`Live Agent OS smoke passed — ${agentResult.data.agent.id}, ${missionId}, ${taskCount} tasks, ${receiptCount} receipts.`, "green");
+  },
+
+  runSwarmAirspaceSimulation: async () => {
+    const suffix = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
+    const scenarioId = `swarm-40-dynamic-airspace-${suffix}`;
+    const airspace = {
+      authorization: `LAANC-SIM-${suffix}`,
+      corridorRevision: `UTM-MT-DYNAMIC-${suffix}`,
+      constraints: [
+        "Part 107 altitude ceiling 120m",
+        "Remote ID broadcast required",
+        "Detect-and-avoid armed",
+        "moving medevac corridor eastbound",
+        "temporary fire-response TFR western cell",
+        "return-to-launch reserve above 25%"
+      ]
+    };
+    const cohorts: Array<{
+      id: string;
+      label: string;
+      state: SwarmConnectivityState;
+      units: number;
+      averageLinkQuality: number;
+      degradedNodes: string[];
+      target: string;
+      alternateAuthorityAnchor?: string;
+    }> = [
+      { id: "north-connected", label: "North survey cell", state: "connected", units: 14, averageLinkQuality: 0.94, degradedNodes: [], target: "uav-cohort-north" },
+      { id: "east-degraded", label: "East perimeter cell", state: "degraded", units: 10, averageLinkQuality: 0.62, degradedNodes: ["relay.primary"], target: "uav-cohort-east", alternateAuthorityAnchor: "swarm-authority-alt" },
+      { id: "south-mesh", label: "South mesh-relay cell", state: "mesh-relay", units: 10, averageLinkQuality: 0.48, degradedNodes: ["relay.primary"], target: "uav-cohort-south", alternateAuthorityAnchor: "mesh-relay-authority-south" },
+      { id: "west-disconnected", label: "West TFR edge cell", state: "disconnected", units: 6, averageLinkQuality: 0.17, degradedNodes: ["relay.primary", "relay.secondary"], target: "uav-cohort-west", alternateAuthorityAnchor: "mesh-relay-authority-west" }
+    ];
+
+    if (get().publicDemo) {
+      const results = cohorts.map((cohort) => {
+        const projectedOutcome: SwarmProjectionOutcome =
+          cohort.state === "connected" ? "continue" : cohort.state === "disconnected" ? "halt" : "reroute";
+        return {
+          id: cohort.id,
+          label: cohort.label,
+          state: cohort.state,
+          units: cohort.units,
+          averageLinkQuality: cohort.averageLinkQuality,
+          degradedNodes: cohort.degradedNodes,
+          projectedOutcome,
+          routeMode: projectedOutcome === "continue" ? "primary-authority" : projectedOutcome === "reroute" ? "mesh-continuity" : "fail-closed-hold",
+          selectedPath: projectedOutcome === "continue"
+            ? ["swarm-authority-root", "relay.primary", cohort.target]
+            : projectedOutcome === "reroute"
+              ? ["swarm-authority-root", cohort.alternateAuthorityAnchor ?? "swarm-authority-alt", cohort.target]
+              : ["swarm-authority-root", "hold-pattern", cohort.target],
+          recovery: projectedOutcome === "continue"
+            ? "Primary link remains inside warrant envelope; continue mission."
+            : projectedOutcome === "reroute"
+              ? "Continuity token remains valid through mesh authority; reroute and reduce autonomy band."
+              : "Connectivity below authority threshold; hold position and await renewed warrant authority.",
+          branchId: `public-${cohort.id}`,
+          hypotheticalId: `public-hyp-${cohort.id}`
+        };
+      });
+      const allowedUnits = results.filter((r) => r.projectedOutcome === "continue").reduce((n, r) => n + r.units, 0);
+      const reroutedUnits = results.filter((r) => r.projectedOutcome === "reroute").reduce((n, r) => n + r.units, 0);
+      const haltedUnits = results.filter((r) => r.projectedOutcome === "halt").reduce((n, r) => n + r.units, 0);
+      const averageLinkQuality = Math.round((results.reduce((n, r) => n + r.averageLinkQuality * r.units, 0) / 40) * 100) / 100;
+      set((s) => ({
+        swarmAirspaceSimulation: {
+          scenarioId,
+          generatedAt: new Date().toISOString(),
+          swarmSize: 40,
+          allowedUnits,
+          reroutedUnits,
+          haltedUnits,
+          averageLinkQuality,
+          airspace,
+          cohorts: results
+        },
+        snapshot: {
+          ...s.snapshot,
+          mode: "simulation",
+          posture: haltedUnits > 0 ? "amber" : "green",
+          activeAgents: Math.max(s.snapshot.activeAgents, 40),
+          openRequests: s.snapshot.openRequests + results.length,
+          source: "mock"
+        }
+      }));
+      get().toast(`Public swarm simulation generated locally - 40 UAVs: ${allowedUnits} continue, ${reroutedUnits} reroute, ${haltedUnits} hold.`, "green");
+      return;
+    }
+
+    const results: SwarmAirspaceCohortResult[] = [];
+    for (const cohort of cohorts) {
+      const response = await postOperatorJson<{
+        branch?: { id?: string };
+        projection?: {
+          projectedOutcome?: SwarmProjectionOutcome;
+          projectedRoute?: { mode?: string; selectedPath?: string[] };
+          projectedRecoveryPaths?: Array<{ label?: string; summary?: string }>;
+        };
+        hypothetical?: { id?: string };
+      }>(gatewayContract.counterfactual, {
+        scenarioId: `${scenarioId}-${cohort.id}`,
+        scope: "domain",
+        scopeRef: "ward-montana-range:dynamic-airspace",
+        degradedNodes: cohort.degradedNodes,
+        route: {
+          source: "swarm-authority-root",
+          target: cohort.target,
+          domain: "uav-swarm-dynamic-airspace",
+          phase: "dispatch",
+          authorityAnchor: "swarm-authority-root",
+          alternateAuthorityAnchor: cohort.alternateAuthorityAnchor,
+          selectedPath: ["swarm-authority-root", "relay.primary", cohort.target],
+          rejectedPath: [cohort.alternateAuthorityAnchor ?? "swarm-authority-alt", "relay.secondary", cohort.target],
+          continuity: cohort.state === "connected" ? "stable" : cohort.state === "disconnected" ? "disconnected" : "degraded"
+        },
+        swarm: {
+          size: 40,
+          cohort: cohort.id,
+          cohortUnits: cohort.units,
+          unitIds: Array.from({ length: cohort.units }, (_, index) => `uav-${cohort.id}-${String(index + 1).padStart(2, "0")}`),
+          connectivityState: cohort.state,
+          averageLinkQuality: cohort.averageLinkQuality,
+          fluidityTokenTtlSeconds: cohort.state === "disconnected" ? 42 : cohort.state === "mesh-relay" ? 138 : 258,
+          meshRevocationLastGossipSeconds: cohort.state === "disconnected" ? 74 : cohort.state === "mesh-relay" ? 31 : 12
+        },
+        airspace
+      });
+      const outcome = response.data?.projection?.projectedOutcome;
+      if (!response.ok || !outcome) {
+        get().toast(`Swarm simulation failed for ${cohort.label} (${operatorFailureDetail(response.status, response.data)}).`, "red");
+        return;
+      }
+      results.push({
+        id: cohort.id,
+        label: cohort.label,
+        state: cohort.state,
+        units: cohort.units,
+        averageLinkQuality: cohort.averageLinkQuality,
+        degradedNodes: cohort.degradedNodes,
+        projectedOutcome: outcome,
+        routeMode: response.data?.projection?.projectedRoute?.mode ?? outcome,
+        selectedPath: response.data?.projection?.projectedRoute?.selectedPath ?? [],
+        recovery: response.data?.projection?.projectedRecoveryPaths?.[0]?.summary ?? "No recovery action returned.",
+        branchId: response.data?.branch?.id,
+        hypotheticalId: response.data?.hypothetical?.id
+      });
+    }
+
+    const allowedUnits = results.filter((r) => r.projectedOutcome === "continue").reduce((n, r) => n + r.units, 0);
+    const reroutedUnits = results.filter((r) => r.projectedOutcome === "reroute").reduce((n, r) => n + r.units, 0);
+    const haltedUnits = results.filter((r) => r.projectedOutcome === "halt").reduce((n, r) => n + r.units, 0);
+    const averageLinkQuality = Math.round((results.reduce((n, r) => n + r.averageLinkQuality * r.units, 0) / 40) * 100) / 100;
+    const simulation: SwarmAirspaceSimulationResult = {
+      scenarioId,
+      generatedAt: new Date().toISOString(),
+      swarmSize: 40,
+      allowedUnits,
+      reroutedUnits,
+      haltedUnits,
+      averageLinkQuality,
+      airspace,
+      cohorts: results
+    };
+
+    set((s) => ({
+      swarmAirspaceSimulation: simulation,
+      snapshot: {
+        ...s.snapshot,
+        mode: "simulation",
+        posture: haltedUnits > 0 ? "amber" : "green",
+        activeAgents: Math.max(s.snapshot.activeAgents, 40),
+        openRequests: s.snapshot.openRequests + results.length,
+        ledgerHeight: s.snapshot.ledgerHeight + results.length,
+        source: "live"
+      },
+      ledger: results.reduce((ledger, result) => prependLedger(ledger, `swarm.counterfactual.${result.projectedOutcome}`, "ward-montana-range"), s.ledger)
+    }));
+    get().toast(`Live swarm simulation recorded - 40 UAVs: ${allowedUnits} continue, ${reroutedUnits} reroute, ${haltedUnits} hold.`, haltedUnits ? "amber" : "green");
+  },
+
+  // Attempts a real compile against the gateway; falls back to the deterministic
+  // local preview when no gateway is connected. Honest about which path ran — the
+  // backend is execution-control-runtime's POST /v1/execution-control/governance/compile.
+  compileGovernance: async () => {
+    if (publicReadOnly(get, "Governance compilation")) return;
+    // Real compile against the execution-control boundary's configured Ward + Authority.
+    const result = await boundaryCompile({});
+    if (!result.reachable) {
+      get().toast("Boundary offline — deterministic local preview. Run `aristotle execution-control serve` to compile live (POST /v1/execution-control/governance/compile).", "amber");
+      return;
+    }
+    const hash = result.data?.hashes?.manifest_hash;
+    if (result.ok && hash) {
+      get().toast(`Compiled on the live boundary — manifest ${hash.slice(0, 12)} (validation ${result.data?.validation?.ok ? "ok" : "failed"}).`, result.data?.validation?.ok ? "green" : "amber");
+    } else {
+      get().toast(`Boundary rejected the compile (HTTP ${result.status}).`, "red");
+    }
+  },
+
+  // Shadow Mode: profile a representative batch derived from the live Authority
+  // Envelope through the real Commit Gate (POST /v1/execution-control/shadow).
+  // On success the console shows the engine's would-decisions; otherwise it keeps
+  // the labeled sample profile.
+  runShadowProfile: async () => {
+    if (publicReadOnly(get, "Live Shadow Mode profiling")) return;
+    const profile = await runLiveShadowProfile(new Date().toISOString());
+    if (!profile) {
+      get().toast("Boundary offline — Shadow Mode is showing a sample profile. Run `aristotle execution-control serve` to profile live.", "amber");
+      return;
+    }
+    set({ shadowProfile: profile });
+    get().toast(`Shadow profile computed live — ${profile.evaluatedActions} actions, ${Math.round(profile.allowRate * 100)}% would-allow.`, "green");
+  },
+
+  // Ward Marshal: score the representative discovery seed through the real census
+  // engine (POST /v1/execution-control/marshal/census). On success the console
+  // shows engine-computed findings; otherwise it keeps the labeled sample census.
+  runMarshalCensus: async () => {
+    if (publicReadOnly(get, "Live Ward Marshal census")) return;
+    const findings = await runLiveMarshalCensus(MARSHAL_CENSUS_SEED);
+    if (!findings) {
+      get().toast("Boundary offline — Ward Marshal is showing a sample census. Run `aristotle execution-control serve` to score live.", "amber");
+      return;
+    }
+    set({ marshalFindings: findings });
+    const rogue = findings.filter((f) => f.status === "rogue").length;
+    get().toast(`Ward Marshal census computed live — ${findings.length} agents, ${rogue} rogue.`, rogue ? "red" : "green");
+  },
+
+  // Conflict Inbox: ingest a representative edge-record seed into the durable
+  // inbox (POST /conflicts/ingest) and list the engine-classified items. Idempotent
+  // — re-ingest never reopens an operator's resolution. Falls back to the sample
+  // inbox when the boundary is offline.
+  loadConflicts: async () => {
+    if (publicReadOnly(get, "Live Conflict Inbox reconciliation")) return;
+    const conflicts = await runLiveConflicts(CONFLICT_EDGE_SEED);
+    if (!conflicts) {
+      get().toast("Boundary offline — Conflict Inbox is showing sample items. Run `aristotle execution-control serve` to reconcile live.", "amber");
+      return;
+    }
+    set({ conflicts });
+    const open = conflicts.filter((c) => c.status === "open" || c.status === "escalated").length;
+    get().toast(`Conflict Inbox reconciled live — ${conflicts.length} items, ${open} need review.`, open ? "amber" : "green");
+  },
+
+  // Conflict Inbox: apply an attributed operator resolution (POST /conflicts/resolve)
+  // then refresh the list from the boundary. The boundary records the operator and
+  // reason; nothing is decided on the operator's behalf.
+  resolveConflict: async (id, action, reason) => {
+    if (publicReadOnly(get, "Resolving conflicts")) return;
+    const result = await boundaryResolveConflict(id, action, reason);
+    if (!result.reachable) {
+      get().toast("Boundary offline — resolution not recorded. Connect the boundary to resolve live.", "amber");
+      return;
+    }
+    if (!result.ok) {
+      get().toast(`Boundary rejected the resolution (HTTP ${result.status}).`, "red");
+      return;
+    }
+    const list = await boundaryListConflicts();
+    if (list) set({ conflicts: mapConflictsToInbox(list.items) });
+    const tone = action === "reject" ? "red" : action === "escalate" ? "amber" : "green";
+    get().toast(`Conflict ${id} → ${action} recorded on the live boundary.`, tone);
+  },
+
+  // Dual-control approvals: list the live M-of-N queue (GET /approvals); fall back to
+  // the labeled sample queue when the boundary is offline.
+  loadApprovals: async () => {
+    if (publicReadOnly(get, "Live dual-control approvals")) return;
+    const approvals = await runLiveApprovals();
+    if (!approvals) {
+      get().toast("Boundary offline — Approvals is showing a sample queue. Run `aristotle execution-control serve` to action live.", "amber");
+      return;
+    }
+    set({ approvals });
+  },
+
+  // Cast an attributed vote (POST /approvals/decide) then refresh the queue. The
+  // boundary records the operator + enforces separation of duties.
+  decideApproval: async (id, decision, reason) => {
+    if (publicReadOnly(get, "Casting approval votes")) return;
+    const result = await boundaryDecideApproval(id, decision, reason);
+    if (!result.reachable) {
+      get().toast("Boundary offline — vote not recorded. Connect the boundary to approve live.", "amber");
+      return;
+    }
+    if (!result.ok) {
+      get().toast(`Boundary rejected the vote (HTTP ${result.status}).`, "red");
+      return;
+    }
+    const list = await boundaryListApprovals();
+    if (list) set({ approvals: mapApprovalsToUi(list.items) });
+    get().toast(`Approval ${id} → ${decision} recorded on the live boundary.`, decision === "reject" ? "red" : "green");
+  }
+}));
+
+function prependLedger(ledger: LedgerRecord[], eventType: string, ward: string): LedgerRecord[] {
+  const top = ledger[0];
+  const seq = (top?.seq ?? 128402) + 1;
+  const previousHash = top?.recordHash ?? "GENESIS";
+  const recordHash = shortHash(`rec-${seq}-${previousHash}`);
+  const rec: LedgerRecord = {
+    seq,
+    timestamp: new Date().toISOString(),
+    eventType,
+    agent: "operator",
+    ward,
+    domain: "—",
+    decision: "allow",
+    warrantId: undefined,
+    policyHash: shortHash(`pol-${ward}`),
+    registerHash: shortHash(`reg-${seq}`),
+    recordHash,
+    previousHash,
+    intact: true,
+    anchored: false
+  };
+  return [rec, ...ledger].slice(0, 60);
+}

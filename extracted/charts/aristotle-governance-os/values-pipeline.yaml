@@ -1,0 +1,125 @@
+# Vertical: oil & gas pipeline SCADA
+# Doctrine alignment: Every commit affecting flow, pressure, isolation, or chemical
+# injection must transit a Warrant; disconnected partitions never auto-cut without
+# witness quorum; revocation propagation is the gating signal for "stop the line".
+# Compliance reference: 49 CFR 192 (gas) / 49 CFR 195 (liquid) — DEMONSTRATION ONLY.
+#   Production deployments require a documented engineering-of-record review of the
+#   physical-invariant policy bundle this overlay supports, plus operator sign-off
+#   on the demonstrationOnlyBlocked posture before any wire-level adapter is enabled.
+# Last reviewed: 2026-06-05
+#
+# Apply as a base profile under another overlay (e.g. hardened) for a pilot:
+#
+#   helm template aristotle charts/aristotle-governance-os \
+#     -f charts/aristotle-governance-os/values-pipeline.yaml \
+#     -f charts/aristotle-governance-os/values-hardened.yaml
+#
+# Field provenance
+# ────────────────
+#   `runtimeConfig.*`     — template-consumed (passed straight into pod env).
+#   `secrets.*`           — template-consumed.
+#   `services.*`          — template-consumed (resource sizing per deployment).
+#   `mesh.*`              — operator-facing documentation; operators should bind
+#                           these into their own mesh-runtime config (see
+#                           shared/mesh-runtime/README.md). Sizing is a
+#                           recommendation, not a template-rendered value.
+#   `gel.*`               — operator-facing documentation; operators bind into
+#                           their evidence-ledger configuration secret.
+#   `adapters.*`          — operator-facing posture statement; the substrate's
+#                           DemonstrationTransport defaults already fail closed,
+#                           so this records the vertical-specific posture for
+#                           reviewers and auditors.
+#   `global.vertical`     — discovery tag for tooling; operator-facing.
+#   `global.doctrine`     — operator-facing prose.
+
+global:
+  vertical: "pipeline"
+  doctrine: |
+    Oil & gas pipeline SCADA: every commit affecting flow, pressure, isolation,
+    or chemical injection must pass the gate with a single-use Warrant. Mesh
+    quorum is set to three so a single compromised root cannot revoke peers
+    silently. GEL retention is 7 years for pipeline-incident regulatory recall.
+
+# Mesh (operator-facing documentation for operator's mesh-runtime config).
+# The kernel doesn't read these keys directly; they document the recommended
+# revocation quorum + rate-limit + replay-cache posture for the vertical.
+mesh:
+  productionMode: true
+  revocationQuorum: 3                  # three independent witnesses required for revocation propagation
+  rateLimit:
+    perPeerPerMinute: 200              # SCADA polling is high-volume; allow more headroom than default
+  replayCache:
+    ttlMs: 60000                       # 60 s replay window
+  partition:
+    disconnectedWarrantCap: 5          # cap edge-issued warrants while partitioned (small fleet, low tolerance)
+
+# GEL (operator-facing documentation for the evidence-ledger config).
+gel:
+  retention:
+    maxAgeDays: 2555                   # 7 years — matches 49 CFR 195 incident-record retention
+  timestamp:
+    enabled: true
+    kind: "rfc3161"                    # operator overrides endpoint in their own secret
+  archive:
+    enabled: true
+    minimumRetentionDays: 2555
+
+# Adapters posture (operator-facing).
+adapters:
+  demonstrationOnlyBlocked: true        # production deployments must not load demo transports
+
+# Runtime config (template-consumed).
+runtimeConfig:
+  NODE_ENV: "production"
+  ALLOW_INSECURE_PRODUCTION_BOOT: "false"
+  GOVERNANCE_CHAIN_MODE: "enforce"
+  OPERATOR_SESSION_ENFORCEMENT: "true"
+  OPERATOR_ROLE_ENFORCEMENT: "true"
+  WITNESS_QUORUM: "3"
+  # Vertical tag picked up by OTel; downstream dashboards filter on this.
+  OTEL_RESOURCE_ATTRIBUTES_VERTICAL: "vertical=pipeline"
+
+telemetry:
+  otel:
+    enabled: true
+    resourceAttributes: "deployment.environment=pilot,service.namespace=aristotle-governance-os,vertical=pipeline"
+
+# Pipeline SCADA workloads are gate-call-heavy + steady; bias kernel + gate up,
+# console down (operators are few, SCADA is the consumer).
+services:
+  governance-kernel:
+    replicas: 2
+    resources:
+      requests: { cpu: 500m, memory: 1Gi }
+      limits:   { cpu: 2000m, memory: 4Gi }
+  execution-gate:
+    replicas: 3
+    resources:
+      requests: { cpu: 500m, memory: 512Mi }
+      limits:   { cpu: 2000m, memory: 2Gi }
+  evidence-ledger:
+    replicas: 1
+    persistentVolume:
+      enabled: true
+      size: 100Gi                       # 7-year retention needs room
+      mountPath: /var/lib/aristotle
+    resources:
+      requests: { cpu: 250m, memory: 512Mi }
+      limits:   { cpu: 1500m, memory: 2Gi }
+  witness-service:
+    replicas: 3                         # matches mesh.revocationQuorum
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits:   { cpu: 1000m, memory: 1Gi }
+  policy-compiler:
+    replicas: 2
+  meta-authority-registry:
+    replicas: 2
+  authority-router:
+    replicas: 2
+  agent-os:
+    replicas: 1
+    persistentVolume:
+      enabled: true
+      size: 20Gi
+      mountPath: /var/lib/aristotle

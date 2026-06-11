@@ -1,0 +1,16 @@
+{
+  "name": "@aristotle/execution-control-runtime",
+  "version": "0.1.8",
+  "license": "MPL-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "tsc -p tsconfig.json",
+    "test": "tsx src/index.test.ts"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.4.5"
+  }
+}

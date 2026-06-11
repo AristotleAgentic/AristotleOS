@@ -1,0 +1,83 @@
+{{- if .Values.console.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: console-ui
+  namespace: {{ include "aristotle.namespace" . }}
+  labels:
+{{ include "aristotle.commonLabels" . | indent 4 }}
+    app: console-ui
+spec:
+  replicas: {{ .Values.console.replicas }}
+  selector:
+    matchLabels:
+      app: console-ui
+  template:
+    metadata:
+      labels:
+        app: console-ui
+{{- if .Values.identity.mesh.inject }}
+      annotations:
+{{ toYaml .Values.identity.mesh.annotations | indent 8 }}
+{{- end }}
+    spec:
+      serviceAccountName: {{ include "aristotle.serviceAccountName" . }}
+      containers:
+        - name: console-ui
+          image: {{ include "aristotle.image" (list . "console-ui") }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          env:
+            - name: PORT_CONSOLE
+              value: {{ .Values.console.port | quote }}
+            - name: CONSOLE_GATEWAY_BASE_URL
+              value: {{ .Values.console.gatewayBaseUrl | quote }}
+            - name: VITE_OPERATOR_ACTOR
+              value: enterprise-console
+            - name: VITE_OPERATOR_ROLE
+              value: operator
+          ports:
+            - name: http
+              containerPort: {{ .Values.console.port }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.console.readinessPath | default "/console-health" }}
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.console.livenessPath | default "/console-health" }}
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 6
+          resources:
+{{ toYaml .Values.console.resources | indent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: console-ui
+  namespace: {{ include "aristotle.namespace" . }}
+  labels:
+{{ include "aristotle.commonLabels" . | indent 4 }}
+    app: console-ui
+spec:
+  selector:
+    app: console-ui
+  ports:
+    - name: http
+      port: {{ .Values.console.port }}
+      targetPort: http
+{{- end }}

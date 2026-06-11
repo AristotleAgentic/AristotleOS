@@ -172,7 +172,15 @@ const DEPLOYABLE_TABS = [
   }
 ] as const;
 type DeployableTabId = (typeof DEPLOYABLE_TABS)[number]["id"];
-type DeployableProfile = (typeof DEPLOYABLE_TABS)[number];
+interface DeployableProfile {
+  id: DeployableTabId;
+  label: string;
+  preferredTarget: string;
+  authorityLane: string;
+  actuationBoundary: string;
+  objective: string;
+  assuranceFocus: string;
+}
 
 function deriveMissionAuthorities(targetSystem: string) {
   if (targetSystem === "safety") return ["mission.command", "safety.council"];
@@ -282,6 +290,10 @@ function formatVerificationStatus(value?: "verified" | "degraded" | "revoked" | 
   return "unverified";
 }
 
+function confirmOperatorAction(title: string, details: string[]) {
+  return window.confirm([title, "", ...details.filter(Boolean)].join("\n"));
+}
+
 function FocusBanner({
   tone,
   title,
@@ -363,7 +375,7 @@ function deriveActiveKillScopes(snapshot: OperatorSnapshot | null) {
   return [...deduped.values()].filter((scope) => scope.state === "active");
 }
 
-function createVisualNodes(snapshot: OperatorSnapshot | null, animatedTick: number, killSwitchActive: boolean) {
+function createVisualNodes(snapshot: OperatorSnapshot | null, animatedTick: number, killSwitchActive: boolean): MeshNode[] {
   if (!snapshot) return INITIAL_NODES;
 
   const simulationLoad = snapshot.mesh.nodes.reduce((sum, node) => sum + node.load, 0) / Math.max(snapshot.mesh.nodes.length, 1);
@@ -493,16 +505,25 @@ export default function AristotleAutonomousGovernanceConsole({
     scope: "global" | "mission" | "domain" | "agent" | "device";
     scopeRef: string;
   }>({ scope: "global", scopeRef: "" });
-  const [missionDraft, setMissionDraft] = useState({
+  const [missionDraft, setMissionDraft] = useState<{
+    title: string;
+    objective: string;
+    priority: "low" | "medium" | "high" | "critical";
+    riskLevel: "low" | "medium" | "high";
+    targetSystem: (typeof MISSION_TARGET_OPTIONS)[number]["value"];
+  }>({
     title: "Bootstrap agentic workspace",
     objective: "Create the first governed delivery mission for the AI operating system.",
-    priority: "high" as const,
-    riskLevel: "medium" as const,
-    targetSystem: "workspace" as (typeof MISSION_TARGET_OPTIONS)[number]["value"]
+    priority: "high",
+    riskLevel: "medium",
+    targetSystem: "workspace"
   });
-  const [agentDraft, setAgentDraft] = useState({
+  const [agentDraft, setAgentDraft] = useState<{
+    name: string;
+    role: "planner" | "executor" | "reviewer" | "auditor" | "operator";
+  }>({
     name: "Console Field Operator",
-    role: "operator" as const
+    role: "operator"
   });
 
   useEffect(() => {
@@ -697,6 +718,11 @@ export default function AristotleAutonomousGovernanceConsole({
   });
   const focusedEnvelopeArtifact =
     focusedTaskArtifactTimeline.find((artifact) => artifact.artifactType === "authority-envelope") ?? latestEnvelope;
+  // The ledger-artifact arm carries id/verification; envelope-specific display fields
+  // (issuer/subject/domain/action) live only on the EnvelopeList arm. Narrow via `in`
+  // so reads are typed and fall back exactly as they did at runtime.
+  const focusedEnvelopeDetails =
+    focusedEnvelopeArtifact && "subject" in focusedEnvelopeArtifact ? focusedEnvelopeArtifact : null;
   const focusedWarrantArtifact =
     focusedTaskArtifactTimeline.find((artifact) => artifact.artifactType === "execution-warrant") ?? null;
   const focusedDecisionArtifact =
@@ -863,6 +889,7 @@ export default function AristotleAutonomousGovernanceConsole({
             ? focusedTask?.execution?.workspaceId ?? primaryMission?.workspaceId ?? ""
         : "";
   const selectedKillScopeRef = killSwitchDraft.scope === "global" ? undefined : killSwitchDraft.scopeRef.trim() || derivedKillScopeRef;
+  const selectedKillScopeMissing = killSwitchDraft.scope !== "global" && !selectedKillScopeRef;
   const selectedKillActive =
     killSwitchDraft.scope === "global"
       ? killSwitch
@@ -872,12 +899,53 @@ export default function AristotleAutonomousGovernanceConsole({
             scope.scope === killSwitchDraft.scope &&
             scope.scopeRef === selectedKillScopeRef
         );
-  const missionActionReadiness = {
+  const gatewayReadiness = snapshot?.health.readiness;
+  const deploymentPosture = snapshot?.deploymentPosture;
+  const preflightChecks = deploymentPosture?.preflight.checks ?? snapshot?.health.preflight?.checks ?? [];
+  const failedCriticalServices = gatewayReadiness?.failedCritical ?? [];
+  const gatewayReady = gatewayReadiness?.ok ?? snapshot?.health.ok ?? false;
+  const operatorMutationBlocks = [
+    isLoading ? "Operator snapshot is still loading." : "",
+    error ? "Gateway snapshot is degraded." : "",
+    snapshot && !gatewayReady ? "Gateway readiness is fail-closed." : "",
+    failedCriticalServices.length > 0 ? `Critical service down: ${failedCriticalServices.join(", ")}.` : "",
+    deploymentPosture?.preflight.ok === false ? "Enterprise preflight is failing." : "",
+    deploymentPosture?.mode === "production" && !deploymentPosture.operatorAuthEnabled ? "Production operator auth is not enabled." : "",
+    deploymentPosture?.mode === "production" && !deploymentPosture.operatorSessionEnforced ? "Production signed operator sessions are not enforced." : "",
+    deploymentPosture?.mode === "production" && !deploymentPosture.roleEnforcementEnabled ? "Production operator RBAC is not enforced." : "",
+    deploymentPosture?.mode === "production" && !deploymentPosture.durableStateConfigured ? "Production durable state is not configured." : "",
+    deploymentPosture?.insecureProductionOverride ? "Insecure production override is active." : ""
+  ].filter(Boolean);
+  const missionDraftErrors = [
+    missionDraft.title.trim().length < 4 ? "Mission title is too short." : "",
+    missionDraft.objective.trim().length < 20 ? "Mission objective needs an auditable purpose." : "",
+    missionDraft.riskLevel === "high" && missionDraft.targetSystem === "workspace"
+      ? "High-risk missions should target a safety or ledger governance lane."
+      : ""
+  ].filter(Boolean);
+  const agentDraftErrors = [
+    agentDraft.name.trim().length < 3 ? "Agent name is too short." : ""
+  ].filter(Boolean);
+  const mutationGuardReason = operatorMutationBlocks[0] ?? "";
+  const missionActionReadinessBase = {
     progress: getMissionActionReadiness("progress", primaryMission?.status, focusedCommitPosture, nextReadyTask?.title ?? null),
     execute: getMissionActionReadiness("execute", primaryMission?.status, focusedCommitPosture, nextReadyTask?.title ?? null),
     complete: getMissionActionReadiness("complete", primaryMission?.status, focusedCommitPosture, nextReadyTask?.title ?? null),
     halt: getMissionActionReadiness("halt", primaryMission?.status, focusedCommitPosture, nextReadyTask?.title ?? null)
   };
+  const missionActionReadiness = (["progress", "execute", "complete", "halt"] as const).reduce(
+    (acc, action) => {
+      const base = missionActionReadinessBase[action];
+      acc[action] =
+        action === "halt" || !base.enabled || operatorMutationBlocks.length === 0
+          ? base
+          : { enabled: false, reason: mutationGuardReason };
+      return acc;
+    },
+    {} as Record<"progress" | "execute" | "complete" | "halt", { enabled: boolean; reason: string }>
+  );
+  const canCreateMission = !isSubmittingAction && operatorMutationBlocks.length === 0 && missionDraftErrors.length === 0;
+  const canRegisterAgent = !isSubmittingAction && operatorMutationBlocks.length === 0 && agentDraftErrors.length === 0;
   const filteredMissionExecutionTasks = useMemo(() => {
     const normalizedQuery = taskQuery.trim().toLowerCase();
     const matchesFilter = (task: (typeof missionExecutionTasks)[number]) => {
@@ -973,7 +1041,7 @@ export default function AristotleAutonomousGovernanceConsole({
           focusedTask.governance?.finalityCertificateId,
           focusedTask.governance?.agentIdentityRef,
           focusedTask.governance?.deviceIdentityRef
-        ].filter((value): value is string => Boolean(value) && !knownArtifactIds.has(value));
+        ].filter((value): value is string => value !== undefined && !knownArtifactIds.has(value));
 
         if (relatedArtifactIds.length === 0) {
           setHydratedFocusedArtifacts([]);
@@ -1009,13 +1077,25 @@ export default function AristotleAutonomousGovernanceConsole({
 
   const handleKillSwitchToggle = async () => {
     const nextState = selectedKillActive ? "inactive" : "active";
+    const scope = killSwitchDraft.scope;
+    const scopeRef = scope === "global" ? undefined : killSwitchDraft.scopeRef.trim() || derivedKillScopeRef || undefined;
+    if (scope !== "global" && !scopeRef) {
+      setError(`No ${scope} scope reference is available for sovereign halt.`);
+      return;
+    }
+    const confirmed = confirmOperatorAction(
+      nextState === "active" ? "Engage sovereign halt?" : "Reset selected sovereign halt?",
+      [
+        `Scope: ${scope}${scopeRef ? `:${scopeRef}` : ""}`,
+        nextState === "active"
+          ? "Downstream governed actuation will be suppressed at the execution boundary."
+          : "Governed execution may resume for the selected scope if all other gates allow it.",
+        "This action is written to the evidence ledger."
+      ]
+    );
+    if (!confirmed) return;
     try {
       setIsTogglingKillSwitch(true);
-      const scope = killSwitchDraft.scope;
-      const scopeRef = scope === "global" ? undefined : killSwitchDraft.scopeRef.trim() || derivedKillScopeRef || undefined;
-      if (scope !== "global" && !scopeRef) {
-        throw new Error(`No ${scope} scope reference is available for sovereign halt.`);
-      }
       if (scope === "global") {
         setOptimisticKillSwitch(nextState);
       }
@@ -1082,6 +1162,10 @@ export default function AristotleAutonomousGovernanceConsole({
   };
 
   const handleRegisterAgent = async () => {
+    if (operatorMutationBlocks.length > 0 || agentDraftErrors.length > 0) {
+      setError([...operatorMutationBlocks, ...agentDraftErrors][0] ?? "Agent registration is not currently admissible.");
+      return;
+    }
     try {
       setIsSubmittingAction(true);
       setError(null);
@@ -1106,6 +1190,10 @@ export default function AristotleAutonomousGovernanceConsole({
   };
 
   const handleCreateMission = async () => {
+    if (operatorMutationBlocks.length > 0 || missionDraftErrors.length > 0) {
+      setError([...operatorMutationBlocks, ...missionDraftErrors][0] ?? "Mission creation is not currently admissible.");
+      return;
+    }
     try {
       setIsSubmittingAction(true);
       setError(null);
@@ -1134,6 +1222,21 @@ export default function AristotleAutonomousGovernanceConsole({
 
   const handleAdvanceMission = async (action: "progress" | "execute" | "complete" | "halt") => {
     if (!primaryMission) return;
+    const readiness = missionActionReadiness[action];
+    if (!readiness.enabled) {
+      setError(readiness.reason);
+      return;
+    }
+    const confirmed = confirmOperatorAction(`Confirm mission ${action}?`, [
+      `Mission: ${primaryMission.title}`,
+      `Commit posture: ${focusedCommitPosture}`,
+      focusedTask ? `Focused task: ${focusedTask.title}` : "Focused task: none",
+      readiness.reason,
+      action === "halt"
+        ? "A halt is a sovereign interruption and will be committed to evidence."
+        : "This advances runtime state and must remain admissible at the execution boundary."
+    ]);
+    if (!confirmed) return;
     try {
       setIsSubmittingAction(true);
       setError(null);
@@ -1148,6 +1251,16 @@ export default function AristotleAutonomousGovernanceConsole({
   };
 
   const handleAutonomyTick = async () => {
+    if (operatorMutationBlocks.length > 0) {
+      setError(operatorMutationBlocks[0] ?? "Autonomy tick is not currently admissible.");
+      return;
+    }
+    const confirmed = confirmOperatorAction("Trigger governed autonomy tick?", [
+      primaryMission ? `Mission: ${primaryMission.title}` : "Mission: runtime selected",
+      `Commit posture: ${focusedCommitPosture}`,
+      "The runtime may release or complete governed work only through the commit boundary."
+    ]);
+    if (!confirmed) return;
     try {
       setIsSubmittingAction(true);
       setError(null);
@@ -1162,6 +1275,10 @@ export default function AristotleAutonomousGovernanceConsole({
   };
 
   const handleAttestAssurance = async (scope: "mission" | "system") => {
+    if (operatorMutationBlocks.length > 0) {
+      setError(operatorMutationBlocks[0] ?? "Assurance attestation is not currently admissible.");
+      return;
+    }
     try {
       setIsSubmittingAction(true);
       setError(null);
@@ -1262,6 +1379,79 @@ export default function AristotleAutonomousGovernanceConsole({
             </div>
           </div>
         </header>
+
+        <section
+          className={cn(
+            "rounded-2xl border p-4 shadow-xl",
+            operatorMutationBlocks.length > 0
+              ? "border-amber-500/30 bg-amber-500/10"
+              : "border-emerald-500/20 bg-emerald-500/10"
+          )}
+        >
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-[0.28em] text-slate-400">Operator Safety Gate</div>
+              <div className="mt-2 text-lg font-medium text-slate-100">
+                {operatorMutationBlocks.length > 0 ? "Mutating actions blocked" : "Mutating actions admissible"}
+              </div>
+              <div className="mt-2 max-w-3xl text-sm text-slate-300">
+                {operatorMutationBlocks.length > 0
+                  ? operatorMutationBlocks.join(" ")
+                  : "Gateway readiness, enterprise preflight, identity controls, and durable state are aligned for operator mutations."}
+              </div>
+            </div>
+            <div className="grid min-w-[320px] grid-cols-2 gap-2 text-xs md:grid-cols-4">
+              <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3">
+                <div className="text-slate-500">Gateway</div>
+                <div className={cn("mt-1 font-medium", gatewayReady ? "text-emerald-300" : "text-rose-300")}>
+                  {gatewayReady ? "ready" : "fail-closed"}
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3">
+                <div className="text-slate-500">Preflight</div>
+                <div className={cn("mt-1 font-medium", deploymentPosture?.preflight.ok !== false ? "text-emerald-300" : "text-rose-300")}>
+                  {deploymentPosture?.preflight.ok === false ? "failing" : "passing"}
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3">
+                <div className="text-slate-500">Operator auth</div>
+                <div
+                  className={cn(
+                    "mt-1 font-medium",
+                    deploymentPosture?.operatorAuthEnabled && deploymentPosture?.roleEnforcementEnabled
+                      ? "text-emerald-300"
+                      : "text-amber-200"
+                  )}
+                >
+                  {deploymentPosture?.operatorAuthEnabled ? "bound" : "open"}
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3">
+                <div className="text-slate-500">Evidence state</div>
+                <div className={cn("mt-1 font-medium", deploymentPosture?.durableStateConfigured ? "text-emerald-300" : "text-amber-200")}>
+                  {deploymentPosture?.durableStateConfigured ? "durable" : "volatile"}
+                </div>
+              </div>
+            </div>
+          </div>
+          {(preflightChecks.length > 0 || failedCriticalServices.length > 0) && (
+            <div className="mt-4 grid gap-2 text-xs md:grid-cols-2">
+              {failedCriticalServices.length > 0 && (
+                <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-rose-100">
+                  Critical unavailable: {failedCriticalServices.join(", ")}
+                </div>
+              )}
+              {preflightChecks
+                .filter((check) => check.status !== "pass")
+                .slice(0, 3)
+                .map((check) => (
+                  <div key={check.name} className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-amber-100">
+                    {check.name}: {check.status} | {check.detail}
+                  </div>
+                ))}
+            </div>
+          )}
+        </section>
 
         <section className="rounded-2xl border border-cyan-500/20 bg-[linear-gradient(135deg,rgba(8,47,73,0.7),rgba(15,23,42,0.92),rgba(30,41,59,0.88))] p-5 shadow-2xl">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -1498,7 +1688,7 @@ export default function AristotleAutonomousGovernanceConsole({
                 <div className="mt-3">
                   <button
                     onClick={() => void handleAutonomyTick()}
-                    disabled={isSubmittingAction}
+                    disabled={isSubmittingAction || operatorMutationBlocks.length > 0}
                     className="rounded-lg bg-cyan-700 px-3 py-2 text-xs font-medium text-white hover:bg-cyan-600 disabled:opacity-40"
                   >
                     TRIGGER AUTONOMY TICK
@@ -1570,14 +1760,14 @@ export default function AristotleAutonomousGovernanceConsole({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => void handleAttestAssurance("mission")}
-                      disabled={isSubmittingAction || !primaryMission}
+                      disabled={isSubmittingAction || !primaryMission || operatorMutationBlocks.length > 0}
                       className="rounded-lg bg-emerald-700 px-3 py-2 text-[11px] font-medium text-white hover:bg-emerald-600 disabled:opacity-40"
                     >
                       ATTEST MISSION
                     </button>
                     <button
                       onClick={() => void handleAttestAssurance("system")}
-                      disabled={isSubmittingAction}
+                      disabled={isSubmittingAction || operatorMutationBlocks.length > 0}
                       className="rounded-lg bg-cyan-700 px-3 py-2 text-[11px] font-medium text-white hover:bg-cyan-600 disabled:opacity-40"
                     >
                       ATTEST SYSTEM
@@ -1915,10 +2105,15 @@ export default function AristotleAutonomousGovernanceConsole({
                     ? "Global halt suppresses all downstream governed actuation."
                     : `Scoped halt target ${killSwitchDraft.scopeRef || derivedKillScopeRef || "unresolved"} will suppress only that governed ${killSwitchDraft.scope}.`}
                 </div>
+                {selectedKillScopeMissing && (
+                  <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-2 text-amber-100">
+                    Select a concrete {killSwitchDraft.scope} reference before changing this sovereign halt scope.
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => void handleKillSwitchToggle()}
-                disabled={isTogglingKillSwitch}
+                disabled={isTogglingKillSwitch || selectedKillScopeMissing}
                 className={cn(
                   "w-full rounded-xl px-4 py-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60",
                   selectedKillActive ? "bg-slate-700 text-slate-100 hover:bg-slate-600" : "bg-rose-600 text-white hover:bg-rose-500"
@@ -2035,7 +2230,7 @@ export default function AristotleAutonomousGovernanceConsole({
             </div>
             <div className="space-y-3 text-sm">
               <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3">
-                {(latestMetaAuthority?.subject ?? "coalition.core")} to {(primaryMission?.requiredAuthorities[0] ?? "mission.command")} to {(focusedEnvelopeArtifact?.subject ?? "edge.actor.alpha")}
+                {(latestMetaAuthority?.subject ?? "coalition.core")} to {(primaryMission?.requiredAuthorities[0] ?? "mission.command")} to {(focusedEnvelopeDetails?.subject ?? "edge.actor.alpha")}
               </div>
               <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3">
                 Delegation class: {latestMetaAuthority?.delegationClass ?? "root"}
@@ -2155,10 +2350,10 @@ export default function AristotleAutonomousGovernanceConsole({
             <div className="space-y-3">
               <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/80 p-4 text-sm text-slate-300">
                 <div>Envelope ID: {focusedEnvelopeArtifact?.id ?? "env-awaiting"}</div>
-                <div>Issuer: {focusedEnvelopeArtifact?.issuer ?? primaryMission?.requiredAuthorities[0] ?? "mission.command"}</div>
-                <div>Subject: {focusedEnvelopeArtifact?.subject ?? "edge.actor.alpha"}</div>
-                <div>Domain: {focusedEnvelopeArtifact?.domain ?? "mission"}</div>
-                <div>Action: {focusedEnvelopeArtifact?.action ?? "governed execution"}</div>
+                <div>Issuer: {focusedEnvelopeDetails?.issuer ?? primaryMission?.requiredAuthorities[0] ?? "mission.command"}</div>
+                <div>Subject: {focusedEnvelopeDetails?.subject ?? "edge.actor.alpha"}</div>
+                <div>Domain: {focusedEnvelopeDetails?.domain ?? "mission"}</div>
+                <div>Action: {focusedEnvelopeDetails?.action ?? "governed execution"}</div>
                 <div className="text-emerald-300">
                   Verification: {focusedEnvelopeArtifact?.verification?.reason ?? focusedEnvelopeArtifact?.verification?.status ?? "awaiting validated meta-authority chain"}
                 </div>
@@ -3019,9 +3214,14 @@ export default function AristotleAutonomousGovernanceConsole({
                       );
                     })()}
                   </div>
+                  {(missionDraftErrors.length > 0 || operatorMutationBlocks.length > 0) && (
+                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                      {[...missionDraftErrors, ...operatorMutationBlocks].slice(0, 2).join(" ")}
+                    </div>
+                  )}
                   <button
                     onClick={() => void handleCreateMission()}
-                    disabled={isSubmittingAction}
+                    disabled={!canCreateMission}
                     className="w-full rounded-lg bg-cyan-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
                   >
                     {isSubmittingAction ? "SUBMITTING" : "CREATE GOVERNED MISSION"}
@@ -3054,9 +3254,14 @@ export default function AristotleAutonomousGovernanceConsole({
                     <option value="auditor">auditor</option>
                     <option value="reviewer">reviewer</option>
                   </select>
+                  {(agentDraftErrors.length > 0 || operatorMutationBlocks.length > 0) && (
+                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                      {[...agentDraftErrors, ...operatorMutationBlocks].slice(0, 2).join(" ")}
+                    </div>
+                  )}
                   <button
                     onClick={() => void handleRegisterAgent()}
-                    disabled={isSubmittingAction}
+                    disabled={!canRegisterAgent}
                     className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
                   >
                     {isSubmittingAction ? "SUBMITTING" : "REGISTER AGENT"}

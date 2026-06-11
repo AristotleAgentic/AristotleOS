@@ -1,5 +1,13 @@
 import { createApp, id, now } from "./lib.js";
 import type { ExecutionDecision } from "@aristotle/shared-types";
+import {
+  evaluateCommitGate,
+  type AuthorityEnvelope as SubstrateEnvelope,
+  type CanonicalActionInput,
+  type CommitGateDecision,
+  type WardManifest
+} from "@aristotle/execution-control-runtime";
+import { ReadinessChecks, mountHealthEndpoints } from "@aristotle/service-runtime";
 
 const port = Number(process.env.PORT_EXECUTION_GATE ?? 7008);
 const app = createApp();
@@ -10,6 +18,10 @@ const killEvents: Array<{
   scope: "global" | "mission" | "domain" | "agent" | "device";
   scopeRef?: string;
 }> = [];
+
+// ---------------------------------------------------------------------------
+// Kill switch + scope semantics — unchanged from prior implementation.
+// ---------------------------------------------------------------------------
 
 const activeKillScopes = () => {
   const latestByScope = new Map<
@@ -42,9 +54,147 @@ const appliesKillSwitch = (context?: {
   });
 };
 
+// ---------------------------------------------------------------------------
+// Substrate bridge — synthesize a minimal WardManifest + AuthorityEnvelope
+// from request fields, then call the real evaluateCommitGate.
+// ---------------------------------------------------------------------------
+
+type SubstrateInputs = {
+  ward?: WardManifest;
+  authorityEnvelope?: SubstrateEnvelope;
+  action?: CanonicalActionInput;
+};
+
+/** Build a permissive default Ward when the caller didn't supply one.
+ *  Uses domain as the ward_id so authorized actions for the domain are
+ *  bound to the right Ward. permitted_subjects defaults to the supplied
+ *  agentId / deviceId / "agent.unknown". */
+function defaultWard(domain: string | undefined, subject: string): WardManifest {
+  return {
+    ward_id: domain ?? "ward.default",
+    name: domain ?? "Default Ward",
+    sovereignty_context: "execution-gate.runtime",
+    authority_domain: domain ?? "default",
+    policy_version: "1.0.0",
+    permitted_subjects: [subject]
+  };
+}
+
+/** Build a permissive default AuthorityEnvelope when the caller didn't
+ *  supply one. The envelope is scoped to the Ward built above and
+ *  permits a single specific action_type. */
+function defaultEnvelope(envelopeId: string, ward: WardManifest, subject: string, action_type: string): SubstrateEnvelope {
+  return {
+    envelope_id: envelopeId,
+    ward_id: ward.ward_id,
+    subject,
+    allowed_actions: [action_type],
+    denied_actions: [],
+    constraints: {},
+    expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    issuer: "execution-gate.bridge"
+  };
+}
+
+/** Synthesize a CanonicalActionInput when the caller didn't supply one. */
+function defaultAction(opts: { targetId?: string; missionId?: string; targetType?: string; subject: string; wardId: string; targetNode?: string; action_type?: string }): CanonicalActionInput {
+  // CanonicalActionInput.params is JsonValue — drop undefined keys
+  // rather than pass them through (JsonValue is null | string | number | boolean | array | object).
+  const params: Record<string, string> = {};
+  if (opts.missionId !== undefined) params.mission_id = opts.missionId;
+  if (opts.targetType !== undefined) params.target_type = opts.targetType;
+  return {
+    action_id: opts.targetId ?? id("act"),
+    ward_id: opts.wardId,
+    subject: opts.subject,
+    action_type: opts.action_type ?? (opts.targetType === "tool-action" ? "tool.execute" : opts.targetType === "mission" ? "mission.advance" : "task.execute"),
+    target: opts.targetNode ?? "execution-gate",
+    params,
+    requested_at: now(),
+    request_id: opts.targetId
+  };
+}
+
+/** Map the substrate's CommitGateDecision to the shared-types
+ *  ExecutionDecision shape the UI / http-gateway expect. Operator-side
+ *  overlays (witness obligation, identity, telemetry) layer ON TOP of
+ *  the substrate decision via `forceDeny` + `extraReasons` — the
+ *  substrate's reason_codes are a closed taxonomy, so overlay reasons
+ *  are surfaced verbatim alongside (not mutated into) it. */
+function mapSubstrateDecisionToWire(
+  cgd: CommitGateDecision,
+  base: {
+    warrantId: string;
+    envelopeId: string;
+    phase?: ExecutionDecision["phase"];
+    targetType?: ExecutionDecision["targetType"];
+    targetId?: string;
+    witnessStatus: ExecutionDecision["witnessStatus"];
+    haltActive: boolean;
+    extraReasons?: string[];
+    /** When true, override an ALLOW from the gate with deny because an
+     *  operator-overlay invariant (witness/identity/telemetry) failed. */
+    forceDeny?: boolean;
+  }
+): ExecutionDecision {
+  const effectiveAllow = cgd.decision === "ALLOW" && !base.forceDeny;
+  const substrateDecision: "allow" | "deny" | "halt" =
+    base.haltActive ? "halt" : effectiveAllow ? "allow" : "deny";
+  const reasons: string[] = [];
+  if (base.haltActive) reasons.push("Kill switch active for this scope");
+  for (const code of cgd.reason_codes) {
+    reasons.push(`commit_gate:${code}`);
+  }
+  if (base.extraReasons) reasons.push(...base.extraReasons);
+  if (reasons.length === 0 && substrateDecision === "allow") {
+    reasons.push(`Commit gate ALLOW (${cgd.canonical_action_hash.slice(0, 12)}…)`);
+  }
+  return {
+    id: id("dec"),
+    artifactType: "execution-decision",
+    timestamp: now(),
+    actor: "execution-gate",
+    warrantId: base.warrantId,
+    envelopeId: base.envelopeId,
+    phase: base.phase,
+    targetType: base.targetType,
+    targetId: base.targetId,
+    decision: substrateDecision,
+    reasons,
+    killSwitchState: base.haltActive ? "active" : "inactive",
+    witnessStatus: base.witnessStatus,
+    verification: {
+      status: base.haltActive || !effectiveAllow ? "failed" : "verified",
+      verifier: "execution-gate+commit-gate",
+      reason: `commit_gate decision=${cgd.decision} reason_codes=${cgd.reason_codes.join(",")} operator_overlay_deny=${Boolean(base.forceDeny)}`
+    }
+  };
+}
+
+// ---------------------------------------------------------------------------
+// HTTP surface — same routes, real substrate behind them.
+// ---------------------------------------------------------------------------
+
+// Keep the custom /health handler because it surfaces extra fields
+// (killSwitchState, activeKillScopes, substrate_wired) used by the
+// agent-os cross-service kill-switch poll; mount only /healthz +
+// /readyz from the shared helper.
 app.get("/health", (_req, res) =>
-  res.json({ ok: true, service: "execution-gate", killSwitchState, activeKillScopes: activeKillScopes() })
+  res.json({
+    ok: true,
+    service: "execution-gate",
+    killSwitchState,
+    activeKillScopes: activeKillScopes(),
+    substrate_wired: true
+  })
 );
+mountHealthEndpoints(app, {
+  service: "execution-gate",
+  mountLegacyHealth: false,
+  readiness: () => ReadinessChecks.start()
+    .add("service_initialized", true)
+    .build()
+});
 app.get("/decisions", (_req, res) => res.json({ items: [...decisions.values()] }));
 app.post("/kill-switch", (req, res) => {
   const scope =
@@ -60,6 +210,7 @@ app.post("/kill-switch", (req, res) => {
   killEvents.push({ state: req.body.state === "active" ? "active" : "inactive", scope, scopeRef: req.body.scopeRef });
   res.json({ state: killSwitchState, reason: req.body.reason ?? "operator action", scope, scopeRef: req.body.scopeRef });
 });
+
 app.post("/commit-point", (req, res) => {
   const {
     warrantId,
@@ -77,7 +228,8 @@ app.post("/commit-point", (req, res) => {
     domain,
     targetNode,
     agentId,
-    deviceId
+    deviceId,
+    substrate
   } = req.body as {
     warrantId: string;
     envelopeId: string;
@@ -95,43 +247,46 @@ app.post("/commit-point", (req, res) => {
     targetNode?: string;
     agentId?: string;
     deviceId?: string;
+    substrate?: SubstrateInputs;
   };
 
   const haltActive = appliesKillSwitch({ missionId, domain, targetNode, agentId, deviceId });
   const witnessStatus = witnessRequired ? (witnessAccepted ? "satisfied" : "unsatisfied") : "not-required";
-  const reasons: string[] = [];
-  if (haltActive) reasons.push("Kill switch active for this scope");
-  if (!identityLegitimate) reasons.push("Identity legitimacy failed at commit point.");
-  if (!authorityApproved) reasons.push("Authority invariants failed at commit point.");
-  if (!telemetrySatisfied) reasons.push(...(telemetryReasons.length > 0 ? telemetryReasons : ["Telemetry manifold rejected action."]));
-  if (witnessRequired && !witnessAccepted) reasons.push("Witness obligation unsatisfied");
+  const subject = agentId ?? deviceId ?? "agent.unknown";
+  const ward = substrate?.ward ?? defaultWard(domain, subject);
+  const action = substrate?.action ?? defaultAction({ targetId, missionId, targetType, subject, wardId: ward.ward_id, targetNode });
+  const envelope = substrate?.authorityEnvelope ?? defaultEnvelope(envelopeId, ward, subject, action.action_type);
 
-  const decision: ExecutionDecision = {
-    id: id("dec"),
-    artifactType: "execution-decision",
-    timestamp: now(),
-    actor: "execution-gate",
+  const cgd = evaluateCommitGate({ ward, authorityEnvelope: envelope, action, now: now() });
+
+  // Operator-side overlays the commit gate's verdict — host gates
+  // (witness obligation, identity, telemetry) layer on top.
+  const overlayReasons: string[] = [];
+  if (!identityLegitimate) overlayReasons.push("Identity legitimacy failed at commit point.");
+  if (!authorityApproved) overlayReasons.push("Authority invariants failed at commit point.");
+  if (!telemetrySatisfied) overlayReasons.push(...(telemetryReasons.length > 0 ? telemetryReasons : ["Telemetry manifold rejected action."]));
+  if (witnessRequired && !witnessAccepted) overlayReasons.push("Witness obligation unsatisfied");
+  const overlayDeny = overlayReasons.length > 0;
+
+  // The substrate's reason_codes are a closed taxonomy. Operator-overlay
+  // reasons stay on the wire (extraReasons) without mutating the CGD.
+  const decision = mapSubstrateDecisionToWire(cgd, {
     warrantId,
     envelopeId,
     phase,
     targetType,
     targetId,
-    decision:
-      haltActive
-        ? "halt"
-        : identityLegitimate && authorityApproved && telemetrySatisfied && (!witnessRequired || witnessAccepted)
-          ? "allow"
-          : "deny",
-    reasons: reasons.length > 0 ? reasons : [phase ? `Commit point approved for ${phase}.` : "Commit point approved."],
-    killSwitchState: haltActive ? "active" : "inactive",
     witnessStatus,
-    verification: { status: haltActive ? "failed" : "verified", verifier: "execution-gate" }
-  };
+    haltActive,
+    extraReasons: overlayReasons,
+    forceDeny: overlayDeny
+  });
   decisions.set(decision.id, decision);
   res.json(decision);
 });
+
 app.post("/decide", (req, res) => {
-  const { warrantId, envelopeId, witnessAccepted, witnessRequired = true, missionId, domain, targetNode, agentId, deviceId } = req.body as {
+  const { warrantId, envelopeId, witnessAccepted, witnessRequired = true, missionId, domain, targetNode, agentId, deviceId, substrate } = req.body as {
     warrantId: string;
     envelopeId: string;
     witnessAccepted: boolean;
@@ -141,31 +296,32 @@ app.post("/decide", (req, res) => {
     targetNode?: string;
     agentId?: string;
     deviceId?: string;
+    substrate?: SubstrateInputs;
   };
   const haltActive = appliesKillSwitch({ missionId, domain, targetNode, agentId, deviceId });
   const witnessStatus = witnessRequired ? (witnessAccepted ? "satisfied" : "unsatisfied") : "not-required";
-  const decision: ExecutionDecision = {
-    id: id("dec"),
-    artifactType: "execution-decision",
-    timestamp: now(),
-    actor: "execution-gate",
+  const subject = agentId ?? deviceId ?? "agent.unknown";
+  const ward = substrate?.ward ?? defaultWard(domain, subject);
+  const action = substrate?.action ?? defaultAction({ subject, wardId: ward.ward_id, targetNode, missionId });
+  const envelope = substrate?.authorityEnvelope ?? defaultEnvelope(envelopeId, ward, subject, action.action_type);
+
+  const cgd = evaluateCommitGate({ ward, authorityEnvelope: envelope, action, now: now() });
+
+  const witnessOverlayDeny = witnessRequired && !witnessAccepted;
+  const decision = mapSubstrateDecisionToWire(cgd, {
     warrantId,
     envelopeId,
-    decision: haltActive ? "halt" : witnessAccepted ? "allow" : "deny",
-    reasons:
-      haltActive
-        ? ["Kill switch active for this scope"]
-        : witnessRequired
-          ? witnessAccepted
-            ? ["Witness obligation satisfied"]
-            : ["Witness obligation unsatisfied"]
-          : ["Witness obligation not required"],
-    killSwitchState: haltActive ? "active" : "inactive",
     witnessStatus,
-    verification: { status: haltActive ? "failed" : "verified", verifier: "execution-gate" }
-  };
+    haltActive,
+    forceDeny: witnessOverlayDeny,
+    extraReasons: witnessOverlayDeny
+      ? ["Witness obligation unsatisfied"]
+      : witnessRequired
+        ? ["Witness obligation satisfied"]
+        : []
+  });
   decisions.set(decision.id, decision);
   res.json(decision);
 });
 
-app.listen(port, () => console.log(`execution-gate on ${port}`));
+app.listen(port, () => console.log(`execution-gate on ${port} (substrate-wired: evaluateCommitGate)`));

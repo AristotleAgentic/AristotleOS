@@ -1,0 +1,65 @@
+{
+  "name": "@aristotle/vercel-ai",
+  "version": "0.1.0",
+  "description": "Govern Vercel AI SDK tool calls with AristotleOS. Drop-in wrappers that route every tool invocation through the execution-control Commit Gate before it runs.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "keywords": [
+    "aristotle",
+    "aristotleos",
+    "vercel-ai",
+    "ai-sdk",
+    "agent-governance",
+    "tool-call-gate",
+    "commit-gate",
+    "generateText",
+    "streamText"
+  ],
+  "homepage": "https://github.com/AristotleAgentic/AristotleOS",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AristotleAgentic/AristotleOS.git",
+    "directory": "packages/vercel-ai"
+  },
+  "bugs": {
+    "url": "https://github.com/AristotleAgentic/AristotleOS/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "sideEffects": false,
+  "dependencies": {
+    "@aristotle/adapter-sdk": "workspace:*",
+    "@aristotle/os-sdk": "workspace:*"
+  },
+  "peerDependencies": {
+    "ai": ">=5.0.0 <7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ai": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test src/index.test.ts",
+    "prepublishOnly": "npm run build"
+  }
+}

@@ -1,0 +1,120 @@
+# Vertical: aviation / UAV flight control
+# Doctrine alignment: Flight-critical commands transit a Warrant; partition tolerance
+# matters more than mesh size because UAV swarms operate in degraded links. Edge nodes
+# carry a small disconnected-warrant budget so an isolated drone can keep flying its
+# pre-approved mission profile without unsafe surprise commit grants.
+# Compliance reference: 14 CFR Part 107 (sUAS) + 14 CFR Part 91 (general operating) —
+#   DEMONSTRATION ONLY. Production deployments require coordination with the operator's
+#   FAA waiver / authorization and an engineering-of-record review of the flight-envelope
+#   policy bundle.
+# Last reviewed: 2026-06-05
+#
+# Apply on top of an environment profile:
+#
+#   helm template aristotle charts/aristotle-governance-os \
+#     -f charts/aristotle-governance-os/values-aviation.yaml \
+#     -f charts/aristotle-governance-os/values-hardened.yaml
+#
+# Field provenance
+# ────────────────
+#   `runtimeConfig.*`     — template-consumed.
+#   `secrets.*`           — template-consumed.
+#   `services.*`          — template-consumed (resource sizing).
+#   `mesh.*`              — operator-facing documentation; bind in mesh-runtime config.
+#   `gel.*`               — operator-facing documentation; bind in evidence-ledger config.
+#   `adapters.*`          — operator-facing posture statement.
+#   `global.vertical`     — discovery tag.
+#   `global.doctrine`     — operator-facing prose.
+
+global:
+  vertical: "aviation"
+  doctrine: |
+    UAV and flight control: small fleets, intermittent links, hard real-time
+    safety envelope. Mesh quorum is two (fleets are small and the cost of
+    consensus stalling a Warrant exceeds the cost of one extra witness round
+    in a partition). GEL retention is 90 days for fast post-incident review.
+    Edge nodes carry a disconnected-warrant cap so an isolated drone can keep
+    executing its pre-issued mission profile but cannot mint new authority.
+
+mesh:
+  productionMode: true
+  revocationQuorum: 2                  # small fleets — two-of-N witness quorum
+  rateLimit:
+    perPeerPerMinute: 100              # flight control is low-frequency commit, not telemetry
+  replayCache:
+    ttlMs: 120000                      # longer replay window to tolerate variable link latency
+  partition:
+    disconnectedWarrantCap: 10         # an isolated UAV can keep flying its pre-approved mission
+
+# GEL retention is short — flight investigations close fast; long retention
+# moves to the evidence-archive sidecar after the active window.
+gel:
+  retention:
+    maxAgeDays: 90                     # 90-day primary retention
+  timestamp:
+    enabled: true
+    kind: "rfc3161"
+  archive:
+    enabled: true
+    minimumRetentionDays: 730          # 2-year archive (matches NTSB recommended-practice retention)
+
+adapters:
+  demonstrationOnlyBlocked: true
+
+# Runtime config (template-consumed).
+runtimeConfig:
+  NODE_ENV: "production"
+  ALLOW_INSECURE_PRODUCTION_BOOT: "false"
+  GOVERNANCE_CHAIN_MODE: "enforce"
+  OPERATOR_SESSION_ENFORCEMENT: "true"
+  OPERATOR_ROLE_ENFORCEMENT: "true"
+  WITNESS_QUORUM: "2"
+  # Drop the readiness probe timeout so degraded edge links don't trip the
+  # gateway's failClosed posture during normal flight ops.
+  GATEWAY_READINESS_TIMEOUT_MS: "5000"
+  OTEL_RESOURCE_ATTRIBUTES_VERTICAL: "vertical=aviation"
+
+telemetry:
+  otel:
+    enabled: true
+    resourceAttributes: "deployment.environment=pilot,service.namespace=aristotle-governance-os,vertical=aviation"
+
+# UAV swarms have many edge agents per fleet, fewer control-plane operators.
+# Bias witness/gate replicas higher, evidence-ledger smaller (90 day retention).
+services:
+  governance-kernel:
+    replicas: 1
+    resources:
+      requests: { cpu: 250m, memory: 512Mi }
+      limits:   { cpu: 1500m, memory: 2Gi }
+  execution-gate:
+    replicas: 2
+    resources:
+      requests: { cpu: 250m, memory: 512Mi }
+      limits:   { cpu: 1500m, memory: 2Gi }
+  evidence-ledger:
+    replicas: 1
+    persistentVolume:
+      enabled: true
+      size: 20Gi                        # 90-day window keeps PV small
+      mountPath: /var/lib/aristotle
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits:   { cpu: 1000m, memory: 1Gi }
+  witness-service:
+    replicas: 2                         # matches mesh.revocationQuorum
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits:   { cpu: 1000m, memory: 1Gi }
+  policy-compiler:
+    replicas: 2
+  meta-authority-registry:
+    replicas: 2
+  authority-router:
+    replicas: 2
+  agent-os:
+    replicas: 1
+    persistentVolume:
+      enabled: true
+      size: 10Gi
+      mountPath: /var/lib/aristotle

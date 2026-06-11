@@ -1,0 +1,128 @@
+# Vertical: 5G / NEF / network slicing
+# Doctrine alignment: 5G Network Exposure Function (NEF) requests, network-slice
+# instantiation and modification, QoS class changes, and any agent-mediated
+# configuration of the SMF/AMF transit a Warrant. Mesh throughput sizing is high —
+# control-plane signaling is bursty; the gate must keep up with a slice-deploy storm.
+# Compliance reference: 3GPP TS 33.501 (5G security architecture) + ETSI ZSM-005
+#   intent-driven autonomy guidance — DEMONSTRATION ONLY. Production deployments
+#   require alignment with the operator's CSMF/NSMF certification posture and
+#   carrier-grade audit retention requirements.
+# Last reviewed: 2026-06-05
+#
+# Apply on top of an environment profile:
+#
+#   helm template aristotle charts/aristotle-governance-os \
+#     -f charts/aristotle-governance-os/values-telecom.yaml \
+#     -f charts/aristotle-governance-os/values-hardened.yaml
+#
+# Field provenance
+# ────────────────
+#   `runtimeConfig.*`     — template-consumed.
+#   `secrets.*`           — template-consumed.
+#   `services.*`          — template-consumed (resource sizing — telecom bias).
+#   `mesh.*`              — operator-facing documentation; bind in mesh-runtime config.
+#   `gel.*`               — operator-facing documentation; bind in evidence-ledger config.
+#   `adapters.*`          — operator-facing posture statement.
+#   `global.vertical`     — discovery tag.
+#   `global.doctrine`     — operator-facing prose.
+
+global:
+  vertical: "telecom"
+  doctrine: |
+    5G core, NEF exposure, and network slicing: every slice instantiation,
+    QoS-class change, and NEF API exposure to an external service passes the
+    gate with a single-use Warrant. Mesh quorum is three so a compromised
+    O&M node cannot mint slice authority unilaterally. Mesh throughput sizing
+    is the high-end of any vertical — slice-deploy storms drive thousands of
+    correlated commit gates in seconds. GEL retention is 1 year aligned to
+    carrier audit-cycle practice; longer windows go to the archive sidecar.
+
+mesh:
+  productionMode: true
+  revocationQuorum: 3
+  rateLimit:
+    perPeerPerMinute: 2000             # carrier control-plane volume — bias high
+  replayCache:
+    ttlMs: 30000
+  partition:
+    disconnectedWarrantCap: 0          # control-plane partitions should NOT issue authority
+  # Throughput tuning recommendations the operator should bind into mesh-runtime
+  # config; the kernel does not read these directly but they document the sizing
+  # the vertical depends on.
+  throughput:
+    targetCommitsPerSecond: 2000
+    workerPoolSize: 16
+
+gel:
+  retention:
+    maxAgeDays: 365                    # 1 year primary; longer in archive sidecar
+  timestamp:
+    enabled: true
+    kind: "rfc3161"
+  archive:
+    enabled: true
+    minimumRetentionDays: 1095         # 3 years archive (carrier audit cycle)
+
+adapters:
+  demonstrationOnlyBlocked: true
+
+runtimeConfig:
+  NODE_ENV: "production"
+  ALLOW_INSECURE_PRODUCTION_BOOT: "false"
+  GOVERNANCE_CHAIN_MODE: "enforce"
+  OPERATOR_SESSION_ENFORCEMENT: "true"
+  OPERATOR_ROLE_ENFORCEMENT: "true"
+  WITNESS_QUORUM: "3"
+  # Carrier control-plane is highly concurrent; bump async pool size.
+  NODE_OPTIONS: "--max-old-space-size=4096"
+  OTEL_RESOURCE_ATTRIBUTES_VERTICAL: "vertical=telecom"
+
+telemetry:
+  otel:
+    enabled: true
+    resourceAttributes: "deployment.environment=pilot,service.namespace=aristotle-governance-os,vertical=telecom"
+
+# Telecom workloads are gate-call-storm heavy (slice churn) + evidence-ledger
+# write-heavy. Maximum sizing on kernel, gate, ledger, witnesses.
+services:
+  governance-kernel:
+    replicas: 4
+    resources:
+      requests: { cpu: 2000m, memory: 4Gi }
+      limits:   { cpu: 8000m, memory: 16Gi }
+  execution-gate:
+    replicas: 4
+    resources:
+      requests: { cpu: 1000m, memory: 2Gi }
+      limits:   { cpu: 4000m, memory: 8Gi }
+  evidence-ledger:
+    replicas: 1
+    persistentVolume:
+      enabled: true
+      size: 500Gi                       # high commit volume; 1-year primary retention
+      mountPath: /var/lib/aristotle
+    resources:
+      requests: { cpu: 1000m, memory: 2Gi }
+      limits:   { cpu: 4000m, memory: 8Gi }
+  witness-service:
+    replicas: 3
+    resources:
+      requests: { cpu: 500m, memory: 1Gi }
+      limits:   { cpu: 2000m, memory: 4Gi }
+  policy-compiler:
+    replicas: 3
+  meta-authority-registry:
+    replicas: 3
+  authority-router:
+    replicas: 3
+  agent-os:
+    replicas: 2
+    persistentVolume:
+      enabled: true
+      size: 50Gi
+      mountPath: /var/lib/aristotle
+  http-gateway:
+    replicas: 4
+    resources:
+      requests: { cpu: 500m, memory: 512Mi }
+      limits:   { cpu: 2000m, memory: 2Gi }

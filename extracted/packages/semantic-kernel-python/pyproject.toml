@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aristotle-semantic-kernel"
+version = "0.1.0"
+description = "Govern Semantic Kernel function invocations with AristotleOS."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.10"
+authors = [{ name = "AristotleAgentic" }]
+keywords = ["aristotle", "semantic-kernel", "ai-governance", "agent-governance"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Typing :: Typed",
+]
+dependencies = ["aristotle-os-sdk>=0.1.0"]
+
+[project.optional-dependencies]
+semantic-kernel = ["semantic-kernel>=1.0,<2.0"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aristotle_semantic_kernel"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

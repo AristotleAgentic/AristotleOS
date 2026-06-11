@@ -1,17 +1,22 @@
 {
   "name": "@aristotle/governance-kernel",
   "version": "0.1.0",
+  "license": "MPL-2.0",
   "type": "module",
   "main": "src/index.js",
   "types": "src/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx watch src/index.ts",
+    "test": "tsx src/governance-chain.test.ts && node --import tsx --test src/index.test.ts",
     "start": "node src/index.js"
   },
   "dependencies": {
+    "@aristotle/governance-core": "workspace:*",
+    "@aristotle/execution-control-runtime": "workspace:*",
     "@aristotle/shared-types": "workspace:*",
     "@aristotle/shared-schemas": "workspace:*",
+    "@aristotle/service-runtime": "workspace:*",
     "express": "^4.21.1",
     "cors": "^2.8.5",
     "zod": "^3.23.8"

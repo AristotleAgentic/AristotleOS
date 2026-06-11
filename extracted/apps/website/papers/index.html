@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Papers - Aristotle Agentic</title>
+  <meta name="description" content="Papers and book-length research by J. D. Pepper Petersen exploring governance planes, deterministic enforcement, and authority over autonomous systems." />
+  <meta name="theme-color" content="#0b1110" />
+  <link rel="canonical" href="https://www.aristotleagentic.com/papers/" />
+  <meta property="og:title" content="Papers - Aristotle Agentic" />
+  <meta property="og:description" content="PDF research library on the Governance Plane, deterministic enforcement, and autonomous infrastructure governance." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://aristotleagentic.com/papers/" />
+  <style>
+    :root { --bg:#0b1110; --panel:#151d1b; --panel2:#101816; --ink:#f6f1e8; --muted:#c8c0b2; --quiet:#8f8678; --gold:#e9c46a; --blue:#8eb4ff; --mint:#62d6a7; --rose:#d58aa7; --line:rgba(246,241,232,.14); }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:radial-gradient(circle at 78% 18%, rgba(233,196,106,.14), transparent 24%), radial-gradient(circle at 18% 68%, rgba(142,180,255,.12), transparent 26%), var(--bg); color:var(--ink); font-family:Georgia,"Times New Roman",serif; line-height:1.6; }
+    body::before { content:""; position:fixed; inset:0; pointer-events:none; background-image:linear-gradient(rgba(246,241,232,.05) 1px, transparent 1px),linear-gradient(90deg,rgba(246,241,232,.05) 1px,transparent 1px); background-size:72px 72px; mask-image:radial-gradient(circle at 50% 24%, black, transparent 75%); }
+    .wrap { width:min(1160px, calc(100% - 40px)); margin:0 auto; position:relative; z-index:1; }
+    header { position:sticky; top:0; z-index:2; background:rgba(11,17,16,.9); border-bottom:1px solid var(--line); backdrop-filter:blur(16px); }
+    nav { min-height:72px; display:flex; align-items:center; justify-content:space-between; gap:22px; }
+    a { color:inherit; }
+    .brand { display:inline-flex; align-items:center; gap:10px; text-decoration:none; font-weight:700; font-size:20px; }
+    .mark { display:grid; place-items:center; width:34px; aspect-ratio:1; border:1px solid rgba(233,196,106,.54); border-radius:6px; color:var(--gold); }
+    .links { display:flex; gap:18px; flex-wrap:wrap; justify-content:flex-end; color:var(--muted); font:13px Arial,sans-serif; }
+    .links a { text-decoration:none; }
+    .hero { padding:96px 0 58px; border-bottom:1px solid var(--line); }
+    .eyebrow { color:var(--gold); text-transform:uppercase; letter-spacing:.08em; font:700 12px ui-monospace,SFMono-Regular,Consolas,monospace; }
+    h1 { max-width:980px; margin:16px 0; font-size:clamp(44px,7vw,86px); line-height:.98; letter-spacing:0; }
+    .lede { max-width:820px; color:var(--muted); font-size:20px; margin:0; }
+    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--line); margin-top:34px; }
+    .stats div { background:rgba(21,29,27,.86); padding:20px; }
+    .stats b { display:block; color:var(--gold); font:700 12px ui-monospace,SFMono-Regular,Consolas,monospace; margin-bottom:5px; }
+    .stats span { color:var(--muted); }
+    section { padding:70px 0; border-bottom:1px solid var(--line); }
+    .section-head { display:grid; grid-template-columns:.78fr 1.22fr; gap:44px; align-items:end; margin-bottom:34px; }
+    h2 { margin:0; font-size:clamp(30px,4vw,50px); line-height:1.08; }
+    .section-lede { margin:0; color:var(--muted); font-size:18px; }
+    .paper { display:grid; grid-template-columns:.82fr 1.18fr; gap:30px; align-items:stretch; padding:28px; border:1px solid var(--line); border-radius:10px; background:rgba(21,29,27,.78); box-shadow:0 24px 90px rgba(0,0,0,.24); }
+    .paper + .paper { margin-top:26px; }
+    .visual { border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--panel2); min-height:280px; display:flex; }
+    .visual img { display:block; width:100%; height:100%; object-fit:cover; }
+    .paper-meta { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+    .pill { border:1px solid rgba(246,241,232,.16); border-radius:999px; padding:6px 10px; color:var(--muted); font:700 11px ui-monospace,SFMono-Regular,Consolas,monospace; text-transform:uppercase; letter-spacing:.06em; }
+    h3 { margin:0 0 10px; font-size:clamp(27px,4vw,42px); line-height:1.05; }
+    p { margin:0 0 16px; color:var(--muted); }
+    p:last-child { margin-bottom:0; }
+    strong { color:var(--ink); }
+    .thesis { border-left:2px solid var(--accent,var(--gold)); padding-left:16px; margin:18px 0; color:var(--muted); }
+    .cta { display:flex; gap:12px; flex-wrap:wrap; margin-top:22px; }
+    .button { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:0 18px; border-radius:8px; border:1px solid rgba(246,241,232,.18); text-decoration:none; font:700 14px Arial,sans-serif; }
+    .primary { background:var(--gold); border-color:var(--gold); color:#15110a; }
+    .graph-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+    .graph { padding:24px; border:1px solid var(--line); border-radius:8px; background:rgba(21,29,27,.84); min-height:240px; }
+    .graph b { color:var(--gold); font:700 12px ui-monospace,SFMono-Regular,Consolas,monospace; }
+    .bars { display:grid; gap:12px; margin-top:22px; }
+    .bar { display:grid; grid-template-columns:150px 1fr; gap:12px; align-items:center; color:var(--muted); font:13px Arial,sans-serif; }
+    .bar i { display:block; height:10px; border-radius:999px; background:linear-gradient(90deg,var(--gold),var(--mint)); width:var(--w); }
+    .stack { display:grid; gap:8px; margin-top:18px; }
+    .stack div { padding:12px 14px; border:1px solid rgba(246,241,232,.12); border-radius:7px; background:rgba(246,241,232,.04); color:var(--muted); font:14px Arial,sans-serif; }
+    footer { padding:42px 0 64px; color:var(--quiet); font:13px Arial,sans-serif; }
+    footer .row { display:flex; justify-content:space-between; gap:24px; flex-wrap:wrap; border-top:1px solid var(--line); padding-top:24px; }
+    footer a { color:var(--muted); }
+    @media (max-width:900px) { nav { align-items:flex-start; flex-direction:column; padding:16px 0; } .links { justify-content:flex-start; } .section-head,.paper,.graph-grid { grid-template-columns:1fr; } .stats { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <nav aria-label="Primary">
+        <a href="/" class="brand"><span class="mark">A</span> Aristotle Agentic</a>
+        <div class="links">
+          <a href="/about/">About</a>
+          <a href="/research/">Research</a>
+          <a href="/governance-thesis/">Governance Thesis</a>
+          <a href="/training-hub/">Training Hub</a>
+          <a href="/montana-ai-x/">Montana AI-X</a>
+          <a href="/aristotleos/">AristotleOS</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap">
+        <div class="eyebrow">PDF research library</div>
+        <h1>The formal research library of Aristotle Agentic.</h1>
+        <p class="lede">The papers and G-Plane manuscript develop the institute's core thesis: autonomous systems require enforceable human authority, deterministic boundaries, and verifiable evidence before machine action becomes consequence.</p>
+        <div class="cta">
+          <a class="button primary" href="/research/#papers">Open Research papers</a>
+          <a class="button" href="/research/#architecture">Explore the research stack</a>
+        </div>
+        <div class="stats">
+          <div><b>3 FORMAL PDFS</b><span>Published papers and a book-length architecture manuscript.</span></div>
+          <div><b>129 PAGES</b><span>Two research papers plus one book-length architecture manuscript.</span></div>
+          <div><b>ONE THESIS</b><span>Authority before consequence; evidence after decision.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="papers">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Selected papers.</h2>
+          <p class="section-lede">The collection moves from 6G intermittent connectivity, to deterministic enforcement in infrastructure, to the full G-Plane architecture for autonomous systems.</p>
+        </div>
+
+        <article class="paper" style="--accent:var(--blue);">
+          <div class="visual"><img src="/assets/paper-governance-plane.svg" alt="Governance Plane diagram under intermittent connectivity" /></div>
+          <div>
+            <div class="paper-meta"><span class="pill">Research paper</span><span class="pill">9 pages</span><span class="pill">6G / intermittent connectivity</span></div>
+            <h3>A Governance Plane for AI-Native 6G Architectures Under Intermittent Connectivity</h3>
+            <p>This paper frames intermittent connectivity as an accountability problem for AI-native 6G. Deep-edge and non-terrestrial network elements may need to act while disconnected from the operator domain, creating a gap between autonomous action and institutional oversight.</p>
+            <p>The proposed Governance Plane complements the data and management planes by carrying delegated authority, Policy as Code, runtime constraint enforcement, safety fallback modes, escalation logic, and cryptographic attestation for later synchronization.</p>
+            <p class="thesis"><strong>Why it matters:</strong> it establishes the disconnection thesis: governance cannot depend on continuous cloud reachability. Authority and evidence have to travel with the edge.</p>
+            <div class="cta">
+              <a class="button primary" href="/papers/files/governance-plane-ai-native-6g.pdf">Open PDF</a>
+              <a class="button" href="/governance-thesis/">Read thesis</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="paper" style="--accent:var(--mint);">
+          <div class="visual"><img src="/assets/paper-deterministic-enforcement.svg" alt="Deterministic governance enforcement pipeline" /></div>
+          <div>
+            <div class="paper-meta"><span class="pill">Research paper</span><span class="pill">5 pages</span><span class="pill">Execution boundary</span></div>
+            <h3>Deterministic Governance Enforcement for Autonomous Infrastructure</h3>
+            <p>This paper introduces the Petersen Governance Plane Architecture and the idea of Governance Invariant Compilation. It argues that model guardrails and runtime policy reasoning are not enough for infrastructure, because execution environments require deterministic safety constraints and institutional authority boundaries.</p>
+            <p>The central move is architectural: transform high-level governance artifacts into runtime invariants that can be checked at the commit point before infrastructure is touched.</p>
+            <p class="thesis"><strong>Why it matters:</strong> it turns the Aristotle Agentic thesis into an enforcement model: authority is compiled into the path of action, not debated after the action escapes.</p>
+            <div class="cta">
+              <a class="button primary" href="/papers/files/deterministic-governance-enforcement.pdf">Open PDF</a>
+              <a class="button" href="/aristotleos/">See AristotleOS</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="paper" style="--accent:var(--gold);">
+          <div class="visual"><img src="/assets/paper-gplane-book-map.svg" alt="G-Plane architecture concept map" /></div>
+          <div>
+            <div class="paper-meta"><span class="pill">Book manuscript</span><span class="pill">115 pages</span><span class="pill">Governance infrastructure</span></div>
+            <h3>The G-Plane Architecture: Governance Infrastructure for Autonomous Systems</h3>
+            <p>This book-length manuscript develops the broader architecture behind Aristotle Agentic: governance infrastructure for autonomous systems operating in telecommunications, logistics, financial systems, robotics, distributed computing, and other infrastructure environments.</p>
+            <p>The motivating question is explicit: how do institutions maintain authority over machines that increasingly make operational decisions on their own? The book answers by treating governance as infrastructure, not institutional decoration.</p>
+            <p class="thesis"><strong>Why it matters:</strong> it provides the philosophical and architectural backbone for the whole site: Aristotle Agentic as thought lab, AristotleOS as substrate, Training Hub as capacity building, and Montana AI-X as civic application.</p>
+            <div class="cta">
+              <a class="button primary" href="/papers/files/the-gplane-architecture.pdf">Open PDF</a>
+              <a class="button" href="/about/">About Aristotle Agentic</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="section-head">
+          <h2>What the papers prove together.</h2>
+          <p class="section-lede">The intellectual progression is useful: intermittent connectivity creates the governance gap, deterministic enforcement supplies the control model, and the book gives the institutional architecture.</p>
+        </div>
+        <div class="graph-grid">
+          <div class="graph">
+            <b>CONCEPT WEIGHT BY SOURCE</b>
+            <div class="bars">
+              <div class="bar"><span>Disconnection</span><i style="--w:92%"></i></div>
+              <div class="bar"><span>Authority chain</span><i style="--w:86%"></i></div>
+              <div class="bar"><span>Commit boundary</span><i style="--w:78%"></i></div>
+              <div class="bar"><span>Evidence / audit</span><i style="--w:82%"></i></div>
+              <div class="bar"><span>Human legitimacy</span><i style="--w:74%"></i></div>
+            </div>
+          </div>
+          <div class="graph">
+            <b>THESIS STACK</b>
+            <div class="stack">
+              <div>1. Autonomous systems act faster than institutional oversight.</div>
+              <div>2. Infrastructure requires deterministic safety and authority boundaries.</div>
+              <div>3. Governance must be enforced before consequence.</div>
+              <div>4. Evidence must remain verifiable after disconnection.</div>
+              <div>5. Human authority is the moral and operational anchor.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div class="row">
+        <div><strong>Aristotle Agentic Papers</strong><br />Governance infrastructure for autonomous systems.</div>
+        <div><a href="/research/">Research</a> · <a href="/governance-thesis/">Governance thesis</a> · <a href="/aristotleos/">AristotleOS</a></div>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

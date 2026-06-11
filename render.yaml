@@ -1,0 +1,422 @@
+services:
+  - type: web
+    name: aristotle-agentic
+    runtime: node
+    rootDir: extracted
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/website
+    startCommand: npm run start -w @aristotle/website
+    healthCheckPath: /readyz
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 8080
+      - key: PUBLIC_ORIGIN
+        value: https://www.aristotleagentic.com
+      - key: ARISTOTLE_WEBSITE_DATA_DIR
+        value: /data
+      - key: TRUST_PROXY
+        value: "1"
+      - key: STORE_RAW_IP
+        value: "0"
+      - key: ADMIN_SESSION_HOURS
+        value: "12"
+      - key: REQUIRE_PRODUCTION_CONFIG
+        value: "1"
+      - key: ARISTOTLE_ADMIN_TOKEN
+        sync: false
+    disk:
+      name: aristotle-agentic-data
+      mountPath: /data
+      sizeGB: 1
+
+  - type: pserv
+    name: meta-authority-registry
+    runtime: node
+    rootDir: extracted
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/meta-authority-registry
+    startCommand: npm run start -w @aristotle/meta-authority-registry
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: PORT_META_AUTHORITY_REGISTRY
+        value: "10000"
+      - key: HOST_META_AUTHORITY_REGISTRY
+        value: meta-authority-registry
+      - key: MESH_SECRET
+        sync: false
+
+  - type: pserv
+    name: policy-compiler
+    runtime: node
+    rootDir: extracted
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/execution-control-runtime -w @aristotle/policy-compiler
+    startCommand: npm run start -w @aristotle/policy-compiler
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: PORT_POLICY_COMPILER
+        value: "10000"
+
+  - type: pserv
+    name: evidence-ledger
+    runtime: node
+    rootDir: extracted
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/execution-control-runtime -w @aristotle/evidence-ledger
+    startCommand: npm run start -w @aristotle/evidence-ledger
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: PORT_EVIDENCE_LEDGER
+        value: "10000"
+      - key: EVIDENCE_LEDGER_STATE_PATH
+        value: /data/evidence-ledger.json
+      - key: EVIDENCE_LEDGER_GEL_PATH
+        value: /data/evidence-ledger.gel.jsonl
+      - key: EVIDENCE_LEDGER_SIGNING_SECRET
+        sync: false
+    disk:
+      name: evidence-ledger-data
+      mountPath: /data
+      sizeGB: 1
+
+  - type: pserv
+    name: authority-router
+    runtime: node
+    rootDir: extracted
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/authority-router
+    startCommand: npm run start -w @aristotle/authority-router
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: PORT_AUTHORITY_ROUTER
+        value: "10000"
+
+  - type: pserv
+    name: witness-service
+    runtime: node
+    rootDir: extracted
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/witness-service
+    startCommand: npm run start -w @aristotle/witness-service
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: PORT_WITNESS_SERVICE
+        value: "10000"
+      - key: HOST_WITNESS_SERVICE
+        value: witness-service
+      - key: MESH_SECRET
+        sync: false
+
+  - type: pserv
+    name: execution-gate
+    runtime: node
+    rootDir: extracted
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/execution-control-runtime -w @aristotle/execution-gate
+    startCommand: npm run start -w @aristotle/execution-gate
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: PORT_EXECUTION_GATE
+        value: "10000"
+
+  - type: pserv
+    name: governance-kernel
+    runtime: node
+    rootDir: extracted
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/governance-core -w @aristotle/execution-control-runtime -w @aristotle/governance-kernel
+    startCommand: npm run start -w @aristotle/governance-kernel
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: PORT_GOVERNANCE_KERNEL
+        value: "10000"
+      - key: HOST_META_AUTHORITY_REGISTRY
+        fromService:
+          type: pserv
+          name: meta-authority-registry
+          property: host
+      - key: PORT_META_AUTHORITY_REGISTRY
+        fromService:
+          type: pserv
+          name: meta-authority-registry
+          property: port
+
+  - type: pserv
+    name: simulation-engine
+    runtime: node
+    rootDir: extracted
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/chaos-harness -w @aristotle/simulation-engine
+    startCommand: npm run start -w @aristotle/simulation-engine
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: PORT_SIMULATION_ENGINE
+        value: "10000"
+
+  - type: pserv
+    name: agent-os
+    runtime: node
+    rootDir: extracted
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/execution-control-runtime -w @aristotle/agent-os
+    startCommand: npm run start -w @aristotle/agent-os
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: PORT_AGENT_OS
+        value: "10000"
+      - key: AGENT_OS_STATE_PATH
+        value: /data/agent-os.json
+      - key: HOST_AGENT_OS
+        value: agent-os
+      - key: MESH_SECRET
+        sync: false
+      - key: HOST_EVIDENCE_LEDGER
+        fromService:
+          type: pserv
+          name: evidence-ledger
+          property: host
+      - key: HOST_GOVERNANCE_KERNEL
+        fromService:
+          type: pserv
+          name: governance-kernel
+          property: host
+      - key: HOST_POLICY_COMPILER
+        fromService:
+          type: pserv
+          name: policy-compiler
+          property: host
+      - key: HOST_AUTHORITY_ROUTER
+        fromService:
+          type: pserv
+          name: authority-router
+          property: host
+      - key: HOST_SIMULATION_ENGINE
+        fromService:
+          type: pserv
+          name: simulation-engine
+          property: host
+      - key: HOST_WITNESS_SERVICE
+        fromService:
+          type: pserv
+          name: witness-service
+          property: host
+      - key: HOST_EXECUTION_GATE
+        fromService:
+          type: pserv
+          name: execution-gate
+          property: host
+      - key: PORT_EVIDENCE_LEDGER
+        fromService:
+          type: pserv
+          name: evidence-ledger
+          property: port
+      - key: PORT_GOVERNANCE_KERNEL
+        fromService:
+          type: pserv
+          name: governance-kernel
+          property: port
+      - key: PORT_POLICY_COMPILER
+        fromService:
+          type: pserv
+          name: policy-compiler
+          property: port
+      - key: PORT_AUTHORITY_ROUTER
+        fromService:
+          type: pserv
+          name: authority-router
+          property: port
+      - key: PORT_SIMULATION_ENGINE
+        fromService:
+          type: pserv
+          name: simulation-engine
+          property: port
+      - key: PORT_WITNESS_SERVICE
+        fromService:
+          type: pserv
+          name: witness-service
+          property: port
+      - key: PORT_EXECUTION_GATE
+        fromService:
+          type: pserv
+          name: execution-gate
+          property: port
+    disk:
+      name: agent-os-data
+      mountPath: /data
+      sizeGB: 1
+
+  - type: pserv
+    name: http-gateway
+    runtime: node
+    rootDir: extracted
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/trial-engine && node --check adapters/http-gateway/src/index.js && node --check adapters/http-gateway/src/operator-auth.js && node --check adapters/http-gateway/src/trial-api.js
+    startCommand: npm run start -w @aristotle/http-gateway
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: PORT_GATEWAY
+        value: "10000"
+      - key: SERVICE_DISCOVERY_MODE
+        value: container
+      - key: HOST_GOVERNANCE_KERNEL
+        fromService:
+          type: pserv
+          name: governance-kernel
+          property: host
+      - key: HOST_POLICY_COMPILER
+        fromService:
+          type: pserv
+          name: policy-compiler
+          property: host
+      - key: HOST_EVIDENCE_LEDGER
+        fromService:
+          type: pserv
+          name: evidence-ledger
+          property: host
+      - key: HOST_META_AUTHORITY_REGISTRY
+        fromService:
+          type: pserv
+          name: meta-authority-registry
+          property: host
+      - key: HOST_SIMULATION_ENGINE
+        fromService:
+          type: pserv
+          name: simulation-engine
+          property: host
+      - key: HOST_AUTHORITY_ROUTER
+        fromService:
+          type: pserv
+          name: authority-router
+          property: host
+      - key: HOST_WITNESS_SERVICE
+        fromService:
+          type: pserv
+          name: witness-service
+          property: host
+      - key: HOST_EXECUTION_GATE
+        fromService:
+          type: pserv
+          name: execution-gate
+          property: host
+      - key: HOST_AGENT_OS
+        fromService:
+          type: pserv
+          name: agent-os
+          property: host
+      - key: PORT_GOVERNANCE_KERNEL
+        fromService:
+          type: pserv
+          name: governance-kernel
+          property: port
+      - key: PORT_POLICY_COMPILER
+        fromService:
+          type: pserv
+          name: policy-compiler
+          property: port
+      - key: PORT_EVIDENCE_LEDGER
+        fromService:
+          type: pserv
+          name: evidence-ledger
+          property: port
+      - key: PORT_META_AUTHORITY_REGISTRY
+        fromService:
+          type: pserv
+          name: meta-authority-registry
+          property: port
+      - key: PORT_SIMULATION_ENGINE
+        fromService:
+          type: pserv
+          name: simulation-engine
+          property: port
+      - key: PORT_AUTHORITY_ROUTER
+        fromService:
+          type: pserv
+          name: authority-router
+          property: port
+      - key: PORT_WITNESS_SERVICE
+        fromService:
+          type: pserv
+          name: witness-service
+          property: port
+      - key: PORT_EXECUTION_GATE
+        fromService:
+          type: pserv
+          name: execution-gate
+          property: port
+      - key: PORT_AGENT_OS
+        fromService:
+          type: pserv
+          name: agent-os
+          property: port
+      - key: EVIDENCE_LEDGER_STATE_PATH
+        value: /data/evidence-ledger.json
+      - key: AGENT_OS_STATE_PATH
+        value: /data/agent-os.json
+      - key: OPERATOR_API_KEY
+        sync: false
+      - key: OPERATOR_SESSION_SECRET
+        sync: false
+      - key: OPERATOR_SESSION_ENFORCEMENT
+        value: "1"
+
+  - type: web
+    name: aristotle-console
+    runtime: node
+    rootDir: extracted
+    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/console-ui
+    startCommand: npm run serve -w @aristotle/console-ui
+    healthCheckPath: /console-health
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      - key: CONSOLE_GATEWAY_BASE_URL
+        fromService:
+          type: pserv
+          name: http-gateway
+          property: hostport
+      - key: CONSOLE_ACCESS_TOKEN
+        sync: false
+      - key: CONSOLE_OPERATOR_API_KEY
+        sync: false
+      - key: CONSOLE_OPERATOR_ACTOR
+        value: operator:render-console
+      - key: CONSOLE_OPERATOR_ROLE
+        value: admin
+

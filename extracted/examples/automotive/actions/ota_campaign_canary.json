@@ -1,0 +1,44 @@
+{
+  "action_id": "av-ota-canary-001",
+  "ward_id": "ward-av-fleet-west",
+  "subject": "agent:fleet-safety-operator",
+  "action_type": "ota.campaign.stage",
+  "target": "ota-campaign/AVOS-2026.05.25/canary",
+  "params": {
+    "adapter": "ota-campaign",
+    "campaign_id": "AVOS-2026.05.25",
+    "image_digest": "sha256:91c02a0fd1c6a83d7a8f1b3e5f8f82a74d2c6fb9f2d6e8f4a4d2b7e934e1167a",
+    "ota_image_digest": "sha256:91c02a0fd1c6a83d7a8f1b3e5f8f82a74d2c6fb9f2d6e8f4a4d2b7e934e1167a",
+    "rollout_wave": "canary",
+    "operation": "stage",
+    "boundary_id": "sf-soma-odd",
+    "odd_id": "sf-soma-daylight",
+    "road_class": "residential",
+    "drive_state": "parked",
+    "speed_mps": 0,
+    "map_confidence": 0.994,
+    "localization_confidence": 0.993,
+    "perception_confidence": 0.981,
+    "mrc_available": true
+  },
+  "requested_at": "2026-05-25T15:00:00.000Z",
+  "request_id": "req-av-ota-001",
+  "telemetry": {
+    "vehicle_id": "AV-1042",
+    "fleet_region": "west",
+    "odd_id": "sf-soma-daylight",
+    "road_class": "residential",
+    "drive_state": "parked",
+    "speed_mps": 0,
+    "map_confidence": 0.994,
+    "localization_confidence": 0.993,
+    "perception_confidence": 0.981,
+    "mrc_available": true,
+    "ota_image_digest": "sha256:91c02a0fd1c6a83d7a8f1b3e5f8f82a74d2c6fb9f2d6e8f4a4d2b7e934e1167a",
+    "safety_case_id": "SC-AV-WEST-2026-001"
+  },
+  "classification": {
+    "level": "CUI",
+    "caveats": ["VEHICLE_SAFETY"]
+  }
+}

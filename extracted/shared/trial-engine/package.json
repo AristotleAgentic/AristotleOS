@@ -1,0 +1,13 @@
+{
+  "name": "@aristotle/trial-engine",
+  "version": "0.1.0",
+  "license": "MPL-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "tsc -p tsconfig.json",
+    "test": "tsx src/index.test.ts"
+  }
+}

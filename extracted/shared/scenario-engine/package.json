@@ -1,0 +1,17 @@
+{
+  "name": "@aristotle/scenario-engine",
+  "version": "0.1.0",
+  "description": "Declarative scenario engine for AristotleOS. Scripts mesh fault patterns (partition, revoke, heal, GPS spoof, packet loss) into a deterministic trace that CI can assert on.",
+  "license": "MPL-2.0",
+  "private": false,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@aristotle/mesh-runtime": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test src/index.test.ts"
+  }
+}

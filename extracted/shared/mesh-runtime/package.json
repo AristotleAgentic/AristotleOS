@@ -1,0 +1,15 @@
+{
+  "name": "@aristotle/mesh-runtime",
+  "version": "0.1.0",
+  "description": "Multi-process governance mesh: root-authority, witness, and edge-gate roles communicating over HTTP. Implements authority-envelope propagation, revocation gossip, Fluidity Tokens, disconnected commit gate, and partition reconciliation.",
+  "license": "MPL-2.0",
+  "private": false,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test src/index.test.ts src/quorum-routing.test.ts src/ed25519-mesh.test.ts src/ingress-hardening.test.ts src/revocation-quorum.test.ts"
+  }
+}

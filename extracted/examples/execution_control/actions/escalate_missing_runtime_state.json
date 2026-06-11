@@ -1,0 +1,14 @@
+{
+  "action_id": "act-drone-runtime-state-001",
+  "ward_id": "montana-drone-test-range",
+  "subject": "agent:survey-planner",
+  "action_type": "drone.takeoff",
+  "target": "drone-swarm/unit-7",
+  "params": {
+    "altitude_m": 60,
+    "boundary_id": "ranch-test-grid-a",
+    "battery_pct": 91
+  },
+  "requested_at": "2026-05-21T14:02:00Z",
+  "request_id": "req-drone-003"
+}

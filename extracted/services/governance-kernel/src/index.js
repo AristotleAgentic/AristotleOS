@@ -1,6 +1,13 @@
+import { resolve } from "node:path";
+import { generateKeyPairSync } from "node:crypto";
 import { createApp, id, now } from "./lib.js";
+import { createGovernanceChain, registerGovernanceChainRoutes } from "./governance-chain.js";
+// Substrate-backed Warrant lifecycle — Ed25519-signed, content-bound,
+// nonce-protected. Lives alongside the legacy ExecutionWarrant flow.
+import { createEd25519Signer, evaluateCommitGate, issueWarrant, verifyWarrant } from "@aristotle/execution-control-runtime";
 const port = Number(process.env.PORT_GOVERNANCE_KERNEL ?? 7001);
 const app = createApp();
+const chainV2Enabled = (process.env.GOVERNANCE_CHAIN_V2 ?? "false").toLowerCase() === "true";
 const serviceDiscoveryMode = process.env.SERVICE_DISCOVERY_MODE ?? "container";
 const registryHost = process.env.HOST_META_AUTHORITY_REGISTRY ??
     (serviceDiscoveryMode === "local" ? "127.0.0.1" : "meta-authority-registry");
@@ -35,7 +42,30 @@ const appliesKillSwitch = (context) => {
         return false;
     });
 };
-app.get("/health", (_req, res) => res.json({ ok: true, service: "governance-kernel", killSwitchState, activeKillScopes: activeKillScopes() }));
+// ---------------------------------------------------------------------------
+// Substrate-backed Ed25519 signer.
+// Pre-1.0: generate one ephemeral keypair at boot. Production deployments
+// should inject a KMS-backed AristotleSigner (see LIMITATIONS.md §1).
+// ---------------------------------------------------------------------------
+let substrateSigner = null;
+function getSubstrateSigner() {
+    if (!substrateSigner) {
+        const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+        substrateSigner = createEd25519Signer({
+            privateKeyPem: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
+            publicKeyPem: publicKey.export({ type: "spki", format: "pem" }).toString()
+        });
+    }
+    return substrateSigner;
+}
+app.get("/health", (_req, res) => res.json({
+    ok: true,
+    service: "governance-kernel",
+    killSwitchState,
+    activeKillScopes: activeKillScopes(),
+    governanceChainV2: chainV2Enabled,
+    substrate_wired: true
+}));
 app.get("/envelopes", (_req, res) => res.json({ items: [...envelopes.values()] }));
 app.get("/warrants", (_req, res) => res.json({ items: [...warrants.values()] }));
 app.post("/kill-switch", (req, res) => {
@@ -119,4 +149,107 @@ app.post("/evaluate-admissibility", (req, res) => {
         reasons: admissible ? ["Envelope valid", `Policy compile ref: ${policyCompileId ?? "none"}`] : ["Kill switch active for this scope"]
     });
 });
-app.listen(port, () => console.log(`governance-kernel on ${port}`));
+if (chainV2Enabled) {
+    const signingSecret = process.env.GOVERNANCE_CHAIN_SIGNING_SECRET;
+    const resolveEnvPath = (key) => {
+        const value = process.env[key];
+        return value ? resolve(process.cwd(), value) : undefined;
+    };
+    const signingPrivateKeyPath = resolveEnvPath("GOVERNANCE_CHAIN_SIGNING_PRIVATE_KEY_PATH");
+    const signingPublicKeyPath = resolveEnvPath("GOVERNANCE_CHAIN_SIGNING_PUBLIC_KEY_PATH");
+    const usingEd25519 = Boolean(signingPrivateKeyPath && signingPublicKeyPath);
+    if (!usingEd25519 && !signingSecret) {
+        console.warn("[governance-kernel] GOVERNANCE_CHAIN_V2 enabled without ed25519 keys or GOVERNANCE_CHAIN_SIGNING_SECRET; using an insecure dev secret. Configure signing before any non-dev use.");
+    }
+    const statePath = resolveEnvPath("GOVERNANCE_CHAIN_STATE_PATH");
+    const chain = createGovernanceChain({
+        signingSecret: signingSecret ?? "dev-insecure-governance-chain-secret",
+        keyId: process.env.GOVERNANCE_CHAIN_KEY_ID,
+        signingPrivateKeyPath,
+        signingPublicKeyPath,
+        statePath,
+    });
+    registerGovernanceChainRoutes(app, chain);
+    console.log(`governance-kernel: GOVERNANCE_CHAIN_V2 enabled (signing: ${chain.signingMode})${statePath ? ` (durable: ${statePath})` : " (in-memory; set GOVERNANCE_CHAIN_STATE_PATH for durability)"} — Ward/Warrant chain at /v2/*`);
+}
+// ---------------------------------------------------------------------------
+// Substrate-backed Warrant lifecycle (/v1/warrant/*)
+//
+// Sits alongside the legacy /issue-warrant flow (which uses the
+// shared-types ExecutionWarrant shape). These new endpoints use the
+// real substrate's Ed25519-signed, content-bound, single-use Warrant
+// primitive from @aristotle/execution-control-runtime.
+//
+//   POST /v1/warrant/issue   — evaluate gate, mint signed Warrant
+//   POST /v1/warrant/verify  — independently verify a Warrant
+//
+// Callers (UI, http-gateway, third parties) use the public verifier
+// at @aristotle/warrant-verifier for offline verification; this
+// service is the issuer.
+// ---------------------------------------------------------------------------
+app.post("/v1/warrant/issue", (req, res) => {
+    const { ward, authorityEnvelope, action, ttlSeconds } = req.body;
+    if (!ward || !authorityEnvelope || !action) {
+        return res.status(400).json({
+            ok: false,
+            error: "missing_required_fields",
+            detail: "ward, authorityEnvelope, and action are required"
+        });
+    }
+    // Evaluate the gate first.
+    const decision = evaluateCommitGate({ ward, authorityEnvelope, action, now: now() });
+    if (decision.decision !== "ALLOW") {
+        return res.status(403).json({
+            ok: false,
+            decision: decision.decision,
+            reason_codes: decision.reason_codes,
+            canonical_action_hash: decision.canonical_action_hash
+        });
+    }
+    // Mint a signed Warrant.
+    const signer = getSubstrateSigner();
+    const warrant = issueWarrant(decision, action, authorityEnvelope, now(), signer, ttlSeconds ?? 60);
+    if (!warrant) {
+        return res.status(500).json({ ok: false, error: "warrant_issue_failed" });
+    }
+    res.status(201).json({
+        ok: true,
+        decision: decision.decision,
+        canonical_action_hash: decision.canonical_action_hash,
+        warrant,
+        trust_anchor: { key_id: signer.key_id, public_key_pem: signer.public_key_pem }
+    });
+});
+app.post("/v1/warrant/verify", (req, res) => {
+    const { warrant, canonicalActionHash, trustedKeyIds, maxClockSkewMs, maxLifetimeMs } = req.body;
+    if (!warrant || !canonicalActionHash) {
+        return res.status(400).json({
+            ok: false,
+            error: "missing_required_fields",
+            detail: "warrant and canonicalActionHash are required"
+        });
+    }
+    // If the caller didn't supply trustedKeyIds, default to our own
+    // signer's key id (so warrants this kernel minted verify cleanly).
+    const trusted = trustedKeyIds ?? [getSubstrateSigner().key_id];
+    const verification = verifyWarrant(warrant, canonicalActionHash, now(), {
+        trustedKeyIds: trusted,
+        maxClockSkewMs,
+        maxLifetimeMs
+    });
+    res.json({
+        ok: verification.ok,
+        reason: verification.reason,
+        warrant_id: warrant.warrant_id,
+        verified_at: now()
+    });
+});
+app.get("/v1/trust-anchor", (_req, res) => {
+    const signer = getSubstrateSigner();
+    res.json({
+        key_id: signer.key_id,
+        algorithm: signer.algorithm,
+        public_key_pem: signer.public_key_pem
+    });
+});
+app.listen(port, () => console.log(`governance-kernel on ${port} (substrate-wired: Ed25519 warrant lifecycle at /v1/warrant/*)`));

@@ -4,7 +4,7 @@ metadata:
   name: http-gateway
   namespace: aristotle-governance-os
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: http-gateway
@@ -16,20 +16,80 @@ spec:
       containers:
         - name: http-gateway
           image: aristotle/http-gateway:latest
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8080
+            - name: http
+              containerPort: 8080
           env:
             - name: PORT_GATEWAY
               value: "8080"
+          envFrom:
+            - configMapRef:
+                name: aristotle-runtime-config
+            - secretRef:
+                name: aristotle-runtime-secrets
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 6
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 24
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: http-gateway
+  namespace: aristotle-governance-os
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: http-gateway
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: http-gateway
   namespace: aristotle-governance-os
+  labels:
+    app: http-gateway
 spec:
   selector:
     app: http-gateway
   ports:
-    - port: 8080
+    - name: http
+      port: 8080
       targetPort: 8080

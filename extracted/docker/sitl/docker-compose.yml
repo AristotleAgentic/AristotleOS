@@ -1,0 +1,56 @@
+# PX4 SITL — Software-In-The-Loop autopilot for AristotleOS hardware-
+# governance integration tests. Launches PX4 with the standard SITL
+# binary on the canonical MAVLink UDP port (14540) so the
+# @aristotle/mavlink-px4 adapter can drive it end-to-end.
+#
+# Usage:
+#   docker compose -f docker/sitl/docker-compose.yml up -d
+#   ARISTOTLE_PX4_SITL_HOST=127.0.0.1 \
+#   ARISTOTLE_PX4_SITL_PORT=14540 \
+#     corepack pnpm@10.32.1 run test:px4-sitl
+#   docker compose -f docker/sitl/docker-compose.yml down
+#
+# Or with the convenience wrapper:
+#   docker/sitl/run.sh test
+#
+# NOT in CI by default — runs Docker, needs ~2 GB RAM and ~30s to boot
+# SITL. Wire as a nightly job or run pre-merge for changes that touch
+# packages/mavlink-px4 or the FlightControlTransport contract.
+#
+# The image we pull is the upstream PX4 SITL container. PX4 is BSD-3-
+# clause; the image is published by the PX4-Autopilot project. Pin a
+# specific tag for reproducibility — bump deliberately, document in
+# CHANGELOG when you do.
+
+services:
+  px4-sitl:
+    image: px4io/px4-dev-simulation-jammy:2024-04-25
+    container_name: aristotle-px4-sitl
+    # PX4 SITL with the jmavsim simulator. The "none_iris" build runs
+    # without graphical sim. The MAVLink UDP endpoint is on 14540 by
+    # default; we expose it for the host-side test runner to reach.
+    command:
+      - bash
+      - -lc
+      - |
+        cd /src/PX4-Autopilot &&
+        # Use HEADLESS to skip jmavsim's Java GUI; we only need the
+        # MAVLink endpoint up for testing.
+        HEADLESS=1 make px4_sitl none_iris
+    ports:
+      - "14540:14540/udp"
+    networks:
+      - aristotle-sitl
+    healthcheck:
+      # SITL takes ~20-30s to be ready to accept MAVLink commands.
+      # The healthcheck probes the UDP port via a simple Python heartbeat.
+      test: ["CMD-SHELL", "echo > /dev/udp/127.0.0.1/14540 && exit 0 || exit 1"]
+      interval: 5s
+      timeout: 2s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+networks:
+  aristotle-sitl:
+    driver: bridge

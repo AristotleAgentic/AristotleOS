@@ -1,0 +1,49 @@
+{
+  "action_id": "grid-clearance-refuse-001",
+  "ward_id": "ward-grid-transmission-west",
+  "subject": "agent:grid-ops-orchestrator",
+  "action_type": "scada.breaker.close",
+  "target": "SCADA:BRK-230-17:close_breaker",
+  "params": {
+    "adapter": "scada-ems-adms",
+    "system": "SCADA",
+    "command": "close_breaker",
+    "asset_id": "BRK-230-17",
+    "asset_type": "breaker",
+    "boundary_id": "transmission-west",
+    "grid_boundary_id": "transmission-west",
+    "topology_model_id": "topo-west-2026-05-25",
+    "voltage_class": "230kV",
+    "voltage_kv": 230.2,
+    "frequency_hz": 60,
+    "feeder_load_pct": 58,
+    "transformer_load_pct": 66,
+    "der_export_mw": 12,
+    "grid_state": "maintenance",
+    "switching_order_id": "SWO-2026-0525-17",
+    "crew_clearance_released": false,
+    "protection_state_known": true,
+    "scada_fresh": true,
+    "telemetry_age_ms": 900,
+    "manual_fallback_ready": true,
+    "operator_id": "operator:grid-west"
+  },
+  "requested_at": "2026-05-25T15:00:00.000Z",
+  "request_id": "req-grid-clearance-refuse-001",
+  "telemetry": {
+    "asset_id": "BRK-230-17",
+    "asset_type": "breaker",
+    "grid_boundary_id": "transmission-west",
+    "topology_model_id": "topo-west-2026-05-25",
+    "switching_order_id": "SWO-2026-0525-17",
+    "crew_clearance_released": false,
+    "protection_state_known": true,
+    "scada_fresh": true,
+    "manual_fallback_ready": true,
+    "operator_id": "operator:grid-west"
+  },
+  "classification": {
+    "level": "CUI",
+    "caveats": ["BES_OPS"]
+  }
+}

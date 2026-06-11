@@ -1,0 +1,64 @@
+ward_id: ward-title-mt-lender-ops
+name: Montana Lender Title Operations (DEMONSTRATION)
+sovereignty_context: state-mt-mvd-authority
+authority_domain: title-transaction-ops
+policy_version: 0.1.0
+evidence_ledger_path: .aristotle/title-mt-lender-ops.gel.jsonl
+permitted_subjects:
+  - agent:title-orchestrator
+  - agent:lender-edge-controller
+physical_bounds:
+  permitted_jurisdictions: [MT, OR, CA, TX, FL]
+  permitted_transaction_types:
+    - lien-release
+    - lien-perfection
+    - title-transfer
+    - title-correction
+    - registration-renewal
+    - registration-interstate
+    - digital-signature-execute
+    - dmv-submission
+  permitted_organization_kinds: [dealer, lender, dmv, title-agent]
+  max_fraud_risk_score: 0.7
+  min_identity_confidence_score: 0.8
+  max_warrant_age_ms: 600000
+  max_telemetry_age_ms: 60000
+  require_signer_authorized: true
+  require_nmvtis_passed: true
+  require_theft_flag_clear: true
+  require_odometer_disclosed: true
+  require_identity_verified: true
+  require_authority_envelope_unrevoked: true
+  require_warrant_unused: true
+  require_required_forms_present: true
+  require_state_supports_elt: true
+  require_lien_exists: true
+  require_lien_release_authority_active: true
+  require_lender_active: true
+  require_lender_elt_participant: true
+  require_operator_qualified: true
+metadata:
+  title_vertical: aristotle-verified-title-transaction-layer
+  rule_validation_state: demonstration
+  regulatory_evidence_profile:
+    - STATE_ELT
+    - STATE_TITLE_STATUTES
+    - NMVTIS
+    - ODOMETER_DISCLOSURE
+    - DIGITAL_SIGNATURE_ESIGN_UETA
+    - DLDV
+    - UCC_ARTICLE_9
+    - DEALER_LICENSING
+  protected_scope:
+    - lien-release
+    - title-transfer
+    - digital-signature
+    - dmv-submission
+  notice: |
+    SAMPLE / DEMONSTRATION RULES ONLY. Jurisdictional rules require legal
+    validation before any production use.
+criticality: safety_critical
+classification:
+  level: CUI
+  caveats:
+    - TITLE_OPS

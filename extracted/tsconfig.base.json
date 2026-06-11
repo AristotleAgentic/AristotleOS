@@ -6,7 +6,13 @@
     "baseUrl": ".",
     "paths": {
       "@aristotle/shared-types": ["shared/types/src/index.ts"],
-      "@aristotle/shared-schemas": ["shared/schemas/src/index.ts"]
+      "@aristotle/shared-schemas": ["shared/schemas/src/index.ts"],
+      "@aristotle/governance-core": ["shared/governance-core/src/index.ts"],
+      "@aristotle/trial-engine": ["shared/trial-engine/src/index.ts"],
+      "@aristotle/execution-control-runtime": ["shared/execution-control-runtime/src/index.ts"],
+      "@aristotle/service-runtime": ["shared/service-runtime/src/index.ts"],
+      "@aristotle/mesh-runtime": ["shared/mesh-runtime/dist/index.d.ts"],
+      "@aristotle/chaos-harness": ["shared/chaos-harness/dist/index.d.ts"]
     },
     "strict": true,
     "declaration": true,

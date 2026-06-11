@@ -1,0 +1,32 @@
+{
+  "action_id": "act-healthcare-missing-context-001",
+  "ward_id": "ward-healthcare-clinical-ops",
+  "subject": "agent:clinical-ops-coordinator",
+  "action_type": "ehr.note.append",
+  "target": "encounter:enc-2026-0525-009:note",
+  "params": {
+    "adapter": "ehr-writeback",
+    "facility_id": "west-hospital",
+    "clinical_unit": "emergency-department",
+    "encounter_id": "enc-2026-0525-009",
+    "fhir_resource_type": "DocumentReference",
+    "resource_operation": "append"
+  },
+  "requested_at": "2026-05-25T16:02:00.000Z",
+  "request_id": "req-healthcare-missing-context-001",
+  "telemetry": {
+    "patient_context_present": false,
+    "patient_identity_verified": true,
+    "tpo_basis": "treatment",
+    "clinician_privilege_active": true,
+    "clinical_context_age_ms": 45000,
+    "chart_lock_clear": true,
+    "allergy_checked": true,
+    "medication_interaction_clear": true,
+    "order_signing_authority": true,
+    "diagnosis_context_present": true,
+    "audit_context_present": true,
+    "manual_fallback_ready": true,
+    "operator_id": "operator:clinical-supervisor"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "@aristotle/mavlink-px4",
+  "version": "0.1.0",
+  "description": "Govern PX4 / ArduPilot flight commands with AristotleOS. FlightControlTransport contract + a UDP-based MAVLink transport that admits commands only on Warrant verification.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "files": ["dist", "README.md", "LICENSE", "NOTICE"],
+  "keywords": ["aristotle", "mavlink", "px4", "ardupilot", "uav", "flight-control", "agent-governance"],
+  "homepage": "https://github.com/AristotleAgentic/AristotleOS",
+  "repository": { "type": "git", "url": "https://github.com/AristotleAgentic/AristotleOS.git", "directory": "packages/mavlink-px4" },
+  "bugs": { "url": "https://github.com/AristotleAgentic/AristotleOS/issues" },
+  "publishConfig": { "access": "public" },
+  "engines": { "node": ">=18" },
+  "sideEffects": false,
+  "dependencies": {
+    "@aristotle/adapter-sdk": "workspace:*",
+    "@aristotle/os-sdk": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test src/index.test.ts",
+    "prepublishOnly": "npm run build"
+  }
+}

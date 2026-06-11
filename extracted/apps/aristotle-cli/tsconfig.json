@@ -1,0 +1,24 @@
+{
+  // Typecheck-only tsconfig for apps/aristotle-cli. The published artifact
+  // is bundled by build.mjs (esbuild), which uses tsconfig.base.json for
+  // its own paths. This config exists so `tsc --noEmit` can validate the
+  // CLI source against the workspace substrate.
+  //
+  // We deliberately do NOT set rootDir / outDir here: paths resolve to
+  // workspace sources outside apps/aristotle-cli/src, and a narrow rootDir
+  // would reject every cross-package reference.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": "../..",
+    "paths": {
+      "@aristotle/shared-types": ["shared/types/src/index.ts"],
+      "@aristotle/shared-schemas": ["shared/schemas/src/index.ts"],
+      "@aristotle/governance-core": ["shared/governance-core/src/index.ts"],
+      "@aristotle/trial-engine": ["shared/trial-engine/src/index.ts"],
+      "@aristotle/execution-control-runtime": ["shared/execution-control-runtime/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts"]
+}

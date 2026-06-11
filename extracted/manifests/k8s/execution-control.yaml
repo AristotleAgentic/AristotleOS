@@ -1,0 +1,178 @@
+# AristotleOS execution-control boundary for Kubernetes.
+#
+# Prereqs:
+#   1. Build & push the image from manifests/docker/execution-control.Dockerfile
+#      (tagged aristotle/execution-control:latest below).
+#   2. Create the signing key + operator API key secret:
+#        aristotle keys generate --out ./secrets
+#        kubectl -n aristotle-governance-os create secret generic aristotle-execution-control-secrets \
+#          --from-file=warrant-ed25519-private.pem=./secrets/warrant-ed25519-private.pem \
+#          --from-file=warrant-ed25519-public.pem=./secrets/warrant-ed25519-public.pem \
+#          --from-literal=operator-api-key="$(openssl rand -hex 24)"
+#   3. Put your Ward + Authority Envelope in the ConfigMap below.
+#
+# Note: replicas is 1 because the durable ledger is a single-node PVC. For
+# multi-replica HA, implement a networked LedgerBackend (e.g. Postgres) so replay
+# state is shared, then raise replicas.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aristotle-execution-control-config
+  namespace: aristotle-governance-os
+data:
+  ward.yaml: |
+    ward_id: production-ward
+    name: Production Ward
+    sovereignty_context: production
+    authority_domain: agent-tools
+    policy_version: 0.1.0
+    permitted_subjects:
+      - agent:production
+  authority-envelope.yaml: |
+    envelope_id: ae-production-001
+    ward_id: production-ward
+    subject: agent:production
+    allowed_actions:
+      - http.get
+      - http.post
+    denied_actions:
+      - secrets.exfiltrate
+    constraints:
+      note: production envelope
+    expires_at: 2099-12-31T23:59:59Z
+    issuer: aristotle-root
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: aristotle-execution-control-data
+  namespace: aristotle-governance-os
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: execution-control
+  namespace: aristotle-governance-os
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: execution-control
+  template:
+    metadata:
+      labels:
+        app: execution-control
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: execution-control
+          image: aristotle/execution-control:latest
+          imagePullPolicy: IfNotPresent
+          args:
+            - execution-control
+            - serve
+            - --ward
+            - /config/ward.yaml
+            - --envelope
+            - /config/authority-envelope.yaml
+            - --ledger-backend
+            - sqlite
+            - --ledger-db
+            - /data/gel.db
+            - --kill-switch
+            - /data/KILL_SWITCH
+            - --revocations
+            - /data/revocations.json
+            - --rate-limit
+            - "600"
+            - --log-format
+            - json
+            - --port
+            - "8181"
+          ports:
+            - name: http
+              containerPort: 8181
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: ARISTOTLE_WARRANT_SIGNING_PRIVATE_KEY_PATH
+              value: /secrets/warrant-ed25519-private.pem
+            - name: ARISTOTLE_WARRANT_SIGNING_PUBLIC_KEY_PATH
+              value: /secrets/warrant-ed25519-public.pem
+            - name: ARISTOTLE_OPERATOR_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aristotle-execution-control-secrets
+                  key: operator-api-key
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 50m
+              memory: 96Mi
+            limits:
+              cpu: "1"
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: secrets
+              mountPath: /secrets
+              readOnly: true
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: aristotle-execution-control-config
+        - name: secrets
+          secret:
+            secretName: aristotle-execution-control-secrets
+        - name: data
+          persistentVolumeClaim:
+            claimName: aristotle-execution-control-data
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: execution-control
+  namespace: aristotle-governance-os
+spec:
+  selector:
+    app: execution-control
+  ports:
+    - name: http
+      port: 8181
+      targetPort: http

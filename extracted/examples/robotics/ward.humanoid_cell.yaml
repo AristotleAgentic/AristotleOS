@@ -1,0 +1,67 @@
+ward_id: ward-robotics-humanoid-cell
+name: Humanoid Collaborative Cell A
+sovereignty_context: operator-robotics-authority
+authority_domain: robotics-humanoid-ops
+policy_version: 0.1.0
+evidence_ledger_path: .aristotle/robotics-humanoid-cell.gel.jsonl
+permitted_subjects:
+  - agent:robot-ops-orchestrator
+  - agent:humanoid-edge-controller
+physical_bounds:
+  permitted_workcell_id: cell-humanoid-a
+  permitted_robot_zones:
+    - zone-assembly-1
+    - zone-handover
+    - zone-walkway
+  permitted_asset_types:
+    - humanoid
+    - cobot
+    - amr
+    - gripper
+  permitted_operating_modes:
+    - automatic
+    - t1-reduced-speed
+    - collaborative
+  permitted_robot_states:
+    - idle
+    - running
+    - paused
+    - recovery
+  max_tcp_speed_mm_s: 1500
+  max_force_n: 140
+  max_torque_nm: 40
+  max_power_w: 80
+  min_separation_distance_mm: 500
+  max_com_deviation_mm: 60
+  max_step_height_mm: 200
+  max_payload_kg: 25
+  max_telemetry_age_ms: 1000
+  require_estop_functional: true
+  require_protective_stop_armed: true
+  require_ssm_active: true
+  require_pfl_active: true
+  require_collision_detection_active: true
+  require_safety_scanner_active: true
+  require_balance_controller_active: true
+  require_fall_protection_armed: true
+  require_collaborative_mode_when_human_present: true
+  require_operator_qualified: true
+metadata:
+  robotics_domain: humanoid
+  regulatory_evidence_profile:
+    - ISO_10218
+    - ISO_TS_15066
+    - ISO_13482
+    - ISO_13849
+    - PFL
+    - SSM
+  protected_scope:
+    - motion-control
+    - manipulation
+    - humanoid-locomotion
+    - human-robot-interaction
+criticality: safety_critical
+classification:
+  level: CUI
+  caveats:
+    - ROBOTICS_OPS

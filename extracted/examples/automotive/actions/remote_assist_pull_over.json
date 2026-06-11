@@ -1,0 +1,45 @@
+{
+  "action_id": "av-remote-assist-001",
+  "ward_id": "ward-av-fleet-west",
+  "subject": "agent:fleet-safety-operator",
+  "action_type": "remote_assist.command",
+  "target": "remote-assist/session/RA-8831/pull_over",
+  "params": {
+    "adapter": "remote-assist",
+    "session_id": "RA-8831",
+    "remote_assist_session_id": "RA-8831",
+    "operator_id": "operator:remote-assist-west",
+    "command": "pull_over",
+    "reason": "construction lane closure ahead",
+    "boundary_id": "sf-soma-odd",
+    "odd_id": "sf-soma-daylight",
+    "road_class": "urban-arterial",
+    "drive_state": "remote_assist",
+    "speed_mps": 3.2,
+    "map_confidence": 0.991,
+    "localization_confidence": 0.989,
+    "perception_confidence": 0.967,
+    "mrc_available": true
+  },
+  "requested_at": "2026-05-25T15:00:00.000Z",
+  "request_id": "req-av-remote-001",
+  "telemetry": {
+    "vehicle_id": "AV-1042",
+    "fleet_region": "west",
+    "odd_id": "sf-soma-daylight",
+    "road_class": "urban-arterial",
+    "drive_state": "remote_assist",
+    "speed_mps": 3.2,
+    "map_confidence": 0.991,
+    "localization_confidence": 0.989,
+    "perception_confidence": 0.967,
+    "mrc_available": true,
+    "remote_assist_session_id": "RA-8831",
+    "operator_id": "operator:remote-assist-west",
+    "safety_case_id": "SC-AV-WEST-2026-001"
+  },
+  "classification": {
+    "level": "CUI",
+    "caveats": ["VEHICLE_SAFETY"]
+  }
+}

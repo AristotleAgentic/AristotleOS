@@ -1,0 +1,43 @@
+{
+  "action_id": "av-sim-run-001",
+  "ward_id": "ward-av-fleet-west",
+  "subject": "agent:fleet-safety-operator",
+  "action_type": "simulation.scenario.run",
+  "target": "simulation/carla/SOMA-unprotected-left-001",
+  "params": {
+    "adapter": "simulation",
+    "scenario_id": "SOMA-unprotected-left-001",
+    "simulator": "carla",
+    "operation": "run",
+    "seed": "deterministic-seed-2026-05-25",
+    "boundary_id": "sf-soma-odd",
+    "odd_id": "sf-soma-daylight",
+    "road_class": "urban-arterial",
+    "drive_state": "parked",
+    "speed_mps": 0,
+    "map_confidence": 0.999,
+    "localization_confidence": 0.999,
+    "perception_confidence": 0.999,
+    "mrc_available": true
+  },
+  "requested_at": "2026-05-25T15:00:00.000Z",
+  "request_id": "req-av-sim-001",
+  "telemetry": {
+    "vehicle_id": "SIM-AV-1042",
+    "fleet_region": "west",
+    "odd_id": "sf-soma-daylight",
+    "road_class": "urban-arterial",
+    "drive_state": "parked",
+    "speed_mps": 0,
+    "map_confidence": 0.999,
+    "localization_confidence": 0.999,
+    "perception_confidence": 0.999,
+    "mrc_available": true,
+    "scenario_id": "SOMA-unprotected-left-001",
+    "safety_case_id": "SC-AV-WEST-2026-001"
+  },
+  "classification": {
+    "level": "CUI",
+    "caveats": ["VEHICLE_SAFETY"]
+  }
+}

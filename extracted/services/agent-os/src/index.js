@@ -1,6 +1,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { createApp, id, now } from "./lib.js";
+import { createChainClient } from "./governance-chain-client.js";
+import { EdgeNode } from "@aristotle/mesh-runtime";
+import { evaluateCommitGate } from "@aristotle/execution-control-runtime";
 const port = Number(process.env.PORT_AGENT_OS ?? 7009);
 const app = createApp();
 const statePath = resolve(process.cwd(), process.env.AGENT_OS_STATE_PATH ?? "./data/agent-os.json");
@@ -18,6 +21,14 @@ const authorityRouterBase = serviceOrigin("authority-router", "HOST_AUTHORITY_RO
 const simulationEngineBase = serviceOrigin("simulation-engine", "HOST_SIMULATION_ENGINE", Number(process.env.PORT_SIMULATION_ENGINE ?? 7005));
 const witnessServiceBase = serviceOrigin("witness-service", "HOST_WITNESS_SERVICE", Number(process.env.PORT_WITNESS_SERVICE ?? 7007));
 const executionGateBase = serviceOrigin("execution-gate", "HOST_EXECUTION_GATE", Number(process.env.PORT_EXECUTION_GATE ?? 7008));
+const chainV2Enabled = (process.env.GOVERNANCE_CHAIN_V2 ?? "false").toLowerCase() === "true";
+const chainV2Mode = chainV2Enabled ? (process.env.GOVERNANCE_CHAIN_MODE ?? "shadow").toLowerCase() : "off";
+const governanceChainClient = chainV2Mode === "off"
+    ? undefined
+    : createChainClient({ kernelBase: governanceKernelBase, mode: chainV2Mode, keyId: process.env.GOVERNANCE_CHAIN_KEY_ID });
+if (governanceChainClient) {
+    console.log(`agent-os: GOVERNANCE_CHAIN_V2 ${chainV2Mode} — task acts routed through kernel /v2/commit`);
+}
 const heartbeatTimeoutMs = Number(process.env.AGENT_OS_HEARTBEAT_TIMEOUT_MS ?? 300000);
 const leaseRenewalWindowMs = Number(process.env.AGENT_OS_LEASE_RENEWAL_WINDOW_MS ?? 900000);
 const leaseExtensionMs = Number(process.env.AGENT_OS_LEASE_EXTENSION_MS ?? 1800000);
@@ -1000,6 +1011,40 @@ const assessToolActionExecutionGovernance = async (mission, task, action) => {
             reasons.push("Execution gate unavailable during tool action commit point.");
         }
     }
+    // GOVERNANCE_CHAIN_V2: route the tool action through the kernel's Commit Gate.
+    // ToolAction.governance is a shared-types shape we deliberately do not modify,
+    // so the chain verdict is surfaced via enforce-mode reasons + a ledger record
+    // (cross-referencing the kernel GEL) rather than attached to the object.
+    if (governanceChainClient && (governanceChainClient.mode === "shadow" || reasons.length === 0)) {
+        const chain = await governanceChainClient.commitToolAct({
+            mission,
+            task,
+            action,
+            killSwitchActive: killSwitchState === "active"
+        });
+        if (governanceChainClient.mode === "enforce") {
+            if (!chain.ran) {
+                reasons.push(`Ward/Warrant chain unavailable (fail-closed): ${chain.error ?? "unknown"}.`);
+            }
+            else if (chain.decision !== "Allow") {
+                reasons.push(...(chain.reasons?.length ? chain.reasons : [`Ward/Warrant chain returned ${chain.decision}.`]));
+            }
+        }
+        await commitLedgerEvent(mission.id, "agent-os.tool-action.chain", {
+            missionId: mission.id,
+            taskId: task.id,
+            actionId: action.id,
+            toolId: action.toolId,
+            kind: action.kind,
+            chainMode: chain.mode,
+            chainRan: chain.ran,
+            chainDecision: chain.decision,
+            chainWarrantId: chain.warrant_id,
+            gelRecordId: chain.gel_record_id,
+            wardId: chain.ward_id,
+            reasons: chain.reasons
+        });
+    }
     return {
         status: reasons.length === 0 ? "approved" : "blocked",
         reasons: reasons.length === 0 ? [`Tool action approved at commit point for ${action.toolId}.`] : reasons,
@@ -1183,6 +1228,32 @@ const assessTaskGovernance = async (mission, task, phase) => {
             reasons.push("Execution gate unavailable during commit point validation.");
         }
     }
+    // GOVERNANCE_CHAIN_V2: route the act through the kernel's Ward/Warrant Commit
+    // Gate. In shadow mode the decision is recorded but never gates; in enforce
+    // mode a non-Allow decision (or an unreachable chain) blocks the act fail-closed.
+    let chain;
+    // Dispatch acts run through the chain here. Completion acts are committed in
+    // finalizeGovernedCompletion AFTER witness verification, so the witness duty is
+    // enforced against the real outcome. Dispatch never carries a witness obligation.
+    if (governanceChainClient && phase === "dispatch" && (governanceChainClient.mode === "shadow" || reasons.length === 0)) {
+        chain = await governanceChainClient.commitTaskAct({
+            mission,
+            task,
+            phase,
+            killSwitchActive: killSwitchState === "active",
+            witnessRequired: false,
+            witnessAccepted: true,
+            missingLeaseTools
+        });
+        if (governanceChainClient.mode === "enforce") {
+            if (!chain.ran) {
+                reasons.push(`Ward/Warrant chain unavailable (fail-closed): ${chain.error ?? "unknown"}.`);
+            }
+            else if (chain.decision !== "Allow") {
+                reasons.push(...(chain.reasons?.length ? chain.reasons : [`Ward/Warrant chain returned ${chain.decision}.`]));
+            }
+        }
+    }
     return {
         status: reasons.length === 0 ? "approved" : "blocked",
         reasons: reasons.length === 0 ? [`Task ${phase} approved under governed admissibility.`] : reasons,
@@ -1191,7 +1262,8 @@ const assessTaskGovernance = async (mission, task, phase) => {
         envelopeId,
         warrantId,
         commitDecisionId,
-        route
+        route,
+        chain
     };
 };
 const blockTaskForGovernance = async (mission, task, governance, phase) => {
@@ -1317,6 +1389,39 @@ const finalizeGovernedCompletion = async (mission, task, governance) => {
                 witnessStatus: decision.witnessStatus
             };
         }
+        // GOVERNANCE_CHAIN_V2: completion runs through the chain HERE — after witness
+        // verification — so the witness obligation is enforced with the real outcome.
+        let chain;
+        if (governanceChainClient) {
+            const killSwitchActive = (await readKillSwitchState()) === "active";
+            chain = await governanceChainClient.commitTaskAct({
+                mission,
+                task,
+                phase: "completion",
+                killSwitchActive,
+                witnessRequired,
+                witnessAccepted: witnessReceipt ? witnessReceipt.accepted : true,
+                missingLeaseTools: []
+            });
+            if (governanceChainClient.mode === "enforce" && (!chain.ran || chain.decision !== "Allow")) {
+                return {
+                    ...governance,
+                    status: "blocked",
+                    reasons: [
+                        ...governance.reasons,
+                        ...(chain.ran
+                            ? chain.reasons?.length
+                                ? chain.reasons
+                                : [`Ward/Warrant chain returned ${chain.decision}.`]
+                            : [`Ward/Warrant chain unavailable (fail-closed): ${chain.error ?? "unknown"}.`])
+                    ],
+                    witnessReceiptId: witnessReceipt?.id,
+                    decisionId: decision.id,
+                    witnessStatus: decision.witnessStatus,
+                    chain
+                };
+            }
+        }
         const finalityCertificate = {
             id: id("fin"),
             artifactType: "finality-certificate",
@@ -1352,7 +1457,8 @@ const finalizeGovernedCompletion = async (mission, task, governance) => {
             finalityCertificateId: finalityCertificate.id,
             witnessStatus: decision.witnessStatus,
             status: "approved",
-            evaluatedAt: now()
+            evaluatedAt: now(),
+            chain
         };
     }
     catch {
@@ -1400,6 +1506,10 @@ const dispatchNextEligibleTask = async (mission, dispatchReason = "Dispatched by
         envelopeId: governance.envelopeId,
         warrantId: governance.warrantId,
         route: governance.route,
+        wardId: governance.chain?.ward_id,
+        chainWarrantId: governance.chain?.warrant_id,
+        chainDecision: governance.chain?.decision,
+        gelRecordId: governance.chain?.gel_record_id,
         ...agentIdentityContext(nextQueued.assignedAgentId),
         ...workspaceIdentityContext(nextQueued.execution?.workspaceId ?? mission.workspaceId)
     });
@@ -2454,4 +2564,110 @@ app.post("/missions/:missionId/advance", async (req, res) => {
                             : ["dispatch next executor task", "record progress to ledger", "review execution receipts"]
     });
 });
-app.listen(port, () => console.log(`agent-os on ${port}`));
+// ---------------------------------------------------------------------------
+// Substrate-backed EdgeNode + Commit Gate (mesh-runtime + execution-control-runtime)
+//
+// This service also acts as a mesh EDGE: it accepts envelope
+// propagation + revocation gossip + Fluidity Token issuance from
+// the root and witnesses, and can issue local Warrants under a
+// Fluidity Token during partition. /v1/mesh/evaluate also exposes
+// the in-process Commit Gate for direct action evaluation.
+// ---------------------------------------------------------------------------
+const meshSecret = process.env.MESH_SECRET ?? "aos-demo-mesh-secret";
+const meshHost = process.env.HOST_AGENT_OS ?? "127.0.0.1";
+const edge = new EdgeNode({
+    id: process.env.MESH_EDGE_ID ?? "edge-aos",
+    host: meshHost,
+    port,
+    secret: meshSecret,
+    urlFor: (t) => `http://${t.host}:${t.port}/mesh`,
+    maxWarrantsWhileDisconnected: Number(process.env.MESH_EDGE_QUOTA ?? 100)
+});
+const peerSpec = process.env.MESH_PEERS ?? "root-mae:127.0.0.1:7004,witness-mae:127.0.0.1:7007";
+const peers = peerSpec
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((spec) => {
+    const [pid, phost, pportStr] = spec.split(":");
+    return {
+        id: pid,
+        role: pid.startsWith("witness")
+            ? "witness"
+            : pid.startsWith("edge")
+                ? "edge"
+                : "root",
+        host: phost,
+        port: Number(pportStr)
+    };
+});
+edge.setPeers(peers);
+app.post("/mesh", async (req, res) => {
+    try {
+        const msg = req.body;
+        if (msg.from && edge.partitions.has(msg.from)) {
+            return res.status(504).json({ ok: false, reason: "partitioned" });
+        }
+        const out = await edge.direct(msg);
+        res.json(out);
+    }
+    catch (err) {
+        res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+    }
+});
+// Disconnected commit gate — issues a Warrant locally when the edge
+// holds a valid Fluidity Token for the referenced envelope.
+app.post("/v1/mesh/evaluate-disconnected", async (req, res) => {
+    try {
+        const commitReq = req.body;
+        const decision = await edge.evaluate(commitReq);
+        res.json({
+            ok: true,
+            decision
+        });
+    }
+    catch (err) {
+        res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+    }
+});
+// Connected commit gate — direct invocation of evaluateCommitGate.
+app.post("/v1/mesh/evaluate", (req, res) => {
+    try {
+        const { ward, authorityEnvelope, action } = req.body;
+        if (!ward || !authorityEnvelope || !action) {
+            return res.status(400).json({ ok: false, error: "missing_required_fields" });
+        }
+        const decision = evaluateCommitGate({ ward, authorityEnvelope, action, now: now() });
+        res.json({ ok: true, decision });
+    }
+    catch (err) {
+        res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+    }
+});
+app.post("/v1/mesh/reconcile", async (_req, res) => {
+    try {
+        const conflicts = await edge.reconcile();
+        res.json({
+            ok: true,
+            conflicts_count: conflicts.length,
+            conflicts
+        });
+    }
+    catch (err) {
+        res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+    }
+});
+app.get("/v1/mesh/state", (_req, res) => {
+    res.json({
+        ok: true,
+        role: "edge",
+        node_id: edge.getId(),
+        peers,
+        cached_envelopes: edge.cachedEnvelopeCount(),
+        cached_revocations: edge.cachedRevocationCount(),
+        valid_fluidity_tokens: edge.validFluidityTokens().length,
+        local_decisions: edge.localDecisionCount(),
+        partitions: [...edge.partitions]
+    });
+});
+app.listen(port, () => console.log(`agent-os on ${port} (substrate-wired: EdgeNode at /mesh, Commit Gate at /v1/mesh/*)`));
