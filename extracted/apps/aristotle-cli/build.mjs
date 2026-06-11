@@ -7,34 +7,34 @@
 // The shebang is added here (not via esbuild's --banner) so no shell mangles
 // the "/usr/bin/env" path on Windows/Git Bash.
 
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { chmodSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+const require = createRequire(import.meta.url);
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const entry = path.join(dir, "src", "index.ts");
 const distDir = path.join(dir, "dist");
 const outfile = path.join(distDir, "index.js");
 const tsconfig = path.resolve(dir, "..", "..", "tsconfig.base.json");
+const esbuildBin = require.resolve("esbuild/bin/esbuild");
 
 rmSync(distDir, { recursive: true, force: true });
 mkdirSync(distDir, { recursive: true });
 
-const quote = (value) => `"${value}"`;
-const command = [
-  "npx",
-  "-y",
-  "esbuild@0.28.0",
-  quote(entry),
+const args = [
+  esbuildBin,
+  entry,
   "--bundle",
   "--platform=node",
   "--format=esm",
   "--target=node18",
-  `--tsconfig=${quote(tsconfig)}`,
-  `--outfile=${quote(outfile)}`
-].join(" ");
-execSync(command, { stdio: "inherit", cwd: dir });
+  `--tsconfig=${tsconfig}`,
+  `--outfile=${outfile}`
+];
+execFileSync(process.execPath, args, { stdio: "inherit", cwd: dir });
 
 const shebang = "#!/usr/bin/env node\n";
 const bundled = readFileSync(outfile, "utf8");

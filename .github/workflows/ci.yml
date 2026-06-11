@@ -35,7 +35,7 @@ jobs:
         run: corepack enable
 
       - name: Install dependencies
-        run: corepack pnpm install --frozen-lockfile
+        run: corepack pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Typecheck (runtime · CLI · console-ui · adapters)
         # Build the runtime first so consumers resolve its emitted .d.ts, then
@@ -123,7 +123,7 @@ jobs:
         run: corepack enable
 
       - name: Install dependencies
-        run: corepack pnpm install --frozen-lockfile
+        run: corepack pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Install Playwright Chromium
         run: corepack pnpm -F @aristotle/console-ui exec playwright install --with-deps chromium
