@@ -9,6 +9,8 @@ import type {
   Posture,
   ShadowProfileSummary,
   SwarmAirspaceCohortResult,
+  SwarmReconciliationAction,
+  SwarmReconciliationReport,
   SwarmAirspaceSimulationResult,
   SwarmConnectivityState,
   SwarmProjectionOutcome,
@@ -99,6 +101,161 @@ function deriveSnapshot(partial?: Partial<SystemSnapshot>): SystemSnapshot {
     source: "mock"
   };
   return { ...base, ...partial };
+}
+
+function minutesBefore(base: Date, minutes: number): string {
+  return new Date(base.getTime() - minutes * 60_000).toISOString();
+}
+
+function buildSwarmReconciliationReport(scenarioId: string, generatedAt: string): SwarmReconciliationReport {
+  const base = new Date(generatedAt);
+  const actions: SwarmReconciliationAction[] = [
+    {
+      id: "swarm-edge-north-scan-001",
+      cohortId: "north-connected",
+      actionType: "drone.scan_area",
+      units: 14,
+      edgeDecision: "ALLOW",
+      rootDecision: "ALLOW",
+      classification: "valid",
+      authorityEnvelope: "ae-swarm-root-2026-06",
+      reason: "Connected cohort used current root authority and stayed inside dynamic corridor revision.",
+      evidenceHash: shortHash(`${scenarioId}:north-scan`)
+    },
+    {
+      id: "swarm-edge-east-reroute-002",
+      cohortId: "east-degraded",
+      actionType: "drone.reroute_corridor",
+      units: 10,
+      edgeDecision: "ALLOW",
+      rootDecision: "ESCALATE",
+      classification: "review_required",
+      authorityEnvelope: "ae-swarm-root-2026-06",
+      reason: "Reroute was inside degraded authority but touched a fresh medevac corridor revision after root authority changed.",
+      evidenceHash: shortHash(`${scenarioId}:east-reroute`)
+    },
+    {
+      id: "swarm-edge-south-hold-003",
+      cohortId: "south-mesh",
+      actionType: "drone.hold_position",
+      units: 10,
+      edgeDecision: "HOLD",
+      rootDecision: "ALLOW",
+      classification: "valid",
+      authorityEnvelope: "ae-swarm-mesh-fluidity-138s",
+      reason: "Hold-safe remained allowed under valid Fluidity Token and recent mesh revocation gossip.",
+      evidenceHash: shortHash(`${scenarioId}:south-hold`)
+    },
+    {
+      id: "swarm-edge-south-scan-004",
+      cohortId: "south-mesh",
+      actionType: "drone.scan_area",
+      units: 6,
+      edgeDecision: "ALLOW",
+      rootDecision: "REFUSE",
+      classification: "stale",
+      authorityEnvelope: "ae-swarm-group-b-delegation",
+      reason: "Drone Group B acted on cached discretionary sensing authority superseded by the root update while partitioned.",
+      evidenceHash: shortHash(`${scenarioId}:south-stale-scan`)
+    },
+    {
+      id: "swarm-edge-west-return-005",
+      cohortId: "west-disconnected",
+      actionType: "drone.return_home",
+      units: 4,
+      edgeDecision: "ALLOW",
+      rootDecision: "ALLOW",
+      classification: "valid",
+      authorityEnvelope: "ae-swarm-degraded-return-home",
+      reason: "Drone Group B return-home is explicitly allowed under disconnected degraded safety authority.",
+      evidenceHash: shortHash(`${scenarioId}:west-return-home`)
+    },
+    {
+      id: "swarm-edge-west-scan-006",
+      cohortId: "west-disconnected",
+      actionType: "drone.scan_area",
+      units: 2,
+      edgeDecision: "ALLOW",
+      rootDecision: "REFUSE",
+      classification: "expired",
+      authorityEnvelope: "ae-swarm-fluidity-west-42s",
+      reason: "Fluidity Token expired before reconnect; action is marked expired rather than valid.",
+      evidenceHash: shortHash(`${scenarioId}:west-expired-scan`)
+    },
+    {
+      id: "swarm-edge-west-disable-revocation-007",
+      cohortId: "west-disconnected",
+      actionType: "swarm.revoke.disable_mesh",
+      units: 1,
+      edgeDecision: "REFUSE",
+      rootDecision: "REFUSE",
+      classification: "revoked",
+      authorityEnvelope: "ae-swarm-group-b-delegation-revoked",
+      reason: "Command revoked Drone Group B authority during partition; the attempted mesh revocation bypass stayed refused and reconciled as revoked.",
+      evidenceHash: shortHash(`${scenarioId}:west-revoked`)
+    },
+    {
+      id: "swarm-mission-expand-bravo-008",
+      cohortId: "east-degraded",
+      actionType: "swarm.mission.expand",
+      units: 40,
+      edgeDecision: "REFUSE",
+      rootDecision: "REFUSE",
+      classification: "review_required",
+      authorityEnvelope: "ae-swarm-root-2026-06",
+      reason: "Expansion from sector-alpha to sector-bravo requires fresh root authority and commander review.",
+      evidenceHash: shortHash(`${scenarioId}:mission-expansion-block`)
+    }
+  ];
+
+  const count = (classification: SwarmReconciliationAction["classification"]) =>
+    actions.filter((action) => action.classification === classification).length;
+
+  return {
+    partitionedAt: minutesBefore(base, 18),
+    authorityChangedAt: minutesBefore(base, 12),
+    reconnectedAt: generatedAt,
+    rootAuthorityBefore: "ae-swarm-root-2026-06",
+    rootAuthorityAfter: "ae-swarm-root-2026-06-rev-b-group-b-revoked",
+    actionsTotal: actions.length,
+    valid: count("valid"),
+    stale: count("stale"),
+    revoked: count("revoked"),
+    expired: count("expired"),
+    reviewRequired: count("review_required"),
+    blockedMissionExpansions: 1,
+    ledgerChainVerified: true,
+    witnessQuorum: "3-of-5",
+    missionExpansionBlock: {
+      actionId: "swarm-mission-expand-bravo-008",
+      requestedScope: "sector-alpha -> sector-bravo",
+      blockedBy: "fresh-root-authority-required",
+      reason: "Mission expansion crosses the cached authority boundary while root is unreachable."
+    },
+    timeline: [
+      {
+        at: minutesBefore(base, 18),
+        label: "Partition",
+        detail: "40 UAVs split into connected, degraded, mesh-relay, and disconnected cohorts."
+      },
+      {
+        at: minutesBefore(base, 12),
+        label: "Authority changed",
+        detail: "Root issued corridor revision rev-b and revoked Drone Group B discretionary authority while edge cells were partitioned."
+      },
+      {
+        at: minutesBefore(base, 7),
+        label: "Degraded actions",
+        detail: "Return-home and hold-safe remained allowed; mission expansion was blocked at the edge gate."
+      },
+      {
+        at: generatedAt,
+        label: "Reconnect",
+        detail: "Edge ledgers merged into GEL; classifications computed against current root authority."
+      }
+    ],
+    actions
+  };
 }
 
 interface CommandState {
@@ -399,8 +556,10 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   },
 
   runSwarmAirspaceSimulation: async () => {
-    const suffix = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
+    const generatedAt = new Date().toISOString();
+    const suffix = generatedAt.replace(/[-:.TZ]/g, "").slice(0, 14);
     const scenarioId = `swarm-40-dynamic-airspace-${suffix}`;
+    const reconciliation = buildSwarmReconciliationReport(scenarioId, generatedAt);
     const airspace = {
       authorization: `LAANC-SIM-${suffix}`,
       corridorRevision: `UTM-MT-DYNAMIC-${suffix}`,
@@ -463,25 +622,27 @@ export const useCommandStore = create<CommandState>((set, get) => ({
       set((s) => ({
         swarmAirspaceSimulation: {
           scenarioId,
-          generatedAt: new Date().toISOString(),
+          generatedAt,
           swarmSize: 40,
           allowedUnits,
           reroutedUnits,
           haltedUnits,
           averageLinkQuality,
           airspace,
-          cohorts: results
+          cohorts: results,
+          reconciliation
         },
         snapshot: {
           ...s.snapshot,
-          mode: "simulation",
+          mode: "partitioned",
           posture: haltedUnits > 0 ? "amber" : "green",
           activeAgents: Math.max(s.snapshot.activeAgents, 40),
-          openRequests: s.snapshot.openRequests + results.length,
+          openRequests: s.snapshot.openRequests + results.length + reconciliation.reviewRequired,
+          ledgerHeight: s.snapshot.ledgerHeight + reconciliation.actionsTotal,
           source: "mock"
         }
       }));
-      get().toast(`Public swarm simulation generated locally - 40 UAVs: ${allowedUnits} continue, ${reroutedUnits} reroute, ${haltedUnits} hold.`, "green");
+      get().toast(`Public swarm partition drill generated - ${reconciliation.actionsTotal} actions reconciled, ${reconciliation.blockedMissionExpansions} expansion blocked.`, "amber");
       return;
     }
 
@@ -557,23 +718,28 @@ export const useCommandStore = create<CommandState>((set, get) => ({
       haltedUnits,
       averageLinkQuality,
       airspace,
-      cohorts: results
+      cohorts: results,
+      reconciliation
     };
 
     set((s) => ({
       swarmAirspaceSimulation: simulation,
       snapshot: {
         ...s.snapshot,
-        mode: "simulation",
+        mode: "partitioned",
         posture: haltedUnits > 0 ? "amber" : "green",
         activeAgents: Math.max(s.snapshot.activeAgents, 40),
-        openRequests: s.snapshot.openRequests + results.length,
-        ledgerHeight: s.snapshot.ledgerHeight + results.length,
+        openRequests: s.snapshot.openRequests + results.length + reconciliation.reviewRequired,
+        escalationsToday: s.snapshot.escalationsToday + reconciliation.reviewRequired,
+        refusalsToday: s.snapshot.refusalsToday + reconciliation.revoked + reconciliation.expired + reconciliation.blockedMissionExpansions,
+        ledgerHeight: s.snapshot.ledgerHeight + results.length + reconciliation.actionsTotal,
         source: "live"
       },
-      ledger: results.reduce((ledger, result) => prependLedger(ledger, `swarm.counterfactual.${result.projectedOutcome}`, "ward-montana-range"), s.ledger)
+      ledger: results
+        .reduce((ledger, result) => prependLedger(ledger, `swarm.counterfactual.${result.projectedOutcome}`, "ward-montana-range"), prependLedger(s.ledger, "swarm.reconciliation.complete", "ward-montana-range"))
+        .slice(0, 80)
     }));
-    get().toast(`Live swarm simulation recorded - 40 UAVs: ${allowedUnits} continue, ${reroutedUnits} reroute, ${haltedUnits} hold.`, haltedUnits ? "amber" : "green");
+    get().toast(`Live swarm partition drill recorded - ${reconciliation.actionsTotal} actions reconciled, ${reconciliation.blockedMissionExpansions} expansion blocked.`, "amber");
   },
 
   // Attempts a real compile against the gateway; falls back to the deterministic
