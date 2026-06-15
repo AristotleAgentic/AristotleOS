@@ -823,9 +823,9 @@ export const VERTICAL_REGISTRY: Record<VerticalId, VerticalConfig> = {
   swarm: {
     id: "swarm",
     name: "UAV Swarm / Disconnected-First",
-    framing: "Disconnected-first + Fluidity Tokens + Mesh Revocation + Part 101 balloon stress case",
+    framing: "Disconnected-first + Fluidity Tokens + Mesh Revocation + partition reconciliation",
     purpose:
-      "Govern multi-vehicle swarm coordination through disconnect/mesh-relay states without losing authority.",
+      "Govern multi-vehicle swarm coordination through disconnect/mesh-relay states and prove every edge action after reconnect.",
     regulatory: ["14 CFR Part 107", "14 CFR Part 101 (balloon stress case)", "ASTM F3548 UTM", "USAF / DOD MIL-STD swarm doctrines"],
     adapters: [
       { id: "swarm-authority", label: "Swarm Authority Envelope", actionTypes: ["swarm.envelope.delegate"], boundary: "Swarm root authority" },
@@ -834,7 +834,7 @@ export const VERTICAL_REGISTRY: Record<VerticalId, VerticalConfig> = {
       { id: "fluidity-token", label: "Fluidity Token (time-bounded)", actionTypes: ["swarm.fluidity.issue"], boundary: "Token service" },
       { id: "mission", label: "Mission acceptance", actionTypes: ["swarm.mission.accept"], boundary: "Mission planner" }
     ],
-    hardInterlocks: ["swarm.disable_mesh_revocation", "swarm.bypass_fluidity_ttl", "swarm.override_disconnected_commit", "warrant.reuse_attempt"],
+    hardInterlocks: ["swarm.disable_mesh_revocation", "swarm.bypass_fluidity_ttl", "swarm.override_disconnected_commit", "swarm.expand_without_root_authority", "warrant.reuse_attempt"],
     presets: { label: "Mission classes", states: ["wildfire", "disaster-response", "comms-mesh", "agriculture", "range-ops", "infrastructure-inspection", "defense-perimeter", "reconnaissance", "high-altitude-launch"] },
     testSurface: { tests: 75, suite: "execution-control-runtime (swarm slice)" },
     hasDedicatedConsole: false,
@@ -845,12 +845,14 @@ export const VERTICAL_REGISTRY: Record<VerticalId, VerticalConfig> = {
       { id: "commit", label: "Disconnected Commit Gate decision", owner: "Edge Commit Gate", state: "active", evidence: "Decision bound to local rule-set + Fluidity TTL" },
       { id: "warrant", label: "Flight Warrant issued (mesh-resilient)", owner: "Warrant service / edge", state: "pending", evidence: "Warrant signed for mesh propagation" },
       { id: "execute", label: "Per-unit dispatch (mesh-aware)", owner: "Swarm dispatcher", state: "pending", evidence: "Per-unit receipts collected" },
-      { id: "evidence", label: "Mission Reconstruction Bundle exported", owner: "GEL exporter", state: "pending", evidence: "aristotle.swarm-evidence.v1, signed + hash-chained" }
+      { id: "evidence", label: "Mission Reconstruction Bundle exported", owner: "GEL exporter", state: "pending", evidence: "aristotle.swarm-evidence.v1, signed + hash-chained" },
+      { id: "reconcile", label: "Reconnect reconciliation report", owner: "GEL reconciler", state: "active", evidence: "valid / stale / revoked / expired / review-required classification" }
     ],
     safetyDrills: [
       { id: "state", label: "Connectivity state machine", posture: "amber", current: "degraded (mesh-relay active, root unreachable 12 min)", invariant: "permitted_states: [connected, degraded, mesh-relay, hold-safe]", evidence: "State transitions in GEL" },
       { id: "fluidity", label: "Fluidity Token TTL", posture: "green", current: "TTL 4m 18s remaining", invariant: "min_fluidity_ttl_s: 60", evidence: "Token pinned at edge commit" },
       { id: "revocation", label: "Mesh Revocation Protocol health", posture: "green", current: "Last revocation gossip 23s ago (max 60s)", invariant: "require_mesh_revocation_active: true", evidence: "Gossip log fragment" },
+      { id: "reconnect", label: "Reconnect classification", posture: "amber", current: "8 edge action classes reconciled; 1 mission expansion blocked", invariant: "classify_edge_actions_on_rejoin: true", evidence: "Reconciliation report pinned to GEL" },
       { id: "balloon", label: "Part 101 balloon (stress case)", posture: "green", current: "Altitude 28 km, geofenced, autonomous tracking active", invariant: "max_part101_altitude_km: 30", evidence: "Telemetry captured at upstream rejoin" }
     ],
     evidenceSample: {
@@ -879,6 +881,7 @@ export const VERTICAL_REGISTRY: Record<VerticalId, VerticalConfig> = {
       { id: "degraded-mesh", label: "Root unreachable; mesh-relay carries authority", expected: "ALLOW", rationale: "Disconnected commit with valid Fluidity Token + recent revocation gossip." },
       { id: "ttl-expired", label: "Fluidity Token expired without rejoin", expected: "REFUSE", rationale: "min_fluidity_ttl_s bound fails." },
       { id: "revocation-off", label: "Operator attempts to disable mesh revocation", expected: "REFUSE", rationale: "Hard interlock: swarm.disable_mesh_revocation." },
+      { id: "mission-expansion", label: "Partitioned cell attempts mission expansion", expected: "REFUSE", rationale: "Expansion requires fresh root authority and reconnect review." },
       { id: "balloon-extreme", label: "Part 101 balloon at 32 km altitude", expected: "REFUSE", rationale: "max_part101_altitude_km bound fails." },
       { id: "hold-safe", label: "Loss of mesh quorum triggers hold-safe", expected: "ESCALATE", rationale: "Auto-hold-safe; commander acknowledgement required to recover." }
     ]

@@ -75,6 +75,7 @@ export function SimulationPanel() {
   const [outcome, setOutcome] = React.useState<SimulationOutcome | null>(null);
   const [runningVertical, setRunningVertical] = React.useState(false);
   const swarmResult = useCommandStore((s) => s.swarmAirspaceSimulation);
+  const reconciliation = swarmResult?.reconciliation;
   const runSwarmAirspaceSimulation = useCommandStore((s) => s.runSwarmAirspaceSimulation);
   const setSection = useCommandStore((s) => s.setSection);
   const selectVertical = useCommandStore((s) => s.selectVertical);
@@ -98,19 +99,19 @@ export function SimulationPanel() {
         <div className="ac-grid" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 0.55fr)", gap: 14, alignItems: "start" }}>
           <div>
             <div className="ac-label">Flagship live run</div>
-            <h2 style={{ margin: "4px 0 8px", fontSize: 20 }}>UAV swarm in dynamic airspace</h2>
+            <h2 style={{ margin: "4px 0 8px", fontSize: 20 }}>UAV swarm partition reconciliation</h2>
             <p className="ac-muted" style={{ marginTop: 0 }}>
-              The generic simulation tab now points first to vertical proof: a 40-UAV swarm run with mixed connectivity, mesh relay, disconnected hold-safe, dynamic airspace constraints, and recorded counterfactual evidence.
+              The generic simulation tab now points first to vertical proof: a 40-UAV swarm run with mixed connectivity, authority change during partition, degraded allowed actions, blocked mission expansion, reconnect, and classified reconciliation evidence.
             </p>
             <div className="ac-chip-row" style={{ marginBottom: 12 }}>
               <span className="ac-chip">UAV Swarm vertical</span>
               <span className="ac-chip">Aviation constraints</span>
               <span className="ac-chip">Gateway + GEL</span>
-              <span className="ac-chip">Counterfactual branch</span>
+              <span className="ac-chip">Partition reconciliation</span>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button className="ac-btn is-primary" onClick={() => void runVerticalSimulation()} disabled={runningVertical}>
-                <Play size={14} /> {runningVertical ? "Running..." : "Run 40-UAV swarm"}
+                <Play size={14} /> {runningVertical ? "Running..." : "Run partition drill"}
               </button>
               <button className="ac-btn" onClick={openSwarmVertical}>
                 <Radar size={14} /> Open Swarm vertical
@@ -128,6 +129,8 @@ export function SimulationPanel() {
             <Metric label="Continue" value={swarmResult?.allowedUnits ?? "-"} tone="green" />
             <Metric label="Reroute" value={swarmResult?.reroutedUnits ?? "-"} tone="amber" />
             <Metric label="Hold-safe" value={swarmResult?.haltedUnits ?? "-"} tone="red" />
+            <Metric label="Reconciled" value={reconciliation?.actionsTotal ?? "-"} tone="cyan" />
+            <Metric label="Blocked" value={reconciliation?.blockedMissionExpansions ?? "-"} tone="red" />
           </div>
         </div>
       </Panel>

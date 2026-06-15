@@ -232,6 +232,50 @@ export interface SwarmAirspaceCohortResult {
   hypotheticalId?: string;
 }
 
+export type SwarmReconciliationClassification = "valid" | "stale" | "revoked" | "expired" | "review_required";
+
+export interface SwarmReconciliationAction {
+  id: string;
+  cohortId: string;
+  actionType: string;
+  units: number;
+  edgeDecision: "ALLOW" | "REFUSE" | "HOLD";
+  rootDecision: "ALLOW" | "REFUSE" | "ESCALATE";
+  classification: SwarmReconciliationClassification;
+  authorityEnvelope: string;
+  reason: string;
+  evidenceHash: string;
+}
+
+export interface SwarmReconciliationReport {
+  partitionedAt: string;
+  authorityChangedAt: string;
+  reconnectedAt: string;
+  rootAuthorityBefore: string;
+  rootAuthorityAfter: string;
+  actionsTotal: number;
+  valid: number;
+  stale: number;
+  revoked: number;
+  expired: number;
+  reviewRequired: number;
+  blockedMissionExpansions: number;
+  ledgerChainVerified: boolean;
+  witnessQuorum: string;
+  missionExpansionBlock: {
+    actionId: string;
+    requestedScope: string;
+    blockedBy: string;
+    reason: string;
+  };
+  timeline: Array<{
+    at: string;
+    label: string;
+    detail: string;
+  }>;
+  actions: SwarmReconciliationAction[];
+}
+
 export interface SwarmAirspaceSimulationResult {
   scenarioId: string;
   generatedAt: string;
@@ -246,6 +290,7 @@ export interface SwarmAirspaceSimulationResult {
     constraints: string[];
   };
   cohorts: SwarmAirspaceCohortResult[];
+  reconciliation?: SwarmReconciliationReport;
 }
 
 export type PromotionStageKey = "draft" | "shadow" | "staged" | "enforced" | "retired";

@@ -269,20 +269,73 @@ function SwarmLiveSimulationPanel() {
   };
   const outcomeTone = (outcome: string): "green" | "amber" | "red" =>
     outcome === "continue" ? "green" : outcome === "reroute" ? "amber" : "red";
+  const classificationTone = (classification: string): "green" | "amber" | "red" | "cyan" =>
+    classification === "valid" ? "green" : classification === "review_required" ? "cyan" : classification === "stale" ? "amber" : "red";
+  const reconciliation = result?.reconciliation;
+  const reviewerChecklist = reconciliation
+    ? [
+        ["Swarm partition occurred", true],
+        ["Some drones lost command connectivity", result.cohorts.some((cohort) => cohort.state === "disconnected")],
+        ["Local degraded authority activated", result.cohorts.some((cohort) => cohort.state === "degraded" || cohort.state === "mesh-relay")],
+        ["At least one action was allowed", reconciliation.actions.some((action) => action.edgeDecision === "ALLOW" && action.classification === "valid")],
+        ["At least one action was refused", reconciliation.actions.some((action) => action.edgeDecision === "REFUSE")],
+        ["At least one action expired or escalated", reconciliation.expired > 0 || reconciliation.reviewRequired > 0],
+        ["Authority changed or became stale during partition", reconciliation.stale > 0 || reconciliation.revoked > 0],
+        ["Reconnection occurred", Boolean(reconciliation.reconnectedAt)],
+        ["Reconciliation classified the actions", reconciliation.actions.every((action) => Boolean(action.classification))],
+        ["GEL/evidence bundle proved the sequence", reconciliation.ledgerChainVerified]
+      ] as Array<[string, boolean]>
+    : [];
+  const exportReviewerResult = () => {
+    if (!result || !reconciliation) return;
+    const lines = [
+      "Demo: 40-Asset UAV Swarm Partition and Reconciliation",
+      "",
+      "Scenario:",
+      "A 40-drone autonomous mesh was split into disconnected partitions. During the partition, local nodes attempted continued execution under degraded authority while command revoked Drone Group B discretionary authority.",
+      "",
+      "Governance Objective:",
+      "Determine whether AristotleOS could preserve bounded authority, refuse unauthorized action, log evidence, and reconcile state after reconnect.",
+      "",
+      "Results:",
+      `- ${result.swarmSize} assets initialized under mission authority`,
+      "- Mesh partition simulated",
+      "- Degraded authority activated",
+      "- Authorized fallback actions allowed",
+      "- Unauthorized mission expansion refused",
+      "- Expired or stale warrants blocked",
+      "- Evidence ledger preserved decision chain",
+      "- Reconnection triggered reconciliation",
+      `- Final report classified ${reconciliation.actionsTotal} actions as valid, stale, revoked, expired, or review-required`,
+      "",
+      "Conclusion:",
+      "AristotleOS demonstrated authority continuity under disconnection. The swarm did not merely continue operating; it continued only within warrantable, bounded, reconstructable authority.",
+      "",
+      "Caveat:",
+      "This was a simulated governance demo, not a live flight test."
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${result.scenarioId}-reviewer-result.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <Panel
-      title="Live 40-UAV Dynamic Airspace Simulation"
+      title="Live 40-UAV Partition Reconciliation Drill"
       icon={<Radar size={15} />}
       right={<Badge tone="green">gateway + GEL</Badge>}
     >
       <div className="ac-grid" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 0.55fr)", gap: 14, alignItems: "start" }}>
         <div>
           <p className="ac-muted" style={{ marginTop: 0 }}>
-            Runs the swarm vertical through the production counterfactual path with dynamic airspace constraints, mixed C2 quality, mesh relay, and a disconnected TFR-edge cell.
+            Runs the swarm vertical through dynamic airspace, mixed C2 quality, mesh relay, disconnected edge cells, authority change during partition, and post-reconnect reconciliation.
           </p>
           <button className="ac-btn is-primary" onClick={() => void run()} disabled={running}>
-            <Play size={14} /> {running ? "Running..." : "Run 40-UAV swarm"}
+            <Play size={14} /> {running ? "Running..." : "Run partition drill"}
           </button>
           {result ? (
             <>
@@ -306,6 +359,8 @@ function SwarmLiveSimulationPanel() {
           <Metric label="Continue" value={result?.allowedUnits ?? "-"} tone="green" />
           <Metric label="Reroute" value={result?.reroutedUnits ?? "-"} tone="amber" />
           <Metric label="Hold-safe" value={result?.haltedUnits ?? "-"} tone="red" />
+          <Metric label="Reconciled" value={reconciliation?.actionsTotal ?? "-"} tone="cyan" />
+          <Metric label="Expansion blocked" value={reconciliation?.blockedMissionExpansions ?? "-"} tone="red" />
         </div>
       </div>
 
@@ -331,6 +386,108 @@ function SwarmLiveSimulationPanel() {
             </div>
           ))}
         </div>
+      ) : null}
+
+      {reconciliation ? (
+        <>
+          <div className="ac-divider" />
+          <div className="ac-slo-card" style={{ marginBottom: 14 }}>
+            <div className="ac-slo-head">
+              <span>One-page reviewer result</span>
+              <button className="ac-btn" onClick={exportReviewerResult}><Download size={13} /> Export result</button>
+            </div>
+            <div className="ac-grid" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 0.58fr)", gap: 14, alignItems: "start", marginTop: 10 }}>
+              <div>
+                <div className="ac-label">Scenario</div>
+                <p>
+                  A 40-drone autonomous mesh was split into disconnected partitions. During the outage, command revoked Drone Group B discretionary authority while local nodes attempted continued execution under degraded authority.
+                </p>
+                <div className="ac-label">Governance objective</div>
+                <p>
+                  Determine whether AristotleOS could preserve bounded authority, refuse unauthorized action, log evidence, and reconcile state after reconnect.
+                </p>
+                <div className="ac-label">Conclusion</div>
+                <p>
+                  AristotleOS demonstrated authority continuity under disconnection. The swarm did not merely continue operating; it continued only within warrantable, bounded, reconstructable authority.
+                </p>
+                <div className="ac-chip-row">
+                  <span className="ac-chip">simulated governance demo</span>
+                  <span className="ac-chip">not a live flight test</span>
+                </div>
+              </div>
+              <div className="ac-grid" style={{ gap: 8 }}>
+                {reviewerChecklist.map(([label, ok]) => (
+                  <div key={label} className="ac-slo-current" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {ok ? <ShieldCheck size={15} /> : <ShieldAlert size={15} />}
+                    <span>{label}</span>
+                    <span style={{ marginLeft: "auto" }}><Badge tone={ok ? "green" : "red"}>{ok ? "proved" : "missing"}</Badge></span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="ac-grid" style={{ gridTemplateColumns: "minmax(0, 0.9fr) minmax(0, 1.1fr)", gap: 14, alignItems: "start" }}>
+            <div className="ac-slo-card">
+              <div className="ac-slo-head">
+                <span>Reconnect reconciliation report</span>
+                <Badge tone={reconciliation.ledgerChainVerified ? "green" : "red"}>
+                  {reconciliation.ledgerChainVerified ? "ledger verified" : "ledger contested"}
+                </Badge>
+              </div>
+              <div className="ac-adoption-kpis" style={{ marginTop: 10 }}>
+                <Metric label="Valid" value={reconciliation.valid} tone="green" />
+                <Metric label="Stale" value={reconciliation.stale} tone="amber" />
+                <Metric label="Revoked" value={reconciliation.revoked} tone="red" />
+                <Metric label="Expired" value={reconciliation.expired} tone="red" />
+                <Metric label="Review" value={reconciliation.reviewRequired} tone="cyan" />
+                <Metric label="Witness" value={reconciliation.witnessQuorum} tone="green" />
+              </div>
+              <div className="ac-detail-grid" style={{ gridTemplateColumns: "132px 1fr", marginTop: 12 }}>
+                <dt>Before</dt><dd className="mono">{reconciliation.rootAuthorityBefore}</dd>
+                <dt>After</dt><dd className="mono">{reconciliation.rootAuthorityAfter}</dd>
+                <dt>Expansion</dt><dd>{reconciliation.missionExpansionBlock.requestedScope}</dd>
+                <dt>Blocked by</dt><dd className="mono">{reconciliation.missionExpansionBlock.blockedBy}</dd>
+              </div>
+              <p>{reconciliation.missionExpansionBlock.reason}</p>
+            </div>
+
+            <div className="ac-slo-card">
+              <div className="ac-slo-head">
+                <span>Authority timeline</span>
+                <Badge tone="amber">partitioned</Badge>
+              </div>
+              <div className="ac-timeline" style={{ marginTop: 10 }}>
+                {reconciliation.timeline.map((event, index) => (
+                  <div key={`${event.label}-${event.at}`} className={cx("ac-step", index === reconciliation.timeline.length - 1 && "is-active")}>
+                    <span className="ac-step-index">{index + 1}</span>
+                    <span className="ac-step-title">{event.label}</span>
+                    <span className="ac-step-detail">{new Date(event.at).toLocaleTimeString()} - {event.detail}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="ac-grid" style={{ marginTop: 14, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+            {reconciliation.actions.map((action) => (
+              <div key={action.id} className="ac-slo-card">
+                <div className="ac-slo-head">
+                  <span className="mono">{action.actionType}</span>
+                  <Badge tone={classificationTone(action.classification)}>{action.classification.replace("_", " ")}</Badge>
+                </div>
+                <div className="ac-detail-grid" style={{ gridTemplateColumns: "112px 1fr", marginTop: 10 }}>
+                  <dt>Units</dt><dd>{action.units}</dd>
+                  <dt>Edge</dt><dd>{action.edgeDecision}</dd>
+                  <dt>Root</dt><dd>{action.rootDecision}</dd>
+                  <dt>Envelope</dt><dd className="mono">{action.authorityEnvelope}</dd>
+                  <dt>Evidence</dt><dd className="mono">{action.evidenceHash}</dd>
+                </div>
+                <p>{action.reason}</p>
+              </div>
+            ))}
+          </div>
+        </>
       ) : null}
     </Panel>
   );
