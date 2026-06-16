@@ -88,6 +88,7 @@ export function SimulationPanel() {
     setRunningVertical(true);
     try {
       await runSwarmAirspaceSimulation();
+      openSwarmVertical();
     } finally {
       setRunningVertical(false);
     }
@@ -95,7 +96,7 @@ export function SimulationPanel() {
 
   return (
     <div className="ac-grid" style={{ gridTemplateColumns: "1fr", gap: 14, alignItems: "start" }}>
-      <Panel title="Vertical Simulation Hub" icon={<Radar size={15} />} right={<Badge tone="green">primary</Badge>}>
+      <Panel title="Vertical Simulation Hub" icon={<Radar size={15} />} right={<Badge tone="green">launch pad</Badge>}>
         <div className="ac-grid" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 0.55fr)", gap: 14, alignItems: "start" }}>
           <div>
             <div className="ac-label">AristotleOS UAV Swarm Disconnection Demo v0.1</div>
@@ -115,7 +116,7 @@ export function SimulationPanel() {
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button className="ac-btn is-primary" onClick={() => void runVerticalSimulation()} disabled={runningVertical}>
-                <Play size={14} /> {runningVertical ? "Running..." : "Run partition drill"}
+                <Play size={14} /> {runningVertical ? "Running..." : "Run full UAV proof"}
               </button>
               <button className="ac-btn" onClick={openSwarmVertical}>
                 <Radar size={14} /> Open Swarm vertical
