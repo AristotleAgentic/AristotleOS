@@ -98,16 +98,20 @@ export function SimulationPanel() {
       <Panel title="Vertical Simulation Hub" icon={<Radar size={15} />} right={<Badge tone="green">primary</Badge>}>
         <div className="ac-grid" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 0.55fr)", gap: 14, alignItems: "start" }}>
           <div>
-            <div className="ac-label">Flagship live run</div>
-            <h2 style={{ margin: "4px 0 8px", fontSize: 20 }}>UAV swarm partition reconciliation</h2>
+            <div className="ac-label">AristotleOS UAV Swarm Disconnection Demo v0.1</div>
+            <h2 style={{ margin: "4px 0 8px", fontSize: 20 }}>Authority Continuity Under Disconnection</h2>
             <p className="ac-muted" style={{ marginTop: 0 }}>
-              The generic simulation tab now points first to vertical proof: a 40-UAV swarm run with mixed connectivity, authority change during partition, degraded allowed actions, blocked mission expansion, reconnect, and classified reconciliation evidence.
+              A 40-UAV swarm run with mixed connectivity, authority change during partition, degraded allowed actions, blocked mission expansion, reconnect, and classified reconciliation evidence.
             </p>
             <div className="ac-chip-row" style={{ marginBottom: 12 }}>
+              <span className="ac-chip">Swarm initialized</span>
+              <span className="ac-chip">Network partition triggered</span>
+              <span className="ac-chip">Degraded authority activated</span>
+              <span className="ac-chip">Mission expansion blocked</span>
+              <span className="ac-chip">Reconnect reconciled</span>
               <span className="ac-chip">UAV Swarm vertical</span>
               <span className="ac-chip">Aviation constraints</span>
               <span className="ac-chip">Gateway + GEL</span>
-              <span className="ac-chip">Partition reconciliation</span>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button className="ac-btn is-primary" onClick={() => void runVerticalSimulation()} disabled={runningVertical}>

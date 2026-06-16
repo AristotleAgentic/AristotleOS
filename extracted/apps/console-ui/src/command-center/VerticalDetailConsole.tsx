@@ -289,7 +289,8 @@ function SwarmLiveSimulationPanel() {
   const exportReviewerResult = () => {
     if (!result || !reconciliation) return;
     const lines = [
-      "Demo: 40-Asset UAV Swarm Partition and Reconciliation",
+      "Demo: Authority Continuity Under Disconnection: 40-UAV Swarm Governance Demo",
+      "Version: AristotleOS UAV Swarm Disconnection Demo v0.1",
       "",
       "Scenario:",
       "A 40-drone autonomous mesh was split into disconnected partitions. During the partition, local nodes attempted continued execution under degraded authority while command revoked Drone Group B discretionary authority.",
@@ -325,15 +326,25 @@ function SwarmLiveSimulationPanel() {
 
   return (
     <Panel
-      title="Live 40-UAV Partition Reconciliation Drill"
+      title="Authority Continuity Under Disconnection"
       icon={<Radar size={15} />}
-      right={<Badge tone="green">gateway + GEL</Badge>}
+      right={<Badge tone="green">UAV swarm demo v0.1</Badge>}
     >
       <div className="ac-grid" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 0.55fr)", gap: 14, alignItems: "start" }}>
         <div>
           <p className="ac-muted" style={{ marginTop: 0 }}>
-            Runs the swarm vertical through dynamic airspace, mixed C2 quality, mesh relay, disconnected edge cells, authority change during partition, and post-reconnect reconciliation.
+            AristotleOS demonstrates authority continuity under disconnection in a simulated 40-UAV swarm. The run allows bounded fallback behavior, refuses unauthorized mission expansion, classifies stale/revoked/expired/review-required actions, and produces a post-reconnect reconciliation report with evidence continuity.
           </p>
+          <div className="ac-chip-row" style={{ marginBottom: 12 }}>
+            <span className="ac-chip">Swarm Initialized</span>
+            <span className="ac-chip">Network Partition Triggered</span>
+            <span className="ac-chip">Cohorts Degraded / Disconnected</span>
+            <span className="ac-chip">Degraded Authority Activated</span>
+            <span className="ac-chip">Bounded Fallback Allowed</span>
+            <span className="ac-chip">Mission Expansion Blocked</span>
+            <span className="ac-chip">Reconnect Reconciled</span>
+            <span className="ac-chip">GEL / Evidence Chain Recorded</span>
+          </div>
           <button className="ac-btn is-primary" onClick={() => void run()} disabled={running}>
             <Play size={14} /> {running ? "Running..." : "Run partition drill"}
           </button>
@@ -413,6 +424,7 @@ function SwarmLiveSimulationPanel() {
                 <div className="ac-chip-row">
                   <span className="ac-chip">simulated governance demo</span>
                   <span className="ac-chip">not a live flight test</span>
+                  <span className="ac-chip">not a replacement for certified control systems</span>
                 </div>
               </div>
               <div className="ac-grid" style={{ gap: 8 }}>

@@ -820,6 +820,42 @@
       </div>
     </section>
 
+    <section id="authority-continuity">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Authority Continuity Under Disconnection</h2>
+          <p class="section-lede">
+            Most AI governance assumes the system can phone home. AristotleOS is built for autonomous infrastructure operating at the edge, where command links, cloud permissioning, or centralized control may be degraded or unavailable.
+          </p>
+        </div>
+        <div class="split">
+          <div>
+            <div class="panel">
+              <h3>40-UAV proof-swarm demo.</h3>
+              <p>In the 40-UAV proof-swarm demo, AristotleOS preserved bounded authority during network partition, allowed only degraded fallback behavior, refused unauthorized mission expansion, preserved evidence, and reconciled authority state after reconnect.</p>
+            </div>
+            <div class="panel">
+              <h3>What it proves.</h3>
+              <p>The run proves runtime governance behavior, not live flight control: autonomous cohorts can continue only inside scoped authority, while expansion, stale authority, revoked authority, and expired Warrants remain bounded by the Commit Gate and reconciliation report.</p>
+            </div>
+          </div>
+          <div>
+            <pre><span class="muted">Authority continuity proof</span>
+<span class="ok">  40 assets initialized</span>
+<span class="ok">  partition + degraded authority</span>
+<span class="ok">  fallback allowed</span>
+<span class="ok">  mission expansion refused</span>
+<span class="ok">  stale/revoked/expired classified</span>
+<span class="ok">  reconnect + GEL evidence report</span></pre>
+            <div class="cta-row">
+              <a href="https://aristotle-console.onrender.com/public" target="_blank" rel="noopener" class="button primary">Request the 40-UAV proof demo</a>
+              <a href="#cta" class="button secondary">Discuss a 90-day pilot</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="compare">
       <div class="wrap">
         <div class="section-head">
