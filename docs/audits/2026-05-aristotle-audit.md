@@ -2557,3 +2557,103 @@ These three remain in the Tier 1 scope but are not detailed here because they ar
 ---
 
 **End of Deliverable 5. Plan file now contains four deliverables, two addenda, and Deliverable 5 (Tier 1 implementation specs).**
+
+---
+
+# ADDENDUM C — Strategic reframe: forks cluster, Posture A as committed, sixth fork surfaced
+
+This addendum is added after a 2026-05-18 strategic synthesis of the original audit's §F ("Five questions whose answers would change the roadmap"). It does three things: (1) corrects an internal inconsistency between §E and §F in Deliverable 4; (2) names the operative strategic posture and the architectural reasons it is forced, not chosen; (3) surfaces the substrate-governance-body legitimacy question that the original audit did not.
+
+The addendum is layered on top of the audit; it does not rewrite Deliverable 4 or Deliverable 5. A reader following the sequence (audit body → Addendum A PM-review → Addendum 2 cross-instance critique → Deliverable 5 implementation specs → Addendum C strategic reframe) sees the reasoning develop. That ordering is itself part of the strategic record and is preserved deliberately.
+
+## C.1 Clustering thesis — Forks 1/4/5 are not independent of §E
+
+Deliverable 4 §F treats the five strategic forks as if they were independent open trade-offs. They are not. They cluster into two coherent postures:
+
+- **Posture A — Substrate-author.** Federal-mandate primary (Fork 1) + auditor-operated witnesses (Fork 2) + UAS first (Fork 3) + open-spec (Fork 4) + BYO trust roots with managed-transparent step-down (Fork 5).
+- **Posture B — Compliance-vendor.** Private-market primary + self-operated witnesses + (hypothetically) AV first + closed enterprise product + shipped KMS.
+
+The clustering is not a matter of stylistic preference. It is determined by the architectural commitments that the original audit's §E ("Five things in the current codebase NOT to change") explicitly named as load-bearing — most centrally the constitutional flow (policy→envelope→admissibility→warrant→gate→witness→finality), the `ArtifactType` discriminated-union substrate, and the kill-switch scope taxonomy. Those commitments only cash out as a coherent system under Posture A.
+
+Under Posture B, they are not merely *less optimized* — they are *over-specified*. The constitutional flow, the multi-stakeholder envelope, and the generational-amendment semantics are dead weight that an actual compliance-vendor competitor would not be carrying. The version of this argument that says "the two postures are both viable and just optimize for different things" is weaker than it should be. The correct framing: **Posture A is the only posture under which the work already done is not a liability.** Under Posture B, the existing codebase costs more to maintain, costs more to sell, and offers nothing the existing compliance-vendor market does not already have.
+
+The §E↔§F inconsistency is therefore not a minor sequencing problem — it is the audit treating the codebase as a neutral artifact a buyer could deploy under either posture, when §E itself acknowledges the codebase already carries architectural commitments. This addendum corrects that inconsistency at the strategic-frame layer.
+
+## C.2 Posture A as committed — per-fork and the structural argument
+
+**Fork 1 — Federal-mandate substrate, primary.** Private-market conformance is a secondary deliverable enabled by the same spec, not a separate target. The spec's normative language targets the federal-mandate audience (NIST AI RMF vocabulary, EU AI Act article references, ASTM/ISO formality); the conformance program (T3.1) is designed to be usable by private-market auditors as a derived consumer.
+
+**Fork 2 — Auditor-operated witnesses as reference architecture.** 5-of-N quorum (operator + regulator + insurer + civil-society + sectoral authority) is the target composition. Self-operated remains supported as a documented degraded mode for cases where the full quorum isn't yet deployable (early pilots, sandbox environments, low-stakes domains), explicitly labeled as lower assurance — see C.4 below for the normative requirement that the labeling carry through to operational telemetry rather than living only in the implementation comments.
+
+**Fork 3 — UAS first.** Settled by grant context. Materially amplifies Fork 1: Part 108's pre-rule standards window is exactly the regulatory venue where federal-mandate substrate authoring pays off. AV would have pushed toward private-market because the AV stack is more fragmented (NHTSA + state DMVs + 13 CCR variants) and less amenable to single-substrate authoring.
+
+**Fork 4 — Open-spec as load-bearing commitment.** Upgraded from "default" in the original audit to commitment. T3.1 (open conformance program) is no longer one of several roadmap options; it is the only Tier 3 path consistent with the rest of the architecture.
+
+**Fork 5 — BYO trust roots as architectural commitment.** BYO at Tier 1 (operator-side WebAuthn) and Tier 2 (TPM/Nitro/SEV-SNP). Transparency-log managed option is the explicit step-down for customers whose threat model genuinely does not require operator-side trust roots, offered with transparency logging so the managed mode is still attributable. The framing maps onto the FIPS 140-3 / customer-key-ceremony precedent that federal regulators already recognize — see C.4 below.
+
+### The structural argument for Fork 1 → Fork 4 directionality
+
+The constitutional-coherence argument for open-spec is real but is doing less load-bearing work than a separate structural argument: **federal-mandate substrate implies open-spec by the structure of how federal rulemaking and procurement law actually operate.** FAA airworthiness, FCC type acceptance, FDA QSR — three different regulatory traditions, same pattern: standards published as criteria, with multiple conformant vendors certifying to them. No US federal mandate has ever named a single vendor's product. That pattern is not a coincidence of regulatory taste; it reflects how Article I procurement law (Competition in Contracting Act, 41 USC competition rules) and the APA's notice-and-comment requirements actually constrain federal rulemaking. Single-vendor mandates fail procedural review.
+
+The directionality is one-way: federal-mandate implies open-spec; open-spec does not force federal-mandate (Sigstore, cosign, and SLSA are all open without federal mandates). That asymmetry strengthens the case for open-spec on pure optionality grounds — open preserves both Posture A and the bridge to private-market revenue; closed forecloses Posture A. The constitutional-coherence argument is then doing additional work on top of a fork that is already structurally determined, which is the load-bearing structure the argument needs.
+
+A skeptical reader who does not buy the constitutional framing still arrives at open-spec via this route. That is the correct robustness profile for a foundational commitment.
+
+## C.3 The sixth fork — substrate governance body legitimacy
+
+The original audit's §F enumerates five forks. There is a sixth, more consequential, fork that the original did not surface: **which body holds the open spec, witnesses operations in the auditor-operated tier, and authorizes constitutional amendment.** Under Posture A this body is load-bearing — open-spec without a credible holder is just abandonware; auditor-operated witness quorum without external operators is just operator-self-attestation by another name. The body's legitimacy is the architecture's legitimacy.
+
+The body does not exist yet, and standing one up has multi-year lead time. This is the actual Tier 3 gating risk for the whole project.
+
+### Venue option space
+
+Five concrete options, with what each costs and what each delivers:
+
+1. **NIST AI Safety Institute (AISI).** Fastest path to US-federal credibility; narrowest substantive fit. AISI is chartered for AI safety evaluation; whether the substrate's framing fits within that charter or would require a charter expansion is a question requiring direct engagement with AISI [verification needed at engagement]. US-only. Best treated as a parallel amplifier and a probable early venue for the spec conversation, not the substrate's primary home.
+
+2. **ASTM F38 (Unmanned Aircraft Systems).** Domain-credible, already exists, already runs the Remote ID standard (ASTM F3411-22a) cited throughout this audit. The natural sectoral home for a UAS governance-substrate standard given Fork 3. ASTM committees are internationally recognized and the chartering pathway is well-understood. Sector-bounded: this carries the substrate in UAS but does not transfer it to AV, robotics, or maritime without parallel committee work (F39 if it forms; new committee charters elsewhere).
+
+3. **FAA Part 108 Aviation Rulemaking Committee.** Domain-aligned to Fork 3 and aligned to a live rulemaking — ARC influence shapes the rule directly, not just the standard the rule references. **Tactical, not durable**: ARCs typically run 12–24 months and dissolve at NPRM. Whether Part 108's ARC is currently constituted, whether the entry window is currently open, and on what timeline are facts requiring verification — likely measured in months, not years [verification needed]. Best treated as a tactical near-term lever rather than a standards home.
+
+4. **OpenSSF (Open Source Security Foundation, under Linux Foundation).** Technical-substrate-credible. Sigstore, in-toto, and SLSA all live here; the conversation about "attestation for autonomous systems" is a natural extension of the conversation about "attestation for software supply chains" that OpenSSF has been having for several years. Naming OpenSSF specifically rather than "Linux Foundation generically" sharpens the credibility signal — OpenSSF has a specific reputational stake in the attestation-and-provenance area that LF-generic does not, and the IP / governance regime (Apache 2.0 default; project technical charters; foundation-level legal stewardship) is well-suited to the substrate. Sigstore took roughly four years from foundation announce to broad regulatory recognition — that is the realistic lead time for an OpenSSF-hosted project to mature to comparable standing. Whether OpenSSF's project-charter mechanics accommodate a non-software-supply-chain submission is a question for direct engagement [verification needed].
+
+5. **Stand up a body de novo.** Full control; longest path to legitimacy; most expensive. Justified only if existing venues are categorically wrong for the framing. They do not appear to be — between ASTM F38 (sectoral standards) and OpenSSF (technical reference implementation + test suite) the substrate has both regulatory and technical venues without needing to build one.
+
+### Recommended mix (starting recommendation, not researched proposal)
+
+**ASTM F38 as the sectoral standards home + OpenSSF as the technical foundation for the reference implementation and test suite, with NIST AISI as a parallel amplifier and an FAA Part 108 ARC seat as a tactical near-term lever.**
+
+This is the Sigstore-meets-ASTM pattern, and it has working precedents in adjacent regulatory regimes. It does not require building a new institution. It preserves the federal-mandate path (ASTM standards are routinely referenced by FAA/FCC/FDA rules), the open-spec commitment (OpenSSF defaults are Apache 2.0 and foundation-stewarded), and the auditor-operated witness model (ASTM committees are exactly the kind of multi-stakeholder body that can supply witness operators).
+
+**This recommendation is starting orientation, not a researched proposal.** The venue scan that needs to follow this addendum will verify chartering scope, governance regime, IP terms, convening cadence, and entry costs for each candidate venue. Several of the claims above (AISI charter scope, Part 108 ARC current status, OpenSSF project-charter mechanics for a non-software-supply-chain submission) require direct engagement to confirm. The addendum surfaces the option space; the scan resolves it.
+
+## C.4 Sequencing consequences — what this addendum changes about Tier 1
+
+The strategic commitment in C.2 and the venue mix in C.3 have concrete consequences for the Tier 1 implementation work. None of these require re-engineering Deliverable 5 — they refine the framing and add normative requirements to T1.6 (which Deliverable 5 explicitly defers as "writing, not coding").
+
+**T1.6 licensing — CC-BY 4.0 or Apache 2.0 from v0.1.** The conformance specification document should be open-licensed from its first published draft. The current T1.6 description in Deliverable 4 does not specify licensing. Licensing is signal: a v0.1 spec under CC-BY reads very differently in an ASTM or NIST conversation than the same content under "all rights reserved." Free move; large effect on venue conversations.
+
+**T1.6 venue-aware framing.** The spec should be authored *for* a specific venue conversation even before the venue is chosen, because the venue conversation is what tells you whether the framing lands. Authoring generically and placing later is the failure mode. The recommended posture: write the v0.1 spec with ASTM F38 + an OpenSSF project-charter conversation in mind, NIST RMF vocabulary throughout, EU AI Act Article 11 / Annex IV cross-references in the technical-documentation sections, and RFC 2119 normative language framed in a manner ASTM committees recognize.
+
+**T1.6 urgency — tied to ARC timing.** If the FAA Part 108 ARC seat is to function as a tactical lever per C.3, T1.6 v0.1 must be venue-presentable before the ARC's substantive work concludes — not before Part 108's effective date. ARCs typically run 12–24 months from convening to NPRM delivery. The exact Part 108 ARC status requires verification (see C.3), but the *order of magnitude* of urgency is months, not years. The original audit sized T1.6 at "S" (≤ 1–2 weeks) in Deliverable 4 §H. That sizing is correct for the *drafting* of the document but does not account for the venue-engagement work the document then supports. The addendum surfaces this dependency; the user's calendar resolves it.
+
+**T2.1 architected-for-multi-party-launches-with-one-partner.** The auditor-operated reference architecture (Posture A's Fork 2) cannot launch in its target form during Tier 1 or early Tier 2 because the conformance body and external auditors do not yet exist. The realistic walk: T1 ships with self-operated witnesses in degraded mode, T2.1 architects for full multi-party but launches with operator + one partner (insurer, civil-society pilot, or a friendly state agency standing in for the eventual sectoral authority), full 5-of-N quorum is gated on the conformance body coalescing in Tier 3. This is consistent with the audit's own Tier 2 deliverable language; the addendum just makes the dependency on the sixth fork explicit.
+
+**Degraded-mode-as-labeled-with-gap-visibility — normative requirement in T1.6.** Self-operated witnesses during the Tier 1 / early Tier 2 walk-up period must be more than labeled. The labeling must carry through to the assurance-attestation telemetry the system emits, so that a downstream consumer (regulator, insurer, court) can distinguish a finality certificate witnessed by a self-operated quorum from one witnessed by the target auditor-operated quorum without having to read the implementation. Degraded modes that look identical to full-assurance modes in operational telemetry ossify into the de facto pattern; the architectural commitment to auditor-operated rots in production. **This is a normative requirement in the conformance specification (T1.6), not an implementation note in Deliverable 5.** It is the mechanism by which the architectural commitment stays honest as the implementation walks toward it.
+
+**T1.2 framing — invoke the FIPS 140-3 / customer-key-ceremony precedent.** The BYO commitment (Fork 5) is not asking regulators to invent a new trust-root category. It is claiming an existing one — FIPS 140-3 validated HSMs are deployed in customer environments with customer-controlled key ceremonies; CMMC's third-party assessor regime does not mandate vendor key custody; even Sigstore separates the identity-attestation function from the customer signing-key function. The T1.2 spec language should invoke these precedents explicitly. Doing so shortens the regulator conversation by an unknown but probably meaningful amount, because the conversation starts inside an existing category rather than asking for a new one.
+
+## C.5 What this addendum does not do
+
+To keep the addendum's scope honest:
+
+- **It does not rewrite Deliverable 4.** §F stands as authored. The §E↔§F inconsistency is surfaced here; it is not silently corrected in the original. A reader of the audit body alone sees the inconsistency; a reader of audit-plus-addenda sees the resolution. That ordering is part of the audit-trail integrity.
+- **It does not resolve the venue scan.** The venue mix in C.3 is a starting recommendation. Verifying chartering scope, governance regime, IP terms, and entry costs requires direct engagement with each candidate venue. That work is the natural follow-on to this addendum and is out of scope here.
+- **It does not commit to a specific conformance body before the venue scan.** Naming ASTM F38 + OpenSSF as the recommended mix is orientation, not commitment. The scan may discover that one of the candidates has constraints that disqualify it (e.g., AISI charter scope, F38 chartering bandwidth, OpenSSF technical-charter constraints on non-software-supply-chain projects).
+- **It does not bind Tier 2 staffing.** Fork 3 (UAS first) is settled, but UAS-specific staffing — aviation regulatory expertise, BVLOS operational expertise, Remote ID protocol expertise — is a Tier 2 scoping decision that the addendum does not pre-empt.
+- **It does not restate or revisit the technical findings in Deliverables 1–3 or the implementation specs in Deliverable 5.** Those stand. The strategic reframe is a layer on top of the technical analysis, not a replacement for it. T1.0 / T1.1 / T1.2 remain the co-load-bearing Tier 1 trio per Addendum A; this addendum does not relitigate that.
+- **It does not eliminate the need to surface the broader strategic corpus into in-session conversation.** The audit author and any assistant continuing this work both operate with limited visibility into the GPlane book, Petersen Governance Architecture paper, GEL paper, MAE amendment protocol, Recursive Governance paper, and the Helena_Telecom_North binding (audit Addendum §A note on structural disclosure, line 1445). Implementation work that turns on the specifics of those documents requires the principal to bring the relevant excerpts into the working session.
+
+---
+
+**End of Addendum C. Plan file now contains four deliverables, three addenda (PM-review, cross-instance review, strategic reframe), and Deliverable 5 (Tier 1 implementation specs).**
