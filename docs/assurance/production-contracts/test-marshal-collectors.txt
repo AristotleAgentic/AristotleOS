@@ -1,0 +1,28 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:marshal-collectors C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/execution-control-runtime/src/marshal-collectors.test.ts
+
+✔ parseKubernetesPods maps pods to observations with the aristotle.* conventions (17.1754ms)
+✔ kubernetesCollector uses the injected runner and parses its output (1.0137ms)
+✔ kubernetesCollector fails soft on a non-zero runner (no throw, empty set) (0.2329ms)
+✔ normalizeObservations maps an arbitrary feed via a field mapping (0.5952ms)
+✔ collectObservations merges + dedupes across collectors (0.7858ms)
+✔ discovery flows into the census end-to-end (shadow pod is flagged) (2.6529ms)
+✔ looksLikeAgent flags agent runtimes and LLM egress, ignores ordinary processes (0.4419ms)
+✔ parseProcessList keeps only candidate agents and extracts LLM endpoints (0.447ms)
+✔ parsePsText parses `ps -eo pid,user,comm,args` output incl. header (0.4652ms)
+✔ processCollector runs ps via the injected runner and parses candidates (0.5281ms)
+✔ parseMcpInventory maps MCP servers to observations (0.3674ms)
+✔ mcpCollector parses the injected inventory and a rogue prod-shell scores high (0.7029ms)
+✔ collectObservations merges host + mcp collectors into one deduped set (0.3628ms)
+✔ extractRecords pulls the array out of common export shapes (0.2543ms)
+✔ fileObservationCollector reads an exported inventory via an injected reader (0.4078ms)
+✔ fileObservationCollector fails soft on unreadable / invalid JSON (0.3722ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 41.8244

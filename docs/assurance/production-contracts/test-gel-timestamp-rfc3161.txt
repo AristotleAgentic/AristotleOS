@@ -1,0 +1,42 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:gel-timestamp-rfc3161 C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> corepack pnpm@10.32.1 --filter @aristotle/gel-timestamp-rfc3161 test
+
+
+> @aristotle/gel-timestamp-rfc3161@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\gel-timestamp-rfc3161
+> node --import tsx --test src/index.test.ts
+
+✔ ASN.1: encodeInteger(0) -> 02 01 00 (2.4307ms)
+✔ ASN.1: encodeInteger(127) -> 02 01 7F (high bit clear, no padding) (0.206ms)
+✔ ASN.1: encodeInteger(128) -> 02 02 00 80 (high bit set, leading zero padding) (0.1862ms)
+✔ ASN.1: encodeNull -> 05 00 (0.2218ms)
+✔ ASN.1: encodeObjectIdentifier for SHA-256 -> well-known DER bytes (0.3577ms)
+✔ ASN.1: encodeSequence wraps children with tag 30 + correct length (0.2467ms)
+✔ ASN.1: encodeSequence with long-form length (> 127 bytes content) (0.8715ms)
+✔ ASN.1: encodeOctetString wraps bytes with tag 04 + length (0.1801ms)
+✔ ASN.1: decodeTLV reads tag + length + valueOffset (0.2736ms)
+✔ ASN.1: decodeChildren walks a SEQUENCE (0.3681ms)
+✔ buildTimeStampReq: produces a parseable SEQUENCE with version=1 and SHA-256 messageImprint (1.1032ms)
+✔ buildTimeStampReq: caller-supplied nonce round-trips (0.2208ms)
+✔ buildTimeStampReq: with reqPolicyOid adds an OID field (0.3034ms)
+✔ decodeTimeStampResp: granted (0) + token -> extracts TST bytes (0.4072ms)
+✔ decodeTimeStampResp: rejection (2) -> no token (0.1341ms)
+✔ decodeTimeStampResp: malformed root -> throws (0.5215ms)
+✔ Rfc3161TimestampAuthority: anchor() POSTs DER bytes with correct content-type (33.4799ms)
+✔ Rfc3161TimestampAuthority: TSA rejects -> throws with statusName in message (0.7882ms)
+✔ Rfc3161TimestampAuthority: HTTP non-2xx -> throws with status info (1.914ms)
+✔ Rfc3161TimestampAuthority: granted (0) status with token -> anchor signature is the TST (3.436ms)
+✔ Rfc3161TimestampAuthority: tsaKeyId override is surfaced in the anchor (1.0795ms)
+✔ inspectRfc3161Anchor: returns ok + TST bytes for a valid anchor (0.8939ms)
+✔ inspectRfc3161Anchor: record_hash mismatch -> ok=false with reason (0.1991ms)
+✔ inspectRfc3161Anchor: wrong kind -> ok=false with reason (0.1247ms)
+✔ inspectRfc3161Anchor: malformed TST (not a SEQUENCE) -> ok=false (0.1303ms)
+✔ inspectRfc3161Anchor: empty signature -> ok=false (0.1056ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 528.3902

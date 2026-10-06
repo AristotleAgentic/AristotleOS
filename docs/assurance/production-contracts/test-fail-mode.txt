@@ -1,0 +1,21 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:fail-mode C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/execution-control-runtime/src/fail-mode.test.ts
+
+✔ no degradation conditions resolve to allow (2.0433ms)
+✔ safety-critical fails closed on every condition (0.4032ms)
+✔ mission-critical refuses on infra loss but escalates a soft timeout (0.3442ms)
+✔ routine escalates infra loss, allows a degraded soft timeout (0.2692ms)
+✔ best-effort proceeds degraded but still escalates split-brain (quorum_lost) (0.2416ms)
+✔ the most-restrictive active condition wins (0.2071ms)
+✔ an unlabeled Ward defaults to mission-critical (fails closed on infra loss) (0.2048ms)
+✔ an unknown degradation condition fails closed (0.1788ms)
+✔ failModeBlocks is true only for refuse/escalate (0.3163ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19.8885

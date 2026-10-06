@@ -1,0 +1,16 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:constraints-security C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/governance-core/src/constraints.security.test.ts
+
+✔ inherited Object.prototype members do not 'exist' as facts (1.1707ms)
+✔ an 'absent' safety predicate is satisfied for inherited keys (not falsely present) (0.6193ms)
+✔ forbidden prototype-chain segments resolve to undefined (0.4275ms)
+✔ legitimate own-property predicates are unaffected (1.332ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16.2004

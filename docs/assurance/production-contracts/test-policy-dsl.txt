@@ -1,0 +1,23 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:policy-dsl C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/execution-control-runtime/src/policy-dsl.test.ts
+
+✔ tokenize handles strings, idents with dots/colons, numbers, comparison ops, comments (2.5146ms)
+✔ compilePolicy compiles a ward block into a valid Ward + Authority draft (2.3477ms)
+✔ the compiled draft is accepted by the governance builder and drives the real gate (24.2493ms)
+✔ defaults: id slugged from name, envelope/issuer/expires defaulted (0.9545ms)
+✔ multiple ward blocks compile to multiple drafts (0.806ms)
+✔ diagnostics carry line:column for a syntax error (0.4713ms)
+✔ invalid enum values are rejected with a helpful message + position (0.6525ms)
+✔ budget statement compiles to constraints.budget (cost + calls, shared window) (0.5875ms)
+✔ budget rejects an invalid duration with a positioned diagnostic (0.4686ms)
+✔ approve statement compiles to constraints.dual_control (0.564ms)
+✔ a missing subject and duplicate ward ids are rejected (0.3695ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 49.4772

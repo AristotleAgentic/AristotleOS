@@ -1,0 +1,29 @@
+Scope: 7 of 60 workspace projects
+
+> @aristotle/shared-types@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\types
+> tsc -p tsconfig.json
+
+
+> @aristotle/shared-schemas@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\schemas
+> tsc -p tsconfig.json
+
+
+> @aristotle/governance-core@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\governance-core
+> tsc -p tsconfig.json
+
+
+> @aristotle/trial-engine@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\trial-engine
+> tsc -p tsconfig.json
+
+
+> @aristotle/execution-control-runtime@0.1.8 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\execution-control-runtime
+> tsc -p tsconfig.json
+
+
+> @aristotle/mesh-runtime@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\mesh-runtime
+> tsc -p tsconfig.json
+
+
+> @aristotle/os-sdk@0.2.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\os-sdk
+> tsc -p tsconfig.json
+

@@ -1,0 +1,291 @@
+Scope: 59 of 60 workspace projects
+
+> @aristotle/website@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\apps\website
+> node scripts/build-ui-prototype.mjs && node --check serve.mjs && node --check scripts/smoke-test.mjs && node --check scripts/production-check.mjs && node --check scripts/site-audit.mjs && node scripts/site-audit.mjs
+
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> @aristotle/console-ui@0.1.8 build
+> vite build --base=/ui-prototype/ --outDir=../website/ui-prototype --emptyOutDir
+
+vite v5.4.21 building for production...
+transforming...
+✓ 1802 modules transformed.
+rendering chunks...
+computing gzip size...
+../website/ui-prototype/index.html                   0.83 kB │ gzip:   0.47 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+../website/ui-prototype/assets/index-B_VT6Af1.css   47.25 kB │ gzip:   9.63 kB
+../website/ui-prototype/assets/index-De4_TXtO.js   637.73 kB │ gzip: 167.41 kB
+✓ built in 6.25s
+warning: /papers/files/the-gplane-architecture-flow-edited.pdf: PDF exists but is not referenced by public HTML
+site audit passed (15 pages, 16 PDFs)
+warning: /papers/files/the-gplane-architecture-reading-edition.pdf: PDF exists but is not referenced by public HTML
+warning: /papers/files/the-gplane-architecture-scientific-edition.pdf: PDF exists but is not referenced by public HTML
+
+> @aristotle/os-sdk@0.2.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\os-sdk
+> tsc -p tsconfig.json
+
+
+> @aristotle/event-stream@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\event-stream
+> tsc -p tsconfig.json
+
+
+> @aristotle/execution-control-runtime@0.1.8 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\execution-control-runtime
+> tsc -p tsconfig.json
+
+
+> @aristotle/governance-core@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\governance-core
+> tsc -p tsconfig.json
+
+
+> @aristotle/mesh-runtime@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\mesh-runtime
+> tsc -p tsconfig.json
+
+
+> @aristotle/replay-artifact@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\replay-artifact
+> tsc -p tsconfig.json
+
+
+> @aristotle/shared-schemas@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\schemas
+> tsc -p tsconfig.json
+
+
+> @aristotle/service-runtime@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\service-runtime
+> tsc -p tsconfig.json
+
+
+> @aristotle/trial-engine@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\trial-engine
+> tsc -p tsconfig.json
+
+
+> @aristotle/shared-types@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\types
+> tsc -p tsconfig.json
+
+
+> @aristotle/http-gateway@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\adapters\http-gateway
+> tsc -p tsconfig.json
+
+
+> @aristotle/os-cli@0.2.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\apps\aristotle-cli
+> node build.mjs
+
+
+  dist\index.js  582.5kb
+
+Done in 53ms
+bundled AristotleOS CLI -> dist\index.js
+
+> @aristotle/console-ui@0.1.8 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\apps\console-ui
+> vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 1802 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.80 kB │ gzip:   0.46 kB
+dist/assets/index-B_VT6Af1.css   47.25 kB │ gzip:   9.63 kB
+dist/assets/index-BvjcWtv7.js   637.70 kB │ gzip: 167.39 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 5.38s
+
+> @aristotle/bedrock@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\bedrock
+> tsc -p tsconfig.json
+
+
+> @aristotle/gateway-client@0.1.0 prebuild C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\gateway-client
+> node scripts/embed-openapi.mjs
+
+embed-openapi: wrote openapi.json (56254 bytes)
+embed-openapi: wrote src/openapi-spec.gen.ts (114485 bytes, 28 paths embedded)
+
+> @aristotle/gateway-client@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\gateway-client
+> tsc -p tsconfig.json
+
+
+> @aristotle/agent-os@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\agent-os
+> tsc -p tsconfig.json
+
+
+> @aristotle/authority-router@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\authority-router
+> tsc -p tsconfig.json
+
+
+> @aristotle/evidence-ledger@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\evidence-ledger
+> tsc -p tsconfig.json
+
+
+> @aristotle/execution-gate@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\execution-gate
+> tsc -p tsconfig.json
+
+
+> @aristotle/governance-kernel@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\governance-kernel
+> tsc -p tsconfig.json
+
+
+> @aristotle/meta-authority-registry@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\meta-authority-registry
+> tsc -p tsconfig.json
+
+
+> @aristotle/policy-compiler@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\policy-compiler
+> tsc -p tsconfig.json
+
+
+> @aristotle/witness-service@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\witness-service
+> tsc -p tsconfig.json
+
+
+> @aristotle/adapter-sdk@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\adapter-sdk
+> tsc -p tsconfig.json
+
+
+> @aristotle/chaos-harness@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\chaos-harness
+> tsc -p tsconfig.json
+
+
+> @aristotle/gel-archive@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\gel-archive
+> tsc -p tsconfig.json
+
+
+> @aristotle/gel-timestamp@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\gel-timestamp
+> tsc -p tsconfig.json
+
+
+> @aristotle/kms-keyring@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\kms-keyring
+> tsc -p tsconfig.json
+
+
+> @aristotle/nonce-store@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\nonce-store
+> tsc -p tsconfig.json
+
+
+> @aristotle/observability-otel@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\observability-otel
+> tsc -p tsconfig.json
+
+
+> @aristotle/policy-pipeline@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\policy-pipeline
+> tsc -p tsconfig.json
+
+
+> @aristotle/scenario-engine@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\scenario-engine
+> tsc -p tsconfig.json
+
+
+> @aristotle/tenant-onboarding@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\tenant-onboarding
+> tsc -p tsconfig.json
+
+
+> @aristotle/time-machine@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\time-machine
+> tsc -p tsconfig.json
+
+
+> @aristotle/warrant-verifier@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\warrant-verifier
+> tsc -p tsconfig.json
+
+
+> @aristotle/bacnet-adapter@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\bacnet-adapter
+> tsc -p tsconfig.json
+
+
+> @aristotle/claude-agents@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\claude-agents
+> tsc -p tsconfig.json
+
+
+> @aristotle/dnp3-adapter@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\dnp3-adapter
+> tsc -p tsconfig.json
+
+
+> @aristotle/k8s-admission@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\k8s-admission
+> tsc -p tsconfig.json
+
+
+> @aristotle/langchain@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\langchain
+> tsc -p tsconfig.json
+
+
+> @aristotle/mastra@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\mastra
+> tsc -p tsconfig.json
+
+
+> @aristotle/mavlink-px4@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\mavlink-px4
+> tsc -p tsconfig.json
+
+
+> @aristotle/mcp-server@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\mcp-server
+> tsc -p tsconfig.json
+
+
+> @aristotle/modbus-adapter@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\modbus-adapter
+> tsc -p tsconfig.json
+
+
+> @aristotle/opcua-adapter@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\opcua-adapter
+> tsc -p tsconfig.json
+
+
+> @aristotle/openai-agents@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\openai-agents
+> tsc -p tsconfig.json
+
+
+> @aristotle/reviewer@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\reviewer
+> node build.mjs
+
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+  dist\index.js  18.2kb
+
+Done in 79ms
+bundled AristotleOS reviewer CLI -> dist\index.js
+
+> @aristotle/ros2-bridge@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\ros2-bridge
+> tsc -p tsconfig.json
+
+
+> @aristotle/sdk-anthropic@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\sdk-anthropic
+> tsc -p tsconfig.json
+
+
+> @aristotle/vercel-ai@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\vercel-ai
+> tsc -p tsconfig.json
+
+
+> @aristotle/simulation-engine@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\simulation-engine
+> tsc -p tsconfig.json
+
+
+> @aristotle/gel-timestamp-rfc3161@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\gel-timestamp-rfc3161
+> tsc -p tsconfig.json
+
+
+> @aristotle/sigstore-rekor@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\sigstore-rekor
+> tsc -p tsconfig.json
+
+
+> @aristotle/mcp-server-stdio@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\mcp-server-stdio
+> tsc -p tsconfig.json
+
+
+> @aristotle/gel-timestamp-rfc3161-verify@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\gel-timestamp-rfc3161-verify
+> tsc -p tsconfig.json
+
+
+> @aristotle/sigstore-rekor-verify@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\sigstore-rekor-verify
+> tsc -p tsconfig.json
+

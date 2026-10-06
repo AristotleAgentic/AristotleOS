@@ -1,0 +1,127 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:mesh C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> corepack pnpm@10.32.1 --filter @aristotle/mesh-runtime --filter @aristotle/chaos-harness --filter @aristotle/scenario-engine test
+
+Scope: 3 of 60 workspace projects
+shared/mesh-runtime test$ node --import tsx --test src/index.test.ts src/quorum-routing.test.ts src/ed25519-mesh.test.ts src/ingress-hardening.test.ts src/revocation-quorum.test.ts
+shared/mesh-runtime test: ✔ Ed25519 mesh: envelope propagates root -> witnesses -> edges with per-node keys (51.7511ms)
+shared/mesh-runtime test: ✔ Ed25519 mesh: revocation gossips end-to-end and edge refuses (80.637ms)
+shared/mesh-runtime test: ✔ Ed25519 mesh: edge issues warrant signed by its own private key under valid token (37.1409ms)
+shared/mesh-runtime test: ✔ Ed25519 allowlist: witness without root's trust anchor REFUSES the envelope (44.2579ms)
+shared/mesh-runtime test: ✔ Ed25519 impersonation defense: trust anchor bound to wrong key REFUSES envelope (35.3516ms)
+shared/mesh-runtime test: ✔ MeshNode constructor: only signer (no verifier) throws (1.5638ms)
+shared/mesh-runtime test: ✔ MeshNode constructor: only verifier (no signer) throws (0.394ms)
+shared/mesh-runtime test: ✔ MeshNode constructor: no secret AND no signer/verifier throws (0.2555ms)
+shared/mesh-runtime test: [aristotle/mesh-runtime] WARNING: MeshNode "root-1" constructed with a known demo HMAC secret. This is not safe for production. Use createEd25519MeshSigner + createEd25519MeshVerifier and pass { signer, verifier } to the MeshNode constructor. See ROADMAP_TO_100.md Category 1 and LIMITATIONS.md.
+shared/mesh-runtime test: ✔ envelope propagates from root through witnesses to all edges (39.1343ms)
+shared/mesh-runtime test: ✔ edge issues warrant on ALLOW under valid Fluidity Token (32.601ms)
+shared/mesh-runtime test: ✔ edge REFUSES when revocation has propagated (66.0771ms)
+shared/mesh-runtime test: ✔ partition: edge keeps issuing under Fluidity Token TTL, then EXPIRES on TTL expiry (116.3923ms)
+shared/mesh-runtime test: ✔ partition: revocation issued during split is detected via surviving witness (65.8283ms)
+shared/mesh-runtime test: ✔ disconnected-quota cap: edge fails closed after exceeding maxWarrantsWhileDisconnected (35.4548ms)
+shared/mesh-runtime test: ✔ reconciliation: edge submits local decisions to root after partition heal (47.1506ms)
+shared/mesh-runtime test: ✔ reconciliation: edge submitted-after-revocation decisions surface as conflicts (50.5791ms)
+shared/mesh-runtime test: ✔ envelope versioning: a higher-version envelope replaces a lower one (66.2001ms)
+shared/mesh-runtime test: ✔ envelope EXPIRED returns the distinct EXPIRE decision (not REFUSE) (32.8722ms)
+shared/mesh-runtime test: ✔ live HTTP transport: root and edge can talk over real TCP sockets (125.1697ms)
+shared/mesh-runtime test: ✔ auto-pull: pullRevocations() backfills the edge from root after a missed gossip window (76.5421ms)
+shared/mesh-runtime test: ✔ auto-pull: pingRoot reconnect transition fires pullRevocations automatically (99.3066ms)
+shared/mesh-runtime test: ✔ demo-secret WARN: known demo secret emits a one-time console.warn (1.733ms)
+shared/mesh-runtime test: ✔ demo-secret WARN: suppressDemoSecretWarning silences it (0.5107ms)
+shared/mesh-runtime test: ✔ demo-secret WARN: a non-demo secret does NOT warn (1.6616ms)
+shared/mesh-runtime test: ✔ productionMode: secret-only construction throws (1.0561ms)
+shared/mesh-runtime test: ✔ productionMode: HMAC signer construction throws (0.4793ms)
+shared/mesh-runtime test: ✔ productionMode: Ed25519 signer construction succeeds (5.0206ms)
+shared/mesh-runtime test: ✔ ingress: oversized POST returns 413 with structured body (79.1478ms)
+shared/mesh-runtime test: ✔ ingress: non-JSON content-type returns 415 (19.5126ms)
+shared/mesh-runtime test: ✔ ingress: malformed JSON returns 400 with structured body (7.544ms)
+shared/mesh-runtime test: ✔ ingress: well-formed PING with JSON content-type succeeds (200) (24.4544ms)
+shared/mesh-runtime test: ✔ ingress: content-type with charset is accepted (14.257ms)
+shared/mesh-runtime test: ✔ replay cache: same body twice within TTL -> second returns 409 (18.9854ms)
+shared/mesh-runtime test: ✔ replay cache: different bodies are independent (36.7455ms)
+shared/mesh-runtime test: ✔ replay cache unit: TTL-expired entries are reaccepted (0.4703ms)
+shared/mesh-runtime test: ✔ replay cache unit: maxSize bounds memory (LRU-ish eviction) (0.4014ms)
+shared/mesh-runtime test: ✔ rate limiter unit: bursting up to capacity is allowed (0.535ms)
+shared/mesh-runtime test: ✔ rate limiter unit: per-peer isolation — one flooder doesn't starve others (0.2351ms)
+shared/mesh-runtime test: ✔ rate limiter unit: refill restores tokens at the configured rate (0.2376ms)
+shared/mesh-runtime test: ✔ rate limiter unit: peek shows current tokens without consuming (0.2601ms)
+shared/mesh-runtime test: ✔ ingress: rate-limited request returns 429 with structured body (25.0817ms)
+shared/mesh-runtime test: ✔ ingress: anonymous (no msg.from) traffic is bucketed under '*' (9.669ms)
+shared/mesh-runtime test: ✔ ingress: rate limiter is per-peer — one flooder doesn't block others over HTTP (16.5262ms)
+shared/mesh-runtime test: ✔ QuorumCollector reaches required count after m witnesses sign (3.3828ms)
+shared/mesh-runtime test: ✔ QuorumCollector deduplicates re-signing by the same witness (0.3191ms)
+shared/mesh-runtime test: ✔ QuorumCollector ignores signatures from non-witness ids (0.5543ms)
+shared/mesh-runtime test: ✔ verifyQuorumSignature: valid signature passes, tampered fails (0.3294ms)
+shared/mesh-runtime test: ✔ InMemoryMeshPersistence: save and load envelopes + revocations (1.18ms)
+shared/mesh-runtime test: ✔ StaticSovereignRouter: local mae returns no route; foreign mae routes to anchor (0.3472ms)
+shared/mesh-runtime test: ✔ StaticSovereignRouter: unknown foreign mae returns undefined (0.1774ms)
+shared/mesh-runtime test: ✔ MeshNode.httpClient: injected client is used for cross-process sendTo (40.9618ms)
+shared/mesh-runtime test: ✔ MeshNode.urlFor: defaults to http when not provided (47.6659ms)
+shared/mesh-runtime test: ✔ InMemoryMeshPersistence: durability roundtrip — save envelopes + revocations and restore them under a new instance after JSON serialization (1.1735ms)
+shared/mesh-runtime test: ✔ InMemoryMeshPersistence: monotonic envelope versioning — a v2 save replaces v1 under the same envelope_id (0.3987ms)
+shared/mesh-runtime test: ✔ Q1: existing root.revoke() works for edges that don't require quorum (91.1818ms)
+shared/mesh-runtime test: ✔ Q2: revokeWithQuorum() produces a revocation with signing_quorum populated (37.7098ms)
+shared/mesh-runtime test: ✔ Q3: edge requireRevocationQuorum=2 accepts revocation with 2 valid sigs and refuses subsequent commits (80.5165ms)
+shared/mesh-runtime test: ✔ Q4: edge requireRevocationQuorum=2 REJECTS a single-signature revocation (no witness sigs) (97.6108ms)
+shared/mesh-runtime test: ✔ Q4b: edge requireRevocationQuorum=2 REJECTS a revocation with only 1 valid sig (one witness short) (84.5037ms)
+shared/mesh-runtime test: ✔ Q5: duplicate witness signatures from the same witness_id are deduplicated (37.6614ms)
+shared/mesh-runtime test: ✔ Q6: signatures from witnesses NOT in the verifier's allowlist are rejected (44.9117ms)
+shared/mesh-runtime test: ✔ Q7: signing_quorum from rev-A is NOT valid on rev-B (witnesses bind to root_signature) (42.0007ms)
+shared/mesh-runtime test: ✔ Q8: pullRevocations skips revocations that fail the quorum check (77.1709ms)
+shared/mesh-runtime test: ✔ Q9: revokeWithQuorum throws when fewer witnesses provided than requiredQuorum (2.9918ms)
+shared/mesh-runtime test: ✔ Q9b: revokeWithQuorum throws when requiredQuorum < 1 (1.9685ms)
+shared/mesh-runtime test: ✔ countValidRevocationQuorum: returns 0 for revocation without signing_quorum (0.125ms)
+shared/mesh-runtime test: ℹ tests 66
+shared/mesh-runtime test: ℹ suites 0
+shared/mesh-runtime test: ℹ pass 66
+shared/mesh-runtime test: ℹ fail 0
+shared/mesh-runtime test: ℹ cancelled 0
+shared/mesh-runtime test: ℹ skipped 0
+shared/mesh-runtime test: ℹ todo 0
+shared/mesh-runtime test: ℹ duration_ms 2088.604
+shared/mesh-runtime test: Done
+shared/chaos-harness test$ node --import tsx --test src/index.test.ts
+shared/scenario-engine test$ node --import tsx --test src/index.test.ts
+shared/scenario-engine test: ✔ GPS_SPOOF_MID_MISSION: spoof step refused with SUBJECT_MISMATCH; subsequent legit eval allowed (43.0951ms)
+shared/chaos-harness test: ✔ revocation_lag: witness-reachable half refuses; isolated half still allows (106.4699ms)
+shared/scenario-engine test: ✔ FLASH_REVOCATION: evaluate after revoke is ENVELOPE_REVOKED (66.5119ms)
+shared/scenario-engine test: ✔ PARTITION_RECONCILE: partitioned ALLOWs reconcile cleanly with no conflicts (32.4473ms)
+shared/scenario-engine test: ✔ trace metadata: scenario_id, started_at, finished_at all populated (14.5846ms)
+shared/scenario-engine test: ✔ evaluate against missing envelope returns UNKNOWN_ENVELOPE (0.6067ms)
+shared/scenario-engine test: ✔ unknown edge in evaluate marks step !ok with error (0.3734ms)
+shared/chaos-harness test: ✔ malicious_envelope: forged envelope is rejected; subsequent evaluate refuses with UNKNOWN_ENVELOPE (51.3684ms)
+shared/chaos-harness test: ✔ hallucinated_command: every out-of-envelope action refused (50 attempts) (46.8062ms)
+shared/scenario-engine test: ✔ transient_partition: link is severed for durationMs then healed automatically (85.0003ms)
+shared/scenario-engine test: ✔ assert_decision: passes when previous evaluate matches expected decision (29.5514ms)
+shared/scenario-engine test: ✔ assert_decision: fails (ok=false) when previous evaluate does NOT match expected (35.2559ms)
+shared/scenario-engine test: ✔ assert_decision: checks reason_code when supplied (0.6686ms)
+shared/scenario-engine test: ✔ assert_decision: ok=false when there is no prior evaluate to assert against (0.4122ms)
+shared/scenario-engine test: ✔ set_link_profile: declarative — records profile in trace without affecting determinism (32.2129ms)
+shared/chaos-harness test: ✔ fluidity_ttl_expiry: ALLOW before TTL, EXPIRE after TTL (198.8048ms)
+shared/chaos-harness test: ✔ quota_exhaustion: first N allowed; overshoot returns DISCONNECTED_QUOTA_EXCEEDED (34.6593ms)
+shared/chaos-harness test: ✔ replay_attempt: every replay yields a fresh warrant; warrant_ids are all distinct (34.379ms)
+shared/scenario-engine test: ✔ simulate_packet_loss: N partition/heal cycles are scripted into the trace (164.0201ms)
+shared/scenario-engine test: ✔ simulate_packet_loss: ok=false when edge is unknown (0.3048ms)
+shared/scenario-engine test: ℹ tests 14
+shared/scenario-engine test: ℹ suites 0
+shared/scenario-engine test: ℹ pass 14
+shared/scenario-engine test: ℹ fail 0
+shared/scenario-engine test: ℹ cancelled 0
+shared/scenario-engine test: ℹ skipped 0
+shared/scenario-engine test: ℹ todo 0
+shared/scenario-engine test: ℹ duration_ms 1290.9118
+shared/scenario-engine test: Done
+shared/chaos-harness test: ✔ clock_skew: fresh action allowed; action past local TTL boundary returns EXPIRE (183.8533ms)
+shared/chaos-harness test: ✔ witness_flap: envelope revocation reaches edge after witness recovers (212.723ms)
+shared/chaos-harness test: ✔ gossip_storm: 50 rapid re-emissions of the same revocation; cache stays at 1; post-storm refuses ENVELOPE_REVOKED (136.0265ms)
+shared/chaos-harness test: ✔ envelope_version_downgrade: v1 replay rejected; v2 tighter rules enforced (100.4377ms)
+shared/chaos-harness test: ✔ runAllChaosScenarios: every scenario in the deck passes (10 scenarios) (1082.7461ms)
+shared/chaos-harness test: ℹ tests 11
+shared/chaos-harness test: ℹ suites 0
+shared/chaos-harness test: ℹ pass 11
+shared/chaos-harness test: ℹ fail 0
+shared/chaos-harness test: ℹ cancelled 0
+shared/chaos-harness test: ℹ skipped 0
+shared/chaos-harness test: ℹ todo 0
+shared/chaos-harness test: ℹ duration_ms 2992.7877
+shared/chaos-harness test: Done

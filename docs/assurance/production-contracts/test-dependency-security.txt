@@ -1,0 +1,29 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:dependency-security C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> node --test scripts/dependency-security.test.mjs
+
+✔ sprintf precision attack is bounded: sprintf.js (17.1387ms)
+✔ sprintf precision attack is bounded: sprintf.min.js (2.7319ms)
+✔ .js status cancels oversized chunked body (54.7333ms)
+✔ .js status rejects declared oversize before reading (2.0788ms)
+✔ .js json cancels oversized chunked body (22.8975ms)
+✔ .js json rejects declared oversize before reading (1.379ms)
+✔ .js error cancels oversized chunked body (14.5861ms)
+✔ .js error rejects declared oversize before reading (0.6468ms)
+✔ .js bounded reader preserves UTF-8 across chunks (2.4947ms)
+✔ .mjs status cancels oversized chunked body (19.1031ms)
+✔ .mjs status rejects declared oversize before reading (0.7726ms)
+✔ .mjs json cancels oversized chunked body (14.565ms)
+✔ .mjs json rejects declared oversize before reading (0.5322ms)
+✔ .mjs error cancels oversized chunked body (18.1501ms)
+✔ .mjs error rejects declared oversize before reading (0.5501ms)
+✔ .mjs bounded reader preserves UTF-8 across chunks (0.6698ms)
+✔ LangChain UUID supports v4 and refuses undersized v3/v5 buffers (24.8669ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 411.4712

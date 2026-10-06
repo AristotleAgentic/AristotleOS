@@ -1,0 +1,20 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:degradation C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/execution-control-runtime/src/degradation.test.ts
+
+✔ probeLedgerWritable is true for a writable directory (6.1764ms)
+✔ probeLedgerWritable is false when the parent path is a file, not a directory (3.7894ms)
+✔ ledgerUnavailableProbe reports the condition only when unwritable (6.0736ms)
+✔ controlPlaneStaleProbe fires when the edge node is stale, clears after sync (4.4282ms)
+✔ predicateProbe maps a health predicate (and a throw) to a condition (0.5202ms)
+✔ collectDegradation runs probes and de-duplicates (3.4108ms)
+✔ collectDegradation is clean when all probes are healthy (3.7442ms)
+✔ runWithTimeout returns the value when fast, timedOut when slow (7.2838ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 110.1984

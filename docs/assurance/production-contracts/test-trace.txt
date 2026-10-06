@@ -1,0 +1,17 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:trace C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/execution-control-runtime/src/trace.test.ts
+
+✔ W3C traceparent parses, normalizes, and round-trips (1.644ms)
+✔ trace context + request id are stamped into the signed GEL record (29.3989ms)
+✔ an injected tracer receives spans for the decision phases (1.6044ms)
+✔ RuntimeMetrics counts decisions, reason codes, replay, and latency (0.543ms)
+✔ HTTP: traceparent header propagates to the GEL and /metrics exposes the histogram (86.2156ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 137.2799

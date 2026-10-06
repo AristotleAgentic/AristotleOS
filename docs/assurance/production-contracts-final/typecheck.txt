@@ -1,0 +1,4 @@
+
+> aristotle-autonomous-governance-os@0.1.33 typecheck C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsc --noEmit -p shared/governance-core/tsconfig.json && tsc --noEmit -p shared/trial-engine/tsconfig.json && tsc --noEmit -p shared/execution-control-runtime/tsconfig.json && tsc --noEmit -p adapters/http-gateway/tsconfig.json && tsc --noEmit -p apps/aristotle-cli/tsconfig.json && tsc --noEmit -p apps/console-ui/tsconfig.json && tsc --noEmit -p packages/os-sdk/tsconfig.json
+
