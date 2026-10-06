@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createSocket } from "node:dgram";
+import { once } from "node:events";
 import { AristotleClient } from "@aristotle/os-sdk";
 import {
   DemonstrationFlightControlTransport,
@@ -116,13 +117,16 @@ test("MavlinkUdpTransport sends a real UDP datagram to a listener", async () => 
     componentId: 1
   });
   try {
-    const out = await transport.emit(TAKEOFF, AUTHZ);
+    // Observe delivery, not an assumption that a busy host drains UDP in 30ms.
+    // Register before emitting so a fast receiver cannot race the listener.
+    const delivered = once(listener, "message", { signal: AbortSignal.timeout(5000) });
+    const [out] = await Promise.all([transport.emit(TAKEOFF, AUTHZ), delivered]);
     assert.equal(out.ok, true);
     if (out.ok) {
       assert.equal(out.receipt.transport, "px4-mavlink-udp");
       assert.equal(out.receipt.production_validated, false);
     }
-    // Wait briefly for delivery.
+    // Retain the original duplicate-observation window after actual delivery.
     await new Promise((r) => setTimeout(r, 30));
     assert.equal(received.length, 1, "listener must have received exactly one UDP datagram");
     assert.equal(received[0][0], 0xfd, "datagram must be MAVLink v2 (starts with 0xfd)");
