@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawn } from 'node:child_process';
 import path from 'node:path';
@@ -26,6 +26,9 @@ const manifest = {
     return { path: p, name: item.name, version: item.version, scripts: item.scripts ?? {} };
   }),
   artifacts: tracked.filter(p => /schema|openapi|specs\/|PROOF_STATUS|LIMITATIONS|VALIDATION_MATRIX|REVIEWER|replay.*json|apps\/aristotle-cli\/src\/index.ts/i.test(p)).map(p => ({ path: p, sha256: hash(readFileSync(path.join(repo, p))) })),
+  source_hashes: git('ls-files', '--cached', '--others', '--exclude-standard').split('\n')
+    .filter(p => /\.(?:ts|mts|mjs|json|yaml|yml|tla|cfg)$/.test(p) && !p.startsWith('docs/assurance/') && existsSync(path.join(repo, p)))
+    .map(p => ({ path: p, sha256: hash(readFileSync(path.join(repo, p))) })),
   test_inventory: tracked.filter(p => /(?:\.test\.|\.spec\.|benchmark|\/bench\/|\.tla$)/.test(p)),
   command_inventory: pkg.scripts,
   inventory_scope: 'Tracked package scripts and hashed schema/API/CLI/proof sources; not a claim of semantic API completeness.',
@@ -37,7 +40,7 @@ const commands = [
   ['build-prerequisites', 'corepack pnpm@10.32.1 -r --filter @aristotle/shared-types --filter @aristotle/shared-schemas --filter @aristotle/governance-core --filter @aristotle/trial-engine --filter @aristotle/execution-control-runtime --filter @aristotle/mesh-runtime --filter @aristotle/os-sdk --workspace-concurrency=1 build'],
   ['typecheck', 'corepack pnpm@10.32.1 typecheck'],
   ...Object.keys(pkg.scripts).filter(s => s.startsWith('test:') && !['test:all'].includes(s)).map(s => [s.replaceAll(':', '-'), `corepack pnpm@10.32.1 run ${s}`]),
-  ['workspace-tests', 'corepack pnpm@10.32.1 run test:all'],
+  ['workspace-tests', label === 'baseline' ? 'corepack pnpm@10.32.1 run test:all' : 'corepack pnpm@10.32.1 -r --workspace-concurrency=1 --filter "!@aristotle/os-cli" --filter "!aristotle-autonomous-governance-os" test'],
   ['reviewer-verify', 'corepack pnpm@10.32.1 reviewer:verify'],
   ['mesh-40-asset', 'node --import tsx --test examples/mesh/swarm-partition-40-asset.test.ts examples/mesh/published.replay.test.ts'],
   ['uav-constructed-demo', 'node scripts/verify-uav-swarm-proof.mjs'],
@@ -51,24 +54,29 @@ const commands = [
 ];
 for (const [name, command] of commands) {
   const started = Date.now();
+  manifest.current_command = { name, command, started_at: new Date(started).toISOString() };
+  save();
+  const file = `${name}.txt`;
+  const logPath = path.join(output, file);
+  writeFileSync(logPath, '');
   let log = '';
+  const capture = value => { const chunk = String(value); log += chunk; appendFileSync(logPath, chunk); };
   const result = await new Promise(resolve => {
     const child = spawn(command, { cwd: workspace, shell: true, windowsHide: true, env: { ...process.env, FORCE_COLOR: '0' } });
-    child.stdout.on('data', x => log += x);
-    child.stderr.on('data', x => log += x);
-    child.on('error', e => { log += String(e); resolve({ status: 'ENVIRONMENT_BLOCKED', exit_code: null }); });
+    child.stdout.on('data', capture);
+    child.stderr.on('data', capture);
+    child.on('error', e => { capture(e); resolve({ status: 'ENVIRONMENT_BLOCKED', exit_code: null }); });
     child.on('close', code => resolve({ status: code === 0 ? 'PASS' : 'FAIL', exit_code: code }));
   });
-  const file = `${name}.txt`;
-  writeFileSync(path.join(output, file), log);
   const totals = [...log.matchAll(/(?:#|ℹ) (tests|pass|fail|skipped) (\d+)/g)].map(m => ({ kind: m[1], count: Number(m[2]) }));
   manifest.results.push({ name, command, ...result, duration_ms: Date.now() - started, log: file, log_sha256: hash(log), reported_counts: totals });
+  delete manifest.current_command;
   save();
   console.log(`${result.status} ${name} (${Date.now() - started}ms)`);
 }
 manifest.results.push({ name: 'physical-validation', status: 'UNAVAILABLE', reason: 'No explicitly provisioned hardware or production test target.' });
 manifest.results.push({ name: 'live-stack-checks', status: 'SKIPPED', reason: 'Do not exercise the user running stack; requires isolated service configuration.' });
-manifest.status = manifest.results.some(r => r.status === 'FAIL') ? 'BASELINE_HAS_FAILURES' : 'CHECKS_COMPLETED_WITH_LIMITATIONS';
+manifest.status = manifest.results.some(r => r.status === 'FAIL') ? 'CHECKS_HAVE_FAILURES' : 'CHECKS_COMPLETED_WITH_LIMITATIONS';
 manifest.finished_at = new Date().toISOString();
 save();
 console.log(manifestPath);
