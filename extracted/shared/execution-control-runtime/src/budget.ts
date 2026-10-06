@@ -37,10 +37,12 @@ export function budgetPolicyFrom(raw: unknown): BudgetPolicy | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const b = raw as Record<string, unknown>;
   const windowMs = typeof b.windowMs === "number" ? b.windowMs : typeof b.window_ms === "number" ? b.window_ms : undefined;
-  if (windowMs === undefined || windowMs <= 0) return undefined;
+  if (windowMs === undefined || !Number.isFinite(windowMs) || windowMs <= 0) return undefined;
   const maxCost = typeof b.maxCostPerWindow === "number" ? b.maxCostPerWindow : typeof b.max_cost_per_window === "number" ? b.max_cost_per_window : undefined;
   const maxCalls = typeof b.maxCallsPerWindow === "number" ? b.maxCallsPerWindow : typeof b.max_calls_per_window === "number" ? b.max_calls_per_window : undefined;
   if (maxCost === undefined && maxCalls === undefined) return undefined;
+  if (maxCost !== undefined && (!Number.isFinite(maxCost) || maxCost < 0)) return undefined;
+  if (maxCalls !== undefined && (!Number.isSafeInteger(maxCalls) || maxCalls < 0)) return undefined;
   return { windowMs, ...(maxCost !== undefined ? { maxCostPerWindow: maxCost } : {}), ...(maxCalls !== undefined ? { maxCallsPerWindow: maxCalls } : {}) };
 }
 
@@ -49,6 +51,7 @@ export function budgetPolicyFrom(raw: unknown): BudgetPolicy | undefined {
  * prior spend `history`? Counts/sums only entries inside the rolling window.
  */
 export function checkBudget(policy: BudgetPolicy, history: BudgetEntry[], now: number, cost: number): BudgetCheck {
+  if (!Number.isFinite(cost) || cost < 0 || !Number.isFinite(now) || !budgetPolicyFrom(policy)) return { ok: false, reason: "invalid budget input" };
   const windowStart = now - policy.windowMs;
   const inWindow = history.filter((e) => e.at >= windowStart);
   if (policy.maxCallsPerWindow !== undefined && inWindow.length + 1 > policy.maxCallsPerWindow) {
@@ -85,9 +88,13 @@ export class BudgetGovernor {
     if (existsSync(this.file!)) {
       try {
         const parsed = JSON.parse(readFileSync(this.file!, "utf8")) as Partial<BudgetFile>;
-        return new Map(Object.entries(parsed.subjects ?? {}));
+        if (parsed.version !== "aristotle.budget.v1" || !parsed.subjects || typeof parsed.subjects !== "object" || Array.isArray(parsed.subjects)) throw new Error("invalid budget state");
+        for (const entries of Object.values(parsed.subjects)) {
+          if (!Array.isArray(entries) || entries.some(e => !e || !Number.isFinite(e.at) || !Number.isFinite(e.cost) || e.cost < 0)) throw new Error("invalid budget entries");
+        }
+        return new Map(Object.entries(parsed.subjects));
       } catch {
-        /* corrupt => start clean */
+        throw new Error("BUDGET_STATE_UNREADABLE: restore trusted state; refusing to reset spent authority");
       }
     }
     return new Map();
@@ -107,6 +114,7 @@ export class BudgetGovernor {
 
   /** Record an admitted action's spend, pruning entries older than the window. */
   record(subject: string, cost: number, now: number, windowMs: number): void {
+    if (!Number.isFinite(cost) || cost < 0 || !Number.isFinite(now) || !Number.isFinite(windowMs) || windowMs <= 0) throw new Error("invalid budget input");
     const map = this.read();
     const windowStart = now - windowMs;
     const next = [...(map.get(subject) ?? []).filter((e) => e.at >= windowStart), { at: now, cost }];

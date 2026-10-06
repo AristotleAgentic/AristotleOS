@@ -61,8 +61,9 @@ export function dualControlPolicyFrom(raw: unknown): DualControlPolicy | undefin
   const d = raw as Record<string, unknown>;
   const actions = Array.isArray(d.actions) ? d.actions.filter((a): a is string => typeof a === "string") : [];
   const required = typeof d.required === "number" ? d.required : undefined;
-  if (actions.length === 0 || required === undefined || required < 1) return undefined;
+  if (actions.length === 0 || required === undefined || !Number.isSafeInteger(required) || required < 1) return undefined;
   const ttlMs = typeof d.ttlMs === "number" ? d.ttlMs : typeof d.ttl_ms === "number" ? d.ttl_ms : undefined;
+  if (ttlMs !== undefined && (!Number.isFinite(ttlMs) || ttlMs <= 0)) return undefined;
   return { actions, required, ...(ttlMs !== undefined ? { ttlMs } : {}) };
 }
 
@@ -115,9 +116,13 @@ export class ApprovalStore {
     if (existsSync(this.file!)) {
       try {
         const parsed = JSON.parse(readFileSync(this.file!, "utf8")) as Partial<StoreFile>;
-        return new Map(Object.entries(parsed.requests ?? {}));
+        if (parsed.version !== "aristotle.dual-control.v1" || !parsed.requests || typeof parsed.requests !== "object" || Array.isArray(parsed.requests)) throw new Error("invalid approval state");
+        for (const request of Object.values(parsed.requests)) {
+          if (!request || !Number.isSafeInteger(request.required) || request.required < 1 || !Array.isArray(request.votes) || typeof request.canonical_action_hash !== "string") throw new Error("invalid approval request");
+        }
+        return new Map(Object.entries(parsed.requests));
       } catch {
-        /* corrupt => start clean */
+        throw new Error("APPROVAL_STATE_UNREADABLE: restore trusted state; refusing to reset approvals");
       }
     }
     return new Map();
