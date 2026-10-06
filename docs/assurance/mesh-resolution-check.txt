@@ -1,0 +1,19 @@
+✔ revocation_lag: witness-reachable half refuses; isolated half still allows (131.6301ms)
+✔ malicious_envelope: forged envelope is rejected; subsequent evaluate refuses with UNKNOWN_ENVELOPE (63.7073ms)
+✔ hallucinated_command: every out-of-envelope action refused (50 attempts) (56.6871ms)
+✔ fluidity_ttl_expiry: ALLOW before TTL, EXPIRE after TTL (213.8899ms)
+✔ quota_exhaustion: first N allowed; overshoot returns DISCONNECTED_QUOTA_EXCEEDED (54.6236ms)
+✔ replay_attempt: every replay yields a fresh warrant; warrant_ids are all distinct (40.3578ms)
+✔ clock_skew: fresh action allowed; action past local TTL boundary returns EXPIRE (198.5017ms)
+✔ witness_flap: envelope revocation reaches edge after witness recovers (234.1104ms)
+✔ gossip_storm: 50 rapid re-emissions of the same revocation; cache stays at 1; post-storm refuses ENVELOPE_REVOKED (142.033ms)
+✔ envelope_version_downgrade: v1 replay rejected; v2 tighter rules enforced (93.0552ms)
+✔ runAllChaosScenarios: every scenario in the deck passes (10 scenarios) (1130.5593ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3047.583

@@ -1,0 +1,266 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-06T07:22:41.331Z",
+  "baseline_commit": "8380d27cda05e15757482a3bcfa5b537abfb762c",
+  "source_commit": "cbf175db62bff71f946502b19c288ef5c03fec92",
+  "branch": "harden/effect-boundary",
+  "program_complete": false,
+  "result": "BOUNDED_INCREMENT_VALIDATED_WITH_DISCLOSED_LIMITATIONS",
+  "manifests": {
+    "baseline": {
+      "path": "baseline/BASELINE_ASSURANCE_MANIFEST.json",
+      "sha256": "4a15d8e2af6d9140cc4dc34eda7c55b47ae9bb73e3f6bf0b99a3b3704b456667",
+      "status": "BASELINE_HAS_FAILURES",
+      "counts": {
+        "PASS": 83,
+        "FAIL": 8,
+        "UNAVAILABLE": 1,
+        "SKIPPED": 1
+      }
+    },
+    "full": {
+      "path": "hardened/RESULTS.json",
+      "sha256": "f64c99e76e9ac801c49279cf020d66b8fd01050adb1cf6e8b22e3cffdf96e7fc",
+      "status": "CHECKS_HAVE_FAILURES",
+      "counts": {
+        "PASS": 89,
+        "FAIL": 3,
+        "UNAVAILABLE": 1,
+        "SKIPPED": 1
+      }
+    },
+    "dependency_final": {
+      "path": "dependency-final/RESULTS.json",
+      "sha256": "1c2fbfab45b496413b816f0abd048f043d5cf93e1d5a7d72323e772fe90f5663",
+      "status": "CHECKS_COMPLETED_WITH_LIMITATIONS",
+      "counts": {
+        "PASS": 10,
+        "UNAVAILABLE": 1,
+        "SKIPPED": 1
+      }
+    }
+  },
+  "verified_log_hashes": 193,
+  "final_run_source_hashes_match": true,
+  "final_lock_sha256": "3edaea34a665d2f2b6169a4133e378c3963540cc41eea6f499dc872189442201",
+  "supplemental": [
+    {
+      "log": "legacy-full-recheck.txt",
+      "covers": "test-legacy-routes",
+      "observed_exit_code": 0,
+      "sha256": "4e9c3c6e229e7161d17633f926f5b1cc0413d45ae327c7f028d83ff34ad144a5"
+    },
+    {
+      "log": "protocol-delivery-recheck.txt",
+      "covers": "test-protocol-adapters",
+      "observed_exit_code": 0,
+      "sha256": "6980963654dc4a731eb5796d455baa9ec29b4648ed2628254e1520e3792fd55e"
+    },
+    {
+      "log": "build-final-dependencies.txt",
+      "covers": "full workspace build before final Mastra alias correction",
+      "observed_exit_code": 0,
+      "sha256": "0a934d498e5d36af9dcf32683ad35e710c175af002bf8849dccfdc31052faabb"
+    },
+    {
+      "log": "packed-cli-check.txt",
+      "covers": "packed CLI clean-consumer check",
+      "observed_exit_code": 0,
+      "sha256": "974b6515ec7880a1c287d337da4c0b9880418272a47801ece7de83f37c4b0828"
+    },
+    {
+      "log": "audit-original-negative-control.txt",
+      "covers": "vulnerable graph must be rejected",
+      "observed_exit_code": 1,
+      "sha256": "f5eae0663aca131baebdf11eb08a65411255c1945516e2de9dc4568ddabecd19"
+    },
+    {
+      "log": "audit-network-negative-control.txt",
+      "covers": "registry error must be rejected",
+      "observed_exit_code": 1,
+      "sha256": "a75184adf378202a64ad16766905e0ad18ed8c97496e264e37d36838453a0f72"
+    }
+  ],
+  "failed_full_run_dispositions": [
+    {
+      "name": "test-legacy-routes",
+      "disposition": "Unchanged full recheck passed 99/99; initial readiness timeout retained"
+    },
+    {
+      "name": "test-protocol-adapters",
+      "disposition": "Test now awaits actual UDP receipt; full protocol recheck and workspace suites passed"
+    },
+    {
+      "name": "dependency-audit",
+      "disposition": "Gate corrected; compatible patches applied; dependency-final live audit passed with 3 below-threshold advisories"
+    }
+  ],
+  "audit": {
+    "initial_records": 48,
+    "initial_blocking_high_critical_records": 16,
+    "final_records": 3,
+    "final_severities": {
+      "moderate": 2,
+      "low": 1
+    },
+    "exceptions_added": 0,
+    "threshold_changed": false,
+    "remaining": [
+      {
+        "module": "uuid",
+        "severity": "moderate",
+        "id": "GHSA-w5hq-g745-h8pq",
+        "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+        "patched_versions": ">=11.1.1",
+        "findings": [
+          {
+            "version": "10.0.0",
+            "paths": [
+              "packages__langchain>@langchain/core>uuid"
+            ]
+          }
+        ]
+      },
+      {
+        "module": "@ai-sdk/provider-utils",
+        "severity": "low",
+        "id": "GHSA-866g-f22w-33x8",
+        "url": "https://github.com/advisories/GHSA-866g-f22w-33x8",
+        "patched_versions": ">=3.0.28",
+        "findings": [
+          {
+            "version": "2.2.8",
+            "paths": [
+              "packages__mastra>@mastra/core>@ai-sdk/ui-utils>@ai-sdk/provider-utils"
+            ]
+          }
+        ]
+      },
+      {
+        "module": "sprintf-js",
+        "severity": "moderate",
+        "id": "GHSA-hp3w-g68c-fv3c",
+        "url": "https://github.com/advisories/GHSA-hp3w-g68c-fv3c",
+        "patched_versions": "<0.0.0",
+        "findings": [
+          {
+            "version": "1.0.3",
+            "paths": [
+              "packages__mastra>@mastra/core>gray-matter>js-yaml>argparse>sprintf-js"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "formal_manifest": {
+    "path": "formal/manifest.json",
+    "sha256": "9bc58f364a36e0c1503fdc0923f6edaf740882825c83df78a0cb8df1a931eab4",
+    "claim": "Two bounded TLC configurations and two required negative controls; not implementation refinement"
+  },
+  "compatibility": {
+    "path": "COMPATIBILITY_COMPARISON_FINAL.json",
+    "sha256": "da3dd369f6fb3f6c4e26b77ab9ab591c32a5f84219fd02a1edda662f8040bab6"
+  },
+  "changed_source_hashes_normalized_lf": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "272d0ca0ab167da244c8e2927c12c42944ee7619d8f11870e6196bdd8f1112e0"
+    },
+    {
+      "path": "extracted/apps/aristotle-cli/src/index.test.ts",
+      "sha256": "3db1e62bbf6ab719cebca71dcef31007a175b7ac060c073ccc0abaec7071ab6b"
+    },
+    {
+      "path": "extracted/apps/aristotle-cli/src/index.ts",
+      "sha256": "e5b7d6a7bfc91bebed8434b60a3199c2c49f17f7aa74a9af22c49d59f29ef8ab"
+    },
+    {
+      "path": "extracted/docs/specs/MeshReconciliation.cfg",
+      "sha256": "f2ea3d9e9a20b4fedd6bdb38526b9afa6e8a0fedebf02aa3d999a80372cbccb5"
+    },
+    {
+      "path": "extracted/docs/specs/MeshReconciliation.quota.cfg",
+      "sha256": "28f206b62604a716cc0a96d45249d440039ed5e9a9644016a012c89a86ab7614"
+    },
+    {
+      "path": "extracted/docs/specs/MeshReconciliation.tla",
+      "sha256": "0d0f609484e73a9075a5d9cc4aa474762d2f658bc1c5f206b28f5025c4e5e62e"
+    },
+    {
+      "path": "extracted/package.json",
+      "sha256": "9ecebf8fcee3086c39420b712fd1dfcc5d59b308bff480e11e113563e285996e"
+    },
+    {
+      "path": "extracted/packages/mavlink-px4/src/index.test.ts",
+      "sha256": "c59805a6d677b5db4965ed98c0e22647991d5fde3b923dace5492c9f1f3bbdc2"
+    },
+    {
+      "path": "extracted/pnpm-lock.yaml",
+      "sha256": "3edaea34a665d2f2b6169a4133e378c3963540cc41eea6f499dc872189442201"
+    },
+    {
+      "path": "extracted/scripts/assurance-run.mjs",
+      "sha256": "fba6ddf57d6751396e277ba1f68a776a0a09f4a3fcd3bf9d4aa3ca6cad17111e"
+    },
+    {
+      "path": "extracted/scripts/audit-deps.mjs",
+      "sha256": "75aacb5bae31b7873a1e8199d0cb67c1afeb70f3ae1c4e2a6a95d99526b13790"
+    },
+    {
+      "path": "extracted/scripts/audit-deps.test.mjs",
+      "sha256": "0634de2e4aaeba33af87aee399fb6c7b6bfa31c4a6d637ded25d1be507681ad7"
+    },
+    {
+      "path": "extracted/scripts/check-formal-model.mjs",
+      "sha256": "c8490e952889bcb222acf808c6fb914a5f79eef8d49888d620719afb9fc9ceee"
+    },
+    {
+      "path": "extracted/scripts/compare-assurance-surfaces.mjs",
+      "sha256": "c880ada8a31f11db604b1c4efa5346331c1e6c117e873f1f3b295470b8a025fa"
+    },
+    {
+      "path": "extracted/shared/execution-control-runtime/src/budget.ts",
+      "sha256": "60c18592118213c957c70c03309868b0ab732fc55156ee1ab9fac1859d3e9b0d"
+    },
+    {
+      "path": "extracted/shared/execution-control-runtime/src/dual-control.ts",
+      "sha256": "1de6a14b56ff51cfdc179f0b9cb412e84cb1f557fb371a160356a8d72af933ed"
+    },
+    {
+      "path": "extracted/shared/execution-control-runtime/src/effects.test.ts",
+      "sha256": "b83a49c9140294305dfcd0f1b4f5cb5832bd66648839a5185a1f7326b2e26e0a"
+    },
+    {
+      "path": "extracted/shared/execution-control-runtime/src/effects.ts",
+      "sha256": "6219814a121defcfa8bbdbbdd1c1b43d8c2b673acc5b1d00b2876ee3283999dc"
+    },
+    {
+      "path": "extracted/shared/execution-control-runtime/src/index.ts",
+      "sha256": "10cf08c1a8eebe6b46beab0fb382ab03774f3cb47df108cf4e3318f4c7e0cfc6"
+    },
+    {
+      "path": "extracted/shared/execution-control-runtime/src/proxy.ts",
+      "sha256": "2b55afd662cc52f7f1bd5d8b9c6dd0bb0e7e88f28886aa1c50f9bd0a4536615e"
+    },
+    {
+      "path": "extracted/shared/gel-timestamp-rfc3161/src/index.ts",
+      "sha256": "2285669d153d41e9a886fa8a7e1fe68305bc3d19ad4d298602658ce34809d8f5"
+    },
+    {
+      "path": "extracted/shared/sigstore-rekor/package.json",
+      "sha256": "9c66da4e1227443f6d5e52b7d5a66b013a70febc5ed19948463ec3f82bbd88d4"
+    },
+    {
+      "path": "extracted/tsconfig.base.json",
+      "sha256": "efe81c4e86b40f2f6e56b58c61fff621c7896f4d26860c32be21e1cee9c713a3"
+    }
+  ],
+  "limitations": [
+    "Physical hardware, live PX4 SITL and user live deployment were not exercised",
+    "Remote CI was not run; local checks recorded",
+    "HTTP effect ownership is shared-local SQLite only; no exactly-once or rollback guarantee",
+    "Three lower-severity dependency advisories and pre-existing Mastra peer warnings remain",
+    "Full preservation/hardening program remains incomplete; see report"
+  ]
+}

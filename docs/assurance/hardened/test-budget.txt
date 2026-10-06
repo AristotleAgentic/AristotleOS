@@ -1,0 +1,18 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:budget C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/execution-control-runtime/src/budget.test.ts
+
+✔ checkBudget enforces call and cost ceilings within the window (1.7918ms)
+✔ checkBudget ignores spend outside the rolling window (0.3313ms)
+✔ budgetPolicyFrom parses snake/camel and rejects empty/invalid blobs (1.2676ms)
+✔ BudgetGovernor records spend and persists across instances (file-backed) (8.6105ms)
+✔ evaluateExecutionControl refuses BUDGET_EXCEEDED once the envelope budget is spent (58.7991ms)
+✔ no budget governor ⇒ budget is not enforced (opt-in) (4.8933ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 107.6481

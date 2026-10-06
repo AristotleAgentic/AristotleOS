@@ -1,6 +1,7 @@
 # Hardening increments and acceptance criteria
 
-Baseline: `8380d27`, branch `harden/assurance-effects-20261006`. The original
+Baseline: `8380d27`, captured on branch `harden/assurance-effects-20261006`.
+Implementation: isolated branch `harden/effect-boundary`. The original
 dirty checkout is not the baseline; its generated-file edits and unrelated
 untracked work remain untouched. No upstream publication is authorized.
 

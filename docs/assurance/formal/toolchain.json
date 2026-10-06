@@ -1,0 +1,7 @@
+{
+  "java_url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_x64_windows_hotspot_21.0.12.1_1.zip",
+  "java_sha256": "d35f31e712f0fcf6ac5a093edc90204fbff22f720ba3950bd09d331d5e621636",
+  "tlc_sha256": "936A262061C914694DFD669A543BE24573C45D5AA0FF20A8B96B23D01E050E88",
+  "tlc_version": "v1.7.4",
+  "tlc_url": "https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar"
+}

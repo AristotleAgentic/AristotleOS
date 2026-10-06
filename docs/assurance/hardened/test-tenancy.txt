@@ -1,0 +1,123 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:tenancy C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> corepack pnpm@10.32.1 --filter @aristotle/tenant-onboarding --filter @aristotle/policy-pipeline --filter @aristotle/time-machine --filter @aristotle/event-stream test
+
+Scope: 4 of 60 workspace projects
+shared/tenant-onboarding test$ node --import tsx --test src/index.test.ts
+shared/policy-pipeline test$ node --import tsx --test src/index.test.ts src/oci.test.ts
+shared/event-stream test$ node --import tsx --test src/index.test.ts
+shared/time-machine test$ node --import tsx --test src/index.test.ts src/cli.test.ts
+shared/event-stream test: ✔ makeEvent: defaults format, event_id, emitted_at (4.4072ms)
+shared/event-stream test: ✔ eventMatches: filter by event_type (0.5401ms)
+shared/event-stream test: ✔ eventMatches: filter by action_type_prefix and subject_prefix (0.3033ms)
+shared/event-stream test: ✔ EventBus: subscribers receive matching events; unsubscribe stops delivery (0.5923ms)
+shared/event-stream test: ✔ EventBus: filter restricts delivery (0.4479ms)
+shared/event-stream test: ✔ EventBus: a throwing subscriber doesn't poison the bus (0.7659ms)
+shared/event-stream test: ✔ WebhookDispatcher: ALLOW path POSTs with HMAC signature header (2.2478ms)
+shared/event-stream test: ✔ WebhookDispatcher: retries on non-2xx and stops after maxAttempts; calls onDeadLetter (201.527ms)
+shared/event-stream test: ✔ WebhookDispatcher: filter excludes non-matching subscriptions (0.7543ms)
+shared/event-stream test: ✔ WebhookDispatcher.verifySignature: tamper detection (0.5409ms)
+shared/event-stream test: ✔ attachSseHandler: writes SSE-framed events on publish; closes on response close (0.7627ms)
+shared/event-stream test: ℹ tests 11
+shared/event-stream test: ℹ suites 0
+shared/event-stream test: ℹ pass 11
+shared/event-stream test: ℹ fail 0
+shared/event-stream test: ℹ cancelled 0
+shared/event-stream test: ℹ skipped 0
+shared/event-stream test: ℹ todo 0
+shared/event-stream test: ℹ duration_ms 1965.0077
+shared/event-stream test: Done
+shared/tenant-onboarding test: ✔ bootstrapTenant: produces a MAE/Ward/Envelope, all tagged with tenant_id (9.7977ms)
+shared/tenant-onboarding test: ✔ bootstrapTenant: MAE signing_keys contains the supplied keyId — closes cross-tenant forge gap (1.6239ms)
+shared/tenant-onboarding test: ✔ bootstrapTenant: appoints governor when accountable_party != sovereign_root (1.3146ms)
+shared/tenant-onboarding test: ✔ bootstrapTenant: no governor minted when accountable_party === sovereign_root (1.1874ms)
+shared/tenant-onboarding test: ✔ bootstrapTenant: warns under HmacKeyring (demonstration only) (1.2722ms)
+shared/tenant-onboarding test: ✔ two tenants bootstrapped into the same store are isolated by scopeSnapshot (6.332ms)
+shared/tenant-onboarding test: ✔ bootstrapTenantWithLocalKeyring: spins up a fresh tenant in one call (3.3771ms)
+shared/tenant-onboarding test: ✔ bootstrapTenant: prohibited action classes default to a safe sentinel set (1.2855ms)
+shared/tenant-onboarding test: ✔ bootstrapTenant: federation disabled by default (5.3855ms)
+shared/tenant-onboarding test: ✔ bootstrapTenant: federation enabled honors trusted_mae_ids and exportable_evidence (1.3653ms)
+shared/tenant-onboarding test: ✔ rotateTenantKey: adds new key to signing_keys and re-signs the MAE (1.6488ms)
+shared/tenant-onboarding test: ✔ rotateTenantKey: rejects when newKeyId is already in signing_keys (1.5733ms)
+shared/tenant-onboarding test: ✔ pruneRetiredTenantKey: removes the retired key and re-signs under active (4.2928ms)
+shared/tenant-onboarding test: ✔ pruneRetiredTenantKey: refuses to prune the active key (2.5792ms)
+shared/tenant-onboarding test: ✔ suspendTenant: latches suspended_at on Wards and revocation_state on Envelopes (3.5501ms)
+shared/tenant-onboarding test: ✔ revokeTenant: latches revoked_at on Wards and revocation_state=revoked on Envelopes (1.8502ms)
+shared/tenant-onboarding test: ✔ exportTenantSnapshot + importTenantSnapshot: tenant migrates between stores (1.4296ms)
+shared/tenant-onboarding test: ✔ importTenantSnapshot: refuses to overwrite without overwrite:true (0.9638ms)
+shared/tenant-onboarding test: ✔ revokeTenant: only affects the named tenant (other tenants untouched) (4.1692ms)
+shared/tenant-onboarding test: ✔ tenant summaries reflect post-import state across stores (1.2403ms)
+shared/tenant-onboarding test: ✔ tenantAuditReport: posture=healthy with default bootstrap (1.3741ms)
+shared/tenant-onboarding test: ✔ tenantAuditReport: suspendTenant flips posture to degraded (1.1362ms)
+shared/tenant-onboarding test: ✔ tenantAuditReport: revokeTenant flips posture to compromised (1.3689ms)
+shared/tenant-onboarding test: ✔ tenantAuditReport: many signing keys triggers MANY_SIGNING_KEYS warn (3.3258ms)
+shared/tenant-onboarding test: ✔ tenantAuditReport: unknown tenant throws (0.3413ms)
+shared/tenant-onboarding test: ✔ federateTenants: mints a FederationAgreement when both sides opt in and trust each other (2.1527ms)
+shared/tenant-onboarding test: ✔ federateTenants: refuses when local tenant has federation_allowed=false (1.1603ms)
+shared/tenant-onboarding test: ✔ federateTenants: refuses when foreign tenant doesn't list local MAE as trusted (1.6485ms)
+shared/tenant-onboarding test: ✔ federateTenants: refuses when ward ids don't match their declared tenants (9.2535ms)
+shared/tenant-onboarding test: ℹ tests 29
+shared/tenant-onboarding test: ℹ suites 0
+shared/tenant-onboarding test: ℹ pass 29
+shared/tenant-onboarding test: ℹ fail 0
+shared/tenant-onboarding test: ℹ cancelled 0
+shared/tenant-onboarding test: ℹ skipped 0
+shared/tenant-onboarding test: ℹ todo 0
+shared/tenant-onboarding test: ℹ duration_ms 2819.2774
+shared/tenant-onboarding test: Done
+shared/policy-pipeline test: ✔ buildPolicyBundle: emits a PolicyBundle with bundle_hash + provenance + manifests (41.9207ms)
+shared/policy-pipeline test: ✔ buildPolicyBundle: reproducibility — same source + same built_at -> identical bundle_hash (4.3757ms)
+shared/policy-pipeline test: ✔ buildPolicyBundle: rejects builds without provenance.built_at (1.5463ms)
+shared/policy-pipeline test: ✔ buildPolicyBundle: throws on APL compile error (0.664ms)
+shared/policy-pipeline test: ✔ buildPolicyBundle with signer: returns a SignedPolicyBundle that verifies (3.776ms)
+shared/policy-pipeline test: ✔ verifyPolicyBundle: tampered source breaks reproducibility check (2.3845ms)
+shared/policy-pipeline test: ✔ verifyPolicyBundle: tampered manifest breaks bundle_hash check (2.0007ms)
+shared/policy-pipeline test: ✔ verifyPolicyBundle: wrong keyId returns signature_ok=false (1.7319ms)
+shared/policy-pipeline test: ✔ diffPolicyBundles: v1 -> v2 tighter reports tightening changes (no weakening) (5.8789ms)
+shared/policy-pipeline test: ✔ diffPolicyBundles: removing a ward marks state:removed (6.5895ms)
+shared/policy-pipeline test: ✔ buildPolicyBundleWithLocalKeyring: convenience helper produces a verifiable signed bundle (1.5829ms)
+shared/policy-pipeline test: ✔ buildPolicyBundle: provenance carries source_ref and notes through to the signed material (2.6319ms)
+shared/policy-pipeline test: ✔ buildPolicyBundle: pipeline_version embedded; rebuilds under same version yield same hash (3.0189ms)
+shared/time-machine test: ✔ parseArgs: minimal happy path (4.3276ms)
+shared/time-machine test: ✔ parseArgs: full option set (0.3998ms)
+shared/time-machine test: ✔ parseArgs: rejects --max-flipped that is not a non-negative integer (0.7996ms)
+shared/time-machine test: ✔ parseArgs: rejects missing --plan (0.2857ms)
+shared/time-machine test: ✔ parseArgs: rejects unknown argument (0.2751ms)
+shared/time-machine test: ✔ runCli: writes serialized sweep to --out; exits 1 when flipped > max-flipped (74.8864ms)
+shared/time-machine test: ✔ runCli: exits 0 when flipped <= max-flipped (49.3263ms)
+shared/time-machine test: ✔ runCli: throws on malformed plan (records missing) (31.3369ms)
+shared/time-machine test: ✔ runCli: throws on counterfactual missing name (28.1696ms)
+shared/policy-pipeline test: ✔ toOciBundle: produces a valid OCI image manifest with the four expected layers (51.019ms)
+shared/policy-pipeline test: ✔ fromOciBundle: round-trips toOciBundle preserving signature and bundle_hash (7.3567ms)
+shared/policy-pipeline test: ✔ fromOciBundle: detects blob tampering via digest mismatch (1.2465ms)
+shared/policy-pipeline test: ✔ fromOciBundle: rejects wrong manifest mediaType / artifactType (1.1508ms)
+shared/policy-pipeline test: ✔ fromOciBundle: rejects bundle when a layer's blob is missing (3.8241ms)
+shared/time-machine test: ✔ original replay reproduces historical ALLOW decision exactly (42.2486ms)
+shared/time-machine test: ✔ counterfactual that removes action from envelope flips ALLOW to REFUSE (1.1368ms)
+shared/time-machine test: ✔ counterfactual reports policy_version mismatch as ESCALATE (0.7448ms)
+shared/time-machine test: ✔ original_reproduces_historical false when ward/envelope inputs don't match record (0.6037ms)
+shared/time-machine test: ✔ multiple counterfactuals: decisions_flipped counts only those that differ from original (0.9994ms)
+shared/time-machine test: ✔ runCounterfactualSweep: ALLOW_to_REFUSE transition count across a small batch (6.5098ms)
+shared/time-machine test: ✔ runCounterfactualSweep: unresolved actions counted but not evaluated (0.5529ms)
+shared/time-machine test: ✔ serializeSweep + loadSweep: round-trip preserves content and format tag (0.9307ms)
+shared/time-machine test: ✔ loadSweep: rejects artifacts without the expected format tag (1.3302ms)
+shared/time-machine test: ✔ summarizeSweep: produces a single-line CI-friendly string (1.6233ms)
+shared/time-machine test: ✔ compareSweeps: rows sorted by flipped descending; total_resolved_records is the max (0.4975ms)
+shared/time-machine test: ℹ tests 20
+shared/time-machine test: ℹ suites 0
+shared/time-machine test: ℹ pass 20
+shared/time-machine test: ℹ fail 0
+shared/time-machine test: ℹ cancelled 0
+shared/time-machine test: ℹ skipped 0
+shared/time-machine test: ℹ todo 0
+shared/time-machine test: ℹ duration_ms 3215.194
+shared/time-machine test: Done
+shared/policy-pipeline test: ℹ tests 18
+shared/policy-pipeline test: ℹ suites 0
+shared/policy-pipeline test: ℹ pass 18
+shared/policy-pipeline test: ℹ fail 0
+shared/policy-pipeline test: ℹ cancelled 0
+shared/policy-pipeline test: ℹ skipped 0
+shared/policy-pipeline test: ℹ todo 0
+shared/policy-pipeline test: ℹ duration_ms 3355.6915
+shared/policy-pipeline test: Done

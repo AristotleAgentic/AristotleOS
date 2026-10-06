@@ -1,0 +1,25 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:playground C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> npm run test:governance
+
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:governance
+> tsx shared/trial-engine/src/index.test.ts
+
+✔ governance file validates required AristotleOS primitives (5.8272ms)
+✔ payments flagship scenario defers before warrant issuance (2.9321ms)
+✔ operator approval issues a single-use warrant and commits GEL (6.6294ms)
+✔ denied payout never receives a warrant (0.8887ms)
+✔ missing authority binding fails closed (1.9652ms)
+✔ plan reports governance artifact changes (1.7374ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 43.0942

@@ -1,0 +1,370 @@
+Scope: 59 of 60 workspace projects
+
+> @aristotle/website@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\apps\website
+> node scripts/build-ui-prototype.mjs && node --check serve.mjs && node --check scripts/smoke-test.mjs && node --check scripts/production-check.mjs && node --check scripts/site-audit.mjs && node scripts/site-audit.mjs
+
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> @aristotle/console-ui@0.1.8 build
+> vite build --base=/ui-prototype/ --outDir=../website/ui-prototype --emptyOutDir
+
+vite v5.4.21 building for production...
+transforming...
+✓ 1802 modules transformed.
+rendering chunks...
+computing gzip size...
+../website/ui-prototype/index.html                   0.83 kB │ gzip:   0.47 kB
+../website/ui-prototype/assets/index-B_VT6Af1.css   47.25 kB │ gzip:   9.63 kB
+../website/ui-prototype/assets/index-De4_TXtO.js   637.73 kB │ gzip: 167.41 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 10.73s
+warning: /papers/files/the-gplane-architecture-flow-edited.pdf: PDF exists but is not referenced by public HTML
+warning: /papers/files/the-gplane-architecture-reading-edition.pdf: PDF exists but is not referenced by public HTML
+warning: /papers/files/the-gplane-architecture-scientific-edition.pdf: PDF exists but is not referenced by public HTML
+site audit passed (15 pages, 16 PDFs)
+
+> @aristotle/os-sdk@0.2.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\os-sdk
+> tsc -p tsconfig.json
+
+
+> @aristotle/event-stream@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\event-stream
+> tsc -p tsconfig.json
+
+
+> @aristotle/execution-control-runtime@0.1.8 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\execution-control-runtime
+> tsc -p tsconfig.json
+
+
+> @aristotle/governance-core@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\governance-core
+> tsc -p tsconfig.json
+
+
+> @aristotle/mesh-runtime@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\mesh-runtime
+> tsc -p tsconfig.json
+
+
+> @aristotle/replay-artifact@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\replay-artifact
+> tsc -p tsconfig.json
+
+
+> @aristotle/shared-schemas@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\schemas
+> tsc -p tsconfig.json
+
+
+> @aristotle/service-runtime@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\service-runtime
+> tsc -p tsconfig.json
+
+
+> @aristotle/trial-engine@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\trial-engine
+> tsc -p tsconfig.json
+
+
+> @aristotle/shared-types@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\types
+> tsc -p tsconfig.json
+
+
+> @aristotle/http-gateway@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\adapters\http-gateway
+> tsc -p tsconfig.json
+
+
+> @aristotle/os-cli@0.2.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\apps\aristotle-cli
+> node build.mjs
+
+
+  dist\index.js  557.8kb
+
+Done in 465ms
+bundled AristotleOS CLI -> dist\index.js
+
+> @aristotle/console-ui@0.1.8 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\apps\console-ui
+> vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 1802 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.80 kB │ gzip:   0.46 kB
+dist/assets/index-B_VT6Af1.css   47.25 kB │ gzip:   9.63 kB
+dist/assets/index-BvjcWtv7.js   637.70 kB │ gzip: 167.39 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 13.49s
+
+> @aristotle/bedrock@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\bedrock
+> tsc -p tsconfig.json
+
+
+> @aristotle/gateway-client@0.1.0 prebuild C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\gateway-client
+> node scripts/embed-openapi.mjs
+
+embed-openapi: wrote openapi.json (56254 bytes)
+embed-openapi: wrote src/openapi-spec.gen.ts (114485 bytes, 28 paths embedded)
+
+> @aristotle/gateway-client@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\gateway-client
+> tsc -p tsconfig.json
+
+
+> @aristotle/agent-os@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\services\agent-os
+> tsc -p tsconfig.json
+
+
+> @aristotle/authority-router@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\services\authority-router
+> tsc -p tsconfig.json
+
+
+> @aristotle/evidence-ledger@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\services\evidence-ledger
+> tsc -p tsconfig.json
+
+
+> @aristotle/execution-gate@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\services\execution-gate
+> tsc -p tsconfig.json
+
+
+> @aristotle/governance-kernel@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\services\governance-kernel
+> tsc -p tsconfig.json
+
+
+> @aristotle/meta-authority-registry@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\services\meta-authority-registry
+> tsc -p tsconfig.json
+
+
+> @aristotle/policy-compiler@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\services\policy-compiler
+> tsc -p tsconfig.json
+
+
+> @aristotle/witness-service@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\services\witness-service
+> tsc -p tsconfig.json
+
+
+> @aristotle/adapter-sdk@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\adapter-sdk
+> tsc -p tsconfig.json
+
+
+> @aristotle/chaos-harness@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\chaos-harness
+> tsc -p tsconfig.json
+
+
+> @aristotle/gel-archive@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\gel-archive
+> tsc -p tsconfig.json
+
+../execution-control-runtime/src/degradation.ts(5,45): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/edge-containment.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./edge-containment.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/degradation.ts'
+    Imported via "./edge-containment.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(11,8): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/signing.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./signing.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./signing.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(12,60): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/proxy.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./proxy.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./proxy.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./proxy.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/mcp.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(13,33): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/playground.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./playground.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./playground.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(14,111): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/revocation.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./revocation.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./revocation.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(15,71): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/validation.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./validation.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./validation.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(16,52): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/audit-sink.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./audit-sink.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./audit-sink.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(28,8): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/auth.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./auth.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./auth.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(35,8): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/trace.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./trace.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./trace.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(36,32): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/metrics.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./metrics.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./metrics.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(37,105): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/builder.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./builder.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./builder.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./builder.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/policy-dsl.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(38,54): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/shadow.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./shadow.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./shadow.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(39,78): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/reconcile.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./reconcile.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./reconcile.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/conflict-inbox.ts'
+    Imported via "./reconcile.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(40,36): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/conflict-inbox.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./conflict-inbox.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./conflict-inbox.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(41,81): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/ward-marshal.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./ward-marshal.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./ward-marshal.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(42,87): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/marshal-behavior.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./marshal-behavior.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./marshal-behavior.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(43,60): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/classification.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./classification.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./classification.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/policy-dsl.ts'
+    Imported via "./classification.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(44,82): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/fail-mode.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./fail-mode.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./fail-mode.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/degradation.ts'
+    Imported via "./fail-mode.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/policy-dsl.ts'
+    Imported via "./fail-mode.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(45,83): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/degradation.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./degradation.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./degradation.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(46,69): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/budget.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./budget.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./budget.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(47,54): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/dual-control.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./dual-control.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./dual-control.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(50,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/mcp.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(55,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/sqlite-ledger.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(56,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/postgres-ledger.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(61,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/sandbox.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(64,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/policy-dsl.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(68,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/ward-marshal-adapters.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(70,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/marshal-collectors.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(71,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/credential-minter.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(72,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/attestation.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(73,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/crypto-posture.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(80,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/telecom.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(81,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/automotive.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(82,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/grid.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(83,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/rail.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(84,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/pipeline.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(85,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/mining.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(86,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/port.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(87,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/water.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(88,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/aviation.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(89,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/robotics.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(90,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/logistics.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(91,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/swarm.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(92,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/healthcare.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(93,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/title.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/index.ts(94,15): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/space.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/proxy.ts(20,75): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/credential-revocation.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./credential-revocation.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/proxy.ts'
+    Imported via "./credential-revocation.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts'
+    Imported via "./credential-revocation.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/ward-marshal-adapters.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+../execution-control-runtime/src/proxy.ts(21,35): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/egress-guard.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+src/index.ts(76,8): error TS6059: File 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/index.ts' is not under 'rootDir' 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "@aristotle/execution-control-runtime" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src/index.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/proxy.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/audit-sink.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/metrics.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/builder.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/shadow.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/reconcile.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/ward-marshal.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/marshal-behavior.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/mcp.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/sqlite-ledger.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/postgres-ledger.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/sandbox.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/policy-dsl.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/ward-marshal-adapters.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/marshal-collectors.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/credential-minter.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/attestation.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/telecom.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/automotive.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/grid.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/rail.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/pipeline.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/mining.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/port.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/water.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/aviation.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/robotics.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/logistics.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/swarm.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/healthcare.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/title.ts'
+    Imported via "./index.js" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/src/space.ts'
+    Imported via "@aristotle/execution-control-runtime" from file 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/gel-archive/src/index.ts'
+  File is ECMAScript module because 'C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/shared/execution-control-runtime/package.json' has field "type" with value "module"
+C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\gel-archive:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @aristotle/gel-archive@0.1.0 build: `tsc -p tsconfig.json`
+Exit status 2

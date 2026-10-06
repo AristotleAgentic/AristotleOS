@@ -1,0 +1,73 @@
+{
+  "generated_at": "2026-10-06T06:56:25.448Z",
+  "baseline_commit": "8380d27cda05e15757482a3bcfa5b537abfb762c",
+  "scope": "Normalized tracked schemas/generated OpenAPI, exported runtime names, generated execution-control OpenAPI and CLI help commands. Does not establish semantic substitutability, every TypeScript signature, behavior or binary compatibility.",
+  "schemas": [
+    {
+      "file": "extracted/adapters/http-gateway/openapi.json",
+      "baseline_sha256": "7ad6d7bb01d1736fd805e2c5655178a1b6862582b282f614b8dbaf2663bbc9cf",
+      "current_sha256": "7ad6d7bb01d1736fd805e2c5655178a1b6862582b282f614b8dbaf2663bbc9cf",
+      "status": "UNCHANGED"
+    },
+    {
+      "file": "extracted/packages/gateway-client/openapi.json",
+      "baseline_sha256": "9a6bab46194f0617b8fec2385e6b4250374aadc5ced0e73a9ef842fb1dbc4fe5",
+      "current_sha256": "9a6bab46194f0617b8fec2385e6b4250374aadc5ced0e73a9ef842fb1dbc4fe5",
+      "status": "UNCHANGED"
+    },
+    {
+      "file": "extracted/packages/gateway-client/src/openapi-spec.gen.ts",
+      "baseline_sha256": "a2ab30321aec3e335cd6a61ddbe2686541c4039b9c60a46f26937be61ce5a0fa",
+      "current_sha256": "a2ab30321aec3e335cd6a61ddbe2686541c4039b9c60a46f26937be61ce5a0fa",
+      "status": "UNCHANGED"
+    },
+    {
+      "file": "extracted/shared/schemas/package.json",
+      "baseline_sha256": "b5c389aec429ce0c489ed9864a3693715632460ed12e7f9c91c0c52c750d550b",
+      "current_sha256": "b5c389aec429ce0c489ed9864a3693715632460ed12e7f9c91c0c52c750d550b",
+      "status": "UNCHANGED"
+    },
+    {
+      "file": "extracted/shared/schemas/src/index.d.ts",
+      "baseline_sha256": "f9c876b731f9ce9b5810c7a6a7fe921ea8b5857be2e758fdd3d886f94f30caef",
+      "current_sha256": "f9c876b731f9ce9b5810c7a6a7fe921ea8b5857be2e758fdd3d886f94f30caef",
+      "status": "UNCHANGED"
+    },
+    {
+      "file": "extracted/shared/schemas/src/index.js",
+      "baseline_sha256": "195c5622b9c6c2c36d98ca7263fa9527258eb29229da673b61cbbba9be96566a",
+      "current_sha256": "195c5622b9c6c2c36d98ca7263fa9527258eb29229da673b61cbbba9be96566a",
+      "status": "UNCHANGED"
+    },
+    {
+      "file": "extracted/shared/schemas/src/index.ts",
+      "baseline_sha256": "d0d8dd106c8480abf0177cd38859d3b53d02ad516ec4cadc276b6e3cd7db064e",
+      "current_sha256": "d0d8dd106c8480abf0177cd38859d3b53d02ad516ec4cadc276b6e3cd7db064e",
+      "status": "UNCHANGED"
+    },
+    {
+      "file": "extracted/shared/schemas/tsconfig.json",
+      "baseline_sha256": "0b02c328fe16ed729f1dee80c34f6967958c976919d1b3e40952ae331b821652",
+      "current_sha256": "0b02c328fe16ed729f1dee80c34f6967958c976919d1b3e40952ae331b821652",
+      "status": "UNCHANGED"
+    },
+    {
+      "file": "extracted/shared/schemas/tsconfig.tsbuildinfo",
+      "baseline_sha256": "033d7e23e3f32939302376478381876eea639e0b69fdaffb76a4e915690be55d",
+      "current_sha256": "033d7e23e3f32939302376478381876eea639e0b69fdaffb76a4e915690be55d",
+      "status": "UNCHANGED"
+    }
+  ],
+  "runtime_exports_removed": [],
+  "runtime_exports_added": [
+    "SqliteEffectStore",
+    "effectObservationMaterial",
+    "verifyEffectEvidence"
+  ],
+  "execution_control_openapi_unchanged": true,
+  "cli_commands_removed": [],
+  "cli_commands_added": [
+    "execution-control effects verify"
+  ],
+  "security_behavior_changes": "See extracted/docs/effect-accounting.md; unchanged schema is not unchanged behavior."
+}

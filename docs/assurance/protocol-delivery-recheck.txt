@@ -1,0 +1,148 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:protocol-adapters C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> corepack pnpm@10.32.1 --filter @aristotle/mavlink-px4 --filter @aristotle/ros2-bridge --filter @aristotle/opcua-adapter --filter @aristotle/dnp3-adapter --filter @aristotle/modbus-adapter --filter @aristotle/bacnet-adapter --filter @aristotle/k8s-admission test
+
+Scope: 7 of 60 workspace projects
+packages/mavlink-px4 test$ node --import tsx --test src/index.test.ts
+packages/ros2-bridge test$ node --import tsx --test src/index.test.ts
+packages/opcua-adapter test$ node --import tsx --test src/index.test.ts
+packages/dnp3-adapter test$ node --import tsx --test src/index.test.ts
+packages/dnp3-adapter test: ✔ DemonstrationDnp3Transport emits hash-bound receipt for breaker trip (5.4395ms)
+packages/dnp3-adapter test: ✔ transport REFUSES point indexes outside authz (0.3666ms)
+packages/dnp3-adapter test: ✔ Dnp3ShimTransport delegates to the provided sender (3.3398ms)
+packages/dnp3-adapter test: ✔ Dnp3ShimTransport: sender error -> TRANSPORT_REJECTED (0.5001ms)
+packages/dnp3-adapter test: ✔ governDnp3Control: ALLOW path emits with action_type=grid.dnp3.binary_output_select_then_operate (2.2166ms)
+packages/dnp3-adapter test: ✔ governDnp3Control: REFUSE skips the transport (0.6171ms)
+packages/dnp3-adapter test: ✔ governDnp3Control: demo-only block without opt-in (0.4466ms)
+packages/dnp3-adapter test: ℹ tests 7
+packages/dnp3-adapter test: ℹ suites 0
+packages/dnp3-adapter test: ℹ pass 7
+packages/dnp3-adapter test: ℹ fail 0
+packages/dnp3-adapter test: ℹ cancelled 0
+packages/dnp3-adapter test: ℹ skipped 0
+packages/dnp3-adapter test: ℹ todo 0
+packages/dnp3-adapter test: ℹ duration_ms 1535.2018
+packages/opcua-adapter test: ✔ DemonstrationOpcUaTransport emits hash-bound receipt for a write (2.495ms)
+packages/opcua-adapter test: ✔ transport REFUSES nodes outside authz.permitted_node_ids (1.3113ms)
+packages/opcua-adapter test: ✔ OpcUaShimTransport delegates to the provided writer function (2.4382ms)
+packages/opcua-adapter test: ✔ OpcUaShimTransport: writer rejection surfaces as TRANSPORT_REJECTED (0.7842ms)
+packages/opcua-adapter test: ✔ governOpcUaOperation: ALLOW path emits via transport with action_type=opcua.write (1.8636ms)
+packages/opcua-adapter test: ✔ governOpcUaOperation: REFUSE skips the transport (0.4838ms)
+packages/ros2-bridge test: ✔ DemonstrationRosTransport emits rosbridge 'publish' op with hash-bound receipt (2.7016ms)
+packages/ros2-bridge test: ✔ DemonstrationRosTransport emits 'call_service' op when kind is service (5.1051ms)
+packages/ros2-bridge test: ✔ transport REFUSEs targets outside authz.permitted_targets (0.3049ms)
+packages/ros2-bridge test: ✔ RosbridgeWebsocketTransport sends a JSON op via the injected socket (0.7021ms)
+packages/ros2-bridge test: ✔ RosbridgeWebsocketTransport refuses when socket isn't open (0.2689ms)
+packages/ros2-bridge test: ✔ governRosMessage: ALLOW path emits via transport (1.7911ms)
+packages/ros2-bridge test: ✔ governRosMessage: REFUSE skips the transport entirely (0.6851ms)
+packages/opcua-adapter test: ✔ governOpcUaOperation: refuses non-production-validated transport without opt-in (0.4497ms)
+packages/ros2-bridge test: ✔ governRosMessage: action_type defaults to ros.<kind>.<target> with dots (0.8079ms)
+packages/ros2-bridge test: ✔ governRosMessage: refuses non-production-validated transport without opt-in (0.498ms)
+packages/dnp3-adapter test: Done
+packages/modbus-adapter test$ node --import tsx --test src/index.test.ts
+packages/opcua-adapter test: ℹ tests 7
+packages/opcua-adapter test: ℹ suites 0
+packages/opcua-adapter test: ℹ pass 7
+packages/opcua-adapter test: ℹ fail 0
+packages/opcua-adapter test: ℹ cancelled 0
+packages/opcua-adapter test: ℹ skipped 0
+packages/opcua-adapter test: ℹ todo 0
+packages/opcua-adapter test: ℹ duration_ms 1697.7001
+packages/ros2-bridge test: ℹ tests 9
+packages/ros2-bridge test: ℹ suites 0
+packages/ros2-bridge test: ℹ pass 9
+packages/ros2-bridge test: ℹ fail 0
+packages/ros2-bridge test: ℹ cancelled 0
+packages/ros2-bridge test: ℹ skipped 0
+packages/ros2-bridge test: ℹ todo 0
+packages/ros2-bridge test: ℹ duration_ms 1677.3871
+packages/mavlink-px4 test: ✔ encodeCommandLong produces a MAVLink v2 frame starting with 0xfd (2.0214ms)
+packages/mavlink-px4 test: ✔ encodeCommandLong encodes MAV_CMD_NAV_TAKEOFF (22) at the expected offset (0.2944ms)
+packages/mavlink-px4 test: ✔ encodeCommandLong with ARM uses MAV_CMD_COMPONENT_ARM_DISARM (400) at the right offset (0.2762ms)
+packages/mavlink-px4 test: ✔ DemonstrationFlightControlTransport emits with hash-bound receipt (1.4387ms)
+packages/mavlink-px4 test: ✔ DemonstrationFlightControlTransport REFUSEs commands outside authz.permitted_commands (0.7469ms)
+packages/opcua-adapter test: Done
+packages/bacnet-adapter test$ node --import tsx --test src/index.test.ts
+packages/ros2-bridge test: Done
+packages/k8s-admission test$ node --import tsx --test src/index.test.ts
+packages/mavlink-px4 test: ✔ MavlinkUdpTransport sends a real UDP datagram to a listener (126.2481ms)
+packages/mavlink-px4 test: ✔ MavlinkUdpTransport reports production_validated when explicitly opted in (0.4421ms)
+packages/mavlink-px4 test: ✔ governFlightCommand: ALLOW path emits via transport and returns hash-bound receipt (12.929ms)
+packages/mavlink-px4 test: ✔ governFlightCommand: REFUSE path does NOT call the transport (2.944ms)
+packages/mavlink-px4 test: ✔ governFlightCommand: refuses non-production-validated transport by default (0.7685ms)
+packages/mavlink-px4 test: ✔ governFlightCommand: action_type defaults to aviation.flight.<lowercased command> (0.7536ms)
+packages/mavlink-px4 test: ✔ governFlightCommand: actionTypeFor overrides the default action_type (0.7089ms)
+packages/mavlink-px4 test: ✔ governFlightCommand: gate-unreachable returns GATE_UNREACHABLE refusal and never emits (1.1126ms)
+packages/mavlink-px4 test: ℹ tests 13
+packages/mavlink-px4 test: ℹ suites 0
+packages/mavlink-px4 test: ℹ pass 13
+packages/mavlink-px4 test: ℹ fail 0
+packages/mavlink-px4 test: ℹ cancelled 0
+packages/mavlink-px4 test: ℹ skipped 0
+packages/mavlink-px4 test: ℹ todo 0
+packages/mavlink-px4 test: ℹ duration_ms 2014.7067
+packages/mavlink-px4 test: Done
+packages/modbus-adapter test: ✔ DemonstrationModbusTransport emits hash-bound receipt for register write (5.1229ms)
+packages/modbus-adapter test: ✔ DemonstrationModbusTransport emits for coil write (3.6701ms)
+packages/modbus-adapter test: ✔ transport REFUSES register addresses outside authz (0.5546ms)
+packages/modbus-adapter test: ✔ transport REFUSES coil addresses outside authz (0.4653ms)
+packages/modbus-adapter test: ✔ transport REFUSES values over per-address cap (0.4703ms)
+packages/modbus-adapter test: ✔ transport REFUSES malformed register writes (out-of-range value) (0.5215ms)
+packages/modbus-adapter test: ✔ transport REFUSES register write with empty values[] (0.4119ms)
+packages/modbus-adapter test: ✔ write_multiple_registers: every address must be in the allowlist (0.4013ms)
+packages/modbus-adapter test: ✔ ModbusShimTransport delegates to the provided sender (30.4549ms)
+packages/modbus-adapter test: ✔ ModbusShimTransport: sender error -> TRANSPORT_REJECTED (0.7484ms)
+packages/modbus-adapter test: ✔ governModbusOperation: ALLOW path emits with action_type=ot.modbus.write_single_register (3.0228ms)
+packages/modbus-adapter test: ✔ governModbusOperation: REFUSE skips the transport (1.5016ms)
+packages/modbus-adapter test: ✔ governModbusOperation: demo-only block without opt-in (0.5711ms)
+packages/modbus-adapter test: ✔ governModbusOperation: derives permitted_register_addresses from the operation (0.6905ms)
+packages/k8s-admission test: ✔ ALLOW path returns allowed:true and includes warrant warning (5.0074ms)
+packages/k8s-admission test: ✔ default subject derives from userInfo.username (4.0716ms)
+packages/k8s-admission test: ✔ REFUSE returns allowed:false with code 403 and reason carried (1.0646ms)
+packages/k8s-admission test: ✔ ESCALATE blocks admission by default (code 409) (0.6026ms)
+packages/k8s-admission test: ✔ ESCALATE with escalateBlocksAdmission:false returns code 202 (1.0385ms)
+packages/k8s-admission test: ✔ Gate unreachable fail-closes with code 503 (1.0495ms)
+packages/k8s-admission test: ✔ privileged container surfaces in params.privileged (0.8884ms)
+packages/k8s-admission test: ✔ Deployment template container images are extracted recursively (0.8829ms)
+packages/k8s-admission test: ✔ createAdmissionHandler parses JSON and returns a JSON response string (0.8252ms)
+packages/k8s-admission test: ✔ createAdmissionHandler returns MALFORMED_REQUEST on bad JSON (0.5571ms)
+packages/k8s-admission test: ℹ tests 10
+packages/k8s-admission test: ℹ suites 0
+packages/k8s-admission test: ℹ pass 10
+packages/k8s-admission test: ℹ fail 0
+packages/k8s-admission test: ℹ cancelled 0
+packages/k8s-admission test: ℹ skipped 0
+packages/k8s-admission test: ℹ todo 0
+packages/k8s-admission test: ℹ duration_ms 1544.0626
+packages/modbus-adapter test: ℹ tests 14
+packages/modbus-adapter test: ℹ suites 0
+packages/modbus-adapter test: ℹ pass 14
+packages/modbus-adapter test: ℹ fail 0
+packages/modbus-adapter test: ℹ cancelled 0
+packages/modbus-adapter test: ℹ skipped 0
+packages/modbus-adapter test: ℹ todo 0
+packages/modbus-adapter test: ℹ duration_ms 1720.4962
+packages/bacnet-adapter test: ✔ DemonstrationBacnetTransport emits hash-bound receipt for analog setpoint (4.2278ms)
+packages/bacnet-adapter test: ✔ DemonstrationBacnetTransport emits for binary output (5.7381ms)
+packages/bacnet-adapter test: ✔ transport REFUSES object ids outside authz.permitted_object_ids (0.3524ms)
+packages/bacnet-adapter test: ✔ transport REFUSES priority above the authz cap (lower number = higher priority) (0.2993ms)
+packages/bacnet-adapter test: ✔ transport REFUSES priority outside the 1..16 range (3.5665ms)
+packages/bacnet-adapter test: ✔ transport REFUSES write_property with multiple writes (use write_property_multiple) (0.4961ms)
+packages/bacnet-adapter test: ✔ write_property_multiple: every object id must be in the allowlist (0.5702ms)
+packages/bacnet-adapter test: ✔ BacnetShimTransport delegates to the provided sender (0.601ms)
+packages/k8s-admission test: Done
+packages/bacnet-adapter test: ✔ BacnetShimTransport: sender error -> TRANSPORT_REJECTED (0.8628ms)
+packages/bacnet-adapter test: ✔ governBacnetOperation: ALLOW path emits with action_type=ot.bacnet.write_property (5.6124ms)
+packages/bacnet-adapter test: ✔ governBacnetOperation: REFUSE skips the transport (0.9424ms)
+packages/bacnet-adapter test: ✔ governBacnetOperation: demo-only block without opt-in (0.5151ms)
+packages/bacnet-adapter test: ✔ governBacnetOperation: permitted_object_ids derived from the operation's writes (9.7951ms)
+packages/modbus-adapter test: Done
+packages/bacnet-adapter test: ℹ tests 13
+packages/bacnet-adapter test: ℹ suites 0
+packages/bacnet-adapter test: ℹ pass 13
+packages/bacnet-adapter test: ℹ fail 0
+packages/bacnet-adapter test: ℹ cancelled 0
+packages/bacnet-adapter test: ℹ skipped 0
+packages/bacnet-adapter test: ℹ todo 0
+packages/bacnet-adapter test: ℹ duration_ms 1729.2356
+packages/bacnet-adapter test: Done

@@ -1,0 +1,26 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:sandbox C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> tsx shared/execution-control-runtime/src/sandbox.test.ts
+
+✔ ALLOW executes in the sandbox; receipt is signed, Warrant-bound, and verifies (210.7047ms)
+✔ REFUSE never reaches the sandbox (no receipt, no execution) (4.1702ms)
+✔ sandbox command allowlist denies an authorized action's disallowed binary (3.7246ms)
+✔ sandbox enforces the timeout budget (286.2209ms)
+✔ sandbox caps captured output (132.1173ms)
+✔ a receipt does not verify against a different Warrant, and tampering is detected (236.1453ms)
+✔ buildSandboxReceipt + verify works for a standalone (unsigned) receipt (127.8239ms)
+✔ buildContainerRunArgs enforces network-off, read-only rootfs, dropped caps, and limits (0.7742ms)
+✔ buildContainerRunArgs opts into bridge networking only when the policy allows it (0.4533ms)
+✔ ContainerSandboxProvider derives its name from the runtime and requires an image (1.1159ms)
+✔ ContainerSandboxProvider denies a disallowed binary before invoking the runtime (1.8048ms)
+﹣ ContainerSandboxProvider runs a governed command in a real container (e2e) (0.2548ms) # set AOS_SANDBOX_E2E=1 with a running docker/podman daemon
+✔ buildWasmRunArgs denies fs/net/env by default and grants only what the policy allows (0.5154ms)
+✔ WasmSandboxProvider denies a disallowed module before invoking wasmtime (4.0049ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 1518.0459

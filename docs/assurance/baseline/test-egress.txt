@@ -1,0 +1,18 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:egress C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> tsx shared/execution-control-runtime/src/egress-guard.test.ts
+
+✔ blocks the cloud metadata IP by default (no opt-in needed) (3.5557ms)
+✔ blocks the metadata hostname and non-http schemes by default (6.4767ms)
+✔ blocks the unspecified address and IPv6 link-local by default (5.679ms)
+✔ allows loopback by default but blocks it when blockPrivateNetworks is set (1.2292ms)
+✔ IPv4-mapped IPv6 metadata is still blocked (1.6596ms)
+✔ allows ordinary public destinations (0.6363ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 43.9115

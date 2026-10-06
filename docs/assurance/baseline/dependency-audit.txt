@@ -1,0 +1,3 @@
+Dependency audit — 0 advisory record(s); fail threshold: high+
+
+✓ no blocking production advisories.

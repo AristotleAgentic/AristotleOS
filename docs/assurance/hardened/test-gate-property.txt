@@ -1,0 +1,14 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:gate-property C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/execution-control-runtime/src/gate.property.test.ts
+
+✔ Commit Gate matches its spec oracle and upholds warrant/evidence invariants over 4000 randomized cases (2000.4697ms)
+✔ a guaranteed-clean action always ALLOWs with a verifiable warrant (sufficiency) (7.8949ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2021.253

@@ -1,0 +1,31 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:service-runtime C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> corepack pnpm@10.32.1 --filter @aristotle/service-runtime test
+
+
+> @aristotle/service-runtime@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\service-runtime
+> node --import tsx --test src/index.test.ts
+
+✔ mountHealthEndpoints: registers /health, /healthz, /readyz by default (2.2925ms)
+✔ mountHealthEndpoints: /health returns { ok, service } envelope (1.7631ms)
+✔ mountHealthEndpoints: mountLegacyHealth: false skips /health (0.2965ms)
+✔ mountHealthEndpoints: /healthz always 200 with structured body (5.6501ms)
+✔ mountHealthEndpoints: /readyz returns 200 + ok=true when no readiness closure (0.7502ms)
+✔ mountHealthEndpoints: /readyz returns 200 when all checks ok (0.4362ms)
+✔ mountHealthEndpoints: /readyz returns 503 when any check fails (2.0741ms)
+✔ mountHealthEndpoints: readiness closure runs on every /readyz call (late binding) (0.5161ms)
+✔ ReadinessChecks: builder fluent API produces the expected array (0.4738ms)
+✔ ReadinessChecks: addTry catches thrown errors (0.6397ms)
+✔ ReadinessChecks: addDemoSecretCheck flags known demo secrets (0.6591ms)
+✔ ReadinessChecks: addDemoSecretCheck honors override env var (0.2777ms)
+✔ ReadinessChecks: addDemoSecretCheck passes for a real-looking secret (0.4079ms)
+✔ ReadinessChecks: addDemoSecretCheck fails when no secret provided (0.2269ms)
+✔ ReadinessChecks: addPeersConfiguredCheck reflects peer count (0.2493ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 909.7749

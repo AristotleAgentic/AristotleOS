@@ -1,0 +1,18 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:framework-adapters C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> tsx examples/framework-adapters/govern.test.ts
+
+✔ adapter ALLOW: executes only after a verified Warrant and records GEL (64.9575ms)
+✔ adapter REFUSE: a constraint violation never executes (2.4037ms)
+✔ adapter REFUSE: a denied action never executes (2.3294ms)
+✔ adapter ESCALATE: missing runtime state defers without executing (5.3803ms)
+✔ adapter replay: an identical approved call is refused the second time (single-use) (6.121ms)
+✔ adapter physical invariants: an out-of-bounds robotics command is refused (4.0862ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 121.8817

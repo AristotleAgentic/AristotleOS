@@ -1,0 +1,296 @@
+Scope: 12 of 60 workspace projects
+
+> @aristotle/http-gateway@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\adapters\http-gateway
+> tsx src/governance-chain-proxy.test.ts && node --import tsx --test src/index.test.ts src/trial-api.test.ts
+
+✔ gateway proxies the chain and forwards verdicts verbatim (allow then single-use deny) (270.4239ms)
+✔ gateway returns 501 when GOVERNANCE_CHAIN_V2 is disabled (21.9752ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 301.0153
+✔ /health reports ok (1557.3397ms)
+✔ /operator/* refuses with 401 when no credential is presented (1493.4031ms)
+✔ /operator/* refuses with 401 when bearer session token is malformed (1290.1469ms)
+✔ /operator/auth/session refuses with 401 when x-operator-key is wrong (1470.4262ms)
+✔ /operator/auth/session returns a Bearer token when x-operator-key matches (1462.51ms)
+✔ /operator/auth/session is 503 when OPERATOR_SESSION_SECRET is missing while OPERATOR_API_KEY is set (1677.5665ms)
+✔ /v1/status returns ok=true, the doctrine string, scenarios catalog, and policy hash (1748.5655ms)
+✔ /v1/policy/check returns 200 + policyHash when validating the trial default (1641.8292ms)
+✔ /v1/policy/check returns 422 + ok=false on a malformed APL source (1424.0634ms)
+✔ /v1/policy/plan returns 200 + ok=true when planning the trial default against itself (1442.4368ms)
+✔ /v1/audit/tail returns { items: [...] } on a fresh gateway (never errors) (1434.3857ms)
+✔ /v1/audit/<unknown> returns 404 record_not_found (1621.2313ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10193.5358
+
+> @aristotle/agent-os@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\agent-os
+> tsx src/governance-chain-client.test.ts && node --import tsx --test src/index.test.ts src/tasks.test.ts src/tasks-lifecycle.test.ts src/tasks-claim.test.ts src/agents-workspaces.test.ts
+
+✔ agent-os enforce mode: a normal task act flows through the chain and is allowed (184.3966ms)
+✔ agent-os: an active kill switch makes the act inadmissible at the Commit Gate (52.1323ms)
+✔ agent-os shadow mode: the chain runs and records a decision (36.2676ms)
+✔ completion acts are accepted by the same mission chain (39.8407ms)
+✔ agent-os: a tool action flows through the chain and is allowed (37.3877ms)
+✔ agent-os: a tool action is denied at the gate when the kill switch is active (26.5996ms)
+✔ agent-os: witness obligation is enforced — required+accepted allows, required+unaccepted denies (36.0572ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 423.7277
+✔ POST /agents/register with minimal body returns 201 with documented defaults (2365.0612ms)
+✔ POST /agents/register with explicit fields preserves them and lists agent in /state (2082.0524ms)
+✔ POST /workspaces with minimal body returns 201 with documented defaults (2165.4207ms)
+✔ POST /workspaces with explicit fields preserves them and lists workspace in /state (2418.2794ms)
+✔ POST /missions creates a mission and persists in /missions list (2323.7592ms)
+✔ GET /missions lists missions created via POST (2141.8428ms)
+✔ end-to-end: /missions/:id/advance with full happy mocks dispatches the context task to running (2378.6715ms)
+✔ /tasks/<running-id>/claim returns 409 task_not_eligible (already-claimed envelope) (2261.6499ms)
+✔ POST /missions/:missionId/advance seeds 3 execution tasks and commits queue.created to the ledger (2344.3578ms)
+✔ seedMissionExecutionTasks is idempotent: /advance again does not duplicate the queue (2178.8469ms)
+✔ /health reflects the mocked downstream killSwitchState=inactive (kill-switch poll wiring smoke) (2076.126ms)
+✔ GET /tasks/next returns 404 task_not_found on a fresh service with no missions (2275.8451ms)
+✔ POST /tasks/<unknown>/claim returns 404 task_not_found before any downstream call (1846.0993ms)
+✔ POST /tasks/<unknown>/heartbeat returns 404 task_not_found (2043.5302ms)
+✔ POST /tasks/<unknown>/complete returns 404 task_not_found (1894.0534ms)
+✔ GET /tasks/<unknown>/actions returns 404 task_not_found (1148.6399ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15539.2593
+
+> @aristotle/authority-router@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\authority-router
+> node --import tsx --test src/index.test.ts
+
+✔ /health surfaces readiness with trust anchor count (1080.9578ms)
+✔ /route picks mesh.alpha for the default mission/dispatch/medium lane (877.6994ms)
+✔ /route escalates safety domain to mesh.delta (855.9653ms)
+✔ /route escalates riskLevel=high to mesh.delta even when domain is mission (856.2127ms)
+✔ /route routes completion phase via mesh.gamma and tool-action via mesh.beta (1024.8033ms)
+✔ /route reports degraded continuity when the primary relay is in degradedNodes (1021.4414ms)
+✔ /route reports disconnected when both primary and failover relays are degraded (842.0111ms)
+✔ /v1/mesh/route returns is_local=true for the configured local MAE (868.1308ms)
+✔ /v1/mesh/route returns 400 on missing mae_id (1050.3763ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8938.237
+
+> @aristotle/evidence-ledger@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\evidence-ledger
+> node --import tsx --test src/index.test.ts src/gel-chain.test.ts
+
+✔ /gel/append on a fresh ledger creates record 1 anchored at GENESIS_HASH (1666.7877ms)
+✔ /gel/append twice links the chain: record 2's previous_hash == record 1's record_hash (1738.5158ms)
+✔ /gel/chain reports count, tip_hash, and full records consistently with /gel/append (1753.5622ms)
+✔ /gel/verify returns ok=true on a chain of honest appends (1600.53ms)
+✔ /gel/append with missing required fields returns 400 missing_required_fields (1669.7603ms)
+✔ /health reports the persisted-state path and committed-event count (1613.4995ms)
+✔ POST /events/commit appends a replay event and assigns a monotonic index (1611.0334ms)
+✔ GET /replay filters committed events by traceId (1715.3971ms)
+✔ POST /branches creates a counterfactual branch; /branches/:id/events appends hypothetical events (1548.7742ms)
+✔ POST /branches/:id/events returns 404 for an unknown branch (1844.7076ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9097.8681
+
+> @aristotle/execution-gate@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\execution-gate
+> node --import tsx --test src/index.test.ts
+
+✔ /health surfaces killSwitchState, activeKillScopes, and substrate_wired=true (2018.0094ms)
+✔ global /kill-switch → /commit-point returns halt + killSwitchState=active (1729.144ms)
+✔ mission-scope /kill-switch halts ONLY the matching mission (2257.9016ms)
+✔ /commit-point happy path returns allow with verification=verified (1722.6718ms)
+✔ /commit-point with witnessRequired=true + witnessAccepted=false → deny with witness reason (1717.7334ms)
+✔ /commit-point with identityLegitimate=false → deny with identity reason (1379.8858ms)
+✔ /commit-point with telemetrySatisfied=false + telemetryReasons → deny + custom reasons surface (1376.9868ms)
+✔ /decide happy path with witnessAccepted=true returns allow (1190.673ms)
+✔ /decide with witnessRequired=true + witnessAccepted=false returns deny (1195.5228ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15287.3233
+
+> @aristotle/governance-kernel@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\governance-kernel
+> tsx src/governance-chain.test.ts && node --import tsx --test src/index.test.ts
+
+✔ kernel /v2 chain: create -> commit allows and consumes -> reuse denied -> GEL intact (183.5491ms)
+✔ kernel /v2 chain state survives a restart (durable store) (27.1814ms)
+✔ kernel /v2 chain signs and verifies with ed25519 when key paths are provided (21.5843ms)
+✔ kernel /v2 isolates tenants: scoped reads + cross-tenant commit denied (54.6733ms)
+✔ kernel /v2 exposes federated commit across a trust bridge (19.2838ms)
+✔ kernel /v2 signing-key rotation: records signed before and after both verify (2.4006ms)
+✔ GovernanceChainClient SDK drives the chain end to end + reads OpenAPI (34.2622ms)
+✔ kernel /v2 commit fails closed on a missing warrant (20.6504ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 376.9092
+✔ /health reports killSwitchState and activeKillScopes (1226.7826ms)
+✔ POST /kill-switch global sets killSwitchState and records event (1185.5011ms)
+✔ Mission-scope kill-switch records event without toggling the global field (1181.195ms)
+✔ /issue-warrant fails closed with 423 when global kill-switch is active (1558.0972ms)
+✔ /issue-warrant returns a warrant when no kill-switch is active (1509.3914ms)
+✔ Mission-scope kill-switch denies its mission only — other missions still issue (1363.0029ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8502.0353
+
+> @aristotle/meta-authority-registry@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\meta-authority-registry
+> node --import tsx --test src/index.test.ts
+
+✔ /artifacts returns the four bootstrap seeds with the expected delegation classes (1466.4569ms)
+✔ /artifacts/:id returns a specific seed; 404 for unknown id (1016.9071ms)
+✔ POST /artifacts creates a new delegated MAA and returns 201 (1198.7279ms)
+✔ /resolve returns allowed=true for delegated (subject, domain) pairs (1187.4158ms)
+✔ /resolve returns allowed=false when subject lacks the requested domain (1055.4253ms)
+✔ /resolve returns allowed=false when the issuer is not a known subject (1170.2366ms)
+✔ /v1/mesh/envelope returns 400 on missing required fields (1166.837ms)
+✔ /v1/mesh/envelope returns 201 + envelope on a valid body (1021.7603ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9977.5503
+
+> @aristotle/policy-compiler@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\policy-compiler
+> node --import tsx --test src/index.test.ts
+
+✔ /health ok (1070.7252ms)
+✔ /compile on empty source returns valid=false with a diagnostic, no substrate, trimmed graph (1193.2499ms)
+✔ /compile on valid single-ward APL produces ward_count=1 with manifest hashes and admissibility rules (1196.4213ms)
+✔ /compile on valid two-ward APL produces ward_count=2 and two manifest hashes (1171.3589ms)
+✔ /compile on malformed APL returns valid=false with errors and no substrate block (1001.3699ms)
+✔ /diff between two identical policies reports total_changes=0 (1362.8089ms)
+✔ /diff reports an added ward as added + weakening (1713.5023ms)
+✔ /diff returns 400 with per-side errors when one side is malformed (1018.6423ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10180.8271
+
+> @aristotle/simulation-engine@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\simulation-engine
+> node --import tsx --test src/index.test.ts
+
+✔ /health returns ok=true and an integer tick counter (1085.1565ms)
+✔ /telemetry lists exactly the 3 mesh nodes; mesh.gamma defaults to degraded (853.655ms)
+✔ /degrade replaces the degraded-nodes list (871.8395ms)
+✔ /v1/chaos/scenarios lists all 10 documented chaos-harness scenarios (1147.9319ms)
+✔ /v1/chaos/run/replay_attempt returns ok=true + scorecard + duration_ms (1226.7693ms)
+✔ /v1/chaos/run/unknown_scenario returns 404 unknown_scenario (1057.2629ms)
+✔ /counterfactual on a degraded primary relay reports projectedOutcome=reroute, mode=degraded (1162.5749ms)
+✔ /counterfactual with injectKillSwitch=true reports projectedOutcome=halt + sovereign-halt recovery path (1209.662ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9132.2514
+
+> @aristotle/witness-service@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\witness-service
+> node --import tsx --test src/index.test.ts
+
+✔ /verify with defaults (2 witnesses, quorum=2) is accepted (1127.925ms)
+✔ /verify refuses when quorumRequired exceeds requestedWitnesses count (1192.4621ms)
+✔ /verify honors WITNESS_QUORUM env override when body omits quorumRequired (1188.9337ms)
+✔ /verify body.quorumRequired overrides WITNESS_QUORUM env-default (1027.2094ms)
+✔ /receipts/:id returns the freshly issued receipt (1026.1279ms)
+✔ /receipts/:id returns 404 for an unknown receipt id (1159.9441ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7301.9946
+
+> @aristotle/mcp-server-stdio@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\mcp-server-stdio
+> node --import tsx --test src/index.test.ts
+
+✔ runStdioMcpServer: throws a clear, operator-facing error when @modelcontextprotocol/sdk is not installed (6.8038ms)
+✔ runStdioMcpServer: the default loader path resolves to the real SDK when present (no loader injection) (1.7618ms)
+✔ runStdioMcpServer: missing server arg throws synchronously-rejected error (0.4116ms)
+✔ GovernedMcpServer.listTools() returns the shape the stdio wrapper consumes (1.8595ms)
+✔ GovernedMcpServer.callTool() returns { content, isError?, _aristotle? } - the shape the stdio wrapper hands back to the SDK (2.4165ms)
+✔ GovernedMcpServer.callTool() unknown tool returns isError: true (stdio wrapper propagates as MCP error) (0.3443ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 670.6186
+
+> @aristotle/mastra@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\mastra
+> node --import tsx --test src/index.test.ts
+
+✔ ALLOW invokes wrapped execute and returns its output (11.3863ms)
+✔ REFUSE returns AristotleToolOutcome by default, execute never runs (2.5372ms)
+✔ REFUSE throws AristotleGateError when onRefuse:'throw' (5.1959ms)
+✔ ESCALATE returns AristotleToolOutcome by default (0.631ms)
+✔ Gate unreachable throws by default (9.1351ms)
+✔ Gate unreachable returns outcome when onError:'return-outcome' (0.758ms)
+✔ passthroughTools returns the original tool unchanged (identity) (1.6252ms)
+✔ actionTypeFor routes specific tools into a vertical namespace (0.7556ms)
+✔ onDecision telemetry fires with verdict + elapsedMs (16.8542ms)
+✔ governMastraTools wraps every tool in the record (1.318ms)
+✔ Tool without execute is returned unchanged (0.3673ms)
+✔ Constructor refuses missing required options (0.602ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1053.0334

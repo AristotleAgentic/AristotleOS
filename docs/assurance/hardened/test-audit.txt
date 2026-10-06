@@ -1,0 +1,20 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:audit C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> node --test scripts/audit-deps.test.mjs
+
+✔ parseAuditReport normalizes the v6 advisories map (4.7007ms)
+✔ parseAuditReport normalizes the v7+ vulnerabilities map (0.6851ms)
+✔ evaluateAudit blocks high+critical advisories by default (0.385ms)
+✔ evaluateAudit ignores advisories below the fail threshold (0.2104ms)
+✔ evaluateAudit honors a non-expired allowlist entry by GHSA id (0.4293ms)
+✔ evaluateAudit treats an expired allowlist entry as blocking (0.2946ms)
+✔ evaluateAudit --fail-on critical lets a high advisory pass (0.3407ms)
+✔ evaluateAudit is clean on an empty report (0.2681ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 185.996

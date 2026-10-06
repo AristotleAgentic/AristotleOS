@@ -1,0 +1,5004 @@
+{
+  "schema_version": 1,
+  "label": "baseline",
+  "started_at": "2026-10-06T06:11:19.249Z",
+  "source_commit": "8380d27cda05e15757482a3bcfa5b537abfb762c",
+  "branch": "harden/assurance-effects-20261006",
+  "initial_status": "?? docs/HARDENING_PROGRAM.md\n?? extracted/scripts/assurance-run.mjs",
+  "environment": {
+    "node": "v24.15.0",
+    "platform": "win32",
+    "architecture": "x64",
+    "package_manager": "pnpm@10.32.1"
+  },
+  "lock_sha256": "0be7fbd9f3e4e306a9a80b22f9d31e4f9b52726dd9960ad3cc376e307737bc32",
+  "packages": [
+    {
+      "path": "extracted/adapters/http-gateway/package.json",
+      "name": "@aristotle/http-gateway",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "dev": "tsx watch src/index.ts",
+        "test": "tsx src/governance-chain-proxy.test.ts && node --import tsx --test src/index.test.ts src/trial-api.test.ts",
+        "start": "node src/index.js"
+      }
+    },
+    {
+      "path": "extracted/apps/aristotle-cli/package.json",
+      "name": "@aristotle/os-cli",
+      "version": "0.2.0",
+      "scripts": {
+        "build": "node build.mjs",
+        "typecheck": "tsc -p tsconfig.json --noEmit",
+        "dev": "tsx src/index.ts",
+        "test": "tsx src/index.test.ts",
+        "prepack": "node build.mjs",
+        "prepublishOnly": "node build.mjs"
+      }
+    },
+    {
+      "path": "extracted/apps/console-ui/package.json",
+      "name": "@aristotle/console-ui",
+      "version": "0.1.8",
+      "scripts": {
+        "build": "vite build",
+        "dev": "vite",
+        "preview": "vite preview",
+        "serve": "node server.mjs",
+        "test:e2e": "vite build && playwright test"
+      }
+    },
+    {
+      "path": "extracted/apps/website/package.json",
+      "name": "@aristotle/website",
+      "version": "0.1.0",
+      "scripts": {
+        "preview": "node serve.mjs",
+        "start": "node serve.mjs",
+        "build": "node scripts/build-ui-prototype.mjs && node --check serve.mjs && node --check scripts/smoke-test.mjs && node --check scripts/production-check.mjs && node --check scripts/site-audit.mjs && node scripts/site-audit.mjs",
+        "preflight": "node scripts/site-audit.mjs && node scripts/production-check.mjs",
+        "smoke": "node scripts/smoke-test.mjs"
+      }
+    },
+    {
+      "path": "extracted/package.json",
+      "name": "aristotle-autonomous-governance-os",
+      "version": "0.1.33",
+      "scripts": {
+        "preinstall": "node scripts/enforce-pnpm.mjs",
+        "build": "npm run build --workspaces",
+        "dev": "concurrently \"npm run dev -w @aristotle/shared-types\" \"npm run dev -w @aristotle/shared-schemas\" \"npm run dev -w @aristotle/governance-core\" \"npm run dev -w @aristotle/meta-authority-registry\" \"npm run dev -w @aristotle/policy-compiler\" \"npm run dev -w @aristotle/evidence-ledger\" \"npm run dev -w @aristotle/authority-router\" \"npm run dev -w @aristotle/witness-service\" \"npm run dev -w @aristotle/execution-gate\" \"npm run dev -w @aristotle/governance-kernel\" \"npm run dev -w @aristotle/simulation-engine\" \"npm run dev -w @aristotle/agent-os\" \"npm run dev -w @aristotle/http-gateway\" \"npm run dev -w @aristotle/console-ui\"",
+        "local:up": "node scripts/local-control-plane.mjs up",
+        "local:status": "node scripts/local-control-plane.mjs status",
+        "local:down": "node scripts/local-control-plane.mjs down",
+        "pilot:images": "node scripts/build-pilot-images.mjs",
+        "pilot:install": "node scripts/pilot-install.mjs",
+        "pilot:smoke": "node scripts/k8s-smoke-install.mjs",
+        "pilot:smoke:kind": "node scripts/k8s-smoke-install.mjs --runtime kind",
+        "pilot:smoke:minikube": "node scripts/k8s-smoke-install.mjs --runtime minikube",
+        "aristotle": "tsx apps/aristotle-cli/src/index.ts",
+        "demo": "tsx apps/aristotle-cli/src/index.ts demo",
+        "demo:uav-swarm-proof": "node scripts/verify-uav-swarm-proof.mjs",
+        "verify:uav-swarm-proof": "node scripts/verify-uav-swarm-proof.mjs",
+        "aristotle:demo": "npm run dev -w @aristotle/console-ui -- --host 127.0.0.1 --port 4173",
+        "execution-control:dev": "tsx apps/aristotle-cli/src/index.ts execution-control dev",
+        "execution-control:serve": "tsx apps/aristotle-cli/src/index.ts execution-control serve --ward examples/execution_control/ward.montana_drone_test_range.yaml --envelope examples/execution_control/authority_envelope.survey_planner.yaml --ledger ./.tmp/execution-control-runtime.gel.jsonl",
+        "execution-control:submit:allow": "tsx apps/aristotle-cli/src/index.ts execution-control submit --action examples/execution_control/actions/allow_takeoff.json --require-warrant",
+        "execution-control:audit:verify": "tsx apps/aristotle-cli/src/index.ts execution-control audit verify --ledger ./.tmp/execution-control-runtime.gel.jsonl",
+        "execution-control:evidence:demo": "tsx apps/aristotle-cli/src/index.ts execution-control evaluate --ward examples/execution_control/ward.montana_drone_test_range.yaml --envelope examples/execution_control/authority_envelope.survey_planner.yaml --action examples/execution_control/actions/allow_takeoff.json --ledger ./.tmp/execution-control-runtime.gel.jsonl --evidence-out ./.tmp/execution-control-evidence-bundle.json --now 2026-05-21T14:00:00.000Z",
+        "execution-control:evidence:verify": "tsx apps/aristotle-cli/src/index.ts execution-control evidence verify --bundle ./.tmp/execution-control-evidence-bundle.json",
+        "ward-marshal:demo": "tsx apps/aristotle-cli/src/index.ts ward-marshal demo",
+        "ward-marshal:adapter:test": "tsx shared/execution-control-runtime/src/ward-marshal-adapters.test.ts",
+        "stack:up": "docker compose up --build -d",
+        "stack:down": "docker compose down",
+        "stack:logs": "docker compose logs -f",
+        "stack:smoke": "node scripts/validate-stack.mjs",
+        "enterprise:keys": "node scripts/generate-ledger-keypair.mjs",
+        "enterprise:backup": "node scripts/backup-governance-state.mjs",
+        "enterprise:restore": "node scripts/restore-governance-state.mjs --yes",
+        "enterprise:drill": "node scripts/validate-recovery.mjs",
+        "enterprise:contracts": "node scripts/validate-deployment-contracts.mjs",
+        "enterprise:ui-safety": "node scripts/validate-console-safety.mjs",
+        "enterprise:adoption-path": "node scripts/validate-adoption-path.mjs",
+        "enterprise:release-manifest": "node scripts/generate-release-manifest.mjs",
+        "enterprise:preflight": "node scripts/validate-enterprise-config.mjs --production",
+        "enterprise:verify": "npm run enterprise:preflight && npm run enterprise:contracts && npm run enterprise:ui-safety && npm run enterprise:release-manifest && npm run test:chain && npm run stack:verify",
+        "enterprise:chain-keys": "node scripts/generate-chain-keypair.mjs",
+        "stack:verify": "npm run stack:smoke && npm run validate:core && npm run validate:chain",
+        "lint": "echo 'lint not yet configured'",
+        "typecheck": "tsc --noEmit -p shared/governance-core/tsconfig.json && tsc --noEmit -p shared/trial-engine/tsconfig.json && tsc --noEmit -p shared/execution-control-runtime/tsconfig.json && tsc --noEmit -p adapters/http-gateway/tsconfig.json && tsc --noEmit -p apps/aristotle-cli/tsconfig.json && tsc --noEmit -p apps/console-ui/tsconfig.json && tsc --noEmit -p packages/os-sdk/tsconfig.json",
+        "test": "npm run typecheck && npm run test:governance && npm run test:execution-control && npm run test:gate-property && npm run test:warrant-time && npm run test:ward-marshal && npm run test:ward-marshal-adapters && npm run test:marshal-behavior && npm run test:marshal-collectors && npm run test:credential-minter && npm run test:attestation && npm run test:crypto-posture && npm run test:edge-containment && npm run test:budget && npm run test:dual-control && npm run test:telecom && npm run test:automotive && npm run test:grid && npm run test:rail && npm run test:pipeline && npm run test:mining && npm run test:port && npm run test:water && npm run test:aviation && npm run test:robotics && npm run test:swarm && npm run test:logistics && npm run test:healthcare && npm run test:title && npm run test:space && npm run test:cert-auth && npm run test:classification && npm run test:fail-mode && npm run test:degradation && npm run test:sandbox && npm run test:shadow && npm run test:builder && npm run test:policy-dsl && npm run test:reconcile && npm run test:conflict-inbox && npm run test:trace && npm run test:cli && npm run test:api && npm run test:chain && npm run test:adapters && npm run test:signers && npm run test:sdk && npm run test:ui-boundary && npm run test:audit && npm run test:demo && npm run test:egress && npm run test:constraints-security && npm run test:legacy-routes",
+        "test:legacy-routes": "node --import tsx --test tests/_harness.test.mjs services/governance-kernel/src/index.test.ts services/agent-os/src/index.test.ts services/agent-os/src/tasks.test.ts services/agent-os/src/tasks-lifecycle.test.ts services/agent-os/src/tasks-claim.test.ts services/agent-os/src/agents-workspaces.test.ts services/authority-router/src/index.test.ts services/evidence-ledger/src/index.test.ts services/evidence-ledger/src/gel-chain.test.ts adapters/http-gateway/src/index.test.ts adapters/http-gateway/src/trial-api.test.ts services/witness-service/src/index.test.ts services/meta-authority-registry/src/index.test.ts services/execution-gate/src/index.test.ts services/policy-compiler/src/index.test.ts services/simulation-engine/src/index.test.ts",
+        "test:governance": "tsx shared/trial-engine/src/index.test.ts",
+        "test:execution-control": "tsx shared/execution-control-runtime/src/index.test.ts",
+        "test:gate-property": "tsx shared/execution-control-runtime/src/gate.property.test.ts",
+        "test:gate-replay-property": "tsx shared/execution-control-runtime/src/gate.replay-property.test.ts",
+        "test:trace-in-memory": "tsx shared/execution-control-runtime/src/trace.in-memory.test.ts",
+        "test:gel-mutation": "tsx shared/execution-control-runtime/src/gel.mutation.test.ts",
+        "test:kms-keyring": "corepack pnpm@10.32.1 --filter @aristotle/kms-keyring test",
+        "test:gel-timestamp": "corepack pnpm@10.32.1 --filter @aristotle/gel-timestamp test",
+        "test:gel-archive": "corepack pnpm@10.32.1 --filter @aristotle/gel-archive test",
+        "test:adapter-sdk": "corepack pnpm@10.32.1 --filter @aristotle/adapter-sdk test",
+        "test:service-runtime": "corepack pnpm@10.32.1 --filter @aristotle/service-runtime test",
+        "test:observability-otel": "corepack pnpm@10.32.1 --filter @aristotle/observability-otel test",
+        "test:mcp-server": "corepack pnpm@10.32.1 --filter @aristotle/mcp-server test",
+        "test:gel-timestamp-rfc3161": "corepack pnpm@10.32.1 --filter @aristotle/gel-timestamp-rfc3161 test",
+        "test:gel-timestamp-rfc3161-verify": "corepack pnpm@10.32.1 --filter @aristotle/gel-timestamp-rfc3161-verify test",
+        "test:sigstore-rekor": "corepack pnpm@10.32.1 --filter @aristotle/sigstore-rekor test",
+        "test:mcp-server-stdio": "corepack pnpm@10.32.1 --filter @aristotle/mcp-server-stdio test",
+        "test:sdk-anthropic": "corepack pnpm@10.32.1 --filter @aristotle/sdk-anthropic test",
+        "test:reviewer-cli": "corepack pnpm@10.32.1 --filter @aristotle/reviewer test",
+        "bench:sustained": "node --import tsx bench/sustained-load.mjs",
+        "bench:sustained:json": "node --import tsx bench/sustained-load.mjs --json",
+        "mutation:gate": "pnpm dlx @stryker-mutator/core --config stryker.conf.mjs",
+        "test:warrant-time": "tsx shared/execution-control-runtime/src/warrant-time.test.ts",
+        "test:ward-marshal": "tsx shared/execution-control-runtime/src/ward-marshal.test.ts",
+        "test:ward-marshal-adapters": "tsx shared/execution-control-runtime/src/ward-marshal-adapters.test.ts",
+        "test:marshal-behavior": "tsx shared/execution-control-runtime/src/marshal-behavior.test.ts",
+        "test:marshal-collectors": "tsx shared/execution-control-runtime/src/marshal-collectors.test.ts",
+        "test:credential-minter": "tsx shared/execution-control-runtime/src/credential-minter.test.ts",
+        "test:attestation": "tsx shared/execution-control-runtime/src/attestation.test.ts",
+        "test:crypto-posture": "tsx shared/execution-control-runtime/src/crypto-posture.test.ts",
+        "test:edge-containment": "tsx shared/execution-control-runtime/src/edge-containment.test.ts",
+        "test:budget": "tsx shared/execution-control-runtime/src/budget.test.ts",
+        "test:dual-control": "tsx shared/execution-control-runtime/src/dual-control.test.ts",
+        "test:telecom": "tsx shared/execution-control-runtime/src/telecom.test.ts",
+        "test:automotive": "tsx shared/execution-control-runtime/src/automotive.test.ts",
+        "test:grid": "tsx shared/execution-control-runtime/src/grid.test.ts",
+        "test:rail": "tsx shared/execution-control-runtime/src/rail.test.ts",
+        "test:port": "tsx shared/execution-control-runtime/src/port.test.ts",
+        "test:water": "tsx shared/execution-control-runtime/src/water.test.ts",
+        "test:cert-auth": "tsx shared/execution-control-runtime/src/cert-auth.test.ts",
+        "test:classification": "tsx shared/execution-control-runtime/src/classification.test.ts",
+        "test:fail-mode": "tsx shared/execution-control-runtime/src/fail-mode.test.ts",
+        "test:degradation": "tsx shared/execution-control-runtime/src/degradation.test.ts",
+        "test:sandbox": "tsx shared/execution-control-runtime/src/sandbox.test.ts",
+        "test:shadow": "tsx shared/execution-control-runtime/src/shadow.test.ts",
+        "test:builder": "tsx shared/execution-control-runtime/src/builder.test.ts",
+        "test:policy-dsl": "tsx shared/execution-control-runtime/src/policy-dsl.test.ts",
+        "test:reconcile": "tsx shared/execution-control-runtime/src/reconcile.test.ts",
+        "test:conflict-inbox": "tsx shared/execution-control-runtime/src/conflict-inbox.test.ts",
+        "test:trace": "tsx shared/execution-control-runtime/src/trace.test.ts",
+        "test:cli": "npm run build -w @aristotle/trial-engine && npm run build -w @aristotle/execution-control-runtime && tsx apps/aristotle-cli/src/index.test.ts",
+        "test:api": "tsx adapters/http-gateway/src/trial-api.contract.test.ts",
+        "test:adapters": "tsx examples/framework-adapters/govern.test.ts",
+        "test:signers": "tsx examples/signers/signer.test.ts",
+        "test:sdk": "tsx packages/os-sdk/src/index.test.ts",
+        "test:ui-boundary": "tsx apps/console-ui/src/command-center/boundary.test.ts",
+        "test:demo": "tsx shared/execution-control-runtime/demo.mts",
+        "test:playground": "npm run test:governance",
+        "reviewer:verify": "node --import tsx examples/reviewer/verify.ts",
+        "reviewer:test": "node --import tsx --test examples/reviewer/verify.test.ts",
+        "proof:status": "node scripts/proof-status.mjs",
+        "test:core": "corepack pnpm@10.32.1 --filter @aristotle/governance-core --filter @aristotle/execution-control-runtime --filter @aristotle/mesh-runtime --filter @aristotle/warrant-verifier --filter @aristotle/replay-artifact test",
+        "test:protocol-adapters": "corepack pnpm@10.32.1 --filter @aristotle/mavlink-px4 --filter @aristotle/ros2-bridge --filter @aristotle/opcua-adapter --filter @aristotle/dnp3-adapter --filter @aristotle/modbus-adapter --filter @aristotle/bacnet-adapter --filter @aristotle/k8s-admission test",
+        "test:refusal-before-emission": "corepack pnpm@10.32.1 --filter @aristotle/tests-cross-adapter test",
+        "test:nonce-store": "corepack pnpm@10.32.1 --filter @aristotle/nonce-store test",
+        "test:px4-sitl": "corepack pnpm@10.32.1 --filter @aristotle/tests-px4-sitl test",
+        "test:framework-adapters": "tsx examples/framework-adapters/govern.test.ts",
+        "test:reviewer": "node --import tsx --test examples/reviewer/verify.test.ts examples/mesh/published.replay.test.ts",
+        "test:mesh": "corepack pnpm@10.32.1 --filter @aristotle/mesh-runtime --filter @aristotle/chaos-harness --filter @aristotle/scenario-engine test",
+        "test:tenancy": "corepack pnpm@10.32.1 --filter @aristotle/tenant-onboarding --filter @aristotle/policy-pipeline --filter @aristotle/time-machine --filter @aristotle/event-stream test",
+        "test:all": "corepack pnpm@10.32.1 -r --workspace-concurrency=1 --filter \"!@aristotle/os-cli\" test",
+        "validate:core": "node scripts/validate-core.mjs",
+        "validate:chain": "node scripts/validate-chain.mjs",
+        "test:chain": "tsx shared/governance-core/src/test/run.test.ts && tsx services/governance-kernel/src/governance-chain.test.ts && tsx services/agent-os/src/governance-chain-client.test.ts && tsx adapters/http-gateway/src/governance-chain-proxy.test.ts",
+        "benchmark:runtime": "tsx scripts/benchmark-runtime.ts",
+        "demo:evaluator": "tsx shared/execution-control-runtime/demo.mts",
+        "bench:execution-control": "tsx shared/execution-control-runtime/benchmark.mts",
+        "soak:execution-control": "node --expose-gc --import tsx shared/execution-control-runtime/soak.mts",
+        "bench:telecom": "tsx shared/execution-control-runtime/telecom-benchmark.mts",
+        "soak:telecom": "tsx shared/execution-control-runtime/telecom-ha-soak.mts",
+        "sbom": "node scripts/generate-sbom.mjs",
+        "audit:ci": "node scripts/audit-deps.mjs",
+        "test:audit": "node --test scripts/audit-deps.test.mjs",
+        "package:cli:check": "node scripts/check-cli-package.mjs",
+        "clean-room": "node scripts/clean-room-scan.mjs",
+        "helm:validate": "node scripts/validate-helm.mjs",
+        "test:pipeline": "tsx shared/execution-control-runtime/src/pipeline.test.ts",
+        "test:logistics": "tsx shared/execution-control-runtime/src/logistics.test.ts",
+        "test:egress": "tsx shared/execution-control-runtime/src/egress-guard.test.ts",
+        "test:constraints-security": "tsx shared/governance-core/src/constraints.security.test.ts",
+        "test:mining": "tsx shared/execution-control-runtime/src/mining.test.ts",
+        "test:aviation": "tsx shared/execution-control-runtime/src/aviation.test.ts",
+        "test:robotics": "tsx shared/execution-control-runtime/src/robotics.test.ts",
+        "test:swarm": "tsx shared/execution-control-runtime/src/swarm.test.ts",
+        "test:healthcare": "tsx shared/execution-control-runtime/src/healthcare.test.ts",
+        "test:title": "tsx shared/execution-control-runtime/src/title.test.ts",
+        "test:space": "tsx shared/execution-control-runtime/src/space.test.ts"
+      }
+    },
+    {
+      "path": "extracted/packages/bacnet-adapter/package.json",
+      "name": "@aristotle/bacnet-adapter",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "prepare": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts",
+        "prepublishOnly": "npm run build"
+      }
+    },
+    {
+      "path": "extracted/packages/bedrock/package.json",
+      "name": "@aristotle/bedrock",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts",
+        "prepublishOnly": "npm run build"
+      }
+    },
+    {
+      "path": "extracted/packages/claude-agents/package.json",
+      "name": "@aristotle/claude-agents",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts",
+        "prepublishOnly": "npm run build"
+      }
+    },
+    {
+      "path": "extracted/packages/dnp3-adapter/package.json",
+      "name": "@aristotle/dnp3-adapter",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "prepare": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts",
+        "prepublishOnly": "npm run build"
+      }
+    },
+    {
+      "path": "extracted/packages/gateway-client/package.json",
+      "name": "@aristotle/gateway-client",
+      "version": "0.1.0",
+      "scripts": {
+        "prebuild": "node scripts/embed-openapi.mjs",
+        "build": "tsc -p tsconfig.json",
+        "prepare": "npm run prebuild && npm run build",
+        "test": "node --import tsx --test src/index.test.ts src/routes.test.ts",
+        "prepublishOnly": "npm run prebuild && npm run build"
+      }
+    },
+    {
+      "path": "extracted/packages/k8s-admission/package.json",
+      "name": "@aristotle/k8s-admission",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "prepare": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts",
+        "prepublishOnly": "npm run build"
+      }
+    },
+    {
+      "path": "extracted/packages/langchain/package.json",
+      "name": "@aristotle/langchain",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts",
+        "prepublishOnly": "npm run build"
+      }
+    },
+    {
+      "path": "extracted/packages/mastra/package.json",
+      "name": "@aristotle/mastra",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts",
+        "prepublishOnly": "npm run build"
+      }
+    },
+    {
+      "path": "extracted/packages/mavlink-px4/package.json",
+      "name": "@aristotle/mavlink-px4",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "prepare": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts",
+        "prepublishOnly": "npm run build"
+      }
+    },
+    {
+      "path": "extracted/packages/mcp-server-stdio/package.json",
+      "name": "@aristotle/mcp-server-stdio",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "prepare": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts",
+        "prepublishOnly": "npm run build"
+      }
+    },
+    {
+      "path": "extracted/packages/mcp-server/package.json",
+      "name": "@aristotle/mcp-server",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "prepare": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts",
+        "prepublishOnly": "npm run build"
+      }
+    },
+    {
+      "path": "extracted/packages/modbus-adapter/package.json",
+      "name": "@aristotle/modbus-adapter",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "prepare": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts",
+        "prepublishOnly": "npm run build"
+      }
+    },
+    {
+      "path": "extracted/packages/opcua-adapter/package.json",
+      "name": "@aristotle/opcua-adapter",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "prepare": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts",
+        "prepublishOnly": "npm run build"
+      }
+    },
+    {
+      "path": "extracted/packages/openai-agents/package.json",
+      "name": "@aristotle/openai-agents",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts",
+        "prepublishOnly": "npm run build"
+      }
+    },
+    {
+      "path": "extracted/packages/os-sdk/package.json",
+      "name": "@aristotle/os-sdk",
+      "version": "0.2.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "prepare": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts",
+        "prepublishOnly": "npm run build"
+      }
+    },
+    {
+      "path": "extracted/packages/reviewer/package.json",
+      "name": "@aristotle/reviewer",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "node build.mjs",
+        "typecheck": "tsc -p tsconfig.json --noEmit",
+        "prepare": "node build.mjs",
+        "test": "node --import tsx --test src/index.test.ts",
+        "prepublishOnly": "node build.mjs"
+      }
+    },
+    {
+      "path": "extracted/packages/ros2-bridge/package.json",
+      "name": "@aristotle/ros2-bridge",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "prepare": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts",
+        "prepublishOnly": "npm run build"
+      }
+    },
+    {
+      "path": "extracted/packages/sdk-anthropic/package.json",
+      "name": "@aristotle/sdk-anthropic",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "prepare": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts",
+        "prepublishOnly": "npm run build"
+      }
+    },
+    {
+      "path": "extracted/packages/vercel-ai/package.json",
+      "name": "@aristotle/vercel-ai",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts",
+        "prepublishOnly": "npm run build"
+      }
+    },
+    {
+      "path": "extracted/services/agent-os/package.json",
+      "name": "@aristotle/agent-os",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "dev": "tsx watch src/index.ts",
+        "test": "tsx src/governance-chain-client.test.ts && node --import tsx --test src/index.test.ts src/tasks.test.ts src/tasks-lifecycle.test.ts src/tasks-claim.test.ts src/agents-workspaces.test.ts",
+        "start": "node src/index.js"
+      }
+    },
+    {
+      "path": "extracted/services/authority-router/package.json",
+      "name": "@aristotle/authority-router",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "dev": "tsx watch src/index.ts",
+        "start": "node src/index.js",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/services/evidence-ledger/package.json",
+      "name": "@aristotle/evidence-ledger",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "dev": "tsx watch src/index.ts",
+        "start": "node src/index.js",
+        "test": "node --import tsx --test src/index.test.ts src/gel-chain.test.ts"
+      }
+    },
+    {
+      "path": "extracted/services/execution-gate/package.json",
+      "name": "@aristotle/execution-gate",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "dev": "tsx watch src/index.ts",
+        "start": "node src/index.js",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/services/governance-kernel/package.json",
+      "name": "@aristotle/governance-kernel",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "dev": "tsx watch src/index.ts",
+        "test": "tsx src/governance-chain.test.ts && node --import tsx --test src/index.test.ts",
+        "start": "node src/index.js"
+      }
+    },
+    {
+      "path": "extracted/services/meta-authority-registry/package.json",
+      "name": "@aristotle/meta-authority-registry",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "dev": "tsx watch src/index.ts",
+        "start": "node src/index.js",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/services/policy-compiler/package.json",
+      "name": "@aristotle/policy-compiler",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "dev": "tsx watch src/index.ts",
+        "start": "node src/index.js",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/services/simulation-engine/package.json",
+      "name": "@aristotle/simulation-engine",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "dev": "tsx watch src/index.ts",
+        "start": "node src/index.js",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/services/witness-service/package.json",
+      "name": "@aristotle/witness-service",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "dev": "tsx watch src/index.ts",
+        "start": "node src/index.js",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/adapter-sdk/package.json",
+      "name": "@aristotle/adapter-sdk",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/chaos-harness/package.json",
+      "name": "@aristotle/chaos-harness",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/event-stream/package.json",
+      "name": "@aristotle/event-stream",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/execution-control-runtime/package.json",
+      "name": "@aristotle/execution-control-runtime",
+      "version": "0.1.8",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "prepare": "tsc -p tsconfig.json",
+        "test": "tsx src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/gel-archive/package.json",
+      "name": "@aristotle/gel-archive",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/gel-timestamp-rfc3161-verify/package.json",
+      "name": "@aristotle/gel-timestamp-rfc3161-verify",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/gel-timestamp-rfc3161/package.json",
+      "name": "@aristotle/gel-timestamp-rfc3161",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/gel-timestamp/package.json",
+      "name": "@aristotle/gel-timestamp",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/governance-core/package.json",
+      "name": "@aristotle/governance-core",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "prepare": "tsc -p tsconfig.json",
+        "dev": "tsc -w -p tsconfig.json",
+        "check": "tsc -p tsconfig.check.json",
+        "test": "tsx src/test/run.test.ts",
+        "start": "node dist/index.js"
+      }
+    },
+    {
+      "path": "extracted/shared/kms-keyring/package.json",
+      "name": "@aristotle/kms-keyring",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/mesh-runtime/package.json",
+      "name": "@aristotle/mesh-runtime",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "prepare": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts src/quorum-routing.test.ts src/ed25519-mesh.test.ts src/ingress-hardening.test.ts src/revocation-quorum.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/nonce-store/package.json",
+      "name": "@aristotle/nonce-store",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/observability-otel/package.json",
+      "name": "@aristotle/observability-otel",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/policy-pipeline/package.json",
+      "name": "@aristotle/policy-pipeline",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts src/oci.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/replay-artifact/package.json",
+      "name": "@aristotle/replay-artifact",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/scenario-engine/package.json",
+      "name": "@aristotle/scenario-engine",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/schemas/package.json",
+      "name": "@aristotle/shared-schemas",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "prepare": "tsc -p tsconfig.json",
+        "dev": "tsc -w -p tsconfig.json",
+        "start": "node dist/index.js"
+      }
+    },
+    {
+      "path": "extracted/shared/service-runtime/package.json",
+      "name": "@aristotle/service-runtime",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/sigstore-rekor-verify/package.json",
+      "name": "@aristotle/sigstore-rekor-verify",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/sigstore-rekor/package.json",
+      "name": "@aristotle/sigstore-rekor",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/tenant-onboarding/package.json",
+      "name": "@aristotle/tenant-onboarding",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/time-machine/package.json",
+      "name": "@aristotle/time-machine",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts src/cli.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/trial-engine/package.json",
+      "name": "@aristotle/trial-engine",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "prepare": "tsc -p tsconfig.json",
+        "test": "tsx src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/shared/types/package.json",
+      "name": "@aristotle/shared-types",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "prepare": "tsc -p tsconfig.json",
+        "dev": "tsc -w -p tsconfig.json",
+        "start": "node dist/index.js"
+      }
+    },
+    {
+      "path": "extracted/shared/warrant-verifier/package.json",
+      "name": "@aristotle/warrant-verifier",
+      "version": "0.1.0",
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node --import tsx --test src/index.test.ts"
+      }
+    },
+    {
+      "path": "extracted/tests/cross-adapter/package.json",
+      "name": "@aristotle/tests-cross-adapter",
+      "version": "0.1.0",
+      "scripts": {
+        "test": "node --import tsx --test src/refusal-before-emission.test.ts src/conformance.test.ts"
+      }
+    },
+    {
+      "path": "extracted/tests/px4-sitl/package.json",
+      "name": "@aristotle/tests-px4-sitl",
+      "version": "0.1.0",
+      "scripts": {
+        "test": "node --import tsx --test src/integration.test.ts"
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".github/ISSUE_TEMPLATE/reviewer-finding.yml",
+      "sha256": "acb4d00a8e9fc19a5c541abc15abc46eb0f5641bc8eb9d54f2785962df30c9e9"
+    },
+    {
+      "path": "REVIEWERS.md",
+      "sha256": "9193d54c36520d5cb2321fd8ef0d7810049cf794d588d41066980d01cd5c57b2"
+    },
+    {
+      "path": "extracted/LIMITATIONS.md",
+      "sha256": "45726eee23e2bc2f9c5609080939499db4a0c369ea5532ff383d65f2df651e4f"
+    },
+    {
+      "path": "extracted/PROOF_STATUS.md",
+      "sha256": "84ea6ffa7bf21b8bb3f8f83b3b942309995b76f05c0f3dbd882301ce99e2550c"
+    },
+    {
+      "path": "extracted/VALIDATION_MATRIX.md",
+      "sha256": "c6bc0c1447bc4078de89fe781ac4794cacc6a2a5597bdaa685968c6ce3f5df36"
+    },
+    {
+      "path": "extracted/adapters/http-gateway/openapi.json",
+      "sha256": "cd602b7d22571642ebee47bb888b1e3946e1b75ebe2fb9b1dd8ed7f6ac3a9ec7"
+    },
+    {
+      "path": "extracted/apps/aristotle-cli/src/index.ts",
+      "sha256": "921f474cf3c25635b0c87b87696c1a6ef81f775e5054e94f448dcebe9fd0164f"
+    },
+    {
+      "path": "extracted/docs/adr/0019-openapi-as-typed-client-surface.md",
+      "sha256": "6d8d68a211b986ced780a0a7c617ef168f3689e2aa6f249681b306ddbafac745"
+    },
+    {
+      "path": "extracted/docs/adr/0020-reviewer-as-separate-package.md",
+      "sha256": "aed6b7fe9fa75fcf7927c6a0e4d6e65a00f5c7a1950cf15b81f3d04d6be42790"
+    },
+    {
+      "path": "extracted/docs/commercialization/two-page-reviewer-memo.md",
+      "sha256": "045a90ff350d6403508ce53967c2f03bbefda07273f1374a0eee966e0361ef85"
+    },
+    {
+      "path": "extracted/docs/reviewer-packet.md",
+      "sha256": "8d68e1f0e81808846f5f07e1f5d21c6469e9bbe56a5f5249bb0588645b2d74f1"
+    },
+    {
+      "path": "extracted/docs/specs/README.md",
+      "sha256": "b3bef93faf4c9b33c109f30c7bcc9117c181115a8a2cb8c90a3b7a78ef7b5afc"
+    },
+    {
+      "path": "extracted/docs/specs/mesh-reconciliation.tla",
+      "sha256": "fba15aded954b0742b1e20262b277d78a76981fe5e117f8fdd1d7fc150e05e53"
+    },
+    {
+      "path": "extracted/examples/mesh/published.replay.json",
+      "sha256": "7744b1f2f2b0025328d9746ec55a98ceaa8521311de84d5fffb0dec3c6487ceb"
+    },
+    {
+      "path": "extracted/examples/reviewer/README.md",
+      "sha256": "82cf7435a4f2e291747fe7dcfd1f5c3fca77e939f9be718e81e814b06f9a2a37"
+    },
+    {
+      "path": "extracted/examples/reviewer/REVIEWER.md",
+      "sha256": "b114767f29be54dac10c32a82f07c92226b4f87c4d2e905e70ee8e777c7501bd"
+    },
+    {
+      "path": "extracted/examples/reviewer/verify.test.ts",
+      "sha256": "45b0612d825c52bd8b7d88c8554959ff3755755df4ed21057246c3e1a9ec0b0f"
+    },
+    {
+      "path": "extracted/examples/reviewer/verify.ts",
+      "sha256": "f4f414afbd46e682e07faf744704440baa46a3e42e0806564217aa064099d23b"
+    },
+    {
+      "path": "extracted/packages/gateway-client/openapi.json",
+      "sha256": "e5efcf44cbf03264e2e124766c2a1903cc031d02658d1845762f271971ad133c"
+    },
+    {
+      "path": "extracted/packages/gateway-client/scripts/embed-openapi.mjs",
+      "sha256": "4512860856dee8377e2db2338cc3e7d2c64b4e2195fa2ae8941c438ca4139a6c"
+    },
+    {
+      "path": "extracted/packages/gateway-client/src/openapi-spec.gen.ts",
+      "sha256": "8676b0970f0104c757b0868c0e2bba21b733d298756c689c1ca12d278c9c55bf"
+    },
+    {
+      "path": "extracted/packages/reviewer/CHANGELOG.md",
+      "sha256": "4e9d36c14abf043bb9102505b94118382306e1941396165073405c71391ddd11"
+    },
+    {
+      "path": "extracted/packages/reviewer/LICENSE",
+      "sha256": "a85d54a5d517cdae632387c9630e92fda26de8d5e802d8bdee5ade43064687b7"
+    },
+    {
+      "path": "extracted/packages/reviewer/NOTICE",
+      "sha256": "2801f51f09913af6a7d3a8e3e46cabb46fb0b889925c730137b7f359fe0b1c0d"
+    },
+    {
+      "path": "extracted/packages/reviewer/README.md",
+      "sha256": "7ed511eb4d8df67ec7c69617111c65cc74ffa6401ca94998739c5a6c263ab491"
+    },
+    {
+      "path": "extracted/packages/reviewer/build.mjs",
+      "sha256": "bd67c0360acc75cf47a4f69c7abea1ebb5069e99b735506dcc0f0ac6c975dea5"
+    },
+    {
+      "path": "extracted/packages/reviewer/package.json",
+      "sha256": "303d8d39ae7c5490f63e1f6b479f64d20d98465f4128f6eb4fa1f92a2eac39fe"
+    },
+    {
+      "path": "extracted/packages/reviewer/src/cli.ts",
+      "sha256": "d07473f546d93470c9cc879458f5232b22ca19833b9a2b5062c127ed1b0d0ccd"
+    },
+    {
+      "path": "extracted/packages/reviewer/src/index.test.ts",
+      "sha256": "300cea50d8b47b540b9bb9cd777214f88470f27f3ccf882814bb7ecaeffb0d67"
+    },
+    {
+      "path": "extracted/packages/reviewer/src/index.ts",
+      "sha256": "7a141f4b95247d6526b6372904a1bd8c4f68853531151dcf1e118107444418ac"
+    },
+    {
+      "path": "extracted/packages/reviewer/tsconfig.json",
+      "sha256": "ba9321719cf115fb1f5a9986b093c51d027b85f21aab868fd2be596e4a120559"
+    },
+    {
+      "path": "extracted/shared/governance-core/src/openapi.d.ts",
+      "sha256": "56530fc7fa6a0b4c4feefdd7389ed817e98829c57abac47089ab712c7240ec8f"
+    },
+    {
+      "path": "extracted/shared/governance-core/src/openapi.js",
+      "sha256": "e99795c474fec6b95893ba8cf8a8e24308599196d968e220b870a08380101cfc"
+    },
+    {
+      "path": "extracted/shared/governance-core/src/openapi.ts",
+      "sha256": "f1e600c53adb0a5fefb5771b0f0d6dff21a3ef7b5dc544671963a2154764e124"
+    },
+    {
+      "path": "extracted/shared/replay-artifact/package.json",
+      "sha256": "ab3b0996197b4eaa4bca255f94f3da3c7a27655eed54c512df44f70bd1e1da00"
+    },
+    {
+      "path": "extracted/shared/replay-artifact/tsconfig.json",
+      "sha256": "a4e3266df6c752b00d97754b2f487606bc27e86455aee1070f5d3f1e0a99b80b"
+    },
+    {
+      "path": "extracted/shared/schemas/package.json",
+      "sha256": "c201592b3db0224c3ccf25d6e8b64012c25380a20d20718001cc47bea2de9c2e"
+    },
+    {
+      "path": "extracted/shared/schemas/src/index.d.ts",
+      "sha256": "0ddb1e73c033740f8e87636d67cc7205a4bc428fdcd00fdf7fdf8cb566d69751"
+    },
+    {
+      "path": "extracted/shared/schemas/src/index.js",
+      "sha256": "e891ccdc9e037a921d55eb6cafbe10cffd6f225946c530ae792172d8cb47015e"
+    },
+    {
+      "path": "extracted/shared/schemas/src/index.ts",
+      "sha256": "c2234a5f8361cc2a7f4113c4bf4e2681cacc465132bd8ebcdc66d0008c6de51e"
+    },
+    {
+      "path": "extracted/shared/schemas/tsconfig.json",
+      "sha256": "bd4429a3d2bcf6870a32c14c7e913489daeed4b1bb2be8e4f579d5acf8007817"
+    },
+    {
+      "path": "extracted/shared/schemas/tsconfig.tsbuildinfo",
+      "sha256": "033d7e23e3f32939302376478381876eea639e0b69fdaffb76a4e915690be55d"
+    }
+  ],
+  "test_inventory": [
+    "extracted/adapters/http-gateway/src/governance-chain-proxy.test.ts",
+    "extracted/adapters/http-gateway/src/index.test.ts",
+    "extracted/adapters/http-gateway/src/trial-api.contract.test.ts",
+    "extracted/adapters/http-gateway/src/trial-api.test.ts",
+    "extracted/apps/aristotle-cli/src/index.test.ts",
+    "extracted/apps/console-ui/e2e/layout.spec.ts",
+    "extracted/apps/console-ui/src/command-center/boundary.test.ts",
+    "extracted/bench/sustained-load.mjs",
+    "extracted/docs/specs/mesh-reconciliation.tla",
+    "extracted/examples/framework-adapters/govern.test.ts",
+    "extracted/examples/mesh/published.replay.test.ts",
+    "extracted/examples/mesh/swarm-partition-40-asset.test.ts",
+    "extracted/examples/reviewer/verify.test.ts",
+    "extracted/examples/signers/signer.test.ts",
+    "extracted/packages/bacnet-adapter/src/index.test.ts",
+    "extracted/packages/bedrock/src/index.test.ts",
+    "extracted/packages/claude-agents/src/index.test.ts",
+    "extracted/packages/dnp3-adapter/src/index.test.ts",
+    "extracted/packages/gateway-client/src/index.test.ts",
+    "extracted/packages/gateway-client/src/routes.test.ts",
+    "extracted/packages/k8s-admission/src/index.test.ts",
+    "extracted/packages/langchain/src/index.test.ts",
+    "extracted/packages/mastra/src/index.test.ts",
+    "extracted/packages/mavlink-px4/src/index.test.ts",
+    "extracted/packages/mcp-server-stdio/src/index.test.ts",
+    "extracted/packages/mcp-server/src/index.test.ts",
+    "extracted/packages/modbus-adapter/src/index.test.ts",
+    "extracted/packages/opcua-adapter/src/index.test.ts",
+    "extracted/packages/openai-agents/src/index.test.ts",
+    "extracted/packages/os-sdk/src/index.test.ts",
+    "extracted/packages/reviewer/src/index.test.ts",
+    "extracted/packages/ros2-bridge/src/index.test.ts",
+    "extracted/packages/sdk-anthropic/src/index.test.ts",
+    "extracted/packages/vercel-ai/src/index.test.ts",
+    "extracted/scripts/audit-deps.test.mjs",
+    "extracted/scripts/benchmark-runtime.ts",
+    "extracted/services/agent-os/src/agents-workspaces.test.ts",
+    "extracted/services/agent-os/src/governance-chain-client.test.ts",
+    "extracted/services/agent-os/src/index.test.ts",
+    "extracted/services/agent-os/src/tasks-claim.test.ts",
+    "extracted/services/agent-os/src/tasks-lifecycle.test.ts",
+    "extracted/services/agent-os/src/tasks.test.ts",
+    "extracted/services/authority-router/src/index.test.ts",
+    "extracted/services/evidence-ledger/src/gel-chain.test.ts",
+    "extracted/services/evidence-ledger/src/index.test.ts",
+    "extracted/services/execution-gate/src/index.test.ts",
+    "extracted/services/governance-kernel/src/governance-chain.test.ts",
+    "extracted/services/governance-kernel/src/index.test.ts",
+    "extracted/services/meta-authority-registry/src/index.test.ts",
+    "extracted/services/policy-compiler/src/index.test.ts",
+    "extracted/services/simulation-engine/src/index.test.ts",
+    "extracted/services/witness-service/src/index.test.ts",
+    "extracted/shared/adapter-sdk/src/index.test.ts",
+    "extracted/shared/chaos-harness/src/index.test.ts",
+    "extracted/shared/event-stream/src/index.test.ts",
+    "extracted/shared/execution-control-runtime/benchmark.mts",
+    "extracted/shared/execution-control-runtime/src/attestation.test.ts",
+    "extracted/shared/execution-control-runtime/src/automotive.test.ts",
+    "extracted/shared/execution-control-runtime/src/aviation.test.ts",
+    "extracted/shared/execution-control-runtime/src/budget.test.ts",
+    "extracted/shared/execution-control-runtime/src/builder.test.ts",
+    "extracted/shared/execution-control-runtime/src/cert-auth.test.ts",
+    "extracted/shared/execution-control-runtime/src/classification.test.ts",
+    "extracted/shared/execution-control-runtime/src/conflict-inbox.test.ts",
+    "extracted/shared/execution-control-runtime/src/credential-minter.test.ts",
+    "extracted/shared/execution-control-runtime/src/crypto-posture.test.ts",
+    "extracted/shared/execution-control-runtime/src/degradation.test.ts",
+    "extracted/shared/execution-control-runtime/src/dual-control.test.ts",
+    "extracted/shared/execution-control-runtime/src/edge-containment.test.ts",
+    "extracted/shared/execution-control-runtime/src/egress-guard.test.ts",
+    "extracted/shared/execution-control-runtime/src/fail-mode.test.ts",
+    "extracted/shared/execution-control-runtime/src/gate.property.test.ts",
+    "extracted/shared/execution-control-runtime/src/gate.replay-property.test.ts",
+    "extracted/shared/execution-control-runtime/src/gel.mutation.test.ts",
+    "extracted/shared/execution-control-runtime/src/geofence.test.ts",
+    "extracted/shared/execution-control-runtime/src/grid.test.ts",
+    "extracted/shared/execution-control-runtime/src/healthcare.test.ts",
+    "extracted/shared/execution-control-runtime/src/index.test.ts",
+    "extracted/shared/execution-control-runtime/src/logistics.test.ts",
+    "extracted/shared/execution-control-runtime/src/marshal-behavior.test.ts",
+    "extracted/shared/execution-control-runtime/src/marshal-collectors.test.ts",
+    "extracted/shared/execution-control-runtime/src/mining.test.ts",
+    "extracted/shared/execution-control-runtime/src/pipeline.test.ts",
+    "extracted/shared/execution-control-runtime/src/policy-dsl.test.ts",
+    "extracted/shared/execution-control-runtime/src/port.test.ts",
+    "extracted/shared/execution-control-runtime/src/rail.test.ts",
+    "extracted/shared/execution-control-runtime/src/reconcile.test.ts",
+    "extracted/shared/execution-control-runtime/src/robotics.test.ts",
+    "extracted/shared/execution-control-runtime/src/sandbox.test.ts",
+    "extracted/shared/execution-control-runtime/src/shadow.test.ts",
+    "extracted/shared/execution-control-runtime/src/space.test.ts",
+    "extracted/shared/execution-control-runtime/src/swarm.test.ts",
+    "extracted/shared/execution-control-runtime/src/telecom.test.ts",
+    "extracted/shared/execution-control-runtime/src/title.test.ts",
+    "extracted/shared/execution-control-runtime/src/trace.in-memory.test.ts",
+    "extracted/shared/execution-control-runtime/src/trace.test.ts",
+    "extracted/shared/execution-control-runtime/src/ward-marshal-adapters.test.ts",
+    "extracted/shared/execution-control-runtime/src/ward-marshal.test.ts",
+    "extracted/shared/execution-control-runtime/src/warrant-time.test.ts",
+    "extracted/shared/execution-control-runtime/src/water.test.ts",
+    "extracted/shared/execution-control-runtime/telecom-benchmark.mts",
+    "extracted/shared/gel-archive/src/index.test.ts",
+    "extracted/shared/gel-timestamp-rfc3161-verify/src/index.test.ts",
+    "extracted/shared/gel-timestamp-rfc3161/src/index.test.ts",
+    "extracted/shared/gel-timestamp/src/index.test.ts",
+    "extracted/shared/governance-core/src/constraints.security.test.ts",
+    "extracted/shared/governance-core/src/test/run.test.ts",
+    "extracted/shared/governance-core/src/validators.security.test.ts",
+    "extracted/shared/kms-keyring/src/index.test.ts",
+    "extracted/shared/mesh-runtime/src/ed25519-mesh.test.ts",
+    "extracted/shared/mesh-runtime/src/index.test.ts",
+    "extracted/shared/mesh-runtime/src/ingress-hardening.test.ts",
+    "extracted/shared/mesh-runtime/src/quorum-routing.test.ts",
+    "extracted/shared/mesh-runtime/src/revocation-quorum.test.ts",
+    "extracted/shared/nonce-store/src/index.test.ts",
+    "extracted/shared/observability-otel/src/index.test.ts",
+    "extracted/shared/policy-pipeline/src/index.test.ts",
+    "extracted/shared/policy-pipeline/src/oci.test.ts",
+    "extracted/shared/replay-artifact/src/index.test.ts",
+    "extracted/shared/scenario-engine/src/index.test.ts",
+    "extracted/shared/service-runtime/src/index.test.ts",
+    "extracted/shared/sigstore-rekor-verify/src/index.test.ts",
+    "extracted/shared/sigstore-rekor/src/index.test.ts",
+    "extracted/shared/tenant-onboarding/src/index.test.ts",
+    "extracted/shared/time-machine/src/cli.test.ts",
+    "extracted/shared/time-machine/src/index.test.ts",
+    "extracted/shared/trial-engine/src/index.test.ts",
+    "extracted/shared/warrant-verifier/src/index.test.ts",
+    "extracted/tests/_harness.test.mjs",
+    "extracted/tests/cross-adapter/src/conformance.test.ts",
+    "extracted/tests/cross-adapter/src/refusal-before-emission.test.ts",
+    "extracted/tests/px4-sitl/src/integration.test.ts"
+  ],
+  "command_inventory": {
+    "preinstall": "node scripts/enforce-pnpm.mjs",
+    "build": "npm run build --workspaces",
+    "dev": "concurrently \"npm run dev -w @aristotle/shared-types\" \"npm run dev -w @aristotle/shared-schemas\" \"npm run dev -w @aristotle/governance-core\" \"npm run dev -w @aristotle/meta-authority-registry\" \"npm run dev -w @aristotle/policy-compiler\" \"npm run dev -w @aristotle/evidence-ledger\" \"npm run dev -w @aristotle/authority-router\" \"npm run dev -w @aristotle/witness-service\" \"npm run dev -w @aristotle/execution-gate\" \"npm run dev -w @aristotle/governance-kernel\" \"npm run dev -w @aristotle/simulation-engine\" \"npm run dev -w @aristotle/agent-os\" \"npm run dev -w @aristotle/http-gateway\" \"npm run dev -w @aristotle/console-ui\"",
+    "local:up": "node scripts/local-control-plane.mjs up",
+    "local:status": "node scripts/local-control-plane.mjs status",
+    "local:down": "node scripts/local-control-plane.mjs down",
+    "pilot:images": "node scripts/build-pilot-images.mjs",
+    "pilot:install": "node scripts/pilot-install.mjs",
+    "pilot:smoke": "node scripts/k8s-smoke-install.mjs",
+    "pilot:smoke:kind": "node scripts/k8s-smoke-install.mjs --runtime kind",
+    "pilot:smoke:minikube": "node scripts/k8s-smoke-install.mjs --runtime minikube",
+    "aristotle": "tsx apps/aristotle-cli/src/index.ts",
+    "demo": "tsx apps/aristotle-cli/src/index.ts demo",
+    "demo:uav-swarm-proof": "node scripts/verify-uav-swarm-proof.mjs",
+    "verify:uav-swarm-proof": "node scripts/verify-uav-swarm-proof.mjs",
+    "aristotle:demo": "npm run dev -w @aristotle/console-ui -- --host 127.0.0.1 --port 4173",
+    "execution-control:dev": "tsx apps/aristotle-cli/src/index.ts execution-control dev",
+    "execution-control:serve": "tsx apps/aristotle-cli/src/index.ts execution-control serve --ward examples/execution_control/ward.montana_drone_test_range.yaml --envelope examples/execution_control/authority_envelope.survey_planner.yaml --ledger ./.tmp/execution-control-runtime.gel.jsonl",
+    "execution-control:submit:allow": "tsx apps/aristotle-cli/src/index.ts execution-control submit --action examples/execution_control/actions/allow_takeoff.json --require-warrant",
+    "execution-control:audit:verify": "tsx apps/aristotle-cli/src/index.ts execution-control audit verify --ledger ./.tmp/execution-control-runtime.gel.jsonl",
+    "execution-control:evidence:demo": "tsx apps/aristotle-cli/src/index.ts execution-control evaluate --ward examples/execution_control/ward.montana_drone_test_range.yaml --envelope examples/execution_control/authority_envelope.survey_planner.yaml --action examples/execution_control/actions/allow_takeoff.json --ledger ./.tmp/execution-control-runtime.gel.jsonl --evidence-out ./.tmp/execution-control-evidence-bundle.json --now 2026-05-21T14:00:00.000Z",
+    "execution-control:evidence:verify": "tsx apps/aristotle-cli/src/index.ts execution-control evidence verify --bundle ./.tmp/execution-control-evidence-bundle.json",
+    "ward-marshal:demo": "tsx apps/aristotle-cli/src/index.ts ward-marshal demo",
+    "ward-marshal:adapter:test": "tsx shared/execution-control-runtime/src/ward-marshal-adapters.test.ts",
+    "stack:up": "docker compose up --build -d",
+    "stack:down": "docker compose down",
+    "stack:logs": "docker compose logs -f",
+    "stack:smoke": "node scripts/validate-stack.mjs",
+    "enterprise:keys": "node scripts/generate-ledger-keypair.mjs",
+    "enterprise:backup": "node scripts/backup-governance-state.mjs",
+    "enterprise:restore": "node scripts/restore-governance-state.mjs --yes",
+    "enterprise:drill": "node scripts/validate-recovery.mjs",
+    "enterprise:contracts": "node scripts/validate-deployment-contracts.mjs",
+    "enterprise:ui-safety": "node scripts/validate-console-safety.mjs",
+    "enterprise:adoption-path": "node scripts/validate-adoption-path.mjs",
+    "enterprise:release-manifest": "node scripts/generate-release-manifest.mjs",
+    "enterprise:preflight": "node scripts/validate-enterprise-config.mjs --production",
+    "enterprise:verify": "npm run enterprise:preflight && npm run enterprise:contracts && npm run enterprise:ui-safety && npm run enterprise:release-manifest && npm run test:chain && npm run stack:verify",
+    "enterprise:chain-keys": "node scripts/generate-chain-keypair.mjs",
+    "stack:verify": "npm run stack:smoke && npm run validate:core && npm run validate:chain",
+    "lint": "echo 'lint not yet configured'",
+    "typecheck": "tsc --noEmit -p shared/governance-core/tsconfig.json && tsc --noEmit -p shared/trial-engine/tsconfig.json && tsc --noEmit -p shared/execution-control-runtime/tsconfig.json && tsc --noEmit -p adapters/http-gateway/tsconfig.json && tsc --noEmit -p apps/aristotle-cli/tsconfig.json && tsc --noEmit -p apps/console-ui/tsconfig.json && tsc --noEmit -p packages/os-sdk/tsconfig.json",
+    "test": "npm run typecheck && npm run test:governance && npm run test:execution-control && npm run test:gate-property && npm run test:warrant-time && npm run test:ward-marshal && npm run test:ward-marshal-adapters && npm run test:marshal-behavior && npm run test:marshal-collectors && npm run test:credential-minter && npm run test:attestation && npm run test:crypto-posture && npm run test:edge-containment && npm run test:budget && npm run test:dual-control && npm run test:telecom && npm run test:automotive && npm run test:grid && npm run test:rail && npm run test:pipeline && npm run test:mining && npm run test:port && npm run test:water && npm run test:aviation && npm run test:robotics && npm run test:swarm && npm run test:logistics && npm run test:healthcare && npm run test:title && npm run test:space && npm run test:cert-auth && npm run test:classification && npm run test:fail-mode && npm run test:degradation && npm run test:sandbox && npm run test:shadow && npm run test:builder && npm run test:policy-dsl && npm run test:reconcile && npm run test:conflict-inbox && npm run test:trace && npm run test:cli && npm run test:api && npm run test:chain && npm run test:adapters && npm run test:signers && npm run test:sdk && npm run test:ui-boundary && npm run test:audit && npm run test:demo && npm run test:egress && npm run test:constraints-security && npm run test:legacy-routes",
+    "test:legacy-routes": "node --import tsx --test tests/_harness.test.mjs services/governance-kernel/src/index.test.ts services/agent-os/src/index.test.ts services/agent-os/src/tasks.test.ts services/agent-os/src/tasks-lifecycle.test.ts services/agent-os/src/tasks-claim.test.ts services/agent-os/src/agents-workspaces.test.ts services/authority-router/src/index.test.ts services/evidence-ledger/src/index.test.ts services/evidence-ledger/src/gel-chain.test.ts adapters/http-gateway/src/index.test.ts adapters/http-gateway/src/trial-api.test.ts services/witness-service/src/index.test.ts services/meta-authority-registry/src/index.test.ts services/execution-gate/src/index.test.ts services/policy-compiler/src/index.test.ts services/simulation-engine/src/index.test.ts",
+    "test:governance": "tsx shared/trial-engine/src/index.test.ts",
+    "test:execution-control": "tsx shared/execution-control-runtime/src/index.test.ts",
+    "test:gate-property": "tsx shared/execution-control-runtime/src/gate.property.test.ts",
+    "test:gate-replay-property": "tsx shared/execution-control-runtime/src/gate.replay-property.test.ts",
+    "test:trace-in-memory": "tsx shared/execution-control-runtime/src/trace.in-memory.test.ts",
+    "test:gel-mutation": "tsx shared/execution-control-runtime/src/gel.mutation.test.ts",
+    "test:kms-keyring": "corepack pnpm@10.32.1 --filter @aristotle/kms-keyring test",
+    "test:gel-timestamp": "corepack pnpm@10.32.1 --filter @aristotle/gel-timestamp test",
+    "test:gel-archive": "corepack pnpm@10.32.1 --filter @aristotle/gel-archive test",
+    "test:adapter-sdk": "corepack pnpm@10.32.1 --filter @aristotle/adapter-sdk test",
+    "test:service-runtime": "corepack pnpm@10.32.1 --filter @aristotle/service-runtime test",
+    "test:observability-otel": "corepack pnpm@10.32.1 --filter @aristotle/observability-otel test",
+    "test:mcp-server": "corepack pnpm@10.32.1 --filter @aristotle/mcp-server test",
+    "test:gel-timestamp-rfc3161": "corepack pnpm@10.32.1 --filter @aristotle/gel-timestamp-rfc3161 test",
+    "test:gel-timestamp-rfc3161-verify": "corepack pnpm@10.32.1 --filter @aristotle/gel-timestamp-rfc3161-verify test",
+    "test:sigstore-rekor": "corepack pnpm@10.32.1 --filter @aristotle/sigstore-rekor test",
+    "test:mcp-server-stdio": "corepack pnpm@10.32.1 --filter @aristotle/mcp-server-stdio test",
+    "test:sdk-anthropic": "corepack pnpm@10.32.1 --filter @aristotle/sdk-anthropic test",
+    "test:reviewer-cli": "corepack pnpm@10.32.1 --filter @aristotle/reviewer test",
+    "bench:sustained": "node --import tsx bench/sustained-load.mjs",
+    "bench:sustained:json": "node --import tsx bench/sustained-load.mjs --json",
+    "mutation:gate": "pnpm dlx @stryker-mutator/core --config stryker.conf.mjs",
+    "test:warrant-time": "tsx shared/execution-control-runtime/src/warrant-time.test.ts",
+    "test:ward-marshal": "tsx shared/execution-control-runtime/src/ward-marshal.test.ts",
+    "test:ward-marshal-adapters": "tsx shared/execution-control-runtime/src/ward-marshal-adapters.test.ts",
+    "test:marshal-behavior": "tsx shared/execution-control-runtime/src/marshal-behavior.test.ts",
+    "test:marshal-collectors": "tsx shared/execution-control-runtime/src/marshal-collectors.test.ts",
+    "test:credential-minter": "tsx shared/execution-control-runtime/src/credential-minter.test.ts",
+    "test:attestation": "tsx shared/execution-control-runtime/src/attestation.test.ts",
+    "test:crypto-posture": "tsx shared/execution-control-runtime/src/crypto-posture.test.ts",
+    "test:edge-containment": "tsx shared/execution-control-runtime/src/edge-containment.test.ts",
+    "test:budget": "tsx shared/execution-control-runtime/src/budget.test.ts",
+    "test:dual-control": "tsx shared/execution-control-runtime/src/dual-control.test.ts",
+    "test:telecom": "tsx shared/execution-control-runtime/src/telecom.test.ts",
+    "test:automotive": "tsx shared/execution-control-runtime/src/automotive.test.ts",
+    "test:grid": "tsx shared/execution-control-runtime/src/grid.test.ts",
+    "test:rail": "tsx shared/execution-control-runtime/src/rail.test.ts",
+    "test:port": "tsx shared/execution-control-runtime/src/port.test.ts",
+    "test:water": "tsx shared/execution-control-runtime/src/water.test.ts",
+    "test:cert-auth": "tsx shared/execution-control-runtime/src/cert-auth.test.ts",
+    "test:classification": "tsx shared/execution-control-runtime/src/classification.test.ts",
+    "test:fail-mode": "tsx shared/execution-control-runtime/src/fail-mode.test.ts",
+    "test:degradation": "tsx shared/execution-control-runtime/src/degradation.test.ts",
+    "test:sandbox": "tsx shared/execution-control-runtime/src/sandbox.test.ts",
+    "test:shadow": "tsx shared/execution-control-runtime/src/shadow.test.ts",
+    "test:builder": "tsx shared/execution-control-runtime/src/builder.test.ts",
+    "test:policy-dsl": "tsx shared/execution-control-runtime/src/policy-dsl.test.ts",
+    "test:reconcile": "tsx shared/execution-control-runtime/src/reconcile.test.ts",
+    "test:conflict-inbox": "tsx shared/execution-control-runtime/src/conflict-inbox.test.ts",
+    "test:trace": "tsx shared/execution-control-runtime/src/trace.test.ts",
+    "test:cli": "npm run build -w @aristotle/trial-engine && npm run build -w @aristotle/execution-control-runtime && tsx apps/aristotle-cli/src/index.test.ts",
+    "test:api": "tsx adapters/http-gateway/src/trial-api.contract.test.ts",
+    "test:adapters": "tsx examples/framework-adapters/govern.test.ts",
+    "test:signers": "tsx examples/signers/signer.test.ts",
+    "test:sdk": "tsx packages/os-sdk/src/index.test.ts",
+    "test:ui-boundary": "tsx apps/console-ui/src/command-center/boundary.test.ts",
+    "test:demo": "tsx shared/execution-control-runtime/demo.mts",
+    "test:playground": "npm run test:governance",
+    "reviewer:verify": "node --import tsx examples/reviewer/verify.ts",
+    "reviewer:test": "node --import tsx --test examples/reviewer/verify.test.ts",
+    "proof:status": "node scripts/proof-status.mjs",
+    "test:core": "corepack pnpm@10.32.1 --filter @aristotle/governance-core --filter @aristotle/execution-control-runtime --filter @aristotle/mesh-runtime --filter @aristotle/warrant-verifier --filter @aristotle/replay-artifact test",
+    "test:protocol-adapters": "corepack pnpm@10.32.1 --filter @aristotle/mavlink-px4 --filter @aristotle/ros2-bridge --filter @aristotle/opcua-adapter --filter @aristotle/dnp3-adapter --filter @aristotle/modbus-adapter --filter @aristotle/bacnet-adapter --filter @aristotle/k8s-admission test",
+    "test:refusal-before-emission": "corepack pnpm@10.32.1 --filter @aristotle/tests-cross-adapter test",
+    "test:nonce-store": "corepack pnpm@10.32.1 --filter @aristotle/nonce-store test",
+    "test:px4-sitl": "corepack pnpm@10.32.1 --filter @aristotle/tests-px4-sitl test",
+    "test:framework-adapters": "tsx examples/framework-adapters/govern.test.ts",
+    "test:reviewer": "node --import tsx --test examples/reviewer/verify.test.ts examples/mesh/published.replay.test.ts",
+    "test:mesh": "corepack pnpm@10.32.1 --filter @aristotle/mesh-runtime --filter @aristotle/chaos-harness --filter @aristotle/scenario-engine test",
+    "test:tenancy": "corepack pnpm@10.32.1 --filter @aristotle/tenant-onboarding --filter @aristotle/policy-pipeline --filter @aristotle/time-machine --filter @aristotle/event-stream test",
+    "test:all": "corepack pnpm@10.32.1 -r --workspace-concurrency=1 --filter \"!@aristotle/os-cli\" test",
+    "validate:core": "node scripts/validate-core.mjs",
+    "validate:chain": "node scripts/validate-chain.mjs",
+    "test:chain": "tsx shared/governance-core/src/test/run.test.ts && tsx services/governance-kernel/src/governance-chain.test.ts && tsx services/agent-os/src/governance-chain-client.test.ts && tsx adapters/http-gateway/src/governance-chain-proxy.test.ts",
+    "benchmark:runtime": "tsx scripts/benchmark-runtime.ts",
+    "demo:evaluator": "tsx shared/execution-control-runtime/demo.mts",
+    "bench:execution-control": "tsx shared/execution-control-runtime/benchmark.mts",
+    "soak:execution-control": "node --expose-gc --import tsx shared/execution-control-runtime/soak.mts",
+    "bench:telecom": "tsx shared/execution-control-runtime/telecom-benchmark.mts",
+    "soak:telecom": "tsx shared/execution-control-runtime/telecom-ha-soak.mts",
+    "sbom": "node scripts/generate-sbom.mjs",
+    "audit:ci": "node scripts/audit-deps.mjs",
+    "test:audit": "node --test scripts/audit-deps.test.mjs",
+    "package:cli:check": "node scripts/check-cli-package.mjs",
+    "clean-room": "node scripts/clean-room-scan.mjs",
+    "helm:validate": "node scripts/validate-helm.mjs",
+    "test:pipeline": "tsx shared/execution-control-runtime/src/pipeline.test.ts",
+    "test:logistics": "tsx shared/execution-control-runtime/src/logistics.test.ts",
+    "test:egress": "tsx shared/execution-control-runtime/src/egress-guard.test.ts",
+    "test:constraints-security": "tsx shared/governance-core/src/constraints.security.test.ts",
+    "test:mining": "tsx shared/execution-control-runtime/src/mining.test.ts",
+    "test:aviation": "tsx shared/execution-control-runtime/src/aviation.test.ts",
+    "test:robotics": "tsx shared/execution-control-runtime/src/robotics.test.ts",
+    "test:swarm": "tsx shared/execution-control-runtime/src/swarm.test.ts",
+    "test:healthcare": "tsx shared/execution-control-runtime/src/healthcare.test.ts",
+    "test:title": "tsx shared/execution-control-runtime/src/title.test.ts",
+    "test:space": "tsx shared/execution-control-runtime/src/space.test.ts"
+  },
+  "inventory_scope": "Tracked package scripts and hashed schema/API/CLI/proof sources; not a claim of semantic API completeness.",
+  "results": [
+    {
+      "name": "build-prerequisites",
+      "command": "corepack pnpm@10.32.1 -r --filter @aristotle/shared-types --filter @aristotle/shared-schemas --filter @aristotle/governance-core --filter @aristotle/trial-engine --filter @aristotle/execution-control-runtime --filter @aristotle/mesh-runtime --filter @aristotle/os-sdk --workspace-concurrency=1 build",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 22049,
+      "log": "build-prerequisites.txt",
+      "log_sha256": "2c03fcfa8c94379469f5c8777320ce310c45db9d4032c503c40d120d4c3e0120",
+      "reported_counts": []
+    },
+    {
+      "name": "typecheck",
+      "command": "corepack pnpm@10.32.1 typecheck",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 42884,
+      "log": "typecheck.txt",
+      "log_sha256": "daea76fb73ae386eb619756d0b77c98b39b4fb15ef672926ae01b067b3842a09",
+      "reported_counts": []
+    },
+    {
+      "name": "test-legacy-routes",
+      "command": "corepack pnpm@10.32.1 run test:legacy-routes",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 84306,
+      "log": "test-legacy-routes.txt",
+      "log_sha256": "8f1c92cb371ffd28cfe94c3b303efe961beec90f3c4d3fdd554357da4556128b",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 99
+        },
+        {
+          "kind": "pass",
+          "count": 99
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-governance",
+      "command": "corepack pnpm@10.32.1 run test:governance",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3298,
+      "log": "test-governance.txt",
+      "log_sha256": "be030ba541b38589d848281fc0554d215a611251a221add1fc67e6685222d022",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-execution-control",
+      "command": "corepack pnpm@10.32.1 run test:execution-control",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 14104,
+      "log": "test-execution-control.txt",
+      "log_sha256": "799edae4ef247f4d0647e0858eb85d6b0a1ced229a59f8de741289b5013d222c",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 75
+        },
+        {
+          "kind": "pass",
+          "count": 75
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-gate-property",
+      "command": "corepack pnpm@10.32.1 run test:gate-property",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 5156,
+      "log": "test-gate-property.txt",
+      "log_sha256": "de7543f0a1cb1cb7241646f45a85df1c56a7d2a6e6ab4b4732f52ab7834659fd",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 2
+        },
+        {
+          "kind": "pass",
+          "count": 2
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-gate-replay-property",
+      "command": "corepack pnpm@10.32.1 run test:gate-replay-property",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3840,
+      "log": "test-gate-replay-property.txt",
+      "log_sha256": "07b032b0132061d7cb926bcb827e3b650e97ac686492cfc7367af0bb94ffc923",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 4
+        },
+        {
+          "kind": "pass",
+          "count": 4
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-trace-in-memory",
+      "command": "corepack pnpm@10.32.1 run test:trace-in-memory",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2350,
+      "log": "test-trace-in-memory.txt",
+      "log_sha256": "b36fee68dda9a3b80db274006fa6fa8b1d02542ef712c68fff692a7b5755e941",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 5
+        },
+        {
+          "kind": "pass",
+          "count": 5
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-gel-mutation",
+      "command": "corepack pnpm@10.32.1 run test:gel-mutation",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2632,
+      "log": "test-gel-mutation.txt",
+      "log_sha256": "e1908e35e47062d7ee7f7136b2bafbf9b22928059d36143f72197f66a4fb3e1e",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 9
+        },
+        {
+          "kind": "pass",
+          "count": 9
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-kms-keyring",
+      "command": "corepack pnpm@10.32.1 run test:kms-keyring",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 5278,
+      "log": "test-kms-keyring.txt",
+      "log_sha256": "7eefdd630c58f8fa3dc0e09e67db8150e4d1cc9241d7d2599ef9cb78c6afbe2c",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 11
+        },
+        {
+          "kind": "pass",
+          "count": 11
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-gel-timestamp",
+      "command": "corepack pnpm@10.32.1 run test:gel-timestamp",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 4757,
+      "log": "test-gel-timestamp.txt",
+      "log_sha256": "09e632f23212d8426675cc437714b06c10539c119fa43e1779facebc50a2cbbf",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 10
+        },
+        {
+          "kind": "pass",
+          "count": 10
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-gel-archive",
+      "command": "corepack pnpm@10.32.1 run test:gel-archive",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 4802,
+      "log": "test-gel-archive.txt",
+      "log_sha256": "4b186963fbfa07786d1a76aca90108481289c137e989963bee5a8d2e9b3887a1",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 14
+        },
+        {
+          "kind": "pass",
+          "count": 14
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-adapter-sdk",
+      "command": "corepack pnpm@10.32.1 run test:adapter-sdk",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2993,
+      "log": "test-adapter-sdk.txt",
+      "log_sha256": "9bdc0eb4c0d09d8542eb5af59280af151b6bf31a3252ca501790548aea4196f7",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 18
+        },
+        {
+          "kind": "pass",
+          "count": 18
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-service-runtime",
+      "command": "corepack pnpm@10.32.1 run test:service-runtime",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3898,
+      "log": "test-service-runtime.txt",
+      "log_sha256": "ce573ebda8e48b378b353b51577aa8dea9ceb159ec680d8f47e7dfa3463f1599",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 15
+        },
+        {
+          "kind": "pass",
+          "count": 15
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-observability-otel",
+      "command": "corepack pnpm@10.32.1 run test:observability-otel",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 4067,
+      "log": "test-observability-otel.txt",
+      "log_sha256": "9c34049b67cef0d94708319d6f6a7f066e7b045310259bd7b618a134d0d2d80b",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 11
+        },
+        {
+          "kind": "pass",
+          "count": 11
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-mcp-server",
+      "command": "corepack pnpm@10.32.1 run test:mcp-server",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3590,
+      "log": "test-mcp-server.txt",
+      "log_sha256": "4e25dbd2cd4738761d53f90cf9e57dd2cc1964449c654bbc8781636dff2eec39",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 14
+        },
+        {
+          "kind": "pass",
+          "count": 14
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-gel-timestamp-rfc3161",
+      "command": "corepack pnpm@10.32.1 run test:gel-timestamp-rfc3161",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3336,
+      "log": "test-gel-timestamp-rfc3161.txt",
+      "log_sha256": "a22df04c3d021212ff9ffbe9093cf4e8f97a0c1f7246742b84039e30f7c41331",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 26
+        },
+        {
+          "kind": "pass",
+          "count": 26
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-gel-timestamp-rfc3161-verify",
+      "command": "corepack pnpm@10.32.1 run test:gel-timestamp-rfc3161-verify",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3858,
+      "log": "test-gel-timestamp-rfc3161-verify.txt",
+      "log_sha256": "1d5dfae1e8c7b4eeccefc57191c2c10888e21a176b4e5a31e0b4336711c9ce34",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-sigstore-rekor",
+      "command": "corepack pnpm@10.32.1 run test:sigstore-rekor",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3955,
+      "log": "test-sigstore-rekor.txt",
+      "log_sha256": "164d54787e54eb77e112ed7925ded59da8e6a48a7a8d990269a58553b03b44df",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 13
+        },
+        {
+          "kind": "pass",
+          "count": 13
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-mcp-server-stdio",
+      "command": "corepack pnpm@10.32.1 run test:mcp-server-stdio",
+      "status": "FAIL",
+      "exit_code": 1,
+      "duration_ms": 2833,
+      "log": "test-mcp-server-stdio.txt",
+      "log_sha256": "79aeb29beb65d8b13503c283b58a7a0dc2464f6c42790097c043634878891f79",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 1
+        },
+        {
+          "kind": "pass",
+          "count": 0
+        },
+        {
+          "kind": "fail",
+          "count": 1
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-sdk-anthropic",
+      "command": "corepack pnpm@10.32.1 run test:sdk-anthropic",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2986,
+      "log": "test-sdk-anthropic.txt",
+      "log_sha256": "8ae581634b57febd3a98f18f2e4a8bffbd11baef73cfb4b5c1564c52d336fa9d",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 20
+        },
+        {
+          "kind": "pass",
+          "count": 20
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-reviewer-cli",
+      "command": "corepack pnpm@10.32.1 run test:reviewer-cli",
+      "status": "FAIL",
+      "exit_code": 1,
+      "duration_ms": 97805,
+      "log": "test-reviewer-cli.txt",
+      "log_sha256": "0d8dad2d4be704ccc1e95afeaa97f3c3b204615ada6daa83a250c77d59eb14bf",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 15
+        },
+        {
+          "kind": "pass",
+          "count": 0
+        },
+        {
+          "kind": "fail",
+          "count": 15
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-warrant-time",
+      "command": "corepack pnpm@10.32.1 run test:warrant-time",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3089,
+      "log": "test-warrant-time.txt",
+      "log_sha256": "4df72ec27a27dc99a8309a6c83f01b11fef106f4537fa5c2bd86da9371324f7e",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 5
+        },
+        {
+          "kind": "pass",
+          "count": 5
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-ward-marshal",
+      "command": "corepack pnpm@10.32.1 run test:ward-marshal",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2556,
+      "log": "test-ward-marshal.txt",
+      "log_sha256": "f22e7929ee5309a2baf07f0075b42f260d393b56818c5e85026ce697b54aedef",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-ward-marshal-adapters",
+      "command": "corepack pnpm@10.32.1 run test:ward-marshal-adapters",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2887,
+      "log": "test-ward-marshal-adapters.txt",
+      "log_sha256": "e639a83dfcb2bc61c0b6629e68b4d7031b771db11c0a9ab1b87ddd102673fe29",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 5
+        },
+        {
+          "kind": "pass",
+          "count": 5
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-marshal-behavior",
+      "command": "corepack pnpm@10.32.1 run test:marshal-behavior",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3032,
+      "log": "test-marshal-behavior.txt",
+      "log_sha256": "a4a6803caef467bf4b4afc03d01b512769a5d6604e016a7c292b0d8bf32e384e",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 15
+        },
+        {
+          "kind": "pass",
+          "count": 15
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-marshal-collectors",
+      "command": "corepack pnpm@10.32.1 run test:marshal-collectors",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3322,
+      "log": "test-marshal-collectors.txt",
+      "log_sha256": "e8ac162394255e65d8da4c69202306c864f63ddd944eb81f4920db364e30e5ac",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 16
+        },
+        {
+          "kind": "pass",
+          "count": 16
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-credential-minter",
+      "command": "corepack pnpm@10.32.1 run test:credential-minter",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2899,
+      "log": "test-credential-minter.txt",
+      "log_sha256": "490e04a845e0250f38a9e3f58043eb23bfd88e32df4ee9d4a4e884b1c68f2978",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 7
+        },
+        {
+          "kind": "pass",
+          "count": 7
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-attestation",
+      "command": "corepack pnpm@10.32.1 run test:attestation",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 5165,
+      "log": "test-attestation.txt",
+      "log_sha256": "f52bd60996ae263fc94fa86131344b92be3e9834ce19a624b59d4340289b3c04",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 4
+        },
+        {
+          "kind": "pass",
+          "count": 4
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-crypto-posture",
+      "command": "corepack pnpm@10.32.1 run test:crypto-posture",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2729,
+      "log": "test-crypto-posture.txt",
+      "log_sha256": "de98d51bc334b14890a962b3eb77cdbf3a40a4f267d2ce255b0cb17b717f0632",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 3
+        },
+        {
+          "kind": "pass",
+          "count": 3
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-edge-containment",
+      "command": "corepack pnpm@10.32.1 run test:edge-containment",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2690,
+      "log": "test-edge-containment.txt",
+      "log_sha256": "7960b2b7cc2c8dbffacbdb7bb61488e0826f7595e49f5bf24f1aff8c32e09cd4",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-budget",
+      "command": "corepack pnpm@10.32.1 run test:budget",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2872,
+      "log": "test-budget.txt",
+      "log_sha256": "fb1c18978ed2c7f2de87bf9882abec367c5152aa474563a9a8f93eb4ce0cc859",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-dual-control",
+      "command": "corepack pnpm@10.32.1 run test:dual-control",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2843,
+      "log": "test-dual-control.txt",
+      "log_sha256": "82ac99b0938d865ebb794999863efe3672bb330b28c660bf0e350db3b2fa568f",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 7
+        },
+        {
+          "kind": "pass",
+          "count": 7
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-telecom",
+      "command": "corepack pnpm@10.32.1 run test:telecom",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2998,
+      "log": "test-telecom.txt",
+      "log_sha256": "4a5f01dbeadf717b5de6ac0df13e513532f08cebc42e374d4b37f2f66af0b611",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 4
+        },
+        {
+          "kind": "pass",
+          "count": 4
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-automotive",
+      "command": "corepack pnpm@10.32.1 run test:automotive",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3071,
+      "log": "test-automotive.txt",
+      "log_sha256": "f7922c9459bde996f317305cf20cfd065611a13454d142bc0643ba7e3b49f100",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-grid",
+      "command": "corepack pnpm@10.32.1 run test:grid",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2865,
+      "log": "test-grid.txt",
+      "log_sha256": "8583214978b68fe77ebe25f451fe93dcccbfe3303aa8c527ef87bf57fa45eaa6",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-rail",
+      "command": "corepack pnpm@10.32.1 run test:rail",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2725,
+      "log": "test-rail.txt",
+      "log_sha256": "548a0b50c10fb2ebaa8b27ca3a4c2360715f1abc97885fc34e8acfd5d892ef00",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-port",
+      "command": "corepack pnpm@10.32.1 run test:port",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2724,
+      "log": "test-port.txt",
+      "log_sha256": "502c965b7e826a28b2567412a8b9b740f320f46f440b798c50c5c889c3c68417",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-water",
+      "command": "corepack pnpm@10.32.1 run test:water",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2744,
+      "log": "test-water.txt",
+      "log_sha256": "7970f62bea900d999a1a748ed588171f2d8437cfee14e2548f73f5d38dde09a5",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-cert-auth",
+      "command": "corepack pnpm@10.32.1 run test:cert-auth",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2519,
+      "log": "test-cert-auth.txt",
+      "log_sha256": "680122f683a5ef28f067d1825b2f37db89ac6beadd110ad276484754d1d037f1",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 8
+        },
+        {
+          "kind": "pass",
+          "count": 8
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-classification",
+      "command": "corepack pnpm@10.32.1 run test:classification",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2720,
+      "log": "test-classification.txt",
+      "log_sha256": "9d0ac7fa16bd28636c192e6ff8dd4816fb66ac5d801148a4d3447ccb118c3099",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 8
+        },
+        {
+          "kind": "pass",
+          "count": 8
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-fail-mode",
+      "command": "corepack pnpm@10.32.1 run test:fail-mode",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2274,
+      "log": "test-fail-mode.txt",
+      "log_sha256": "5787f11e754c92bd1b46542bfccb913c297e8c8ba2edecf29ef5eafe67675c7c",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 9
+        },
+        {
+          "kind": "pass",
+          "count": 9
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-degradation",
+      "command": "corepack pnpm@10.32.1 run test:degradation",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2119,
+      "log": "test-degradation.txt",
+      "log_sha256": "67455a84a73b06f1fe394ef3810fdb2110d23ed81d35bbff376f1a4f12c34e05",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 8
+        },
+        {
+          "kind": "pass",
+          "count": 8
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-sandbox",
+      "command": "corepack pnpm@10.32.1 run test:sandbox",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 4222,
+      "log": "test-sandbox.txt",
+      "log_sha256": "8c2b7436fb81cf25f8751be167342c29e5e482803233b755ed68a14992363c0b",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 14
+        },
+        {
+          "kind": "pass",
+          "count": 13
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "test-shadow",
+      "command": "corepack pnpm@10.32.1 run test:shadow",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2990,
+      "log": "test-shadow.txt",
+      "log_sha256": "9dfa3bc501f5a01cf0a6726ac85c0955a10aa0cbb891752ec4c006aaa68228e1",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 2
+        },
+        {
+          "kind": "pass",
+          "count": 2
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-builder",
+      "command": "corepack pnpm@10.32.1 run test:builder",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3216,
+      "log": "test-builder.txt",
+      "log_sha256": "06e8c1ebe84312871f98a95dbb93967f92cc84305b8e1035c561f6adef52eb2b",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 4
+        },
+        {
+          "kind": "pass",
+          "count": 4
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-policy-dsl",
+      "command": "corepack pnpm@10.32.1 run test:policy-dsl",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2582,
+      "log": "test-policy-dsl.txt",
+      "log_sha256": "2c7aaa89935fb04c0cd52e7b2ca78b8f1f440b636737a26071b344ad5f6df894",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 11
+        },
+        {
+          "kind": "pass",
+          "count": 11
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-reconcile",
+      "command": "corepack pnpm@10.32.1 run test:reconcile",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2758,
+      "log": "test-reconcile.txt",
+      "log_sha256": "ce2b133741438b8026f4ad3ec43c278a1bdf9f54ea991027e8e7b8ead3e25933",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 2
+        },
+        {
+          "kind": "pass",
+          "count": 2
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-conflict-inbox",
+      "command": "corepack pnpm@10.32.1 run test:conflict-inbox",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3096,
+      "log": "test-conflict-inbox.txt",
+      "log_sha256": "2d81ee18448d8633337ec2f80fa871df6a6fb9b6ced1328f50ae3d3c4e2a8c18",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 7
+        },
+        {
+          "kind": "pass",
+          "count": 7
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-trace",
+      "command": "corepack pnpm@10.32.1 run test:trace",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 4070,
+      "log": "test-trace.txt",
+      "log_sha256": "c7301dacb4383261bd5793c0ef63399ea16991063f273e69bca9f7ac9cc353cf",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 5
+        },
+        {
+          "kind": "pass",
+          "count": 5
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-cli",
+      "command": "corepack pnpm@10.32.1 run test:cli",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 25740,
+      "log": "test-cli.txt",
+      "log_sha256": "353b236687a2017686ed19497d575998a4efc43e103077c6c98fb12760ad085c",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 24
+        },
+        {
+          "kind": "pass",
+          "count": 24
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-api",
+      "command": "corepack pnpm@10.32.1 run test:api",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2608,
+      "log": "test-api.txt",
+      "log_sha256": "681946550699ebfd4cbbfe1c7c0f6df93e9fc5081e735f6fecaabe346e975597",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 2
+        },
+        {
+          "kind": "pass",
+          "count": 2
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-adapters",
+      "command": "corepack pnpm@10.32.1 run test:adapters",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3224,
+      "log": "test-adapters.txt",
+      "log_sha256": "0c4fd2a16b545b8232afdf6fb1646be3aa9380d36b37d899db838fd2579bda70",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-signers",
+      "command": "corepack pnpm@10.32.1 run test:signers",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2542,
+      "log": "test-signers.txt",
+      "log_sha256": "a27cb6483598e2be4e951ce97a81bf906cca3513b9d9119853d61a47d6d6b50c",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 2
+        },
+        {
+          "kind": "pass",
+          "count": 2
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-sdk",
+      "command": "corepack pnpm@10.32.1 run test:sdk",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2205,
+      "log": "test-sdk.txt",
+      "log_sha256": "cd6e08adf977d15da8645d1fb26a5f7c642c41d55172bb13de71c41f60549fe4",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 22
+        },
+        {
+          "kind": "pass",
+          "count": 22
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-ui-boundary",
+      "command": "corepack pnpm@10.32.1 run test:ui-boundary",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2657,
+      "log": "test-ui-boundary.txt",
+      "log_sha256": "4ffdcefad29023c3291c61eb2312d2d3e8b6dd7ecb1e7b5fc193fd623fb11866",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 10
+        },
+        {
+          "kind": "pass",
+          "count": 10
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-demo",
+      "command": "corepack pnpm@10.32.1 run test:demo",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2716,
+      "log": "test-demo.txt",
+      "log_sha256": "4f65576169e3d8969efd05fe481015c18bd5c61444f0e8d83806c9c9e98c6b39",
+      "reported_counts": []
+    },
+    {
+      "name": "test-playground",
+      "command": "corepack pnpm@10.32.1 run test:playground",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 4202,
+      "log": "test-playground.txt",
+      "log_sha256": "d06ee41b869561e8ee39d740d93dbcfdab2ae87ea331b5472f90fc55036ad67e",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-core",
+      "command": "corepack pnpm@10.32.1 run test:core",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 18566,
+      "log": "test-core.txt",
+      "log_sha256": "f938dc972be82996d040d1b53799d09f9aa971d8cc87496969c672a0e69d9a8e",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 10
+        },
+        {
+          "kind": "pass",
+          "count": 10
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 41
+        },
+        {
+          "kind": "pass",
+          "count": 41
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 66
+        },
+        {
+          "kind": "pass",
+          "count": 66
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 75
+        },
+        {
+          "kind": "pass",
+          "count": 75
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 11
+        },
+        {
+          "kind": "pass",
+          "count": 11
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-protocol-adapters",
+      "command": "corepack pnpm@10.32.1 run test:protocol-adapters",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 6010,
+      "log": "test-protocol-adapters.txt",
+      "log_sha256": "448a6e2ab42b18da83c36217cb21349d4ec243569e7f4cf9c96740e6e126e5d5",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 7
+        },
+        {
+          "kind": "pass",
+          "count": 7
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 9
+        },
+        {
+          "kind": "pass",
+          "count": 9
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 13
+        },
+        {
+          "kind": "pass",
+          "count": 13
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 7
+        },
+        {
+          "kind": "pass",
+          "count": 7
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 14
+        },
+        {
+          "kind": "pass",
+          "count": 14
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 13
+        },
+        {
+          "kind": "pass",
+          "count": 13
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 10
+        },
+        {
+          "kind": "pass",
+          "count": 10
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-refusal-before-emission",
+      "command": "corepack pnpm@10.32.1 run test:refusal-before-emission",
+      "status": "FAIL",
+      "exit_code": 1,
+      "duration_ms": 4289,
+      "log": "test-refusal-before-emission.txt",
+      "log_sha256": "64298a88737929a494ca4ae7257bbe275f3a0f8b5c0f58ee1d830d32e1312125",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 2
+        },
+        {
+          "kind": "pass",
+          "count": 0
+        },
+        {
+          "kind": "fail",
+          "count": 2
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-nonce-store",
+      "command": "corepack pnpm@10.32.1 run test:nonce-store",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 5493,
+      "log": "test-nonce-store.txt",
+      "log_sha256": "5b6e2f912c7be55ed65c3306d6bab09d1ac396e84123945b1ea94e835d8b297a",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 16
+        },
+        {
+          "kind": "pass",
+          "count": 16
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-px4-sitl",
+      "command": "corepack pnpm@10.32.1 run test:px4-sitl",
+      "status": "FAIL",
+      "exit_code": 1,
+      "duration_ms": 4664,
+      "log": "test-px4-sitl.txt",
+      "log_sha256": "cd07a51d8d406bf3fe41895f0e5c290518ca3b4c209d37d9f44d2667a51e8bbb",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 1
+        },
+        {
+          "kind": "pass",
+          "count": 0
+        },
+        {
+          "kind": "fail",
+          "count": 1
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-framework-adapters",
+      "command": "corepack pnpm@10.32.1 run test:framework-adapters",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3285,
+      "log": "test-framework-adapters.txt",
+      "log_sha256": "fa6b561aaa32e8a27669c5a04943a733f1ae6b0cd54c0988e3fb6e8455c119d4",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-reviewer",
+      "command": "corepack pnpm@10.32.1 run test:reviewer",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 5990,
+      "log": "test-reviewer.txt",
+      "log_sha256": "997f73aa3f911eaaaf493ce78fe05064e2e319aad9d9e8cd829454700abec453",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 11
+        },
+        {
+          "kind": "pass",
+          "count": 11
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-mesh",
+      "command": "corepack pnpm@10.32.1 run test:mesh",
+      "status": "FAIL",
+      "exit_code": 1,
+      "duration_ms": 8714,
+      "log": "test-mesh.txt",
+      "log_sha256": "ff92db017ba54254cf7ec064e4f8d722b594d816ebc275cbad043d3612c9b6ee",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 66
+        },
+        {
+          "kind": "pass",
+          "count": 66
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 1
+        },
+        {
+          "kind": "pass",
+          "count": 0
+        },
+        {
+          "kind": "fail",
+          "count": 1
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 1
+        },
+        {
+          "kind": "pass",
+          "count": 0
+        },
+        {
+          "kind": "fail",
+          "count": 1
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-tenancy",
+      "command": "corepack pnpm@10.32.1 run test:tenancy",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 7296,
+      "log": "test-tenancy.txt",
+      "log_sha256": "71bfe7670f8aa3c995d7ebbebe6c9553a0030b42efbce8e3e14137f4ead6f77d",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 11
+        },
+        {
+          "kind": "pass",
+          "count": 11
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 29
+        },
+        {
+          "kind": "pass",
+          "count": 29
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 20
+        },
+        {
+          "kind": "pass",
+          "count": 20
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 18
+        },
+        {
+          "kind": "pass",
+          "count": 18
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-chain",
+      "command": "corepack pnpm@10.32.1 run test:chain",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 10401,
+      "log": "test-chain.txt",
+      "log_sha256": "93895f31d51c8434e3596c11be095cb7a6c5d4e80d13d5e7762072b339fc0499",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 41
+        },
+        {
+          "kind": "pass",
+          "count": 41
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 8
+        },
+        {
+          "kind": "pass",
+          "count": 8
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 7
+        },
+        {
+          "kind": "pass",
+          "count": 7
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 2
+        },
+        {
+          "kind": "pass",
+          "count": 2
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-audit",
+      "command": "corepack pnpm@10.32.1 run test:audit",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 1808,
+      "log": "test-audit.txt",
+      "log_sha256": "7daf8b8ad7b31a21d49e66b7ee16733637e9a3ecd896628ffa2b1bb715d67200",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 8
+        },
+        {
+          "kind": "pass",
+          "count": 8
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-pipeline",
+      "command": "corepack pnpm@10.32.1 run test:pipeline",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2733,
+      "log": "test-pipeline.txt",
+      "log_sha256": "48370460e35750d072f2160d14401813c63174ea90981362e12c4bd1f82dc753",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-logistics",
+      "command": "corepack pnpm@10.32.1 run test:logistics",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3164,
+      "log": "test-logistics.txt",
+      "log_sha256": "24536648e50dfe1ed662442ec6ce96c11a39e2b152ca6e54e5145ec922fbb8ff",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-egress",
+      "command": "corepack pnpm@10.32.1 run test:egress",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2531,
+      "log": "test-egress.txt",
+      "log_sha256": "5b28eb857ef889900414636f8d65c644e6ed1fc3371d1fae14f76b724f6b63d2",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-constraints-security",
+      "command": "corepack pnpm@10.32.1 run test:constraints-security",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2922,
+      "log": "test-constraints-security.txt",
+      "log_sha256": "f288149b4342063c4442914178fce6a08710dedaf5d3d59c825eb229af87bdf4",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 4
+        },
+        {
+          "kind": "pass",
+          "count": 4
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-mining",
+      "command": "corepack pnpm@10.32.1 run test:mining",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3920,
+      "log": "test-mining.txt",
+      "log_sha256": "ca6a7ca425755bd6ca7494b89c766267a03e0ae8128e83ceb00a93d6ef40b8f8",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-aviation",
+      "command": "corepack pnpm@10.32.1 run test:aviation",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 4259,
+      "log": "test-aviation.txt",
+      "log_sha256": "b2074f93157dc1ced297e90f2fd34df254c1aee02ccd197cc07a7f4f4a0e995f",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 7
+        },
+        {
+          "kind": "pass",
+          "count": 7
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-robotics",
+      "command": "corepack pnpm@10.32.1 run test:robotics",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3992,
+      "log": "test-robotics.txt",
+      "log_sha256": "ce1f8584adad339c0d754c84390c711f41f6d20c69b91020bf1d8da6727c2cf1",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 7
+        },
+        {
+          "kind": "pass",
+          "count": 7
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-swarm",
+      "command": "corepack pnpm@10.32.1 run test:swarm",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3294,
+      "log": "test-swarm.txt",
+      "log_sha256": "3ab33842b6591bcb0fe3c8f6fbef8a0d9bea9591f813610b50fdfa39cb1032fd",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 8
+        },
+        {
+          "kind": "pass",
+          "count": 8
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-healthcare",
+      "command": "corepack pnpm@10.32.1 run test:healthcare",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2983,
+      "log": "test-healthcare.txt",
+      "log_sha256": "dd93fa3a06d2a36e6ff658c9dea7add4b1d4fa95befbee46258fb07bfa9afb8a",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-title",
+      "command": "corepack pnpm@10.32.1 run test:title",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 4089,
+      "log": "test-title.txt",
+      "log_sha256": "3eeb832b9df7df7458fe05ac0627b2558d607170a1dc473531bbd451492ae4fc",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 22
+        },
+        {
+          "kind": "pass",
+          "count": 22
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "test-space",
+      "command": "corepack pnpm@10.32.1 run test:space",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3990,
+      "log": "test-space.txt",
+      "log_sha256": "348d22ee40f894be8ea23e0e0e61f8cc2befa470fa0755570d177ceb2d7caf85",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 18
+        },
+        {
+          "kind": "pass",
+          "count": 18
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "workspace-tests",
+      "command": "corepack pnpm@10.32.1 run test:all",
+      "status": "FAIL",
+      "exit_code": 1,
+      "duration_ms": 721484,
+      "log": "workspace-tests.txt",
+      "log_sha256": "034fb7754137070449fd90419e1cc62751544c8dedb803a46f5ccc4aff88bb08",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 75
+        },
+        {
+          "kind": "pass",
+          "count": 75
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 2
+        },
+        {
+          "kind": "pass",
+          "count": 2
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 5
+        },
+        {
+          "kind": "pass",
+          "count": 5
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 5
+        },
+        {
+          "kind": "pass",
+          "count": 5
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 15
+        },
+        {
+          "kind": "pass",
+          "count": 15
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 16
+        },
+        {
+          "kind": "pass",
+          "count": 16
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 7
+        },
+        {
+          "kind": "pass",
+          "count": 7
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 4
+        },
+        {
+          "kind": "pass",
+          "count": 4
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 3
+        },
+        {
+          "kind": "pass",
+          "count": 3
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 7
+        },
+        {
+          "kind": "pass",
+          "count": 7
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 4
+        },
+        {
+          "kind": "pass",
+          "count": 4
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 7
+        },
+        {
+          "kind": "pass",
+          "count": 7
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 7
+        },
+        {
+          "kind": "pass",
+          "count": 7
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 8
+        },
+        {
+          "kind": "pass",
+          "count": 8
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 22
+        },
+        {
+          "kind": "pass",
+          "count": 22
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 18
+        },
+        {
+          "kind": "pass",
+          "count": 18
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 8
+        },
+        {
+          "kind": "pass",
+          "count": 8
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 8
+        },
+        {
+          "kind": "pass",
+          "count": 8
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 9
+        },
+        {
+          "kind": "pass",
+          "count": 9
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 8
+        },
+        {
+          "kind": "pass",
+          "count": 8
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 14
+        },
+        {
+          "kind": "pass",
+          "count": 13
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 1
+        },
+        {
+          "kind": "tests",
+          "count": 2
+        },
+        {
+          "kind": "pass",
+          "count": 2
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 4
+        },
+        {
+          "kind": "pass",
+          "count": 4
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 11
+        },
+        {
+          "kind": "pass",
+          "count": 11
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 2
+        },
+        {
+          "kind": "pass",
+          "count": 2
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 7
+        },
+        {
+          "kind": "pass",
+          "count": 7
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 5
+        },
+        {
+          "kind": "pass",
+          "count": 5
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 24
+        },
+        {
+          "kind": "pass",
+          "count": 24
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 2
+        },
+        {
+          "kind": "pass",
+          "count": 2
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 41
+        },
+        {
+          "kind": "pass",
+          "count": 41
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 8
+        },
+        {
+          "kind": "pass",
+          "count": 8
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 7
+        },
+        {
+          "kind": "pass",
+          "count": 7
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 2
+        },
+        {
+          "kind": "pass",
+          "count": 2
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 2
+        },
+        {
+          "kind": "pass",
+          "count": 2
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 22
+        },
+        {
+          "kind": "pass",
+          "count": 22
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 10
+        },
+        {
+          "kind": "pass",
+          "count": 10
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 8
+        },
+        {
+          "kind": "pass",
+          "count": 8
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 4
+        },
+        {
+          "kind": "pass",
+          "count": 4
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 99
+        },
+        {
+          "kind": "pass",
+          "count": 99
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 22
+        },
+        {
+          "kind": "pass",
+          "count": 22
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 11
+        },
+        {
+          "kind": "pass",
+          "count": 11
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 75
+        },
+        {
+          "kind": "pass",
+          "count": 75
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 41
+        },
+        {
+          "kind": "pass",
+          "count": 41
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 66
+        },
+        {
+          "kind": "pass",
+          "count": 66
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 10
+        },
+        {
+          "kind": "pass",
+          "count": 10
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 15
+        },
+        {
+          "kind": "pass",
+          "count": 15
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 2
+        },
+        {
+          "kind": "pass",
+          "count": 2
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 12
+        },
+        {
+          "kind": "pass",
+          "count": 12
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 11
+        },
+        {
+          "kind": "pass",
+          "count": 11
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 22
+        },
+        {
+          "kind": "pass",
+          "count": 22
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 7
+        },
+        {
+          "kind": "pass",
+          "count": 7
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 16
+        },
+        {
+          "kind": "pass",
+          "count": 16
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 9
+        },
+        {
+          "kind": "pass",
+          "count": 9
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 10
+        },
+        {
+          "kind": "pass",
+          "count": 10
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 9
+        },
+        {
+          "kind": "pass",
+          "count": 9
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 8
+        },
+        {
+          "kind": "pass",
+          "count": 8
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 8
+        },
+        {
+          "kind": "pass",
+          "count": 8
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 8
+        },
+        {
+          "kind": "pass",
+          "count": 8
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 6
+        },
+        {
+          "kind": "pass",
+          "count": 6
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 18
+        },
+        {
+          "kind": "pass",
+          "count": 18
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        },
+        {
+          "kind": "tests",
+          "count": 1
+        },
+        {
+          "kind": "pass",
+          "count": 0
+        },
+        {
+          "kind": "fail",
+          "count": 1
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "reviewer-verify",
+      "command": "corepack pnpm@10.32.1 reviewer:verify",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 4569,
+      "log": "reviewer-verify.txt",
+      "log_sha256": "68a53774dc4c8fc5b48aa3b4e6cd2290bc5bb9d8675a18335d1139d3089cba85",
+      "reported_counts": []
+    },
+    {
+      "name": "mesh-40-asset",
+      "command": "node --import tsx --test examples/mesh/swarm-partition-40-asset.test.ts examples/mesh/published.replay.test.ts",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3194,
+      "log": "mesh-40-asset.txt",
+      "log_sha256": "178df5daa553ddd2ce3834167d0b02a8d1a6015aa33d04f1ba38906397fb26bb",
+      "reported_counts": [
+        {
+          "kind": "tests",
+          "count": 10
+        },
+        {
+          "kind": "pass",
+          "count": 10
+        },
+        {
+          "kind": "fail",
+          "count": 0
+        },
+        {
+          "kind": "skipped",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "name": "uav-constructed-demo",
+      "command": "node scripts/verify-uav-swarm-proof.mjs",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 279,
+      "log": "uav-constructed-demo.txt",
+      "log_sha256": "1922c009db393469fc2b9f79b8821296e0521a73f66cfde56616e3b3cc55d858",
+      "reported_counts": []
+    },
+    {
+      "name": "build-all",
+      "command": "corepack pnpm@10.32.1 -r --workspace-concurrency=1 build",
+      "status": "FAIL",
+      "exit_code": 1,
+      "duration_ms": 10171,
+      "log": "build-all.txt",
+      "log_sha256": "09468a1e04565248c253d1c6e58618f01038f63da578382a5a55df12085f567a",
+      "reported_counts": []
+    },
+    {
+      "name": "benchmark-runtime",
+      "command": "corepack pnpm@10.32.1 benchmark:runtime",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 5765,
+      "log": "benchmark-runtime.txt",
+      "log_sha256": "a0c017b57c408fc2957d6c84467b2228f003acc32f3c612315bd6f56acab14bb",
+      "reported_counts": []
+    },
+    {
+      "name": "boundary-pilot",
+      "command": "node apps/aristotle-cli/dist/index.js pilot",
+      "status": "FAIL",
+      "exit_code": 1,
+      "duration_ms": 241,
+      "log": "boundary-pilot.txt",
+      "log_sha256": "4763404be04702a0d831a0becef24d2fff162013ac8825524b251697966ffabc",
+      "reported_counts": []
+    },
+    {
+      "name": "clean-room",
+      "command": "node scripts/clean-room-scan.mjs",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 4567,
+      "log": "clean-room.txt",
+      "log_sha256": "3b59cf9189f40d79312afd8809dbdcaf2ac754e5a6e18c8846db6fa8c2d59862",
+      "reported_counts": []
+    },
+    {
+      "name": "sbom",
+      "command": "node scripts/generate-sbom.mjs",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 1849,
+      "log": "sbom.txt",
+      "log_sha256": "95ecb8091d2194cdcece1ae719164d9771a546bdf8bf7be55d828cb6305b803a",
+      "reported_counts": []
+    },
+    {
+      "name": "dependency-audit",
+      "command": "node scripts/audit-deps.mjs",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 72691,
+      "log": "dependency-audit.txt",
+      "log_sha256": "6bc3b812431898bd978c43694783d2ae9d1e2728f789cb2d8b43fb3c17c2e2f6",
+      "reported_counts": []
+    },
+    {
+      "name": "helm-validate",
+      "command": "node scripts/validate-helm.mjs",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 7202,
+      "log": "helm-validate.txt",
+      "log_sha256": "c61777d22f23d8cb940c8860585895b2f8fb82f17c5afb1cec32d1c551a867d2",
+      "reported_counts": []
+    },
+    {
+      "name": "physical-validation",
+      "status": "UNAVAILABLE",
+      "reason": "No explicitly provisioned hardware or production test target."
+    },
+    {
+      "name": "live-stack-checks",
+      "status": "SKIPPED",
+      "reason": "Do not exercise the user running stack; requires isolated service configuration."
+    }
+  ],
+  "status": "BASELINE_HAS_FAILURES",
+  "finished_at": "2026-10-06T06:34:40.832Z"
+}

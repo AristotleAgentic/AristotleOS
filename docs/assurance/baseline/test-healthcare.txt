@@ -1,0 +1,18 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:healthcare C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> tsx shared/execution-control-runtime/src/healthcare.test.ts
+
+✔ healthcare adapter builders produce Canonical Governed Actions (3.454ms)
+✔ sample healthcare Ward and action fixtures load and drive the real gate (94.2177ms)
+✔ healthcare hard interlocks refuse even if mistakenly allowed (12.93ms)
+✔ dual-control healthcare medication update fails closed without an approval store (14.4479ms)
+✔ dual-control healthcare medication update issues a Warrant after plural approval (25.6228ms)
+✔ healthcare evidence bundle wraps execution evidence without raw PHI (25.5839ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 216.2565

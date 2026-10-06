@@ -1,0 +1,23 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:reviewer C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> node --import tsx --test examples/reviewer/verify.test.ts examples/mesh/published.replay.test.ts
+
+✔ published.replay.json: file exists and parses (6.564ms)
+✔ published.replay.json: verifies under local re-run (artifact_hash + report_hash + reproducibility + version all green) (444.6331ms)
+✔ published.replay.json: report meets the substrate audit's #12 claims (11.7172ms)
+✔ reviewer verify: every stage / check passes (830.6289ms)
+✔ reviewer verify: Stage 1 — Commit Gate produces the 4 expected checks (2.1716ms)
+✔ reviewer verify: Stage 2 — Warrant Verifier hits five paths (0.4147ms)
+✔ reviewer verify: Stage 3 — 40-asset scenario hash is a stable sha256 (0.7051ms)
+✔ reviewer verify: Stage 4 — replay artifact passes all four reproducibility gates (0.4513ms)
+✔ reviewer verify: completes inside 60 seconds (0.2978ms)
+✔ reviewer verify: report carries the stable format tag (0.2583ms)
+✔ reviewer verify: Stage 4 local + published report_hash equality (0.337ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4403.374

@@ -1,0 +1,22 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:ui-boundary C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx apps/console-ui/src/command-center/boundary.test.ts
+
+✔ decisionToUi maps gate decisions to the console vocabulary (4.0651ms)
+✔ mapMetricsToSnapshot maps /metrics into header fields and marks the source live (0.406ms)
+✔ mapMetricsToSnapshot: kill switch -> red posture; broken ledger -> amber (0.2294ms)
+✔ mapGelToLedger maps signed records into ledger rows (0.4188ms)
+✔ buildRepresentativeActions derives one probe per allowed and denied action (1.9937ms)
+✔ mapShadowReport maps a live ShadowReport into the console profile summary (0.7221ms)
+✔ mapCensusReport maps live census findings into the console finding shape (0.4765ms)
+✔ mapConflictsToInbox maps durable records into inbox items with derived next-steps (0.7076ms)
+✔ mapDegradationToSnapshot flags degraded state and carries conditions (0.4357ms)
+✔ mapApprovalsToUi maps records and counts distinct approvers (0.6106ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 34.0224

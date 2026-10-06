@@ -1,0 +1,244 @@
+
+> aristotle-autonomous-governance-os@0.1.33 reviewer:verify C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> node --import tsx examples/reviewer/verify.ts
+
+{
+  "format": "aristotle.reviewer-report.v1",
+  "generated_at": "2026-10-06T07:04:23.795Z",
+  "total_time_ms": 379,
+  "totals": {
+    "checks": 18,
+    "passed": 18,
+    "failed": 0
+  },
+  "stages": [
+    {
+      "stage": 1,
+      "name": "Commit Gate",
+      "checks": [
+        {
+          "name": "1a.allow-path",
+          "ok": true,
+          "evidence": {
+            "decision": "ALLOW",
+            "reason_codes": [
+              "ALLOWED"
+            ],
+            "canonical_action_hash": "70cfd3bae33106777c98f3470eee7566c0fc29a4fa80ac09d2fc4e72ad6c39d2",
+            "policy_version": "1.0.0"
+          }
+        },
+        {
+          "name": "1b.refuse-action-not-allowed",
+          "ok": true,
+          "evidence": {
+            "decision": "REFUSE",
+            "reason_codes": [
+              "ACTION_NOT_ALLOWED"
+            ]
+          }
+        },
+        {
+          "name": "1c.refuse-subject-not-in-ward",
+          "ok": true,
+          "evidence": {
+            "decision": "REFUSE",
+            "reason_codes": [
+              "SUBJECT_NOT_IN_WARD"
+            ]
+          }
+        },
+        {
+          "name": "1d.warrant-issued",
+          "ok": true,
+          "evidence": {
+            "warrant_id": "wrn-649f1dcfd508ebd9767d06f0",
+            "canonical_action_hash": "70cfd3bae33106777c98f3470eee7566c0fc29a4fa80ac09d2fc4e72ad6c39d2",
+            "signing_key_id": "ed25519:871a92f0e37c0727f073518cf8b7ad0a",
+            "single_use": true,
+            "nonce_present": true
+          }
+        }
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "Public Warrant Verifier",
+      "checks": [
+        {
+          "name": "2a.verify-happy",
+          "ok": true,
+          "evidence": {
+            "ok": true,
+            "warrant_id": "wrn-649f1dcfd508ebd9767d06f0",
+            "format": "aristotle.warrant-verify-response.v1"
+          }
+        },
+        {
+          "name": "2b.verify-tamper-detected",
+          "ok": true,
+          "evidence": {
+            "ok": false,
+            "reason": "SIGNATURE_MISMATCH"
+          }
+        },
+        {
+          "name": "2c.untrusted-signing-key",
+          "ok": true,
+          "evidence": {
+            "ok": false,
+            "reason": "UNTRUSTED_SIGNING_KEY"
+          }
+        },
+        {
+          "name": "2d.action-hash-mismatch",
+          "ok": true,
+          "evidence": {
+            "ok": false,
+            "reason": "ACTION_HASH_MISMATCH"
+          }
+        },
+        {
+          "name": "2e.http-handler-200",
+          "ok": true,
+          "evidence": {
+            "status": 200,
+            "body_ok": true,
+            "body_warrant_id": "wrn-649f1dcfd508ebd9767d06f0",
+            "body_format": "aristotle.warrant-verify-response.v1"
+          }
+        }
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "40-Asset Swarm Scenario",
+      "checks": [
+        {
+          "name": "3a.phase1-allowed-all-40",
+          "ok": true,
+          "evidence": {
+            "phase1_allow": 40,
+            "phase1_other": 0
+          }
+        },
+        {
+          "name": "3b.phase2-no-losses",
+          "ok": true,
+          "evidence": {
+            "phase2_allow": 40,
+            "phase2_refuse": 0,
+            "phase2_expire": 0,
+            "total": 40
+          }
+        },
+        {
+          "name": "3c.phase3-revoked-10-resolve-into-witness-or-isolated",
+          "ok": true,
+          "evidence": {
+            "phase3_witness_half_refused": 0,
+            "phase3_isolated_half_allowed": 10,
+            "total_revocations": 10
+          }
+        },
+        {
+          "name": "3d.phase4-reconciliation-accounting",
+          "ok": true,
+          "evidence": {
+            "phase4_reconciled_clean": 30,
+            "phase4_reconciled_conflicts": 10
+          }
+        },
+        {
+          "name": "3e.report-hash-is-stable-sha256",
+          "ok": true,
+          "evidence": {
+            "report_hash": "sha256:8b379ea543a8b72aad81b8c4be37bc3c054209dfd8bd04e15e03c51a9d952ce2"
+          }
+        }
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "Replay Artifact",
+      "checks": [
+        {
+          "name": "4a.artifact-parses",
+          "ok": true,
+          "evidence": {
+            "file": "examples/mesh/published.replay.json",
+            "scenario_id": "swarm-partition-40-asset",
+            "scenario_version": "1.0.0",
+            "artifact_hash": "sha256:5e1adb1b303f66f300a43d24d4e2cdd1601c68cc3b4e823227100e1b1d2620c1",
+            "report_hash": "sha256:8b379ea543a8b72aad81b8c4be37bc3c054209dfd8bd04e15e03c51a9d952ce2"
+          }
+        },
+        {
+          "name": "4b.local-report-hash-matches-published-report-hash",
+          "ok": true,
+          "evidence": {
+            "local_report_hash": "sha256:8b379ea543a8b72aad81b8c4be37bc3c054209dfd8bd04e15e03c51a9d952ce2",
+            "published_report_hash": "sha256:8b379ea543a8b72aad81b8c4be37bc3c054209dfd8bd04e15e03c51a9d952ce2"
+          }
+        },
+        {
+          "name": "4c.verify-replay-artifact-all-gates",
+          "ok": true,
+          "evidence": {
+            "ok": true,
+            "artifact_hash_ok": true,
+            "report_hash_ok": true,
+            "scenario_reproducible": true,
+            "version_ok": true,
+            "failures": []
+          }
+        },
+        {
+          "name": "4d.field-by-field-equality",
+          "ok": true,
+          "evidence": {
+            "local": {
+              "total_assets": 40,
+              "phase1_allow": 40,
+              "phase1_other": 0,
+              "phase2_allow": 40,
+              "phase2_refuse": 0,
+              "phase2_expire": 0,
+              "phase3_witness_half_refused": 0,
+              "phase3_isolated_half_allowed": 10,
+              "phase4_reconciled_clean": 30,
+              "phase4_reconciled_conflicts": 10,
+              "total_warrants_issued": 90,
+              "total_revocations": 10
+            },
+            "published": {
+              "total_assets": 40,
+              "phase1_allow": 40,
+              "phase1_other": 0,
+              "phase2_allow": 40,
+              "phase2_refuse": 0,
+              "phase2_expire": 0,
+              "phase3_witness_half_refused": 0,
+              "phase3_isolated_half_allowed": 10,
+              "phase4_reconciled_clean": 30,
+              "phase4_reconciled_conflicts": 10,
+              "total_warrants_issued": 90,
+              "total_revocations": 10
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+
+AristotleOS reviewer verification: PASS
+  total checks:  18
+  passed:        18
+  failed:        0
+  duration:      379 ms
+
+  Stage 1  Commit Gate                  4/4
+  Stage 2  Public Warrant Verifier      5/5
+  Stage 3  40-Asset Swarm Scenario      5/5
+  Stage 4  Replay Artifact              4/4

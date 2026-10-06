@@ -1,0 +1,32 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:nonce-store C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> corepack pnpm@10.32.1 --filter @aristotle/nonce-store test
+
+
+> @aristotle/nonce-store@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\nonce-store
+> node --import tsx --test src/index.test.ts
+
+✔ InMemoryNonceStore: has() is false for unseen nonces (3.0029ms)
+✔ InMemoryNonceStore: add() then has() returns true; size() reflects count (0.4856ms)
+✔ InMemoryNonceStore: add() is idempotent (0.2725ms)
+✔ InMemoryNonceStore: addAndCheck() returns false on first add, true on replay (0.3483ms)
+✔ InMemoryNonceStore: TTL eviction drops expired nonces from has() (0.5424ms)
+✔ InMemoryNonceStore: compact() returns the eviction count (0.3796ms)
+✔ FilesystemNonceStore: empty file → empty store; add() then re-open hydrates (9.9487ms)
+✔ FilesystemNonceStore: persistence file is append-only JSONL (12.8138ms)
+✔ FilesystemNonceStore: addAndCheck() persists on first call, detects replay on second (8.1602ms)
+✔ FilesystemNonceStore: hydrate tolerates a truncated trailing line (crash simulation) (9.7895ms)
+✔ FilesystemNonceStore: TTL filters expired records on hydrate (7.7315ms)
+✔ FilesystemNonceStore: compact() rewrites the file with only surviving records (10.9476ms)
+✔ FilesystemNonceStore: add() after close() throws (6.3168ms)
+✔ NonceSeenSet compatibility: both stores satisfy the read-only seen-set shape (2.184ms)
+✔ Integration: FilesystemNonceStore enforces WARRANT_REPLAYED across a restart (55.1103ms)
+✔ Integration: InMemoryNonceStore enforces WARRANT_REPLAYED inside a single process (2.1781ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2052.5612

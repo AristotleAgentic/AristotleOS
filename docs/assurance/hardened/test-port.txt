@@ -1,0 +1,18 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:port C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/execution-control-runtime/src/port.test.ts
+
+✔ port adapter builders produce Canonical Governed Actions (5.0216ms)
+✔ sample port Ward and action fixtures load and drive the real gate (75.2365ms)
+✔ port hard interlocks refuse even if mistakenly allowed (12.5401ms)
+✔ dual-control port crane actions fail closed without an approval store (6.8924ms)
+✔ dual-control port crane actions issue a Warrant after plural approval (23.5351ms)
+✔ port evidence bundle wraps execution evidence with terminal context (17.3413ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 165.3462

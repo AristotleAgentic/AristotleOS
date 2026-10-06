@@ -1,0 +1,175 @@
+{
+  "scope": "Local build outputs intentionally excluded from source commits; original checkout is separate.",
+  "files": [
+    {
+      "path": "extracted/apps/website/ui-prototype/.well-known/security.txt",
+      "sha256": "3f0eeb8519f2663429cdd7a40d3f876b466a838662de1631383bf89f933a03a8",
+      "origin": "console-ui Vite preview build"
+    },
+    {
+      "path": "extracted/apps/website/ui-prototype/assets/index-B_VT6Af1.css",
+      "sha256": "17824d0c2008be6c4e940e6408b9b681e27c385d0a67a9f19760c172f70ac759",
+      "origin": "console-ui Vite preview build"
+    },
+    {
+      "path": "extracted/apps/website/ui-prototype/assets/index-De4_TXtO.js",
+      "sha256": "bffab43c71f1f4f3e7897bce30f8da231712d4d9e7015bcd55fc94ec4f0d3527",
+      "origin": "console-ui Vite preview build"
+    },
+    {
+      "path": "extracted/apps/website/ui-prototype/index.html",
+      "sha256": "a0fe0ee9954df68c21875160a756f00ec6f77d03b7881b03cee197bbaf383594",
+      "origin": "console-ui Vite preview build"
+    },
+    {
+      "path": "extracted/services/agent-os/src/lib/mission-helpers.d.ts",
+      "sha256": "64026822b16f96a086de135ef5b211a7dd46bb4d5758b09d85c479cb9400cb87",
+      "source": "extracted/services/agent-os/src/lib/mission-helpers.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/agent-os/src/lib/mission-helpers.js",
+      "sha256": "adf7d31d6dd75c295b82205e23d25cd98e25c9e3c8b830990c0a2c6386935d71",
+      "source": "extracted/services/agent-os/src/lib/mission-helpers.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/agent-os/src/routes/agents.d.ts",
+      "sha256": "e96e6e3dbf58fc472ed66c41a440aa6f3fc2378fb557cf2aaa9fa551ca7036d8",
+      "source": "extracted/services/agent-os/src/routes/agents.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/agent-os/src/routes/agents.js",
+      "sha256": "920cef85d87c725768ef2e0f20eb6d7d06dc22ccf5072395c62e9a157a728679",
+      "source": "extracted/services/agent-os/src/routes/agents.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/agent-os/src/routes/missions.d.ts",
+      "sha256": "b51e1f8517164286c56a23c1fb2647d14739bcbcb7e8806e563026cb1354534f",
+      "source": "extracted/services/agent-os/src/routes/missions.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/agent-os/src/routes/missions.js",
+      "sha256": "d445a322d5da431ad69354fec1184b57beadf07855ba5ccad2790b60fcde0fae",
+      "source": "extracted/services/agent-os/src/routes/missions.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/agent-os/src/routes/tasks-read.d.ts",
+      "sha256": "8b791178d63dfdaa3689b10c501cc84cf8f8b87a2db77d40eeb1e5999cb8e248",
+      "source": "extracted/services/agent-os/src/routes/tasks-read.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/agent-os/src/routes/tasks-read.js",
+      "sha256": "1000a03907ee7853b3f42b3ab5daeb652fb8fe99f4eeeba9a7bd0b011bb2d1cd",
+      "source": "extracted/services/agent-os/src/routes/tasks-read.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/agent-os/src/routes/workspaces.d.ts",
+      "sha256": "111dd7e37285cf23360118ecd5153c67abc15a156797d05141f5ab0a99c982ea",
+      "source": "extracted/services/agent-os/src/routes/workspaces.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/agent-os/src/routes/workspaces.js",
+      "sha256": "1fb458e43dfba8ea2e30c4a748b46c901dedb9f99b6f716b90cb34521fd22e18",
+      "source": "extracted/services/agent-os/src/routes/workspaces.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/evidence-ledger/src/routes/gel.d.ts",
+      "sha256": "20008c66ae98628a7bf4fbf1e6aca0b786f28e574325fa8cda0c089ac9a633f2",
+      "source": "extracted/services/evidence-ledger/src/routes/gel.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/evidence-ledger/src/routes/gel.js",
+      "sha256": "ef0330ad9e956898e8c2948438da753ed2f668e41067ca84046fd215dacff4d8",
+      "source": "extracted/services/evidence-ledger/src/routes/gel.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/evidence-ledger/src/routes/replay-events.d.ts",
+      "sha256": "cafc6cef5b43c63745e0571370c4b1d92f805534c0a4852a391a11f454f2643c",
+      "source": "extracted/services/evidence-ledger/src/routes/replay-events.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/evidence-ledger/src/routes/replay-events.js",
+      "sha256": "dda4db7f7a9b31bc31985c857a41a5118c4d8639849ad4d6ef9b39497ea91aa4",
+      "source": "extracted/services/evidence-ledger/src/routes/replay-events.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/shared/service-runtime/src/index.d.ts",
+      "sha256": "54f625d5c8df27a5c9c0062587a95d0efc4009f840d9fbc8281844e3e1e4fc7b",
+      "source": "extracted/shared/service-runtime/src/index.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/shared/service-runtime/src/index.js",
+      "sha256": "a14c5f6aef23cfc881d18cafd10579770d7e56e8ef814caf5041faffa191eb66",
+      "source": "extracted/shared/service-runtime/src/index.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/agent-os/src/index.js",
+      "sha256": "6696c3d965154b755bb63c74e0e020eadf7236b189206949ec7fde2f1142f76c",
+      "source": "extracted/services/agent-os/src/index.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/authority-router/src/index.js",
+      "sha256": "25f4e08607e090900a30bcc8349e46a4eaa0d959591cfffd22d304ff1aedcdae",
+      "source": "extracted/services/authority-router/src/index.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/evidence-ledger/src/index.js",
+      "sha256": "b373efbc682a1e88c290934965426797ec7f5715c7d1232a18b8eedce34be2cd",
+      "source": "extracted/services/evidence-ledger/src/index.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/execution-gate/src/index.js",
+      "sha256": "035a3574ed6fddd2e9ad1ac349b6f5fbea94b2a5e49dc6a77cdf3c15f31dea5a",
+      "source": "extracted/services/execution-gate/src/index.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/governance-kernel/src/index.js",
+      "sha256": "c6370d5ac376a242759dd62dbb7e0937d762891f3d6487ccd4f3d8867ead684b",
+      "source": "extracted/services/governance-kernel/src/index.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/meta-authority-registry/src/index.js",
+      "sha256": "c254f8b31b5a9ff1b738244c62ad0dc104407eabe88c54072bd1cb66f3c91100",
+      "source": "extracted/services/meta-authority-registry/src/index.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/policy-compiler/src/index.js",
+      "sha256": "bbbd081bc8e01c9b41b2fa2c1ab509c7f40791b79c61d253453013825e64f7c8",
+      "source": "extracted/services/policy-compiler/src/index.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/simulation-engine/src/index.js",
+      "sha256": "ae7ee6736e32f78ebff48e3fd7b97f69c8e5d347ef9c9936dc468279297884d0",
+      "source": "extracted/services/simulation-engine/src/index.ts",
+      "source_unchanged_from_baseline": true
+    },
+    {
+      "path": "extracted/services/witness-service/src/index.js",
+      "sha256": "e188dbd1e3a3bcbd97bc52d53f6142ad208194b6ca692456c6dd713ce6f25fd5",
+      "source": "extracted/services/witness-service/src/index.ts",
+      "source_unchanged_from_baseline": true
+    }
+  ]
+}

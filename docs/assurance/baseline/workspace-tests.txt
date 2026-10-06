@@ -1,0 +1,2283 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:all C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> corepack pnpm@10.32.1 -r --workspace-concurrency=1 --filter "!@aristotle/os-cli" test
+
+Scope: 59 of 60 workspace projects
+
+> aristotle-autonomous-governance-os@0.1.33 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> npm run typecheck && npm run test:governance && npm run test:execution-control && npm run test:gate-property && npm run test:warrant-time && npm run test:ward-marshal && npm run test:ward-marshal-adapters && npm run test:marshal-behavior && npm run test:marshal-collectors && npm run test:credential-minter && npm run test:attestation && npm run test:crypto-posture && npm run test:edge-containment && npm run test:budget && npm run test:dual-control && npm run test:telecom && npm run test:automotive && npm run test:grid && npm run test:rail && npm run test:pipeline && npm run test:mining && npm run test:port && npm run test:water && npm run test:aviation && npm run test:robotics && npm run test:swarm && npm run test:logistics && npm run test:healthcare && npm run test:title && npm run test:space && npm run test:cert-auth && npm run test:classification && npm run test:fail-mode && npm run test:degradation && npm run test:sandbox && npm run test:shadow && npm run test:builder && npm run test:policy-dsl && npm run test:reconcile && npm run test:conflict-inbox && npm run test:trace && npm run test:cli && npm run test:api && npm run test:chain && npm run test:adapters && npm run test:signers && npm run test:sdk && npm run test:ui-boundary && npm run test:audit && npm run test:demo && npm run test:egress && npm run test:constraints-security && npm run test:legacy-routes
+
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 typecheck
+> tsc --noEmit -p shared/governance-core/tsconfig.json && tsc --noEmit -p shared/trial-engine/tsconfig.json && tsc --noEmit -p shared/execution-control-runtime/tsconfig.json && tsc --noEmit -p adapters/http-gateway/tsconfig.json && tsc --noEmit -p apps/aristotle-cli/tsconfig.json && tsc --noEmit -p apps/console-ui/tsconfig.json && tsc --noEmit -p packages/os-sdk/tsconfig.json
+
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:governance
+> tsx shared/trial-engine/src/index.test.ts
+
+✔ governance file validates required AristotleOS primitives (4.276ms)
+✔ payments flagship scenario defers before warrant issuance (4.4241ms)
+✔ operator approval issues a single-use warrant and commits GEL (4.3129ms)
+✔ denied payout never receives a warrant (0.7796ms)
+✔ missing authority binding fails closed (0.666ms)
+✔ plan reports governance artifact changes (0.8124ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 42.6896
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:execution-control
+> tsx shared/execution-control-runtime/src/index.test.ts
+
+✔ canonical action hash is stable across equivalent key orderings (41.0992ms)
+✔ allowed action produces ALLOW and issues a Warrant (16.9342ms)
+✔ denied action produces REFUSE and no Warrant (2.7779ms)
+✔ expired Authority Envelope produces REFUSE (0.6588ms)
+✔ missing runtime state produces ESCALATE (0.4292ms)
+✔ physical invariant violation produces REFUSE (0.5058ms)
+✔ degraded mode: a safety-critical Ward fails closed when the ledger is unavailable (0.7437ms)
+✔ degraded mode: a routine Ward escalates infra loss instead of hard-blocking (0.6449ms)
+✔ degraded mode: a best-effort Ward proceeds (allow_degraded) under a soft timeout (0.8769ms)
+✔ degraded mode: no conditions leaves the decision unchanged; unlabeled Ward defaults closed (1.4096ms)
+✔ Warrant cannot be consumed twice (2.5698ms)
+✔ Warrant verification fails for mismatched action hash (0.959ms)
+✔ Warrant carries a real Ed25519 signature, not a recomputable hash (3.0524ms)
+✔ Warrant signature cannot be forged by recomputing a hash (0.8989ms)
+✔ Tampering with signed Warrant material breaks verification (5.1341ms)
+✔ Warrant verification can pin a trusted signing key id (4.085ms)
+✔ configured signer is non-ephemeral and verifiable against its embedded key (2.3547ms)
+✔ ephemeral dev signer is flagged ephemeral (0.6451ms)
+✔ createSignerFromKeyProvider loads the key from a managed provider and signs (2.0145ms)
+✔ GEL chain verifies after normal append (15.6376ms)
+✔ GEL chain verification fails after tampering with prior record (12.6324ms)
+✔ vertical slice evaluates action, writes GEL, and verifies ledger (5.9366ms)
+✔ Evidence Bundle exports Ward, Authority Envelope, Warrant, and GEL for offline verification (13.3542ms)
+✔ Evidence Bundle verification fails when selected record material is altered (18.6764ms)
+✔ GEL records are Ed25519-signed when a signer is configured (13.9328ms)
+✔ GEL verification fails when a record signature is tampered (12.2392ms)
+✔ Evidence Bundle carries a verifiable bundle-level signature (13.4499ms)
+✔ Evidence Bundle signature fails when the bundle hash is altered (12.419ms)
+✔ runtime server exposes health, evaluate, audit tail, and audit verify (160.5874ms)
+✔ client helper submits action and requires a verified Warrant (52.6123ms)
+✔ kill switch refuses every action while engaged and audits the attempt (10.4267ms)
+✔ replay protection refuses an identical previously-admitted action (13.4008ms)
+✔ server enforces an API key on /v1 routes, leaves health open, and serves metrics (44.0902ms)
+✔ gate refuses when the Authority Envelope is revoked (15.9293ms)
+✔ verifyWarrant rejects a warrant signed by a revoked key (1.8708ms)
+✔ evidence bundle verification fails against a revocation list (13.9443ms)
+✔ validateWardManifest and validateAuthorityEnvelope flag bad config (1.3322ms)
+✔ loadWardManifest throws a readable error on invalid config (5.332ms)
+✔ warrant TTL is configurable (0.6815ms)
+✔ LedgerStore tracks tip/count/admitted in memory and rebuilds from disk (4.6509ms)
+✔ LedgerStore works over a pluggable in-memory backend (no file) (1.139ms)
+✔ SqliteLedgerBackend is durable across restarts and enforces replay via SQL (26.3198ms)
+✔ evaluateExecutionControl enforces replay over a durable SQLite store (17.9735ms)
+✔ PostgresLedgerBackend (pglite): durable, ACID, with replay shared across instances (6102.4133ms)
+✔ SubjectRateLimiter enforces an independent per-subject budget (0.3957ms)
+✔ server returns 429 when a subject exceeds its rate limit (57.0908ms)
+✔ server enforces replay protection across requests via the shared ledger index (49.5085ms)
+✔ deliverAuditEvent posts the signed record to the sink (30.7254ms)
+✔ deliverAuditEvent reports failure when the sink is unreachable (1.2169ms)
+✔ server exposes Prometheus metrics (81.0709ms)
+✔ runtime server serves the playground and context when enabled (18.477ms)
+✔ runtime server does not serve the playground unless enabled (11.8727ms)
+✔ OpenAPI spec describes the execution boundary (0.7145ms)
+✔ credential broker injects only matched secrets (0.5984ms)
+✔ credential broker throws when a matched secret is missing (0.6656ms)
+✔ proxy forwards an approved action with brokered credentials and never leaks the secret (54.6087ms)
+✔ proxy refuses to forward when params.url diverges from the authorized target (SSRF guard) (32.5225ms)
+✔ proxy refuses a denied action and never forwards (10.3838ms)
+✔ role hierarchy and static-token principal resolution (0.6721ms)
+✔ RBAC: viewer can read but not decide; operator can decide (73.5329ms)
+✔ operator identity is attributed in the GEL and is tamper-evident (101.0719ms)
+✔ admin-only kill switch and revocation; non-admins are refused (174.7684ms)
+✔ verifyJwt accepts RS256/ES256/EdDSA and enforces iss/aud/exp (125.4868ms)
+✔ verifyJwt rejects alg:none and HMAC alg-confusion (426.7033ms)
+✔ OIDC bearer token authenticates and attributes the sub at the HTTP boundary (172.4281ms)
+✔ jwkToOidcKey + importJwks materialize verification keys from a JWKS document (338.4458ms)
+✔ createJwksKeyStore caches, refreshes on key rotation, and fails static (639.1199ms)
+✔ governance builder endpoints compile/diff/explain over the real backend, role-gated (66.4459ms)
+✔ shadow/reconcile/marshal endpoints run the real engines over the boundary, role-gated (49.3472ms)
+✔ server enforces an Authority-Envelope budget (calls per window) ⇒ BUDGET_EXCEEDED (71.8788ms)
+✔ dual control: a guarded action escalates, two operators approve, then it is admitted (70.3332ms)
+✔ conflict inbox: ingest, list, resolve over the durable store, role-gated (42.7813ms)
+✔ evaluate endpoint honors degraded_conditions against the Ward criticality (47.3053ms)
+✔ evaluate self-detects an unavailable ledger and returns a governed degraded decision (no 500) (39.474ms)
+✔ GET /degradation reports live health and the projected fail action (26.8581ms)
+ℹ tests 75
+ℹ suites 0
+ℹ pass 75
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9523.2329
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:gate-property
+> tsx shared/execution-control-runtime/src/gate.property.test.ts
+
+✔ Commit Gate matches its spec oracle and upholds warrant/evidence invariants over 4000 randomized cases (3483.4904ms)
+✔ a guaranteed-clean action always ALLOWs with a verifiable warrant (sufficiency) (2.8468ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3516.0712
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:warrant-time
+> tsx shared/execution-control-runtime/src/warrant-time.test.ts
+
+✔ issued warrants carry a signed nonce; tampering the nonce breaks the signature (48.9208ms)
+✔ a warrant issued in the future (skewed issuer) is WARRANT_NOT_YET_VALID at an earlier verify time (3.3669ms)
+✔ a verifier enforces its own lifetime ceiling regardless of the signed TTL (2.4003ms)
+✔ a verifier with a seen-nonce set rejects replay of the warrant artifact (8.554ms)
+✔ backward compatible: a pre-nonce warrant still verifies (undefined nonce drops from material) (2.4959ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 92.7586
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:ward-marshal
+> tsx shared/execution-control-runtime/src/ward-marshal.test.ts
+
+✔ Ward Marshal census is deterministic across observation ordering (49.915ms)
+✔ approved registered agents are classified as governed (1.9114ms)
+✔ undeclared consequential agents are classified as rogue with high or critical risk (1.5385ms)
+✔ interdiction is a governed action that receives a Warrant only after Commit Gate ALLOW (37.295ms)
+✔ interdiction fails closed when the envelope does not allow that containment action (6.0956ms)
+✔ interdiction escalates when runtime authority registers are missing (10.515ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 147.3691
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:ward-marshal-adapters
+> tsx shared/execution-control-runtime/src/ward-marshal-adapters.test.ts
+
+✔ Kubernetes scale-down adapter executes kubectl scale only after Warrant ALLOW (98.8793ms)
+✔ Kubernetes scale-down adapter does not execute when Commit Gate escalates (21.1664ms)
+✔ Credential revocation adapter writes a real revocation list and broker refuses revoked refs (19.0057ms)
+✔ Endpoint quarantine adapter applies a default-deny NetworkPolicy through kubectl (74.2758ms)
+✔ adapter mismatch records ALLOW but does not execute the wrong backend (18.5015ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 283.7571
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:marshal-behavior
+> tsx shared/execution-control-runtime/src/marshal-behavior.test.ts
+
+✔ denial burst: many REFUSE for one subject within the window is flagged (48.71ms)
+✔ rate spike: a subject accelerating vs its own baseline is flagged (4.6995ms)
+✔ first_seen: a subject absent from the approved registry is flagged once (1.6676ms)
+✔ off_hours: activity outside the allowed UTC window is flagged (2.7524ms)
+✔ target fanout: one subject hitting many distinct targets is flagged (1.7389ms)
+✔ sequence chain: cross-agent read -> exfiltrate -> delete is detected (1.947ms)
+✔ behaviorEventsFromGel maps the signed ledger into the event stream (0.7706ms)
+✔ a clean stream produces no findings (0.7775ms)
+✔ coordinated_denial: the same action refused across many agents is a campaign (10.5727ms)
+✔ peer_anomaly: a volume outlier vs the cohort is flagged (1.8348ms)
+✔ privilege_escalation: routine → sensitive pivot (blocked) is high severity (1.1249ms)
+✔ privilege_escalation does not run without configured sensitive actions (0.4107ms)
+✔ new_capability: action types absent from baseline appearing later are scope creep (0.8674ms)
+✔ credential_reuse: one credential across distinct agents is lateral movement (0.8076ms)
+✔ higher-order detectors stay silent on a benign single-agent stream (0.7034ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 123.1355
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:marshal-collectors
+> tsx shared/execution-control-runtime/src/marshal-collectors.test.ts
+
+✔ parseKubernetesPods maps pods to observations with the aristotle.* conventions (27.8352ms)
+✔ kubernetesCollector uses the injected runner and parses its output (1.4597ms)
+✔ kubernetesCollector fails soft on a non-zero runner (no throw, empty set) (0.3949ms)
+✔ normalizeObservations maps an arbitrary feed via a field mapping (0.8699ms)
+✔ collectObservations merges + dedupes across collectors (0.9356ms)
+✔ discovery flows into the census end-to-end (shadow pod is flagged) (4.8534ms)
+✔ looksLikeAgent flags agent runtimes and LLM egress, ignores ordinary processes (0.7619ms)
+✔ parseProcessList keeps only candidate agents and extracts LLM endpoints (0.7741ms)
+✔ parsePsText parses `ps -eo pid,user,comm,args` output incl. header (0.7899ms)
+✔ processCollector runs ps via the injected runner and parses candidates (0.8216ms)
+✔ parseMcpInventory maps MCP servers to observations (2.5164ms)
+✔ mcpCollector parses the injected inventory and a rogue prod-shell scores high (1.6492ms)
+✔ collectObservations merges host + mcp collectors into one deduped set (1.0253ms)
+✔ extractRecords pulls the array out of common export shapes (1.5196ms)
+✔ fileObservationCollector reads an exported inventory via an injected reader (0.9112ms)
+✔ fileObservationCollector fails soft on unreadable / invalid JSON (0.8498ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 79.493
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:credential-minter
+> tsx shared/execution-control-runtime/src/credential-minter.test.ts
+
+✔ mints a short-lived, scoped, warrant-bound credential that verifies (87.5531ms)
+✔ expired credentials are refused (1.0094ms)
+✔ a tampered token fails the signature check (timing-safe) (1.0225ms)
+✔ audience mismatch is refused (2.7618ms)
+✔ a revoked credential_ref is refused (closes the loop with Ward Marshal revocation) (32.71ms)
+✔ Ed25519 minter produces a non-repudiable credential verifiable with only the public key (113.304ms)
+✔ minter rejects weak secrets, empty scope, and non-positive TTL (1.9514ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 319.8266
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:attestation
+> tsx shared/execution-control-runtime/src/attestation.test.ts
+
+✔ verifyTelemetryAttestation accepts a fresh, pinned-device signature and rejects others (47.2768ms)
+✔ attested telemetry overrides a FORGED altitude, so the gate enforces ground truth (16.2319ms)
+✔ missing / untrusted / stale attestation is refused TELEMETRY_UNATTESTED (9.294ms)
+✔ attested action records provenance in telemetry (2.4466ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 90.4492
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:crypto-posture
+> tsx shared/execution-control-runtime/src/crypto-posture.test.ts
+
+✔ requireFips:false is a no-op regardless of provider (1.9901ms)
+✔ requireFips:true fails closed when FIPS is not active (0.9627ms)
+✔ cryptoPostureFromEnv reads ARISTOTLE_REQUIRE_FIPS (0.4402ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 28.329
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:edge-containment
+> tsx shared/execution-control-runtime/src/edge-containment.test.ts
+
+✔ checkEdgeContainment: fresh sync within window is allowed (6.0473ms)
+✔ checkEdgeContainment: stale control-plane sync fails closed (0.4109ms)
+✔ checkEdgeContainment: never-synced node (epoch) fails closed by default (0.3781ms)
+✔ checkEdgeContainment: offline warrant quota exhaustion fails closed (0.358ms)
+✔ EdgeContainmentTracker persists state across instances (a captured node can't reset by bouncing) (71.2542ms)
+✔ EdgeContainmentTracker: a node that drifts past the staleness window fails closed (13.3445ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 112.4909
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:budget
+> tsx shared/execution-control-runtime/src/budget.test.ts
+
+✔ checkBudget enforces call and cost ceilings within the window (5.5009ms)
+✔ checkBudget ignores spend outside the rolling window (0.4142ms)
+✔ budgetPolicyFrom parses snake/camel and rejects empty/invalid blobs (56.7083ms)
+✔ BudgetGovernor records spend and persists across instances (file-backed) (29.4827ms)
+✔ evaluateExecutionControl refuses BUDGET_EXCEEDED once the envelope budget is spent (71.5452ms)
+✔ no budget governor ⇒ budget is not enforced (opt-in) (11.0764ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 206.5529
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:dual-control
+> tsx shared/execution-control-runtime/src/dual-control.test.ts
+
+✔ evaluateApproval: reject wins, then M distinct approvers, then TTL (1.9461ms)
+✔ dualControlPolicyFrom parses and rejects invalid blobs (1.6408ms)
+✔ ApprovalStore enforces separation of duties and one-vote-per-approver (1.5617ms)
+✔ ApprovalStore is idempotent on request and durable across instances (19.1389ms)
+✔ a dual-control action escalates and opens a pending request; approval then admits it (74.1669ms)
+✔ a rejection keeps a dual-control action escalated (11.8483ms)
+✔ without an approval store, dual control fails closed instead of silently bypassing plural authority (6.6497ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 154.3316
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:telecom
+> tsx shared/execution-control-runtime/src/telecom.test.ts
+
+✔ telecom adapter builders produce Canonical Governed Actions (3.5119ms)
+✔ sample telecom Ward and action fixtures load and drive the real gate (87.8435ms)
+✔ telecom evidence bundle wraps execution evidence with NOC context (27.5068ms)
+✔ carrier benchmark, reconnect storm, and multi-region soak are deterministic enough for CI (456.6009ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 620.2661
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:automotive
+> tsx shared/execution-control-runtime/src/automotive.test.ts
+
+✔ automotive adapter builders produce Canonical Governed Actions (9.3572ms)
+✔ sample automotive Ward and action fixtures load and drive the real gate (95.7867ms)
+✔ vehicle safety invariants refuse hard interlocks even if mistakenly allowed (7.3788ms)
+✔ dual-control vehicle actions fail closed without an approval store (11.4393ms)
+✔ dual-control vehicle actions issue a Warrant after plural approval (19.6072ms)
+✔ automotive evidence bundle wraps execution evidence with vehicle safety context (21.8387ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 189.9882
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:grid
+> tsx shared/execution-control-runtime/src/grid.test.ts
+
+✔ grid adapter builders produce Canonical Governed Actions (8.1787ms)
+✔ sample grid Ward and action fixtures load and drive the real gate (93.9416ms)
+✔ grid protection interlocks refuse even if mistakenly allowed (7.9923ms)
+✔ dual-control grid actions fail closed without an approval store (11.7677ms)
+✔ dual-control grid actions issue a Warrant after plural approval (13.6272ms)
+✔ grid evidence bundle wraps execution evidence with utility context (18.419ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 177.5016
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:rail
+> tsx shared/execution-control-runtime/src/rail.test.ts
+
+✔ rail adapter builders produce Canonical Governed Actions (4.4823ms)
+✔ sample rail Ward and action fixtures load and drive the real gate (72.6108ms)
+✔ rail PTC and signal hard interlocks refuse even if mistakenly allowed (7.3158ms)
+✔ dual-control rail route actions fail closed without an approval store (12.063ms)
+✔ dual-control rail route actions issue a Warrant after plural approval (16.767ms)
+✔ rail evidence bundle wraps execution evidence with dispatch context (17.8044ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 157.5643
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:pipeline
+> tsx shared/execution-control-runtime/src/pipeline.test.ts
+
+✔ pipeline adapter builders produce Canonical Governed Actions (6.4228ms)
+✔ sample pipeline Ward and action fixtures load and drive the real gate (73.066ms)
+✔ pipeline safety interlocks refuse even if mistakenly allowed (11.4087ms)
+✔ dual-control pipeline actions fail closed without an approval store (7.2313ms)
+✔ dual-control pipeline actions issue a Warrant after plural approval (16.1902ms)
+✔ pipeline evidence bundle wraps execution evidence with operator context (20.3939ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 161.1145
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:mining
+> tsx shared/execution-control-runtime/src/mining.test.ts
+
+✔ mining adapter builders produce Canonical Governed Actions (7.7144ms)
+✔ sample mining Ward and action fixtures load and drive the real gate (71.9437ms)
+✔ mining safety interlocks refuse even if mistakenly allowed (12.1031ms)
+✔ dual-control mining actions fail closed without an approval store (7.1502ms)
+✔ dual-control mining actions issue a Warrant after plural approval (16.4757ms)
+✔ mining evidence bundle wraps execution evidence with operator context (20.7117ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 159.9935
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:port
+> tsx shared/execution-control-runtime/src/port.test.ts
+
+✔ port adapter builders produce Canonical Governed Actions (5.6073ms)
+✔ sample port Ward and action fixtures load and drive the real gate (75.0671ms)
+✔ port hard interlocks refuse even if mistakenly allowed (9.7049ms)
+✔ dual-control port crane actions fail closed without an approval store (10.6107ms)
+✔ dual-control port crane actions issue a Warrant after plural approval (16.8091ms)
+✔ port evidence bundle wraps execution evidence with terminal context (21.1115ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 166.057
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:water
+> tsx shared/execution-control-runtime/src/water.test.ts
+
+✔ water adapter builders produce Canonical Governed Actions (4.2817ms)
+✔ sample water Ward and action fixtures load and drive the real gate (96.1912ms)
+✔ water hard interlocks refuse even if mistakenly allowed (6.5192ms)
+✔ dual-control water chemical actions fail closed without an approval store (10.6948ms)
+✔ dual-control water chemical actions issue a Warrant after plural approval (18.3256ms)
+✔ water evidence bundle wraps execution evidence with utility context (18.2691ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 182.6603
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:aviation
+> tsx shared/execution-control-runtime/src/aviation.test.ts
+
+✔ aviation adapter builders produce Canonical Governed Actions (6.0907ms)
+✔ sample aviation Ward and action fixtures load and drive the real gate (90.626ms)
+✔ aviation safety invariants refuse a broad set of unsafe conditions (105.5982ms)
+✔ aviation hard interlocks refuse even if mistakenly allowed (7.8481ms)
+✔ dual-control aviation actions fail closed without an approval store (8.3652ms)
+✔ dual-control aviation actions issue a Warrant after plural approval (17.3043ms)
+✔ aviation evidence bundle wraps execution evidence with RPIC context (19.1729ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 282.7394
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:robotics
+> tsx shared/execution-control-runtime/src/robotics.test.ts
+
+✔ robotics adapter builders produce Canonical Governed Actions (3.3704ms)
+✔ sample robotics Ward and action fixtures load and drive the real gate (98.3784ms)
+✔ robotics safety invariants refuse a broad set of unsafe conditions (124.595ms)
+✔ robotics hard interlocks refuse even if mistakenly allowed (6.3144ms)
+✔ dual-control robotics actions fail closed without an approval store (10.2501ms)
+✔ dual-control robotics actions issue a Warrant after plural approval (20.046ms)
+✔ robotics evidence bundle wraps execution evidence with cell context (20.0736ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 314.026
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:swarm
+> tsx shared/execution-control-runtime/src/swarm.test.ts
+
+✔ swarm adapter builders produce Canonical Governed Actions (8.3688ms)
+✔ sample swarm Ward and action fixtures load and drive the real gate (92.7562ms)
+✔ swarm safety invariants refuse a broad set of disconnected-operation hazards (181.166ms)
+✔ swarm hard interlocks refuse even if mistakenly allowed (8.7497ms)
+✔ high-altitude balloon (Part 101) is the stress case and fails closed when position-monitor is off (7.9554ms)
+✔ disconnected flight-state machine transitions correctly (0.3806ms)
+✔ dual-control swarm launch escalates without an approval store and ALLOWs after plural approval (25.7353ms)
+✔ swarm Mission Reconstruction evidence bundle wraps execution evidence with mission context (19.2149ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 376.7401
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:logistics
+> tsx shared/execution-control-runtime/src/logistics.test.ts
+
+✔ logistics adapter builders produce Canonical Governed Actions (5.8869ms)
+✔ sample logistics Ward and action fixtures load and drive the real gate (94.4589ms)
+✔ logistics hard interlocks refuse even if mistakenly allowed (9.0366ms)
+✔ dual-control logistics fuel actions fail closed without an approval store (16.5945ms)
+✔ dual-control logistics fuel actions issue a Warrant after plural approval (30.6105ms)
+✔ logistics evidence bundle wraps execution evidence with load context (29.8727ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 234.9585
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:healthcare
+> tsx shared/execution-control-runtime/src/healthcare.test.ts
+
+✔ healthcare adapter builders produce Canonical Governed Actions (3.4279ms)
+✔ sample healthcare Ward and action fixtures load and drive the real gate (107.6204ms)
+✔ healthcare hard interlocks refuse even if mistakenly allowed (6.5093ms)
+✔ dual-control healthcare medication update fails closed without an approval store (10.9498ms)
+✔ dual-control healthcare medication update issues a Warrant after plural approval (18.9319ms)
+✔ healthcare evidence bundle wraps execution evidence without raw PHI (25.061ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 211.2458
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:title
+> tsx shared/execution-control-runtime/src/title.test.ts
+
+✔ title adapter builders produce Canonical Governed Actions (6.2372ms)
+✔ Scenario 1: Clean Montana lien release -> ALLOW (53.628ms)
+✔ Scenario 2: Unauthorized lender employee attempts lien release -> REFUSE (9.5734ms)
+✔ Scenario 3: Interstate transfer is dual-controlled -> ESCALATE without approval store (9.084ms)
+✔ Scenario 4: Digital signature with revoked authority envelope -> REFUSE (9.1618ms)
+✔ Scenario 5: Dealer transaction with fraud risk over threshold -> REFUSE (7.9685ms)
+✔ Scenario 6: Title correction is dual-controlled -> ESCALATE without approval store (14.1839ms)
+✔ Scenario 7: Suspended dealer license -> REFUSE (7.7936ms)
+✔ title commit gate refuses a broad set of integrity hazards (145.5044ms)
+✔ title hard interlocks refuse even if mistakenly allowed (9.1582ms)
+✔ warrant.reuse_attempt action type is hard-interlocked (5.3972ms)
+✔ dual-control interstate title transfer issues a Warrant after plural approval (17.9378ms)
+✔ title Evidence Bundle wraps execution evidence with title context and verifies (23.3466ms)
+✔ GEL chain integrity: tampering with a ledger entry breaks verification (21.9513ms)
+✔ sample title Ward and action fixtures load and drive the real gate (34.0305ms)
+✔ submitTitlePacket refuses when authz is missing (0.6146ms)
+✔ submitTitlePacket refuses when warrant has not been consumed (0.3229ms)
+✔ submitTitlePacket refuses on jurisdiction / transaction-type mismatch (0.297ms)
+✔ submitTitlePacket refuses a demonstration transport unless explicitly opted in (0.2247ms)
+✔ submitTitlePacket through the demonstration transport returns a hash-bound receipt (0.83ms)
+✔ submitTitlePacket surfaces transport rejection and exception as typed refusals (0.4463ms)
+✔ Title Evidence Bundle binds the submission receipt and detects tampering (19.6525ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 437.6069
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:space
+> tsx shared/execution-control-runtime/src/space.test.ts
+
+✔ space adapter builders produce Canonical Governed Actions with snapshot params merged in (2.0953ms)
+✔ clean countdown-resume action ALLOWs through the gate with all invariants satisfied (48.8143ms)
+✔ propellant load action ALLOWs in nominal conditions (13.7403ms)
+✔ ignite REFUSEs when range is not clear (11.1751ms)
+✔ ignite REFUSEs when surface wind exceeds site limit (7.0925ms)
+✔ ignite REFUSEs when FTS is not armed (11.9817ms)
+✔ hard interlock: space.disable_flight_termination is REFUSEd even if envelope mistakenly allowed it (9.9771ms)
+✔ hard interlock: space.override_range_safety is REFUSEd (7.5743ms)
+✔ hard interlock: space.ignite_outside_window is REFUSEd (5.9218ms)
+✔ hard interlock: space.payload_deploy_outside_primary is REFUSEd (8.594ms)
+✔ dual-control: ignite ESCALATEs without approvals then ALLOWs with two (23.5757ms)
+✔ space Evidence Bundle wraps execution evidence with space context and verifies; tampering breaks verification (21.3177ms)
+✔ orbital space adapter builders produce Canonical Governed Actions (2.4889ms)
+✔ orbital stationkeeping ALLOWs and issues a Warrant (7.6265ms)
+✔ orbital invariants REFUSE unsafe or unauthorized mission state (10.6779ms)
+✔ orbital hard interlock REFUSEs even if envelope mistakenly allows it (6.1077ms)
+✔ orbital deorbit requires dual-control before ALLOW (17.8226ms)
+✔ orbital Space Evidence Bundle wraps execution evidence and verifies; tampering breaks verification (26.3891ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 276.3133
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:cert-auth
+> tsx shared/execution-control-runtime/src/cert-auth.test.ts
+
+✔ certCommonName extracts the CN from a DN (6.9557ms)
+✔ a verified cert matching a CN rule resolves to an mTLS principal (0.9686ms)
+✔ a PIV UPN SAN rule matches and defaults the subject to the CN (0.4887ms)
+✔ an unverified chain is rejected (requireVerified default true) (0.257ms)
+✔ fingerprint pinning rejects an untrusted cert (0.3179ms)
+✔ a cert matching no rule is forbidden (0.2658ms)
+✔ requireStrongAuth disables the standing admin api key (0.6861ms)
+✔ authEnabled is true when only cert auth is configured (0.2796ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 32.6187
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:classification
+> tsx shared/execution-control-runtime/src/classification.test.ts
+
+✔ dominates: level ordering and caveat superset (3.5999ms)
+✔ checkClassification reports the reason (0.6986ms)
+✔ enforceClassification: unlabeled action passes; any failing clearance blocks (0.3612ms)
+✔ the gate REFUSEs an over-classified action (no read up) (25.3417ms)
+✔ the gate ALLOWs when the Ward + Envelope clearances dominate the action label (6.8389ms)
+✔ the gate REFUSEs on a missing compartment even at the same level (0.6209ms)
+✔ unlabeled artifacts are unaffected (backward compatible) (0.524ms)
+✔ crossDomainTransferAllowed enforces no-write-down and compartment retention (0.8606ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 66.9268
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:fail-mode
+> tsx shared/execution-control-runtime/src/fail-mode.test.ts
+
+✔ no degradation conditions resolve to allow (1.5066ms)
+✔ safety-critical fails closed on every condition (0.2539ms)
+✔ mission-critical refuses on infra loss but escalates a soft timeout (0.1968ms)
+✔ routine escalates infra loss, allows a degraded soft timeout (0.1977ms)
+✔ best-effort proceeds degraded but still escalates split-brain (quorum_lost) (0.2014ms)
+✔ the most-restrictive active condition wins (0.1782ms)
+✔ an unlabeled Ward defaults to mission-critical (fails closed on infra loss) (0.1677ms)
+✔ an unknown degradation condition fails closed (0.1562ms)
+✔ failModeBlocks is true only for refuse/escalate (0.2764ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 21.5095
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:degradation
+> tsx shared/execution-control-runtime/src/degradation.test.ts
+
+✔ probeLedgerWritable is true for a writable directory (6.8417ms)
+✔ probeLedgerWritable is false when the parent path is a file, not a directory (4.3121ms)
+✔ ledgerUnavailableProbe reports the condition only when unwritable (4.546ms)
+✔ controlPlaneStaleProbe fires when the edge node is stale, clears after sync (5.6993ms)
+✔ predicateProbe maps a health predicate (and a throw) to a condition (1.0031ms)
+✔ collectDegradation runs probes and de-duplicates (1.5449ms)
+✔ collectDegradation is clean when all probes are healthy (3.1093ms)
+✔ runWithTimeout returns the value when fast, timedOut when slow (11.5613ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 98.7245
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:sandbox
+> tsx shared/execution-control-runtime/src/sandbox.test.ts
+
+✔ ALLOW executes in the sandbox; receipt is signed, Warrant-bound, and verifies (195.0426ms)
+✔ REFUSE never reaches the sandbox (no receipt, no execution) (4.0849ms)
+✔ sandbox command allowlist denies an authorized action's disallowed binary (4.1873ms)
+✔ sandbox enforces the timeout budget (283.2864ms)
+✔ sandbox caps captured output (111.0187ms)
+✔ a receipt does not verify against a different Warrant, and tampering is detected (238.8654ms)
+✔ buildSandboxReceipt + verify works for a standalone (unsigned) receipt (112.4047ms)
+✔ buildContainerRunArgs enforces network-off, read-only rootfs, dropped caps, and limits (0.6868ms)
+✔ buildContainerRunArgs opts into bridge networking only when the policy allows it (0.3719ms)
+✔ ContainerSandboxProvider derives its name from the runtime and requires an image (0.9654ms)
+✔ ContainerSandboxProvider denies a disallowed binary before invoking the runtime (1.6709ms)
+﹣ ContainerSandboxProvider runs a governed command in a real container (e2e) (0.2161ms) # set AOS_SANDBOX_E2E=1 with a running docker/podman daemon
+✔ buildWasmRunArgs denies fs/net/env by default and grants only what the policy allows (0.4567ms)
+✔ WasmSandboxProvider denies a disallowed module before invoking wasmtime (2.4003ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 1126.4337
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:shadow
+> tsx shared/execution-control-runtime/src/shadow.test.ts
+
+✔ shadow mode profiles a mixed batch without touching live state (67.8487ms)
+✔ shadow mode reports rollout-ready when nothing would escalate (3.8383ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 100.3012
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:builder
+> tsx shared/execution-control-runtime/src/builder.test.ts
+
+✔ compileGovernanceManifest validates, hashes, and is content-addressed (27.2347ms)
+✔ compileGovernanceManifest surfaces cross-artifact incoherence (1.075ms)
+✔ diff flags weakening vs tightening changes (1.1033ms)
+✔ explainPolicy reports the gate decision for sample actions (12.7231ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 59.7038
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:policy-dsl
+> tsx shared/execution-control-runtime/src/policy-dsl.test.ts
+
+✔ tokenize handles strings, idents with dots/colons, numbers, comparison ops, comments (5.4871ms)
+✔ compilePolicy compiles a ward block into a valid Ward + Authority draft (4.9955ms)
+✔ the compiled draft is accepted by the governance builder and drives the real gate (33.6281ms)
+✔ defaults: id slugged from name, envelope/issuer/expires defaulted (0.6358ms)
+✔ multiple ward blocks compile to multiple drafts (0.5655ms)
+✔ diagnostics carry line:column for a syntax error (0.4597ms)
+✔ invalid enum values are rejected with a helpful message + position (0.4921ms)
+✔ budget statement compiles to constraints.budget (cost + calls, shared window) (0.6494ms)
+✔ budget rejects an invalid duration with a positioned diagnostic (0.4885ms)
+✔ approve statement compiles to constraints.dual_control (0.6428ms)
+✔ a missing subject and duplicate ward ids are rejected (0.482ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 77.3627
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:reconcile
+> tsx shared/execution-control-runtime/src/reconcile.test.ts
+
+✔ reconcile classifies edge-vs-current conflicts and replays both policies (36.7542ms)
+✔ applyResolution enforces the resolution state machine (1.2651ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 61.5259
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:conflict-inbox
+> tsx shared/execution-control-runtime/src/conflict-inbox.test.ts
+
+✔ ingest classifies conflicts open and agreements reconciled (36.0044ms)
+✔ list orders conflicts before agreements (2.2516ms)
+✔ resolve transitions an open conflict and attributes the operator (0.8371ms)
+✔ resolve rejects an unknown conflict and a double resolution (3.8336ms)
+✔ re-ingest preserves an operator resolution and refreshes evidence (1.5978ms)
+✔ summary counts open/conflicts/by-status (2.5995ms)
+✔ file-backed store persists across instances (12.8865ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 94.1115
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:trace
+> tsx shared/execution-control-runtime/src/trace.test.ts
+
+✔ W3C traceparent parses, normalizes, and round-trips (2.4539ms)
+✔ trace context + request id are stamped into the signed GEL record (43.5155ms)
+✔ an injected tracer receives spans for the decision phases (3.6974ms)
+✔ RuntimeMetrics counts decisions, reason codes, replay, and latency (0.9179ms)
+✔ HTTP: traceparent header propagates to the GEL and /metrics exposes the histogram (130.5064ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 203.0313
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:cli
+> npm run build -w @aristotle/trial-engine && npm run build -w @aristotle/execution-control-runtime && tsx apps/aristotle-cli/src/index.test.ts
+
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> @aristotle/trial-engine@0.1.0 build
+> tsc -p tsconfig.json
+
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> @aristotle/execution-control-runtime@0.1.8 build
+> tsc -p tsconfig.json
+
+✔ cli init creates a valid governance file (65.8152ms)
+✔ cli execution-control evaluate runs Ward/Warrant action through AristotleOS (123.9331ms)
+✔ cli telecom commands expose CSP templates, evidence export, and scale drills (345.4196ms)
+✔ cli automotive commands expose vehicle templates, adapters, and evidence export (100.2085ms)
+✔ cli grid commands expose utility templates, adapters, and evidence export (81.3211ms)
+✔ cli rail commands expose railroad templates, adapters, and evidence export (77.8722ms)
+✔ cli port commands expose maritime templates, adapters, and evidence export (97.9171ms)
+✔ cli water commands expose utility templates, adapters, and evidence export (87.6894ms)
+✔ cli logistics commands expose trucking templates, adapters, and evidence export (124.1733ms)
+✔ cli healthcare commands expose clinical templates, adapters, and evidence export (95.3355ms)
+AristotleOS decision: ALLOW (ALLOWED)
+warrant: wrn-f0e3d950ef9644706eecbfe9 signed by ed25519-dev:cad5b8e970eafdf10e7ccb512071b321
+executing governed action (simulated http.get)...
+✔ cli run governs a child agent process and writes a verifiable ledger (624.025ms)
+AristotleOS decision: ALLOW (ALLOWED)
+warrant: wrn-1cb5dab211b7842e4bc1287f signed by ed25519-dev:cad5b8e970eafdf10e7ccb512071b321
+executing governed action (simulated http.get)...
+✔ cli run with the SQLite backend governs an agent and persists a durable ledger (1143.3715ms)
+AristotleOS decision: REFUSE (KILL_SWITCH_ENGAGED)
+action refused before execution
+AristotleOS decision: ALLOW (ALLOWED)
+warrant: wrn-e9d2466ed0b95f4366700a78 signed by ed25519-dev:cad5b8e970eafdf10e7ccb512071b321
+executing governed action (simulated http.get)...
+✔ cli kill switch halts governed runs until released (1133.2009ms)
+AristotleOS decision: REFUSE (AUTHORITY_REVOKED)
+action refused before execution
+AristotleOS decision: ALLOW (ALLOWED)
+warrant: wrn-5e96fc675b85d8ca4ddb29c0 signed by ed25519-dev:cad5b8e970eafdf10e7ccb512071b321
+executing governed action (simulated http.get)...
+✔ cli revoke halts a governed run until cleared (811.1823ms)
+✔ cli pilot self-check passes every boundary check (45.5232ms)
+✔ cli demo aliases the governed autonomous-action self-check (46.9303ms)
+✔ cli preflight blocks without a signing key and passes when configured (45.3455ms)
+✔ cli keys generate mints an Ed25519 warrant signing keypair (9.3293ms)
+✔ cli ward-marshal scans and governs an interdiction (76.9445ms)
+✔ cli ward-marshal discover supports process/mcp sources and requires one (18.626ms)
+✔ cli policy compiles APL to a governance manifest and reports diagnostics (22.4236ms)
+✔ cli conflicts ingest/list/resolve over a durable inbox (55.3408ms)
+✔ cli dual-control list/approve over an approval store (25.5733ms)
+✔ cli plan and demo produce real governance output (36.8237ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5317.7043
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:api
+> tsx adapters/http-gateway/src/trial-api.contract.test.ts
+
+✔ gateway exposes public trial API routes (2.0015ms)
+✔ trial API shares deterministic evaluator (0.32ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 23.8844
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:chain
+> tsx shared/governance-core/src/test/run.test.ts && tsx services/governance-kernel/src/governance-chain.test.ts && tsx services/agent-os/src/governance-chain-client.test.ts && tsx adapters/http-gateway/src/governance-chain-proxy.test.ts
+
+✔ a valid MAE constitutes a valid Ward (16.3919ms)
+✔ an invalid (revoked) MAE cannot back a Ward (4.0395ms)
+✔ a Ward can create an Authority Envelope within bounds (1.7132ms)
+✔ an Authority Envelope cannot exceed its Ward (1.35ms)
+✔ a Warrant cannot exceed its Authority Envelope (2.8761ms)
+✔ a Warrant cannot be reused (single-use) (12.5667ms)
+✔ the store refuses to consume a Warrant twice (1.9462ms)
+✔ an expired Warrant fails (4.9189ms)
+✔ a stale commit presentation is denied before execution (3.5492ms)
+✔ commit presentation skew is an explicit gate option (2.6704ms)
+✔ a future-dated commit presentation is denied before execution (2.139ms)
+✔ an unparseable commit presentation is denied before execution (1.9827ms)
+✔ revoking a Ward invalidates its Envelope and Warrant (3.3407ms)
+✔ revoking an Authority Envelope invalidates its Warrant (3.8373ms)
+✔ the Commit Gate fails closed when the Ward is missing (1.5848ms)
+✔ the Commit Gate fails closed when the Warrant is missing (1.4395ms)
+✔ the Commit Gate consumes the Warrant on allow (2.3525ms)
+✔ the GEL Record carries the complete authority chain and the ledger verifies (2.5253ms)
+✔ the GEL chain is tamper-evident (2.3122ms)
+✔ a ProtectedSpace Ward applies its boundary rules (drone above ceiling denied) (9.8533ms)
+✔ an Institutional Ward requires an accountable governance origin (1.3197ms)
+✔ a Ward's human origin act signature is verified, not merely present (1.3336ms)
+✔ a Ward without a presence proof is rejected when the MAE requires one (1.6812ms)
+✔ a Governor cannot author beyond its delegated scope (1.2901ms)
+✔ cross-Ward federation fails without a trust relationship (5.8249ms)
+✔ federation fails closed with no trust bridge at all (1.793ms)
+✔ a valid federation trust bridge allows the federated act (3.049ms)
+✔ authority determination occurs before the attribution record (1.9809ms)
+✔ payments: refund within limit allowed; over threshold escalates (2.5495ms)
+✔ payments: refund over the envelope monetary limit is denied (1.8965ms)
+✔ payments: a cumulative spend budget is enforced across acts (7.5569ms)
+✔ warrant issuance quota (max_warrants) is enforced (3.2953ms)
+✔ healthcare: agent may draft but never submit a medication order (3.5526ms)
+✔ denied and escalated commits still leave GEL evidence (2.0228ms)
+✔ a store snapshot round-trips, preserving warrant consumption and the GEL chain (8.8772ms)
+✔ chainMetrics aggregates the store after a commit (3.4152ms)
+✔ openApiSpec is a well-formed OpenAPI 3 document for the chain (0.927ms)
+✔ scopeSnapshot isolates a tenant's primitives (0.6408ms)
+✔ chainMetrics scopes counts to a single MAE while integrity stays global (2.137ms)
+✔ an evidence bundle exports and verifies offline; tampering is detected (5.0909ms)
+✔ execution outcomes are recorded as a separate ledger entry (2.2385ms)
+ℹ tests 41
+ℹ suites 0
+ℹ pass 41
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 177.0222
+✔ kernel /v2 chain: create -> commit allows and consumes -> reuse denied -> GEL intact (300.6519ms)
+✔ kernel /v2 chain state survives a restart (durable store) (38.4448ms)
+✔ kernel /v2 chain signs and verifies with ed25519 when key paths are provided (36.6938ms)
+✔ kernel /v2 isolates tenants: scoped reads + cross-tenant commit denied (105.4606ms)
+✔ kernel /v2 exposes federated commit across a trust bridge (34.0947ms)
+✔ kernel /v2 signing-key rotation: records signed before and after both verify (8.0347ms)
+✔ GovernanceChainClient SDK drives the chain end to end + reads OpenAPI (57.4281ms)
+✔ kernel /v2 commit fails closed on a missing warrant (34.0494ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 631.1402
+✔ agent-os enforce mode: a normal task act flows through the chain and is allowed (244.3334ms)
+✔ agent-os: an active kill switch makes the act inadmissible at the Commit Gate (94.9569ms)
+✔ agent-os shadow mode: the chain runs and records a decision (52.1603ms)
+✔ completion acts are accepted by the same mission chain (66.6633ms)
+✔ agent-os: a tool action flows through the chain and is allowed (55.4993ms)
+✔ agent-os: a tool action is denied at the gate when the kill switch is active (44.8529ms)
+✔ agent-os: witness obligation is enforced — required+accepted allows, required+unaccepted denies (61.809ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 635.9417
+✔ gateway proxies the chain and forwards verdicts verbatim (allow then single-use deny) (330.7724ms)
+✔ gateway returns 501 when GOVERNANCE_CHAIN_V2 is disabled (20.4566ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 367.349
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:adapters
+> tsx examples/framework-adapters/govern.test.ts
+
+✔ adapter ALLOW: executes only after a verified Warrant and records GEL (62.7817ms)
+✔ adapter REFUSE: a constraint violation never executes (2.6538ms)
+✔ adapter REFUSE: a denied action never executes (2.3574ms)
+✔ adapter ESCALATE: missing runtime state defers without executing (4.5994ms)
+✔ adapter replay: an identical approved call is refused the second time (single-use) (5.2846ms)
+✔ adapter physical invariants: an out-of-bounds robotics command is refused (4.5993ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 120.2383
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:signers
+> tsx examples/signers/signer.test.ts
+
+✔ secrets-manager signer fetches the key by name and produces a verifiable signer (17.6938ms)
+✔ secrets-manager key provider uses the public-key secret when supplied (1.216ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 59.2418
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:sdk
+> tsx packages/os-sdk/src/index.test.ts
+
+✔ evaluate posts the action to the gate, sends the bearer token, and parses the decision (5.4148ms)
+✔ apiKey is sent as X-API-Key and GET requests carry no content-type/body (0.7966ms)
+✔ governance compile/diff/explain hit the right routes (2.1163ms)
+✔ auditTail builds the limit query; auditVerify parses the result (0.9185ms)
+✔ a non-2xx response throws AristotleApiError carrying status + body (1.6268ms)
+✔ operator engines hit the right routes with the right methods (6.9743ms)
+✔ degradation() parses the live status (0.9224ms)
+✔ constructor rejects a missing baseUrl (1.269ms)
+✔ metrics() reads the aggregate metrics endpoint (0.7ms)
+✔ approvals() lists the queue; decideApproval votes on a request (1.1715ms)
+✔ killSwitch() and revokeEnvelope() POST to the admin routes with the right body (0.7163ms)
+✔ governAndExecute: ALLOW runs the executor and returns its result with the warrant (0.8032ms)
+✔ governAndExecute: REFUSE throws AristotleApiError with the reason codes; executor never runs (0.9151ms)
+✔ governAndExecute: ESCALATE returns an escalation handle and never calls the executor (0.5734ms)
+✔ AristotleClient.titleAction builds a typed title action with namespaced params (0.3987ms)
+✔ requestWarrant returns the warrant id on ALLOW and carries the canonical_action_hash (5.4599ms)
+✔ requestWarrant on REFUSE throws AristotleApiError with status 403 (1.3507ms)
+✔ requestWarrant on EXPIRE throws AristotleApiError with status 410 (1.0524ms)
+✔ replay POSTs to /v1/execution-control/replay and parses the result (0.3981ms)
+✔ exportEvidence POSTs to /v1/execution-control/evidence/export and returns the bundle hash (0.3456ms)
+✔ verifyWarrant POSTs to /v1/execution-control/warrant/verify and parses the result (0.4112ms)
+✔ inspectChain POSTs to /v1/execution-control/warrant/inspect-chain and returns MAE -> Ward -> Envelope -> Warrant chain (2.1669ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 64.2396
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:ui-boundary
+> tsx apps/console-ui/src/command-center/boundary.test.ts
+
+✔ decisionToUi maps gate decisions to the console vocabulary (4.9557ms)
+✔ mapMetricsToSnapshot maps /metrics into header fields and marks the source live (1.0418ms)
+✔ mapMetricsToSnapshot: kill switch -> red posture; broken ledger -> amber (0.5524ms)
+✔ mapGelToLedger maps signed records into ledger rows (0.9411ms)
+✔ buildRepresentativeActions derives one probe per allowed and denied action (2.0891ms)
+✔ mapShadowReport maps a live ShadowReport into the console profile summary (0.6817ms)
+✔ mapCensusReport maps live census findings into the console finding shape (0.4987ms)
+✔ mapConflictsToInbox maps durable records into inbox items with derived next-steps (0.8069ms)
+✔ mapDegradationToSnapshot flags degraded state and carries conditions (0.522ms)
+✔ mapApprovalsToUi maps records and counts distinct approvers (0.7961ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 32.4585
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:audit
+> node --test scripts/audit-deps.test.mjs
+
+✔ parseAuditReport normalizes the v6 advisories map (5.47ms)
+✔ parseAuditReport normalizes the v7+ vulnerabilities map (0.8037ms)
+✔ evaluateAudit blocks high+critical advisories by default (1.1892ms)
+✔ evaluateAudit ignores advisories below the fail threshold (0.8312ms)
+✔ evaluateAudit honors a non-expired allowlist entry by GHSA id (0.8423ms)
+✔ evaluateAudit treats an expired allowlist entry as blocking (0.4181ms)
+✔ evaluateAudit --fail-on critical lets a high advisory pass (0.3616ms)
+✔ evaluateAudit is clean on an empty report (0.2734ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 252.7832
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:demo
+> tsx shared/execution-control-runtime/demo.mts
+
+AristotleOS — evaluator walkthrough
+Doctrine: authority before consequence · warrant before execution · evidence after every decision
+
+—— 1. Authority before consequence — a permitted action is admitted ——
+  ✓ permitted takeoff → ALLOW — ALLOW
+  ✓ a single-use Warrant is issued — wrn-ab69ccc76f5b54d17eb278fd
+  ✓ Warrant verifies against the action hash
+  ✓ the decision is written to the evidence ledger
+
+—— 2. The boundary refuses what it must ——
+  ✓ explicitly denied action → REFUSE, no Warrant — ACTION_DENIED
+  ✓ missing runtime state → ESCALATE (ambiguity goes to a human) — RUNTIME_STATE_MISSING
+  ✓ out-of-bounds action → REFUSE on physical invariant
+
+—— 3. Warrants are single-use — replay is refused ——
+  ✓ first submission → ALLOW
+  ✓ identical replay → REFUSE (REPLAY_DETECTED)
+
+—— 4. Under degradation, criticality decides the fail mode ——
+  ✓ safety-critical + ledger unavailable → REFUSE (DEGRADED_MODE)
+
+—— 5. Evidence after every decision — offline-verifiable bundle ——
+  ✓ Evidence Bundle exports and self-verifies — bundle_hash dbaf6b1c9e55…
+  ✓ an independent re-verification agrees
+
+—— 6. Tamper-evidence — altering the record is detected ——
+  ✓ a forged subject in the bundle → verification FAILS — selected GEL record does not match ledger chain material
+  ✓ the GEL hash-chain verifies as written
+  ✓ tampering a ledger record on disk → chain verification FAILS — record 0 hash mismatch
+
+========================================================
+Result: 15 passed, 0 failed
+DEMO PASSED — authority bound, warrants issued, evidence verifiable, tampering caught.
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:egress
+> tsx shared/execution-control-runtime/src/egress-guard.test.ts
+
+✔ blocks the cloud metadata IP by default (no opt-in needed) (2.505ms)
+✔ blocks the metadata hostname and non-http schemes by default (9.3028ms)
+✔ blocks the unspecified address and IPv6 link-local by default (2.705ms)
+✔ allows loopback by default but blocks it when blockPrivateNetworks is set (0.5906ms)
+✔ IPv4-mapped IPv6 metadata is still blocked (0.4734ms)
+✔ allows ordinary public destinations (0.4191ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 37.7452
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:constraints-security
+> tsx shared/governance-core/src/constraints.security.test.ts
+
+✔ inherited Object.prototype members do not 'exist' as facts (2.0022ms)
+✔ an 'absent' safety predicate is satisfied for inherited keys (not falsely present) (0.7152ms)
+✔ forbidden prototype-chain segments resolve to undefined (0.4009ms)
+✔ legitimate own-property predicates are unaffected (2.675ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 24.7945
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "workspace-concurrency". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> aristotle-autonomous-governance-os@0.1.33 test:legacy-routes
+> node --import tsx --test tests/_harness.test.mjs services/governance-kernel/src/index.test.ts services/agent-os/src/index.test.ts services/agent-os/src/tasks.test.ts services/agent-os/src/tasks-lifecycle.test.ts services/agent-os/src/tasks-claim.test.ts services/agent-os/src/agents-workspaces.test.ts services/authority-router/src/index.test.ts services/evidence-ledger/src/index.test.ts services/evidence-ledger/src/gel-chain.test.ts adapters/http-gateway/src/index.test.ts adapters/http-gateway/src/trial-api.test.ts services/witness-service/src/index.test.ts services/meta-authority-registry/src/index.test.ts services/execution-gate/src/index.test.ts services/policy-compiler/src/index.test.ts services/simulation-engine/src/index.test.ts
+
+✔ /health reports ok (2865.6268ms)
+✔ /operator/* refuses with 401 when no credential is presented (2196.3436ms)
+✔ /operator/* refuses with 401 when bearer session token is malformed (2191.1441ms)
+✔ /operator/auth/session refuses with 401 when x-operator-key is wrong (2034.6096ms)
+✔ /operator/auth/session returns a Bearer token when x-operator-key matches (2147.7707ms)
+✔ /operator/auth/session is 503 when OPERATOR_SESSION_SECRET is missing while OPERATOR_API_KEY is set (2045.8087ms)
+✔ /v1/status returns ok=true, the doctrine string, scenarios catalog, and policy hash (2495.4771ms)
+✔ /v1/policy/check returns 200 + policyHash when validating the trial default (2215.7205ms)
+✔ /v1/policy/check returns 422 + ok=false on a malformed APL source (2063.6238ms)
+✔ /v1/policy/plan returns 200 + ok=true when planning the trial default against itself (2203.0477ms)
+✔ /v1/audit/tail returns { items: [...] } on a fresh gateway (never errors) (1965.4249ms)
+✔ /v1/audit/<unknown> returns 404 record_not_found (2063.8527ms)
+✔ POST /agents/register with minimal body returns 201 with documented defaults (3388.0915ms)
+✔ POST /agents/register with explicit fields preserves them and lists agent in /state (2608.6696ms)
+✔ POST /workspaces with minimal body returns 201 with documented defaults (2607.7792ms)
+✔ POST /workspaces with explicit fields preserves them and lists workspace in /state (2623.4737ms)
+✔ POST /missions creates a mission and persists in /missions list (2343.6866ms)
+✔ GET /missions lists missions created via POST (2662.2537ms)
+✔ end-to-end: /missions/:id/advance with full happy mocks dispatches the context task to running (2961.6453ms)
+✔ /tasks/<running-id>/claim returns 409 task_not_eligible (already-claimed envelope) (2893.3455ms)
+✔ POST /missions/:missionId/advance seeds 3 execution tasks and commits queue.created to the ledger (3014.669ms)
+✔ seedMissionExecutionTasks is idempotent: /advance again does not duplicate the queue (2944.8982ms)
+✔ /health reflects the mocked downstream killSwitchState=inactive (kill-switch poll wiring smoke) (2615.3163ms)
+✔ GET /tasks/next returns 404 task_not_found on a fresh service with no missions (2711.4805ms)
+✔ POST /tasks/<unknown>/claim returns 404 task_not_found before any downstream call (2991.9875ms)
+✔ POST /tasks/<unknown>/heartbeat returns 404 task_not_found (3715.6457ms)
+✔ POST /tasks/<unknown>/complete returns 404 task_not_found (5838.1438ms)
+✔ GET /tasks/<unknown>/actions returns 404 task_not_found (3527.7407ms)
+✔ /health surfaces readiness with trust anchor count (1928.9463ms)
+✔ /route picks mesh.alpha for the default mission/dispatch/medium lane (2754.8472ms)
+✔ /route escalates safety domain to mesh.delta (2357.1006ms)
+✔ /route escalates riskLevel=high to mesh.delta even when domain is mission (3607.2244ms)
+✔ /route routes completion phase via mesh.gamma and tool-action via mesh.beta (2406.9684ms)
+✔ /route reports degraded continuity when the primary relay is in degradedNodes (2271.2803ms)
+✔ /route reports disconnected when both primary and failover relays are degraded (1953.0808ms)
+✔ /v1/mesh/route returns is_local=true for the configured local MAE (2115.7311ms)
+✔ /v1/mesh/route returns 400 on missing mae_id (1947.9267ms)
+✔ /gel/append on a fresh ledger creates record 1 anchored at GENESIS_HASH (3797.4077ms)
+✔ /gel/append twice links the chain: record 2's previous_hash == record 1's record_hash (4998.9647ms)
+✔ /gel/chain reports count, tip_hash, and full records consistently with /gel/append (3534.9937ms)
+✔ /gel/verify returns ok=true on a chain of honest appends (2619.5005ms)
+✔ /gel/append with missing required fields returns 400 missing_required_fields (2397.7933ms)
+✔ /health reports the persisted-state path and committed-event count (2538.2445ms)
+✔ POST /events/commit appends a replay event and assigns a monotonic index (2470.8778ms)
+✔ GET /replay filters committed events by traceId (2291.5435ms)
+✔ POST /branches creates a counterfactual branch; /branches/:id/events appends hypothetical events (2289.7024ms)
+✔ POST /branches/:id/events returns 404 for an unknown branch (2252.1968ms)
+✔ /health surfaces killSwitchState, activeKillScopes, and substrate_wired=true (2445.1616ms)
+✔ global /kill-switch → /commit-point returns halt + killSwitchState=active (2440.3743ms)
+✔ mission-scope /kill-switch halts ONLY the matching mission (2097.6392ms)
+✔ /commit-point happy path returns allow with verification=verified (2485.2773ms)
+✔ /commit-point with witnessRequired=true + witnessAccepted=false → deny with witness reason (2564.8947ms)
+✔ /commit-point with identityLegitimate=false → deny with identity reason (2453.9156ms)
+✔ /commit-point with telemetrySatisfied=false + telemetryReasons → deny + custom reasons surface (2597.0608ms)
+✔ /decide happy path with witnessAccepted=true returns allow (4170.6657ms)
+✔ /decide with witnessRequired=true + witnessAccepted=false returns deny (3844.3423ms)
+✔ /health reports killSwitchState and activeKillScopes (2633.8558ms)
+✔ POST /kill-switch global sets killSwitchState and records event (2947.0936ms)
+✔ Mission-scope kill-switch records event without toggling the global field (2751.4015ms)
+✔ /issue-warrant fails closed with 423 when global kill-switch is active (2982.2843ms)
+✔ /issue-warrant returns a warrant when no kill-switch is active (2719.0549ms)
+✔ Mission-scope kill-switch denies its mission only — other missions still issue (2630.3535ms)
+✔ /artifacts returns the four bootstrap seeds with the expected delegation classes (2264.1136ms)
+✔ /artifacts/:id returns a specific seed; 404 for unknown id (1813.6367ms)
+✔ POST /artifacts creates a new delegated MAA and returns 201 (1905.1058ms)
+✔ /resolve returns allowed=true for delegated (subject, domain) pairs (1933.1117ms)
+✔ /resolve returns allowed=false when subject lacks the requested domain (2527.4764ms)
+✔ /resolve returns allowed=false when the issuer is not a known subject (2384.9501ms)
+✔ /v1/mesh/envelope returns 400 on missing required fields (2653.6587ms)
+✔ /v1/mesh/envelope returns 201 + envelope on a valid body (2645.4789ms)
+✔ /health ok (3770.2793ms)
+✔ /compile on empty source returns valid=false with a diagnostic, no substrate, trimmed graph (3651.1635ms)
+✔ /compile on valid single-ward APL produces ward_count=1 with manifest hashes and admissibility rules (4824.7662ms)
+✔ /compile on valid two-ward APL produces ward_count=2 and two manifest hashes (3582.487ms)
+✔ /compile on malformed APL returns valid=false with errors and no substrate block (4605.4962ms)
+✔ /diff between two identical policies reports total_changes=0 (3369.0907ms)
+✔ /diff reports an added ward as added + weakening (2762.4028ms)
+✔ /diff returns 400 with per-side errors when one side is malformed (2264.4736ms)
+✔ /health returns ok=true and an integer tick counter (3546.0459ms)
+✔ /telemetry lists exactly the 3 mesh nodes; mesh.gamma defaults to degraded (2748.4902ms)
+✔ /degrade replaces the degraded-nodes list (2661.5703ms)
+✔ /v1/chaos/scenarios lists all 10 documented chaos-harness scenarios (3908.5929ms)
+✔ /v1/chaos/run/replay_attempt returns ok=true + scorecard + duration_ms (2527.1006ms)
+✔ /v1/chaos/run/unknown_scenario returns 404 unknown_scenario (2139.4035ms)
+✔ /counterfactual on a degraded primary relay reports projectedOutcome=reroute, mode=degraded (1932.5637ms)
+✔ /counterfactual with injectKillSwitch=true reports projectedOutcome=halt + sovereign-halt recovery path (1907.9717ms)
+✔ /verify with defaults (2 witnesses, quorum=2) is accepted (3097.6966ms)
+✔ /verify refuses when quorumRequired exceeds requestedWitnesses count (2346.1549ms)
+✔ /verify honors WITNESS_QUORUM env override when body omits quorumRequired (2985.8183ms)
+✔ /verify body.quorumRequired overrides WITNESS_QUORUM env-default (3813.1683ms)
+✔ /receipts/:id returns the freshly issued receipt (2511.1632ms)
+✔ /receipts/:id returns 404 for an unknown receipt id (2077.539ms)
+✔ startMockService returns a canned JSON response for a configured route (133.662ms)
+✔ function handlers receive parsed body + query + method + path and may be async (65.0413ms)
+✔ unmatched routes get 404 mock_route_not_configured — deterministic, not a hang (46.8552ms)
+✔ calls[] records every arrival in order with method, path, query, body, headers (34.4758ms)
+✔ a caller-supplied port is honored (no auto-allocation) (34.4984ms)
+✔ stop() releases the port so a follow-up listener can bind to it (24.9712ms)
+✔ handler-thrown errors surface as 500 mock_handler_threw — not a hang (13.7384ms)
+ℹ tests 99
+ℹ suites 0
+ℹ pass 99
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 91544.0341
+
+> @aristotle/os-sdk@0.2.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\os-sdk
+> node --import tsx --test src/index.test.ts
+
+✔ evaluate posts the action to the gate, sends the bearer token, and parses the decision (8.9063ms)
+✔ apiKey is sent as X-API-Key and GET requests carry no content-type/body (1.4424ms)
+✔ governance compile/diff/explain hit the right routes (1.918ms)
+✔ auditTail builds the limit query; auditVerify parses the result (1.0492ms)
+✔ a non-2xx response throws AristotleApiError carrying status + body (1.528ms)
+✔ operator engines hit the right routes with the right methods (1.5395ms)
+✔ degradation() parses the live status (0.5464ms)
+✔ constructor rejects a missing baseUrl (0.4822ms)
+✔ metrics() reads the aggregate metrics endpoint (5.1082ms)
+✔ approvals() lists the queue; decideApproval votes on a request (2.4474ms)
+✔ killSwitch() and revokeEnvelope() POST to the admin routes with the right body (2.4155ms)
+✔ governAndExecute: ALLOW runs the executor and returns its result with the warrant (1.2087ms)
+✔ governAndExecute: REFUSE throws AristotleApiError with the reason codes; executor never runs (1.1331ms)
+✔ governAndExecute: ESCALATE returns an escalation handle and never calls the executor (0.5008ms)
+✔ AristotleClient.titleAction builds a typed title action with namespaced params (0.3526ms)
+✔ requestWarrant returns the warrant id on ALLOW and carries the canonical_action_hash (2.4993ms)
+✔ requestWarrant on REFUSE throws AristotleApiError with status 403 (3.2611ms)
+✔ requestWarrant on EXPIRE throws AristotleApiError with status 410 (0.7432ms)
+✔ replay POSTs to /v1/execution-control/replay and parses the result (0.7249ms)
+✔ exportEvidence POSTs to /v1/execution-control/evidence/export and returns the bundle hash (0.4499ms)
+✔ verifyWarrant POSTs to /v1/execution-control/warrant/verify and parses the result (0.4347ms)
+✔ inspectChain POSTs to /v1/execution-control/warrant/inspect-chain and returns MAE -> Ward -> Envelope -> Warrant chain (0.3548ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1003.8061
+
+> @aristotle/event-stream@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\event-stream
+> node --import tsx --test src/index.test.ts
+
+✔ makeEvent: defaults format, event_id, emitted_at (7.0406ms)
+✔ eventMatches: filter by event_type (0.4965ms)
+✔ eventMatches: filter by action_type_prefix and subject_prefix (0.4964ms)
+✔ EventBus: subscribers receive matching events; unsubscribe stops delivery (1.0458ms)
+✔ EventBus: filter restricts delivery (0.6031ms)
+✔ EventBus: a throwing subscriber doesn't poison the bus (0.5106ms)
+✔ WebhookDispatcher: ALLOW path POSTs with HMAC signature header (2.3007ms)
+✔ WebhookDispatcher: retries on non-2xx and stops after maxAttempts; calls onDeadLetter (26.7924ms)
+✔ WebhookDispatcher: filter excludes non-matching subscriptions (1.2821ms)
+✔ WebhookDispatcher.verifySignature: tamper detection (1.0758ms)
+✔ attachSseHandler: writes SSE-framed events on publish; closes on response close (1.4733ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 939.5114
+
+> @aristotle/execution-control-runtime@0.1.8 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\execution-control-runtime
+> tsx src/index.test.ts
+
+✔ canonical action hash is stable across equivalent key orderings (27.8749ms)
+✔ allowed action produces ALLOW and issues a Warrant (20.2175ms)
+✔ denied action produces REFUSE and no Warrant (1.2557ms)
+✔ expired Authority Envelope produces REFUSE (0.7543ms)
+✔ missing runtime state produces ESCALATE (0.7054ms)
+✔ physical invariant violation produces REFUSE (0.6749ms)
+✔ degraded mode: a safety-critical Ward fails closed when the ledger is unavailable (0.8155ms)
+✔ degraded mode: a routine Ward escalates infra loss instead of hard-blocking (0.6082ms)
+✔ degraded mode: a best-effort Ward proceeds (allow_degraded) under a soft timeout (0.7147ms)
+✔ degraded mode: no conditions leaves the decision unchanged; unlabeled Ward defaults closed (0.8962ms)
+✔ Warrant cannot be consumed twice (5.8774ms)
+✔ Warrant verification fails for mismatched action hash (2.6166ms)
+✔ Warrant carries a real Ed25519 signature, not a recomputable hash (5.1551ms)
+✔ Warrant signature cannot be forged by recomputing a hash (1.3609ms)
+✔ Tampering with signed Warrant material breaks verification (1.3594ms)
+✔ Warrant verification can pin a trusted signing key id (6.5661ms)
+✔ configured signer is non-ephemeral and verifiable against its embedded key (3.4558ms)
+✔ ephemeral dev signer is flagged ephemeral (1.7191ms)
+✔ createSignerFromKeyProvider loads the key from a managed provider and signs (3.5015ms)
+✔ GEL chain verifies after normal append (15.6326ms)
+✔ GEL chain verification fails after tampering with prior record (24.1955ms)
+✔ vertical slice evaluates action, writes GEL, and verifies ledger (9.9976ms)
+✔ Evidence Bundle exports Ward, Authority Envelope, Warrant, and GEL for offline verification (17.7189ms)
+✔ Evidence Bundle verification fails when selected record material is altered (21.8553ms)
+✔ GEL records are Ed25519-signed when a signer is configured (19.6838ms)
+✔ GEL verification fails when a record signature is tampered (17.5171ms)
+✔ Evidence Bundle carries a verifiable bundle-level signature (17.2162ms)
+✔ Evidence Bundle signature fails when the bundle hash is altered (22.2842ms)
+✔ runtime server exposes health, evaluate, audit tail, and audit verify (224.7385ms)
+✔ client helper submits action and requires a verified Warrant (71.9216ms)
+✔ kill switch refuses every action while engaged and audits the attempt (33.0771ms)
+✔ replay protection refuses an identical previously-admitted action (24.7976ms)
+✔ server enforces an API key on /v1 routes, leaves health open, and serves metrics (61.2014ms)
+✔ gate refuses when the Authority Envelope is revoked (17.3273ms)
+✔ verifyWarrant rejects a warrant signed by a revoked key (7.2201ms)
+✔ evidence bundle verification fails against a revocation list (19.5087ms)
+✔ validateWardManifest and validateAuthorityEnvelope flag bad config (1.9445ms)
+✔ loadWardManifest throws a readable error on invalid config (3.8063ms)
+✔ warrant TTL is configurable (3.8143ms)
+✔ LedgerStore tracks tip/count/admitted in memory and rebuilds from disk (10.0525ms)
+✔ LedgerStore works over a pluggable in-memory backend (no file) (1.2624ms)
+✔ SqliteLedgerBackend is durable across restarts and enforces replay via SQL (34.7837ms)
+✔ evaluateExecutionControl enforces replay over a durable SQLite store (22.3707ms)
+✔ PostgresLedgerBackend (pglite): durable, ACID, with replay shared across instances (7769.4007ms)
+✔ SubjectRateLimiter enforces an independent per-subject budget (1.4146ms)
+✔ server returns 429 when a subject exceeds its rate limit (81.9573ms)
+✔ server enforces replay protection across requests via the shared ledger index (54.831ms)
+✔ deliverAuditEvent posts the signed record to the sink (26.1713ms)
+✔ deliverAuditEvent reports failure when the sink is unreachable (1.3715ms)
+✔ server exposes Prometheus metrics (51.5016ms)
+✔ runtime server serves the playground and context when enabled (33.5023ms)
+✔ runtime server does not serve the playground unless enabled (25.3817ms)
+✔ OpenAPI spec describes the execution boundary (2.3588ms)
+✔ credential broker injects only matched secrets (2.1705ms)
+✔ credential broker throws when a matched secret is missing (1.0949ms)
+✔ proxy forwards an approved action with brokered credentials and never leaks the secret (34.2795ms)
+✔ proxy refuses to forward when params.url diverges from the authorized target (SSRF guard) (14.8106ms)
+✔ proxy refuses a denied action and never forwards (18.5569ms)
+✔ role hierarchy and static-token principal resolution (0.8425ms)
+✔ RBAC: viewer can read but not decide; operator can decide (57.6273ms)
+✔ operator identity is attributed in the GEL and is tamper-evident (88.2938ms)
+✔ admin-only kill switch and revocation; non-admins are refused (102.6293ms)
+✔ verifyJwt accepts RS256/ES256/EdDSA and enforces iss/aud/exp (170.5035ms)
+✔ verifyJwt rejects alg:none and HMAC alg-confusion (699.5501ms)
+✔ OIDC bearer token authenticates and attributes the sub at the HTTP boundary (659.9453ms)
+✔ jwkToOidcKey + importJwks materialize verification keys from a JWKS document (281.6592ms)
+✔ createJwksKeyStore caches, refreshes on key rotation, and fails static (625.7101ms)
+✔ governance builder endpoints compile/diff/explain over the real backend, role-gated (46.7637ms)
+✔ shadow/reconcile/marshal endpoints run the real engines over the boundary, role-gated (68.0466ms)
+✔ server enforces an Authority-Envelope budget (calls per window) ⇒ BUDGET_EXCEEDED (60.7318ms)
+✔ dual control: a guarded action escalates, two operators approve, then it is admitted (67.6295ms)
+✔ conflict inbox: ingest, list, resolve over the durable store, role-gated (50.4931ms)
+✔ evaluate endpoint honors degraded_conditions against the Ward criticality (36.487ms)
+✔ evaluate self-detects an unavailable ledger and returns a governed degraded decision (no 500) (34.5139ms)
+✔ GET /degradation reports live health and the projected fail action (39.2669ms)
+ℹ tests 75
+ℹ suites 0
+ℹ pass 75
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12044.2021
+
+> @aristotle/governance-core@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\governance-core
+> tsx src/test/run.test.ts
+
+✔ a valid MAE constitutes a valid Ward (20.3375ms)
+✔ an invalid (revoked) MAE cannot back a Ward (2.265ms)
+✔ a Ward can create an Authority Envelope within bounds (1.8538ms)
+✔ an Authority Envelope cannot exceed its Ward (1.5883ms)
+✔ a Warrant cannot exceed its Authority Envelope (4.9429ms)
+✔ a Warrant cannot be reused (single-use) (8.3864ms)
+✔ the store refuses to consume a Warrant twice (9.0253ms)
+✔ an expired Warrant fails (2.8315ms)
+✔ a stale commit presentation is denied before execution (2.2549ms)
+✔ commit presentation skew is an explicit gate option (2.5114ms)
+✔ a future-dated commit presentation is denied before execution (4.5017ms)
+✔ an unparseable commit presentation is denied before execution (2.3038ms)
+✔ revoking a Ward invalidates its Envelope and Warrant (3.6313ms)
+✔ revoking an Authority Envelope invalidates its Warrant (2.1798ms)
+✔ the Commit Gate fails closed when the Ward is missing (1.4408ms)
+✔ the Commit Gate fails closed when the Warrant is missing (1.2692ms)
+✔ the Commit Gate consumes the Warrant on allow (6.5985ms)
+✔ the GEL Record carries the complete authority chain and the ledger verifies (3.3381ms)
+✔ the GEL chain is tamper-evident (2.0524ms)
+✔ a ProtectedSpace Ward applies its boundary rules (drone above ceiling denied) (5.2278ms)
+✔ an Institutional Ward requires an accountable governance origin (3.3273ms)
+✔ a Ward's human origin act signature is verified, not merely present (1.4059ms)
+✔ a Ward without a presence proof is rejected when the MAE requires one (2.5581ms)
+✔ a Governor cannot author beyond its delegated scope (1.6034ms)
+✔ cross-Ward federation fails without a trust relationship (3.3455ms)
+✔ federation fails closed with no trust bridge at all (1.5278ms)
+✔ a valid federation trust bridge allows the federated act (1.927ms)
+✔ authority determination occurs before the attribution record (4.3315ms)
+✔ payments: refund within limit allowed; over threshold escalates (3.4781ms)
+✔ payments: refund over the envelope monetary limit is denied (2.0769ms)
+✔ payments: a cumulative spend budget is enforced across acts (3.456ms)
+✔ warrant issuance quota (max_warrants) is enforced (2.219ms)
+✔ healthcare: agent may draft but never submit a medication order (8.2943ms)
+✔ denied and escalated commits still leave GEL evidence (2.177ms)
+✔ a store snapshot round-trips, preserving warrant consumption and the GEL chain (5.4612ms)
+✔ chainMetrics aggregates the store after a commit (4.474ms)
+✔ openApiSpec is a well-formed OpenAPI 3 document for the chain (0.9045ms)
+✔ scopeSnapshot isolates a tenant's primitives (0.544ms)
+✔ chainMetrics scopes counts to a single MAE while integrity stays global (3.2686ms)
+✔ an evidence bundle exports and verifies offline; tampering is detected (2.7318ms)
+✔ execution outcomes are recorded as a separate ledger entry (2.2084ms)
+ℹ tests 41
+ℹ suites 0
+ℹ pass 41
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 182.7653
+
+> @aristotle/mesh-runtime@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\mesh-runtime
+> node --import tsx --test src/index.test.ts src/quorum-routing.test.ts src/ed25519-mesh.test.ts src/ingress-hardening.test.ts src/revocation-quorum.test.ts
+
+✔ Ed25519 mesh: envelope propagates root -> witnesses -> edges with per-node keys (52.1831ms)
+✔ Ed25519 mesh: revocation gossips end-to-end and edge refuses (87.8006ms)
+✔ Ed25519 mesh: edge issues warrant signed by its own private key under valid token (44.8007ms)
+✔ Ed25519 allowlist: witness without root's trust anchor REFUSES the envelope (46.3717ms)
+✔ Ed25519 impersonation defense: trust anchor bound to wrong key REFUSES envelope (49.5632ms)
+✔ MeshNode constructor: only signer (no verifier) throws (1.8613ms)
+✔ MeshNode constructor: only verifier (no signer) throws (0.454ms)
+✔ MeshNode constructor: no secret AND no signer/verifier throws (0.351ms)
+[aristotle/mesh-runtime] WARNING: MeshNode "root-1" constructed with a known demo HMAC secret. This is not safe for production. Use createEd25519MeshSigner + createEd25519MeshVerifier and pass { signer, verifier } to the MeshNode constructor. See ROADMAP_TO_100.md Category 1 and LIMITATIONS.md.
+✔ envelope propagates from root through witnesses to all edges (52.6779ms)
+✔ edge issues warrant on ALLOW under valid Fluidity Token (34.5115ms)
+✔ edge REFUSES when revocation has propagated (81.5192ms)
+✔ partition: edge keeps issuing under Fluidity Token TTL, then EXPIRES on TTL expiry (131.3182ms)
+✔ partition: revocation issued during split is detected via surviving witness (80.4952ms)
+✔ disconnected-quota cap: edge fails closed after exceeding maxWarrantsWhileDisconnected (41.3132ms)
+✔ reconciliation: edge submits local decisions to root after partition heal (49.7604ms)
+✔ reconciliation: edge submitted-after-revocation decisions surface as conflicts (84.3897ms)
+✔ envelope versioning: a higher-version envelope replaces a lower one (114.2335ms)
+✔ envelope EXPIRED returns the distinct EXPIRE decision (not REFUSE) (70.0109ms)
+✔ live HTTP transport: root and edge can talk over real TCP sockets (329.7207ms)
+✔ auto-pull: pullRevocations() backfills the edge from root after a missed gossip window (85.9974ms)
+✔ auto-pull: pingRoot reconnect transition fires pullRevocations automatically (145.9205ms)
+✔ demo-secret WARN: known demo secret emits a one-time console.warn (3.0791ms)
+✔ demo-secret WARN: suppressDemoSecretWarning silences it (0.4408ms)
+✔ demo-secret WARN: a non-demo secret does NOT warn (0.2778ms)
+✔ productionMode: secret-only construction throws (0.7185ms)
+✔ productionMode: HMAC signer construction throws (0.4391ms)
+✔ productionMode: Ed25519 signer construction succeeds (5.1102ms)
+✔ ingress: oversized POST returns 413 with structured body (144.2454ms)
+✔ ingress: non-JSON content-type returns 415 (30.4678ms)
+✔ ingress: malformed JSON returns 400 with structured body (16.2494ms)
+✔ ingress: well-formed PING with JSON content-type succeeds (200) (22.8934ms)
+✔ ingress: content-type with charset is accepted (19.7776ms)
+✔ replay cache: same body twice within TTL -> second returns 409 (23.9987ms)
+✔ replay cache: different bodies are independent (47.6949ms)
+✔ replay cache unit: TTL-expired entries are reaccepted (0.7977ms)
+✔ replay cache unit: maxSize bounds memory (LRU-ish eviction) (0.4568ms)
+✔ rate limiter unit: bursting up to capacity is allowed (1.0333ms)
+✔ rate limiter unit: per-peer isolation — one flooder doesn't starve others (0.4091ms)
+✔ rate limiter unit: refill restores tokens at the configured rate (0.3118ms)
+✔ rate limiter unit: peek shows current tokens without consuming (0.2962ms)
+✔ ingress: rate-limited request returns 429 with structured body (34.4489ms)
+✔ ingress: anonymous (no msg.from) traffic is bucketed under '*' (21.224ms)
+✔ ingress: rate limiter is per-peer — one flooder doesn't block others over HTTP (66.4513ms)
+✔ QuorumCollector reaches required count after m witnesses sign (8.7922ms)
+✔ QuorumCollector deduplicates re-signing by the same witness (1.0366ms)
+✔ QuorumCollector ignores signatures from non-witness ids (0.6319ms)
+✔ verifyQuorumSignature: valid signature passes, tampered fails (0.7704ms)
+✔ InMemoryMeshPersistence: save and load envelopes + revocations (1.9985ms)
+✔ StaticSovereignRouter: local mae returns no route; foreign mae routes to anchor (0.5247ms)
+✔ StaticSovereignRouter: unknown foreign mae returns undefined (0.3246ms)
+✔ MeshNode.httpClient: injected client is used for cross-process sendTo (43.953ms)
+✔ MeshNode.urlFor: defaults to http when not provided (36.3423ms)
+✔ InMemoryMeshPersistence: durability roundtrip — save envelopes + revocations and restore them under a new instance after JSON serialization (1.1017ms)
+✔ InMemoryMeshPersistence: monotonic envelope versioning — a v2 save replaces v1 under the same envelope_id (2.733ms)
+✔ Q1: existing root.revoke() works for edges that don't require quorum (104.5603ms)
+✔ Q2: revokeWithQuorum() produces a revocation with signing_quorum populated (47.6947ms)
+✔ Q3: edge requireRevocationQuorum=2 accepts revocation with 2 valid sigs and refuses subsequent commits (84.3477ms)
+✔ Q4: edge requireRevocationQuorum=2 REJECTS a single-signature revocation (no witness sigs) (81.7394ms)
+✔ Q4b: edge requireRevocationQuorum=2 REJECTS a revocation with only 1 valid sig (one witness short) (98.3835ms)
+✔ Q5: duplicate witness signatures from the same witness_id are deduplicated (55.6533ms)
+✔ Q6: signatures from witnesses NOT in the verifier's allowlist are rejected (51.5493ms)
+✔ Q7: signing_quorum from rev-A is NOT valid on rev-B (witnesses bind to root_signature) (77.7025ms)
+✔ Q8: pullRevocations skips revocations that fail the quorum check (82.5214ms)
+✔ Q9: revokeWithQuorum throws when fewer witnesses provided than requiredQuorum (5.5306ms)
+✔ Q9b: revokeWithQuorum throws when requiredQuorum < 1 (6.7755ms)
+✔ countValidRevocationQuorum: returns 0 for revocation without signing_quorum (0.2722ms)
+ℹ tests 66
+ℹ suites 0
+ℹ pass 66
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3640.1021
+
+> @aristotle/replay-artifact@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\replay-artifact
+> node --import tsx --test src/index.test.ts
+
+✔ buildReplayArtifact: emits an artifact with format tag, report hash, and artifact hash (3.5768ms)
+✔ buildReplayArtifact: reproducible — same inputs + report yields identical artifact_hash (3.8505ms)
+✔ verifyReplayArtifact: happy path — all four gates pass (2.3479ms)
+✔ verifyReplayArtifact: tampered report breaks report_hash check (1.0255ms)
+✔ verifyReplayArtifact: tampered inputs break artifact_hash check (and reproducibility) (1.1234ms)
+✔ verifyReplayArtifact: version mismatch flags version_ok=false (0.6696ms)
+✔ verifyReplayArtifact: non-deterministic local code breaks reproducibility (0.7829ms)
+✔ loadReplayArtifact: parses JSON string + raw object; rejects bad format / missing fields (1.6393ms)
+✔ summarizeReplayArtifact: produces a CI-friendly single-line summary (0.7851ms)
+✔ verifyReplayArtifact: skip version check by passing undefined localScenarioVersion (0.7794ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 949.8463
+
+> @aristotle/service-runtime@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\service-runtime
+> node --import tsx --test src/index.test.ts
+
+✔ mountHealthEndpoints: registers /health, /healthz, /readyz by default (2.4178ms)
+✔ mountHealthEndpoints: /health returns { ok, service } envelope (1.6065ms)
+✔ mountHealthEndpoints: mountLegacyHealth: false skips /health (0.3543ms)
+✔ mountHealthEndpoints: /healthz always 200 with structured body (6.314ms)
+✔ mountHealthEndpoints: /readyz returns 200 + ok=true when no readiness closure (3.2874ms)
+✔ mountHealthEndpoints: /readyz returns 200 when all checks ok (0.6844ms)
+✔ mountHealthEndpoints: /readyz returns 503 when any check fails (0.6687ms)
+✔ mountHealthEndpoints: readiness closure runs on every /readyz call (late binding) (0.5485ms)
+✔ ReadinessChecks: builder fluent API produces the expected array (0.529ms)
+✔ ReadinessChecks: addTry catches thrown errors (0.6336ms)
+✔ ReadinessChecks: addDemoSecretCheck flags known demo secrets (0.6916ms)
+✔ ReadinessChecks: addDemoSecretCheck honors override env var (0.3782ms)
+✔ ReadinessChecks: addDemoSecretCheck passes for a real-looking secret (0.4171ms)
+✔ ReadinessChecks: addDemoSecretCheck fails when no secret provided (0.2134ms)
+✔ ReadinessChecks: addPeersConfiguredCheck reflects peer count (0.273ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1018.0311
+
+> @aristotle/trial-engine@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\trial-engine
+> tsx src/index.test.ts
+
+✔ governance file validates required AristotleOS primitives (5.7574ms)
+✔ payments flagship scenario defers before warrant issuance (2.9444ms)
+✔ operator approval issues a single-use warrant and commits GEL (3.0564ms)
+✔ denied payout never receives a warrant (1.6108ms)
+✔ missing authority binding fails closed (1.5389ms)
+✔ plan reports governance artifact changes (1.4711ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 66.0415
+
+> @aristotle/http-gateway@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\adapters\http-gateway
+> tsx src/governance-chain-proxy.test.ts && node --import tsx --test src/index.test.ts src/trial-api.test.ts
+
+✔ gateway proxies the chain and forwards verdicts verbatim (allow then single-use deny) (515.3261ms)
+✔ gateway returns 501 when GOVERNANCE_CHAIN_V2 is disabled (32.9367ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 568.0105
+✔ /health reports ok (2118.8659ms)
+✔ /operator/* refuses with 401 when no credential is presented (2054.0427ms)
+✔ /operator/* refuses with 401 when bearer session token is malformed (2326.2987ms)
+✔ /operator/auth/session refuses with 401 when x-operator-key is wrong (4489.6244ms)
+✔ /operator/auth/session returns a Bearer token when x-operator-key matches (3721.3179ms)
+✔ /operator/auth/session is 503 when OPERATOR_SESSION_SECRET is missing while OPERATOR_API_KEY is set (3546.9071ms)
+✔ /v1/status returns ok=true, the doctrine string, scenarios catalog, and policy hash (2088.5175ms)
+✔ /v1/policy/check returns 200 + policyHash when validating the trial default (2097.4021ms)
+✔ /v1/policy/check returns 422 + ok=false on a malformed APL source (2331.4833ms)
+✔ /v1/policy/plan returns 200 + ok=true when planning the trial default against itself (4455.0079ms)
+✔ /v1/audit/tail returns { items: [...] } on a fresh gateway (never errors) (3728.8862ms)
+✔ /v1/audit/<unknown> returns 404 record_not_found (3800.9661ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19818.4713
+
+> @aristotle/bedrock@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\bedrock
+> node --import tsx --test src/index.test.ts
+
+✔ ALLOW dispatches to the tool implementation and returns success (8.1801ms)
+✔ REFUSE returns tool-result with status:error + outcome JSON; inner never runs (1.2238ms)
+✔ REFUSE throws AristotleGateError when onRefuse:'throw' (1.9672ms)
+✔ ESCALATE returns tool-result with __aristotle:'ESCALATE' by default (5.9632ms)
+✔ Gate unreachable throws AristotleGateError by default (fail-closed) (1.6874ms)
+✔ Gate unreachable returns tool-result when onError:'tool-result' (2.1507ms)
+✔ passthroughTools dispatches without calling the gate (0.6692ms)
+✔ actionTypeFor routes specific tools into vertical namespace (0.8188ms)
+✔ onDecision telemetry fires with verdict + elapsedMs (1.0374ms)
+✔ Unknown tool returns an error result without contacting the gate (0.6677ms)
+✔ Constructor refuses missing required options (0.766ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1734.7576
+
+> @aristotle/gateway-client@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\gateway-client
+> node --import tsx --test src/index.test.ts src/routes.test.ts
+
+✔ OPENAPI_YAML is a non-empty string that parses as JSON (3.5283ms)
+✔ OPENAPI_SPEC is a frozen object matching OPENAPI_YAML (2.0767ms)
+✔ OPENAPI_VERSION reports OpenAPI 3.1.0 (0.274ms)
+✔ OPENAPI_TITLE / OPENAPI_API_VERSION are non-empty (0.2345ms)
+✔ OPENAPI_PATHS includes the core commit-gate endpoint (0.2547ms)
+✔ OPENAPI_PATHS contains every route AristotleClient calls on the substrate (0.291ms)
+✔ OPENAPI_SPEC declares the bearerAuth and apiKeyAuth security schemes (0.2008ms)
+✔ OPENAPI_SPEC declares the CanonicalAction and EvaluateResponse schemas (0.1983ms)
+✔ AristotleClient is constructible (the re-export path works) (0.6095ms)
+✔ AristotleApiError carries the HTTP status it was constructed with (0.5356ms)
+✔ createTypedRoutes: returns an object with every documented route (2.8273ms)
+✔ routes.evaluate delegates to client.evaluate with action + options (2.3881ms)
+✔ routes.evaluate: omitted options defaults to empty object (0.3397ms)
+✔ routes.replay delegates to client.replay (0.4005ms)
+✔ routes.compileGovernance delegates to client.compileGovernance (0.9058ms)
+✔ routes.diffGovernance delegates to client.diffGovernance (0.4879ms)
+✔ routes.explainPolicy delegates to client.explainPolicy (0.6114ms)
+✔ routes.shadowReplay delegates to client.shadowReplay (0.4823ms)
+✔ routes.evaluate: throws a clear error if client.evaluate is missing (1.1077ms)
+✔ routes.compileGovernance: rejects with a clear error when method missing (0.5419ms)
+✔ routes.health: GETs <baseUrl>/health and parses ok+service (0.5576ms)
+✔ routes.health: !res.ok -> { ok: false } (0.3967ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2859.4352
+
+> @aristotle/agent-os@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\services\agent-os
+> tsx src/governance-chain-client.test.ts && node --import tsx --test src/index.test.ts src/tasks.test.ts src/tasks-lifecycle.test.ts src/tasks-claim.test.ts src/agents-workspaces.test.ts
+
+✔ agent-os enforce mode: a normal task act flows through the chain and is allowed (568.4476ms)
+✔ agent-os: an active kill switch makes the act inadmissible at the Commit Gate (126.4768ms)
+✔ agent-os shadow mode: the chain runs and records a decision (88.7369ms)
+✔ completion acts are accepted by the same mission chain (110.7285ms)
+✔ agent-os: a tool action flows through the chain and is allowed (72.2846ms)
+✔ agent-os: a tool action is denied at the gate when the kill switch is active (66.2272ms)
+✔ agent-os: witness obligation is enforced — required+accepted allows, required+unaccepted denies (96.0546ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1159.9621
+✔ POST /agents/register with minimal body returns 201 with documented defaults (6508.1066ms)
+✔ POST /agents/register with explicit fields preserves them and lists agent in /state (6656.5622ms)
+✔ POST /workspaces with minimal body returns 201 with documented defaults (6177.1511ms)
+✔ POST /workspaces with explicit fields preserves them and lists workspace in /state (6760.5983ms)
+✔ POST /missions creates a mission and persists in /missions list (5733.6611ms)
+✔ GET /missions lists missions created via POST (7475.9143ms)
+✔ end-to-end: /missions/:id/advance with full happy mocks dispatches the context task to running (6685.1842ms)
+✔ /tasks/<running-id>/claim returns 409 task_not_eligible (already-claimed envelope) (9048.3525ms)
+✔ POST /missions/:missionId/advance seeds 3 execution tasks and commits queue.created to the ledger (7157.9753ms)
+✔ seedMissionExecutionTasks is idempotent: /advance again does not duplicate the queue (5646.7555ms)
+✔ /health reflects the mocked downstream killSwitchState=inactive (kill-switch poll wiring smoke) (3474.2594ms)
+✔ GET /tasks/next returns 404 task_not_found on a fresh service with no missions (7300.8855ms)
+✔ POST /tasks/<unknown>/claim returns 404 task_not_found before any downstream call (4099.5387ms)
+✔ POST /tasks/<unknown>/heartbeat returns 404 task_not_found (3596.0434ms)
+✔ POST /tasks/<unknown>/complete returns 404 task_not_found (2059.7261ms)
+✔ GET /tasks/<unknown>/actions returns 404 task_not_found (2198.9393ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 39047.4482
+
+> @aristotle/authority-router@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\services\authority-router
+> node --import tsx --test src/index.test.ts
+
+✔ /health surfaces readiness with trust anchor count (1807.0547ms)
+✔ /route picks mesh.alpha for the default mission/dispatch/medium lane (1924.1478ms)
+✔ /route escalates safety domain to mesh.delta (1726.4906ms)
+✔ /route escalates riskLevel=high to mesh.delta even when domain is mission (1730.713ms)
+✔ /route routes completion phase via mesh.gamma and tool-action via mesh.beta (1742.6225ms)
+✔ /route reports degraded continuity when the primary relay is in degradedNodes (1883.6781ms)
+✔ /route reports disconnected when both primary and failover relays are degraded (1762.151ms)
+✔ /v1/mesh/route returns is_local=true for the configured local MAE (1873.0443ms)
+✔ /v1/mesh/route returns 400 on missing mae_id (1725.96ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17180.9073
+
+> @aristotle/evidence-ledger@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\services\evidence-ledger
+> node --import tsx --test src/index.test.ts src/gel-chain.test.ts
+
+✔ /gel/append on a fresh ledger creates record 1 anchored at GENESIS_HASH (2802.604ms)
+✔ /gel/append twice links the chain: record 2's previous_hash == record 1's record_hash (2463.9205ms)
+✔ /gel/chain reports count, tip_hash, and full records consistently with /gel/append (2151.5823ms)
+✔ /gel/verify returns ok=true on a chain of honest appends (3445.616ms)
+✔ /gel/append with missing required fields returns 400 missing_required_fields (2639.2801ms)
+✔ /health reports the persisted-state path and committed-event count (2623.1448ms)
+✔ POST /events/commit appends a replay event and assigns a monotonic index (2482.3644ms)
+✔ GET /replay filters committed events by traceId (2098.6974ms)
+✔ POST /branches creates a counterfactual branch; /branches/:id/events appends hypothetical events (3341.1387ms)
+✔ POST /branches/:id/events returns 404 for an unknown branch (2697.4431ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14576.8792
+
+> @aristotle/execution-gate@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\services\execution-gate
+> node --import tsx --test src/index.test.ts
+
+✔ /health surfaces killSwitchState, activeKillScopes, and substrate_wired=true (2683.4016ms)
+✔ global /kill-switch → /commit-point returns halt + killSwitchState=active (2623.3572ms)
+✔ mission-scope /kill-switch halts ONLY the matching mission (2298.7292ms)
+✔ /commit-point happy path returns allow with verification=verified (2425.0191ms)
+✔ /commit-point with witnessRequired=true + witnessAccepted=false → deny with witness reason (2447.9916ms)
+✔ /commit-point with identityLegitimate=false → deny with identity reason (2086.368ms)
+✔ /commit-point with telemetrySatisfied=false + telemetryReasons → deny + custom reasons surface (2464.9303ms)
+✔ /decide happy path with witnessAccepted=true returns allow (2377.265ms)
+✔ /decide with witnessRequired=true + witnessAccepted=false returns deny (2105.7162ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 22702.1523
+
+> @aristotle/governance-kernel@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\services\governance-kernel
+> tsx src/governance-chain.test.ts && node --import tsx --test src/index.test.ts
+
+✔ kernel /v2 chain: create -> commit allows and consumes -> reuse denied -> GEL intact (346.2622ms)
+✔ kernel /v2 chain state survives a restart (durable store) (97.7585ms)
+✔ kernel /v2 chain signs and verifies with ed25519 when key paths are provided (48.27ms)
+✔ kernel /v2 isolates tenants: scoped reads + cross-tenant commit denied (120.9419ms)
+✔ kernel /v2 exposes federated commit across a trust bridge (52.3397ms)
+✔ kernel /v2 signing-key rotation: records signed before and after both verify (8.7217ms)
+✔ GovernanceChainClient SDK drives the chain end to end + reads OpenAPI (67.6708ms)
+✔ kernel /v2 commit fails closed on a missing warrant (71.8965ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 856.2554
+✔ /health reports killSwitchState and activeKillScopes (2895.3979ms)
+✔ POST /kill-switch global sets killSwitchState and records event (2736.8311ms)
+✔ Mission-scope kill-switch records event without toggling the global field (2211.8574ms)
+✔ /issue-warrant fails closed with 423 when global kill-switch is active (2402.7702ms)
+✔ /issue-warrant returns a warrant when no kill-switch is active (2744.0268ms)
+✔ Mission-scope kill-switch denies its mission only — other missions still issue (2469.0571ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16570.3459
+
+> @aristotle/meta-authority-registry@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\services\meta-authority-registry
+> node --import tsx --test src/index.test.ts
+
+✔ /artifacts returns the four bootstrap seeds with the expected delegation classes (2197.8609ms)
+✔ /artifacts/:id returns a specific seed; 404 for unknown id (1697.091ms)
+✔ POST /artifacts creates a new delegated MAA and returns 201 (1868.9518ms)
+✔ /resolve returns allowed=true for delegated (subject, domain) pairs (1701.376ms)
+✔ /resolve returns allowed=false when subject lacks the requested domain (1963.7631ms)
+✔ /resolve returns allowed=false when the issuer is not a known subject (3684.1371ms)
+✔ /v1/mesh/envelope returns 400 on missing required fields (3527.802ms)
+✔ /v1/mesh/envelope returns 201 + envelope on a valid body (2130.3097ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19614.4799
+
+> @aristotle/policy-compiler@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\services\policy-compiler
+> node --import tsx --test src/index.test.ts
+
+✔ /health ok (2756.2611ms)
+✔ /compile on empty source returns valid=false with a diagnostic, no substrate, trimmed graph (2484.8598ms)
+✔ /compile on valid single-ward APL produces ward_count=1 with manifest hashes and admissibility rules (2867.4178ms)
+✔ /compile on valid two-ward APL produces ward_count=2 and two manifest hashes (3367.6782ms)
+✔ /compile on malformed APL returns valid=false with errors and no substrate block (2668.5017ms)
+✔ /diff between two identical policies reports total_changes=0 (1698.7754ms)
+✔ /diff reports an added ward as added + weakening (1575.7098ms)
+✔ /diff returns 400 with per-side errors when one side is malformed (1895.8712ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 20375.5353
+
+> @aristotle/witness-service@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\services\witness-service
+> node --import tsx --test src/index.test.ts
+
+✔ /verify with defaults (2 witnesses, quorum=2) is accepted (1529.484ms)
+✔ /verify refuses when quorumRequired exceeds requestedWitnesses count (1599.4671ms)
+✔ /verify honors WITNESS_QUORUM env override when body omits quorumRequired (1392.8001ms)
+✔ /verify body.quorumRequired overrides WITNESS_QUORUM env-default (2160.3834ms)
+✔ /receipts/:id returns the freshly issued receipt (2565.7838ms)
+✔ /receipts/:id returns 404 for an unknown receipt id (1988.5241ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12025.5958
+
+> @aristotle/adapter-sdk@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\adapter-sdk
+> node --import tsx --test src/index.test.ts
+
+✔ governThroughAdapter: ALLOW + production_validated true emits and returns ok (12.6065ms)
+✔ governThroughAdapter: ALLOW + demo transport + allowDemonstrationTransport: true succeeds (0.7332ms)
+✔ governThroughAdapter: REFUSE -> GATE_REFUSED, no emit (0.6253ms)
+✔ governThroughAdapter: HTTP 403 -> GATE_HTTP_403, no emit (0.6072ms)
+✔ governThroughAdapter: network error -> GATE_UNREACHABLE (0.6499ms)
+✔ governThroughAdapter: ALLOW + demo transport + !allowDemonstrationTransport -> DEMONSTRATION_ONLY_BLOCKED (5.4583ms)
+✔ governThroughAdapter: ALLOW + transport returns ok:false -> TRANSPORT_REFUSED (0.7587ms)
+✔ governThroughAdapter: ALLOW without a warrant -> MISSING_WARRANT (defensive) (0.5415ms)
+✔ governThroughAdapter: buildAuthorization extends the base authz with adapter-specific fields (5.1215ms)
+✔ DemonstrationTransport: production_validated is always false (0.4351ms)
+✔ DemonstrationTransport: emit appends to emitted[] and increments seq (0.4835ms)
+✔ governThroughHandler: ALLOW invokes handler with input + context, returns ok+output (0.7084ms)
+✔ governThroughHandler: REFUSE returns GATE_REFUSED, handler is NOT invoked (0.3206ms)
+✔ governThroughHandler: gate unreachable returns GATE_UNREACHABLE, handler is NOT invoked (0.4727ms)
+✔ governThroughHandler: gate HTTP 503 returns GATE_HTTP_503, handler is NOT invoked (0.4194ms)
+✔ governThroughHandler: ALLOW without a warrant returns MISSING_WARRANT (defensive) (0.4374ms)
+✔ governThroughHandler: handler throws after ALLOW -> TRANSPORT_REFUSED with throw message (0.4482ms)
+✔ governThroughHandler: synchronous handler return value is wrapped without await (5.5995ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1192.1933
+
+> @aristotle/chaos-harness@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\chaos-harness
+> node --import tsx --test src/index.test.ts
+
+C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\chaos-harness\src\index.ts:41
+  EdgeNode,
+  ^
+SyntaxError: The requested module '@aristotle/mesh-runtime' does not provide an export named 'EdgeNode'
+    at #asyncInstantiate (node:internal/modules/esm/module_job:326:21)
+    at async ModuleJob.run (node:internal/modules/esm/module_job:429:5)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.15.0
+✖ src\index.test.ts (965.2501ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 991.8648
+
+✖ failing tests:
+
+test at src\index.test.ts:1:1
+✖ src\index.test.ts (965.2501ms)
+  'test failed'
+C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\chaos-harness:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @aristotle/chaos-harness@0.1.0 test: `node --import tsx --test src/index.test.ts`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.

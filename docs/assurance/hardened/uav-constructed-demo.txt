@@ -1,0 +1,31 @@
+Authority Continuity Under Disconnection: 40-UAV Swarm Governance Demo
+AristotleOS UAV Swarm Disconnection Demo v0.1
+
+PASS: 40 assets initialize
+PASS: partition state is created
+PASS: at least one cohort enters degraded or disconnected mode
+PASS: degraded authority activates
+PASS: at least one bounded fallback action is allowed
+PASS: at least one unauthorized mission expansion is refused
+PASS: at least one Warrant expires
+PASS: at least one action is stale, revoked, or review-required
+PASS: reconnect event occurs
+PASS: reconciliation report is produced
+PASS: GEL/evidence entries are produced
+PASS: evidence entries include action, decision, reason, authority state, Warrant status, and reconciliation status
+
+Reconciliation summary:
+  total assets: 40
+  connected cohorts: 1
+  degraded cohorts: 2
+  disconnected cohorts: 1
+  allowed actions: 3
+  refused actions: 4
+  expired actions: 1
+  revoked actions: 1
+  stale actions: 1
+  review-required actions: 2
+  evidence entries: 8
+  final status: reconciled_with_review_queue
+
+PASS: AristotleOS demonstrated authority continuity under disconnection. Autonomous cohorts continued only within bounded degraded authority, unauthorized mission expansion was refused, evidence continuity was preserved, and reconnect produced a reviewer-readable reconciliation report.

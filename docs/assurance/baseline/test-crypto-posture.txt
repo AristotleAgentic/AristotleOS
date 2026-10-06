@@ -1,0 +1,15 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:crypto-posture C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> tsx shared/execution-control-runtime/src/crypto-posture.test.ts
+
+✔ requireFips:false is a no-op regardless of provider (1.746ms)
+✔ requireFips:true fails closed when FIPS is not active (0.8961ms)
+✔ cryptoPostureFromEnv reads ARISTOTLE_REQUIRE_FIPS (0.3649ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 24.2353

@@ -1,0 +1,14 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:signers C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx examples/signers/signer.test.ts
+
+✔ secrets-manager signer fetches the key by name and produces a verifiable signer (14.5089ms)
+✔ secrets-manager key provider uses the public-key secret when supplied (6.1903ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 60.4606

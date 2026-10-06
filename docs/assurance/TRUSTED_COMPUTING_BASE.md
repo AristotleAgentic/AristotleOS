@@ -4,7 +4,7 @@ This inventory is an initial source audit, not a complete mediation proof.
 
 | Surface | Existing mechanism | Assurance concern / next action |
 |---|---|---|
-| HTTP proxy (`execution-control-runtime/src/proxy.ts`) | Gate, signed Warrant, target match, egress classification, broker | Effect uncertainty; durable consumption; redirects; credential-prefix semantics; parity with evaluation controls |
+| HTTP proxy (`execution-control-runtime/src/proxy.ts`) | Gate, signed Warrant, target match, egress classification, broker; new shared-local SQLite effect ownership | HTTP increment adds uncertainty, durable consumption, redirect refusal, URL-bound credentials and evaluation-control parity; independent observers, fencing, egress isolation and database rollback remain deployment concerns |
 | Core chain (`governance-core/src/commit-gate.ts`) | MAE/Ward/Envelope validation and store consumption | Evaluate store atomicity, crash recovery, multi-process sharing separately |
 | Adapter SDK (`adapter-sdk/src/index.ts`) | Gate ALLOW, Warrant present, adapter authorization, demonstration guard | `consumed: true` in an authorization object is not independently verified durable consumption; hardening still required |
 | Protocol transports (`packages/*-adapter`, MAVLink, ROS2) | Domain-specific allowlists and transport checks | Preserve domain constraints; independent transport access/credentials can bypass wrappers |

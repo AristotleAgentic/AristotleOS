@@ -1,0 +1,31 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:refusal-before-emission C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> corepack pnpm@10.32.1 --filter @aristotle/tests-cross-adapter test
+
+
+> @aristotle/tests-cross-adapter@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\tests\cross-adapter
+> node --import tsx --test src/refusal-before-emission.test.ts src/conformance.test.ts
+
+✔ conformance: DNP3 DemonstrationTransport satisfies AristotleAdapterTransport contract (5.4514ms)
+✔ conformance: Modbus DemonstrationTransport satisfies AristotleAdapterTransport contract (1.1079ms)
+✔ conformance: BACnet DemonstrationTransport satisfies AristotleAdapterTransport contract (1.0325ms)
+✔ conformance: OPC-UA DemonstrationTransport satisfies AristotleAdapterTransport contract (0.789ms)
+✔ conformance: ROS2 DemonstrationTransport satisfies AristotleAdapterTransport contract (0.866ms)
+✔ conformance: MAVLink/PX4 DemonstrationTransport satisfies AristotleAdapterTransport contract (3.7324ms)
+✔ conformance: all six first-party Transport classes are covered by this file (0.4848ms)
+✔ DNP3 adapter: REFUSE never reaches transport.emit() (7.5575ms)
+✔ Modbus adapter: REFUSE never reaches transport.emit() (0.8213ms)
+✔ BACnet adapter: REFUSE never reaches transport.emit() (0.6882ms)
+✔ OPC-UA adapter: REFUSE never reaches transport.emit() (0.5458ms)
+✔ ROS2 adapter: REFUSE never reaches transport.emit() (3.2309ms)
+✔ MAVLink/PX4 adapter: REFUSE never reaches transport.emit() (0.9635ms)
+✔ K8s admission adapter: REFUSE produces allowed=false with no wire emission (2.2792ms)
+✔ Substrate guarantee: refusal-before-emission holds across all 7 adapters simultaneously (0.9765ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1461.3574

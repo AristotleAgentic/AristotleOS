@@ -1,0 +1,67 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:cli C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> npm run build -w @aristotle/trial-engine && npm run build -w @aristotle/execution-control-runtime && tsx apps/aristotle-cli/src/index.test.ts
+
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> @aristotle/trial-engine@0.1.0 build
+> tsc -p tsconfig.json
+
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> @aristotle/execution-control-runtime@0.1.8 build
+> tsc -p tsconfig.json
+
+✔ cli init creates a valid governance file (31.6379ms)
+✔ cli effects verifier distinguishes unresolved evidence from invalid evidence (9.9915ms)
+✔ cli execution-control evaluate runs Ward/Warrant action through AristotleOS (89.2759ms)
+✔ cli telecom commands expose CSP templates, evidence export, and scale drills (220.5387ms)
+✔ cli automotive commands expose vehicle templates, adapters, and evidence export (67.078ms)
+✔ cli grid commands expose utility templates, adapters, and evidence export (74.5487ms)
+✔ cli rail commands expose railroad templates, adapters, and evidence export (72.0734ms)
+✔ cli port commands expose maritime templates, adapters, and evidence export (68.1764ms)
+✔ cli water commands expose utility templates, adapters, and evidence export (75.2037ms)
+✔ cli logistics commands expose trucking templates, adapters, and evidence export (67.1987ms)
+✔ cli healthcare commands expose clinical templates, adapters, and evidence export (64.6507ms)
+AristotleOS decision: ALLOW (ALLOWED)
+warrant: wrn-f71f6d672d2ad5d300b039fd signed by ed25519-dev:d9d8877031aeef88f4142d08aab56664
+executing governed action (simulated http.get)...
+✔ cli run governs a child agent process and writes a verifiable ledger (430.0109ms)
+AristotleOS decision: ALLOW (ALLOWED)
+warrant: wrn-da26408bc2e26db92b6ad8a3 signed by ed25519-dev:d9d8877031aeef88f4142d08aab56664
+executing governed action (simulated http.get)...
+✔ cli run with the SQLite backend governs an agent and persists a durable ledger (313.7826ms)
+AristotleOS decision: REFUSE (KILL_SWITCH_ENGAGED)
+action refused before execution
+AristotleOS decision: ALLOW (ALLOWED)
+warrant: wrn-f74929cb3cd8ce3952e5c556 signed by ed25519-dev:d9d8877031aeef88f4142d08aab56664
+executing governed action (simulated http.get)...
+✔ cli kill switch halts governed runs until released (544.687ms)
+AristotleOS decision: REFUSE (AUTHORITY_REVOKED)
+action refused before execution
+AristotleOS decision: ALLOW (ALLOWED)
+warrant: wrn-0930df12e45fd87fb9e5dd05 signed by ed25519-dev:d9d8877031aeef88f4142d08aab56664
+executing governed action (simulated http.get)...
+✔ cli revoke halts a governed run until cleared (576.781ms)
+✔ cli pilot self-check passes every boundary check (32.8093ms)
+✔ cli demo aliases the governed autonomous-action self-check (27.4894ms)
+✔ cli preflight blocks without a signing key and passes when configured (31.6019ms)
+✔ cli keys generate mints an Ed25519 warrant signing keypair (8.6457ms)
+✔ cli ward-marshal scans and governs an interdiction (55.2322ms)
+✔ cli ward-marshal discover supports process/mcp sources and requires one (12.1286ms)
+✔ cli policy compiles APL to a governance manifest and reports diagnostics (21.2595ms)
+✔ cli conflicts ingest/list/resolve over a durable inbox (44.1222ms)
+✔ cli dual-control list/approve over an approval store (11.0904ms)
+✔ cli plan and demo produce real governance output (26.9958ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2989.6486

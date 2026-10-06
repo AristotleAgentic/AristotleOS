@@ -1,0 +1,14 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:api C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx adapters/http-gateway/src/trial-api.contract.test.ts
+
+✔ gateway exposes public trial API routes (2.4271ms)
+✔ trial API shares deterministic evaluator (0.3023ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16.9942

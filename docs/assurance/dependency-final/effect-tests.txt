@@ -1,0 +1,32 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:proxy-effects C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> node --import tsx --test shared/execution-control-runtime/src/effects.test.ts
+
+✔ consumption and signed pre-dispatch events persist together across connections (83.4696ms)
+✔ lost response persists unknown and blocks newly authorized blind redispatch (50.7933ms)
+✔ received HTTP success still needs business-effect evidence (48.924ms)
+✔ response-body loss and HTTP errors do not prove no effect (62.9575ms)
+✔ refusal and invalid destination never reach dispatch (32.5053ms)
+✔ failed event signing rolls back consumption and blocks transport (41.8695ms)
+✔ concurrent proxy attempts share durable operation ownership (39.009ms)
+✔ reconciliation rejects forged, stale, mismatched and conflicting observations (52.2278ms)
+✔ no-effect reconciliation never frees the consumed Warrant (42.293ms)
+✔ process exit after durable consumption cannot clear an in-flight attempt (794.4544ms)
+✔ HTTP redirects are not followed and broker prefix lookalikes receive no secret (29.0748ms)
+✔ proxy rejects an HTTP method that differs from the admitted action class (25.1956ms)
+✔ server proxy enforces configured budget, dual control, and degradation (250.9516ms)
+✔ a redirect cannot send a request or brokered credential to a second destination (40.0584ms)
+✔ invalid verification time cannot bypass a Warrant's expiry (26.414ms)
+✔ execution API ignores caller-supplied backdating (65.686ms)
+✔ finalization failure preserves a durable non-redispatchable in-flight attempt (40.8315ms)
+✔ a substituted public key cannot borrow a trusted Warrant key id (23.6039ms)
+✔ corrupt budget and approval files cannot silently reset authority (27.347ms)
+✔ negative and malformed costs cannot bypass an enforced budget (27.5208ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2746.2576
