@@ -9,7 +9,7 @@ const repo = path.dirname(workspace);
 const label = process.argv[2] ?? 'baseline';
 if (!/^[a-z0-9-]+$/.test(label)) throw new Error('invalid run label');
 const profile = process.argv[3] ?? 'full';
-if (!['full', 'dependency'].includes(profile)) throw new Error('invalid run profile');
+if (!['full', 'dependency', 'production'].includes(profile)) throw new Error('invalid run profile');
 const output = path.join(repo, 'docs', 'assurance', label);
 mkdirSync(output, { recursive: true });
 const manifestPath = path.join(output, label === 'baseline' ? 'BASELINE_ASSURANCE_MANIFEST.json' : 'RESULTS.json');
@@ -29,7 +29,7 @@ const manifest = {
   }),
   artifacts: tracked.filter(p => /schema|openapi|specs\/|PROOF_STATUS|LIMITATIONS|VALIDATION_MATRIX|REVIEWER|replay.*json|apps\/aristotle-cli\/src\/index.ts/i.test(p)).map(p => ({ path: p, sha256: hash(readFileSync(path.join(repo, p))) })),
   source_hashes: git('ls-files', '--cached', '--others', '--exclude-standard').split('\n')
-    .filter(p => /\.(?:ts|mts|mjs|json|yaml|yml|tla|cfg)$/.test(p) && !p.startsWith('docs/assurance/') && existsSync(path.join(repo, p)))
+    .filter(p => /\.(?:ts|mts|mjs|json|yaml|yml|tla|cfg|patch)$/.test(p) && !p.startsWith('docs/assurance/') && existsSync(path.join(repo, p)))
     .map(p => ({ path: p, sha256: hash(readFileSync(path.join(repo, p))) })),
   test_inventory: tracked.filter(p => /(?:\.test\.|\.spec\.|benchmark|\/bench\/|\.tla$)/.test(p)),
   command_inventory: pkg.scripts,
@@ -38,7 +38,20 @@ const manifest = {
 };
 const save = () => writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
 save();
-const commands = profile === 'dependency' ? [
+const commands = profile === 'production' ? [
+  ['frozen-install', 'corepack pnpm@10.32.1 install --frozen-lockfile --offline --ignore-scripts'],
+  ['affected-builds', 'corepack pnpm@10.32.1 -r --workspace-concurrency=1 --filter @aristotle/adapter-sdk --filter @aristotle/execution-control-runtime --filter @aristotle/mavlink-px4 --filter @aristotle/modbus-adapter --filter @aristotle/bacnet-adapter --filter @aristotle/dnp3-adapter --filter @aristotle/opcua-adapter --filter @aristotle/ros2-bridge --filter @aristotle/http-gateway build'],
+  ['typecheck', 'corepack pnpm@10.32.1 typecheck'],
+  ['dependency-exploits', 'node --test scripts/dependency-security.test.mjs'],
+  ['adapter-tests', 'corepack pnpm@10.32.1 --filter @aristotle/adapter-sdk test'],
+  ['effect-tests', 'corepack pnpm@10.32.1 test:proxy-effects'],
+  ['protocol-tests', 'corepack pnpm@10.32.1 test:protocol-adapters'],
+  ['single-drone-loopback', 'corepack pnpm@10.32.1 test:single-drone'],
+  ['production-preflight', 'corepack pnpm@10.32.1 test:production-preflight'],
+  ['simulator-negative-control', 'corepack pnpm@10.32.1 test:px4-sitl'],
+  ['audit-gate-tests', 'corepack pnpm@10.32.1 test:audit'],
+  ['dependency-audit', 'node scripts/audit-deps.mjs']
+] : profile === 'dependency' ? [
   ['frozen-install', 'corepack pnpm@10.32.1 install --frozen-lockfile --offline --ignore-scripts'],
   ['affected-builds', 'corepack pnpm@10.32.1 -r --workspace-concurrency=1 --filter @aristotle/mastra --filter @aristotle/mcp-server-stdio --filter @aristotle/os-cli build'],
   ['typecheck', 'corepack pnpm@10.32.1 typecheck'],

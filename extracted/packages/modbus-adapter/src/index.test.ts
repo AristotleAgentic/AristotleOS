@@ -178,7 +178,7 @@ test("governModbusOperation: derives permitted_register_addresses from the opera
   let capturedAuthz: ModbusAuthorization | undefined;
   const capturingTransport = {
     id: "capture",
-    production_validated: true,
+    production_validated: false,
     async emit(_op: ModbusOperation, authz: ModbusAuthorization) {
       capturedAuthz = authz;
       return { ok: true as const, receipt: { receipt_id: "x", device_id: authz.device_id, kind: _op.kind, unit_id: _op.unit_id, start_address: _op.start_address, warrant_id: authz.warrant_id, action_hash: authz.action_hash, emitted_at: "now", transport: "capture", production_validated: true, receipt_hash: "0".repeat(64) } };
@@ -188,7 +188,7 @@ test("governModbusOperation: derives permitted_register_addresses from the opera
     kind: "write_multiple_registers", unit_id: 1, start_address: 40001, values: [1, 2, 3],
     requested_at: "2026-05-26T15:00:00.000Z"
   }, capturingTransport, {
-    client, wardId: "w", subject: "s", deviceId: "plc:p1"
+    client, wardId: "w", subject: "s", deviceId: "plc:p1", allowDemonstrationTransport: true
   });
   assert.equal(result.ok, true);
   assert.deepEqual(capturedAuthz?.permitted_register_addresses, [40001, 40002, 40003]);

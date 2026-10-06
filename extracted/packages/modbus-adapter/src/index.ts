@@ -19,7 +19,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { governThroughAdapter } from "@aristotle/adapter-sdk";
+import { governThroughAdapter, type AdapterEffectBoundary } from "@aristotle/adapter-sdk";
 import { AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
 
 export type ModbusOperationKind =
@@ -239,6 +239,8 @@ export interface GovernModbusOptions {
   deviceId: string;
   actionTypeFor?: (op: ModbusOperation) => string;
   allowDemonstrationTransport?: boolean;
+  effectBoundary?: AdapterEffectBoundary;
+  operationId?: string;
 }
 
 /**
@@ -265,17 +267,21 @@ export async function governModbusOperation(
   op: ModbusOperation,
   transport: ModbusControlTransport,
   options: GovernModbusOptions
-): Promise<{ ok: boolean; decision?: EvaluateResponse; outcome?: ModbusSubmissionOutcome; refusal?: { code: string; detail: string } }> {
+): Promise<{ ok: boolean; decision?: EvaluateResponse; outcome?: ModbusSubmissionOutcome; refusal?: { code: string; detail: string }; effect_attempt_id?: string; effect_state?: "IN_FLIGHT" | "EFFECT_UNKNOWN" }> {
+  options = { ...options };
   const result = await governThroughAdapter<ModbusOperation, ModbusAuthorization>(op, {
     client: options.client,
     transport,
     allowDemonstrationTransport: options.allowDemonstrationTransport,
+    effectBoundary: options.effectBoundary,
     buildAction: (operation): CanonicalAction => ({
       action_id: `modbus-${Date.now().toString(16)}`,
       ward_id: options.wardId,
       subject: options.subject,
+      target: options.deviceId,
       action_type: options.actionTypeFor ? options.actionTypeFor(operation) : `ot.modbus.${operation.kind}`,
       params: {
+        ...(options.operationId ? { operation_id: options.operationId } : {}),
         device_id: options.deviceId,
         kind: operation.kind,
         unit_id: operation.unit_id,
@@ -308,7 +314,9 @@ export async function governModbusOperation(
     ok: result.ok,
     decision: result.decision,
     outcome: result.outcome as ModbusSubmissionOutcome | undefined,
-    refusal: result.refusal
+    refusal: result.refusal,
+    effect_attempt_id: result.effect_attempt_id,
+    effect_state: result.effect_state
   };
 }
 

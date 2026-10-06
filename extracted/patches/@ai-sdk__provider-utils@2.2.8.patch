@@ -1,0 +1,140 @@
+diff --git a/dist/index.js b/dist/index.js
+index 58756649c132c7b9f241a90a529a39997c45ffca..a39f9309069fd1af87da1341c28dd970d07ee451 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -704,6 +704,38 @@ async function resolve(value) {
+   return Promise.resolve(value);
+ }
+ 
++// AristotleOS backport for GHSA-866g-f22w-33x8. Bound decoded bytes,
++// including chunked bodies with missing or dishonest Content-Length.
++async function aristotleReadBoundedText(response) {
++  const limit = 16 * 1024 * 1024;
++  const declared = Number(response.headers.get("content-length"));
++  if (Number.isFinite(declared) && declared > limit) {
++    if (response.body) await response.body.cancel();
++    throw new Error("AI response exceeds 16 MiB limit");
++  }
++  if (!response.body) return "";
++  const reader = response.body.getReader();
++  const decoder = new TextDecoder();
++  const parts = [];
++  let size = 0;
++  try {
++    while (true) {
++      const { done, value } = await reader.read();
++      if (done) break;
++      size += value.byteLength;
++      if (size > limit) {
++        await reader.cancel();
++        throw new Error("AI response exceeds 16 MiB limit");
++      }
++      parts.push(decoder.decode(value, { stream: true }));
++    }
++    parts.push(decoder.decode());
++    return parts.join("");
++  } finally {
++    reader.releaseLock();
++  }
++}
++
+ // src/response-handler.ts
+ var import_provider9 = require("@ai-sdk/provider");
+ var createJsonErrorResponseHandler = ({
+@@ -711,7 +743,7 @@ var createJsonErrorResponseHandler = ({
+   errorToMessage,
+   isRetryable
+ }) => async ({ response, url, requestBodyValues }) => {
+-  const responseBody = await response.text();
++  const responseBody = await aristotleReadBoundedText(response);
+   const responseHeaders = extractResponseHeaders(response);
+   if (responseBody.trim() === "") {
+     return {
+@@ -812,7 +844,7 @@ var createJsonStreamResponseHandler = (chunkSchema) => async ({ response }) => {
+   };
+ };
+ var createJsonResponseHandler = (responseSchema) => async ({ response, url, requestBodyValues }) => {
+-  const responseBody = await response.text();
++  const responseBody = await aristotleReadBoundedText(response);
+   const parsedResult = safeParseJSON({
+     text: responseBody,
+     schema: responseSchema
+@@ -867,7 +899,7 @@ var createBinaryResponseHandler = () => async ({ response, url, requestBodyValue
+ };
+ var createStatusCodeErrorResponseHandler = () => async ({ response, url, requestBodyValues }) => {
+   const responseHeaders = extractResponseHeaders(response);
+-  const responseBody = await response.text();
++  const responseBody = await aristotleReadBoundedText(response);
+   return {
+     responseHeaders,
+     value: new import_provider9.APICallError({
+diff --git a/dist/index.mjs b/dist/index.mjs
+index b0d8bed91fb0f8e4b5d28b92594139b354b31ddc..102742869cc04c776014daadc12d1030ef449917 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -634,6 +634,38 @@ async function resolve(value) {
+   return Promise.resolve(value);
+ }
+ 
++// AristotleOS backport for GHSA-866g-f22w-33x8. Bound decoded bytes,
++// including chunked bodies with missing or dishonest Content-Length.
++async function aristotleReadBoundedText(response) {
++  const limit = 16 * 1024 * 1024;
++  const declared = Number(response.headers.get("content-length"));
++  if (Number.isFinite(declared) && declared > limit) {
++    if (response.body) await response.body.cancel();
++    throw new Error("AI response exceeds 16 MiB limit");
++  }
++  if (!response.body) return "";
++  const reader = response.body.getReader();
++  const decoder = new TextDecoder();
++  const parts = [];
++  let size = 0;
++  try {
++    while (true) {
++      const { done, value } = await reader.read();
++      if (done) break;
++      size += value.byteLength;
++      if (size > limit) {
++        await reader.cancel();
++        throw new Error("AI response exceeds 16 MiB limit");
++      }
++      parts.push(decoder.decode(value, { stream: true }));
++    }
++    parts.push(decoder.decode());
++    return parts.join("");
++  } finally {
++    reader.releaseLock();
++  }
++}
++
+ // src/response-handler.ts
+ import { APICallError as APICallError3, EmptyResponseBodyError } from "@ai-sdk/provider";
+ var createJsonErrorResponseHandler = ({
+@@ -641,7 +673,7 @@ var createJsonErrorResponseHandler = ({
+   errorToMessage,
+   isRetryable
+ }) => async ({ response, url, requestBodyValues }) => {
+-  const responseBody = await response.text();
++  const responseBody = await aristotleReadBoundedText(response);
+   const responseHeaders = extractResponseHeaders(response);
+   if (responseBody.trim() === "") {
+     return {
+@@ -742,7 +774,7 @@ var createJsonStreamResponseHandler = (chunkSchema) => async ({ response }) => {
+   };
+ };
+ var createJsonResponseHandler = (responseSchema) => async ({ response, url, requestBodyValues }) => {
+-  const responseBody = await response.text();
++  const responseBody = await aristotleReadBoundedText(response);
+   const parsedResult = safeParseJSON({
+     text: responseBody,
+     schema: responseSchema
+@@ -797,7 +829,7 @@ var createBinaryResponseHandler = () => async ({ response, url, requestBodyValue
+ };
+ var createStatusCodeErrorResponseHandler = () => async ({ response, url, requestBodyValues }) => {
+   const responseHeaders = extractResponseHeaders(response);
+-  const responseBody = await response.text();
++  const responseBody = await aristotleReadBoundedText(response);
+   return {
+     responseHeaders,
+     value: new APICallError3({

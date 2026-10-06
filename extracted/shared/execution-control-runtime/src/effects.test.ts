@@ -7,9 +7,11 @@ import { spawnSync } from "node:child_process";
 import { createServer } from "node:http";
 import {
   createEphemeralDevSigner, evaluateExecutionControl, proxyGovernedAction,
+  createDurableAdapterBoundary,
   verifyGelRecords, verifyWarrant, sha256, CredentialBroker, createExecutionControlRuntimeServer, BudgetGovernor, ApprovalStore,
   type WardManifest, type AuthorityEnvelope, type CanonicalActionInput
 } from "./index.js";
+import { governThroughAdapter, type AristotleClient } from '../../adapter-sdk/src/index.js';
 import { SqliteEffectStore, effectObservationMaterial, verifyEffectEvidence, type EffectAttempt, type EffectObservation } from "./effects.js";
 
 const now = "2026-10-06T12:00:00.000Z";
@@ -42,6 +44,25 @@ function fixture() {
   const trust = { trustedObservers: { [observer.key_id]: observer.public_key_pem }, allowedMethods: ["authoritative-status"], now };
   return { dir, signer, observer, ledgerPath, dbPath, store, input, admission, begin, observation, trust };
 }
+
+test('production adapter uses real signatures and durable ownership across retry/restart', async () => {
+  const f = fixture();
+  let emitted = 0;
+  const client = { evaluate: () => Promise.resolve(f.admission()) } as unknown as AristotleClient;
+  const transport = { id: 'test-receiver', production_validated: true, async emit() { emitted++; throw Error('ack lost'); } };
+  const boundary = createDurableAdapterBoundary({ store: f.store, ward, clock: () => now });
+  const run = (effectBoundary = boundary) => governThroughAdapter(action, { client, buildAction: a => a, transport, effectBoundary });
+  const first = await run();
+  assert.equal(first.refusal?.code, 'TRANSPORT_REFUSED');
+  assert.equal(f.store.records().at(-1)?.effect_event?.attempt.state, 'EFFECT_UNKNOWN');
+  assert.equal((await run()).refusal?.code, 'EFFECT_BOUNDARY_REFUSED');
+  f.store.close();
+  const reopened = new SqliteEffectStore(f.dbPath, f.signer);
+  try {
+    assert.equal((await run(createDurableAdapterBoundary({ store: reopened, ward, clock: () => now }))).refusal?.code, 'EFFECT_BOUNDARY_REFUSED');
+    assert.equal(emitted, 1);
+  } finally { reopened.close(); }
+});
 
 test("consumption and signed pre-dispatch events persist together across connections", () => {
   const f = fixture();

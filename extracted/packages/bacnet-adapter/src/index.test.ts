@@ -188,7 +188,7 @@ test("governBacnetOperation: permitted_object_ids derived from the operation's w
   const client = new AristotleClient({ baseUrl: "https://gate.internal", token: "t", fetch: fn });
   let capturedAuthz: BacnetAuthorization | undefined;
   const capturingTransport = {
-    id: "capture", production_validated: true,
+    id: "capture", production_validated: false,
     async emit(_op: BacnetOperation, authz: BacnetAuthorization) {
       capturedAuthz = authz;
       return {
@@ -206,7 +206,7 @@ test("governBacnetOperation: permitted_object_ids derived from the operation's w
     ],
     requested_at: "2026-05-26T15:00:00.000Z"
   };
-  const result = await governBacnetOperation(op, capturingTransport, { client, wardId: "w", subject: "s", siteId: "b" });
+  const result = await governBacnetOperation(op, capturingTransport, { client, wardId: "w", subject: "s", siteId: "b", allowDemonstrationTransport: true });
   assert.equal(result.ok, true);
   assert.deepEqual(capturedAuthz?.permitted_object_ids?.sort(), ["analog_value:101", "binary_output:5"]);
 });

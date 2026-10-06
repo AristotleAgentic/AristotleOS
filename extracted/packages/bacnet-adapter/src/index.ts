@@ -17,7 +17,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { governThroughAdapter } from "@aristotle/adapter-sdk";
+import { governThroughAdapter, type AdapterEffectBoundary } from "@aristotle/adapter-sdk";
 import { AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
 
 /** BACnet object types we govern. Limited to the consequential write
@@ -231,23 +231,29 @@ export interface GovernBacnetOptions {
   siteId: string;
   actionTypeFor?: (op: BacnetOperation) => string;
   allowDemonstrationTransport?: boolean;
+  effectBoundary?: AdapterEffectBoundary;
+  operationId?: string;
 }
 
 export async function governBacnetOperation(
   op: BacnetOperation,
   transport: BacnetControlTransport,
   options: GovernBacnetOptions
-): Promise<{ ok: boolean; decision?: EvaluateResponse; outcome?: BacnetSubmissionOutcome; refusal?: { code: string; detail: string } }> {
+): Promise<{ ok: boolean; decision?: EvaluateResponse; outcome?: BacnetSubmissionOutcome; refusal?: { code: string; detail: string }; effect_attempt_id?: string; effect_state?: "IN_FLIGHT" | "EFFECT_UNKNOWN" }> {
+  options = { ...options };
   const result = await governThroughAdapter<BacnetOperation, BacnetAuthorization>(op, {
     client: options.client,
     transport,
     allowDemonstrationTransport: options.allowDemonstrationTransport,
+    effectBoundary: options.effectBoundary,
     buildAction: (operation): CanonicalAction => ({
       action_id: `bacnet-${Date.now().toString(16)}`,
       ward_id: options.wardId,
       subject: options.subject,
+      target: options.siteId,
       action_type: options.actionTypeFor ? options.actionTypeFor(operation) : `ot.bacnet.${operation.kind}`,
       params: {
+        ...(options.operationId ? { operation_id: options.operationId } : {}),
         site_id: options.siteId,
         kind: operation.kind,
         device_instance: operation.device_instance,
@@ -281,7 +287,9 @@ export async function governBacnetOperation(
     ok: result.ok,
     decision: result.decision,
     outcome: result.outcome as BacnetSubmissionOutcome | undefined,
-    refusal: result.refusal
+    refusal: result.refusal,
+    effect_attempt_id: result.effect_attempt_id,
+    effect_state: result.effect_state
   };
 }
 

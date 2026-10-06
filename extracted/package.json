@@ -157,15 +157,18 @@
     "test:swarm": "tsx shared/execution-control-runtime/src/swarm.test.ts",
     "test:healthcare": "tsx shared/execution-control-runtime/src/healthcare.test.ts",
     "test:title": "tsx shared/execution-control-runtime/src/title.test.ts",
-    "test:space": "tsx shared/execution-control-runtime/src/space.test.ts"
+    "test:space": "tsx shared/execution-control-runtime/src/space.test.ts",
+    "test:dependency-security": "node --test scripts/dependency-security.test.mjs",
+    "test:production-preflight": "node --import tsx --test adapters/http-gateway/src/preflight.test.ts",
+    "test:single-drone": "node --import tsx --test tests/cross-adapter/src/single-drone.test.ts"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.1",
     "concurrently": "^9.0.1",
     "tsx": "^4.19.2",
-    "typescript": "^5.6.3",
-    "@types/node": "^22.10.1",
-    "@types/express": "^5.0.0",
-    "@types/cors": "^2.8.17"
+    "typescript": "^5.6.3"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -186,7 +189,12 @@
       "body-parser@>=2.0.0 <2.3.0": "2.3.0",
       "@ai-sdk/provider-utils@>=4.0.0 <4.0.33": "4.0.33",
       "@mastra/core@1.36.0>@ai-sdk/provider-utils-v5": "npm:@ai-sdk/provider-utils@3.0.28",
-      "@mastra/core@1.36.0>@ai-sdk/provider-utils-v6": "npm:@ai-sdk/provider-utils@4.0.33"
+      "@mastra/core@1.36.0>@ai-sdk/provider-utils-v6": "npm:@ai-sdk/provider-utils@4.0.33",
+      "uuid@10.0.0": "11.1.1"
+    },
+    "patchedDependencies": {
+      "@ai-sdk/provider-utils@2.2.8": "patches/@ai-sdk__provider-utils@2.2.8.patch",
+      "sprintf-js@1.0.3": "patches/sprintf-js@1.0.3.patch"
     }
   }
 }

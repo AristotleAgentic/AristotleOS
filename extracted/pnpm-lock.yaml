@@ -20,6 +20,15 @@ overrides:
   '@ai-sdk/provider-utils@>=4.0.0 <4.0.33': 4.0.33
   '@mastra/core@1.36.0>@ai-sdk/provider-utils-v5': npm:@ai-sdk/provider-utils@3.0.28
   '@mastra/core@1.36.0>@ai-sdk/provider-utils-v6': npm:@ai-sdk/provider-utils@4.0.33
+  uuid@10.0.0: 11.1.1
+
+patchedDependencies:
+  '@ai-sdk/provider-utils@2.2.8':
+    hash: 4267587e7bee0e326918dc8d876b9eaf9c60c9cf54312beb3eb7d04857c55f19
+    path: patches/@ai-sdk__provider-utils@2.2.8.patch
+  sprintf-js@1.0.3:
+    hash: 53595af615b39edba2d277fc14cca57a0e35b604fe26d8f0bcc34ac5a1c774cf
+    path: patches/sprintf-js@1.0.3.patch
 
 importers:
 
@@ -2932,11 +2941,6 @@ packages:
     resolution: {integrity: sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA==}
     engines: {node: '>= 0.4.0'}
 
-  uuid@10.0.0:
-    resolution: {integrity: sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==}
-    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
-    hasBin: true
-
   uuid@11.1.1:
     resolution: {integrity: sha512-vIYxrBCC/N/K+Js3qSN88go7kIfNPssr/hHCesKCQNAjmgvYS2oqr69kIufEG+O4+PfezOH4EbIeHCfFov8ZgQ==}
     hasBin: true
@@ -3081,7 +3085,7 @@ snapshots:
       '@vercel/oidc': 3.2.0
       zod: 4.4.3
 
-  '@ai-sdk/provider-utils@2.2.8(zod@4.4.3)':
+  '@ai-sdk/provider-utils@2.2.8(patch_hash=4267587e7bee0e326918dc8d876b9eaf9c60c9cf54312beb3eb7d04857c55f19)(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 1.1.3
       nanoid: 3.3.18
@@ -3121,7 +3125,7 @@ snapshots:
   '@ai-sdk/ui-utils@1.2.11(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 1.1.3
-      '@ai-sdk/provider-utils': 2.2.8(zod@4.4.3)
+      '@ai-sdk/provider-utils': 2.2.8(patch_hash=4267587e7bee0e326918dc8d876b9eaf9c60c9cf54312beb3eb7d04857c55f19)(zod@4.4.3)
       zod: 4.4.3
       zod-to-json-schema: 3.25.2(zod@4.4.3)
 
@@ -3550,7 +3554,7 @@ snapshots:
       mustache: 4.2.0
       p-queue: 6.6.2
       p-retry: 4.6.2
-      uuid: 10.0.0
+      uuid: 11.1.1
       zod: 3.25.76
       zod-to-json-schema: 3.25.2(zod@3.25.76)
     transitivePeerDependencies:
@@ -3976,7 +3980,7 @@ snapshots:
 
   argparse@1.0.10:
     dependencies:
-      sprintf-js: 1.0.3
+      sprintf-js: 1.0.3(patch_hash=53595af615b39edba2d277fc14cca57a0e35b604fe26d8f0bcc34ac5a1c774cf)
 
   array-flatten@1.1.1: {}
 
@@ -5235,7 +5239,7 @@ snapshots:
 
   source-map-js@1.2.1: {}
 
-  sprintf-js@1.0.3: {}
+  sprintf-js@1.0.3(patch_hash=53595af615b39edba2d277fc14cca57a0e35b604fe26d8f0bcc34ac5a1c774cf): {}
 
   standardwebhooks@1.0.0:
     dependencies:
@@ -5340,8 +5344,6 @@ snapshots:
       picocolors: 1.1.1
 
   utils-merge@1.0.1: {}
-
-  uuid@10.0.0: {}
 
   uuid@11.1.1: {}
 

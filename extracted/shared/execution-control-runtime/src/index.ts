@@ -49,6 +49,7 @@ import { SqliteEffectStore, type EffectEvent } from "./effects.js";
 
 export * from "./proxy.js";
 export * from "./effects.js";
+export * from "./adapter-effects.js";
 export * from "./mcp.js";
 export * from "./playground.js";
 export * from "./revocation.js";

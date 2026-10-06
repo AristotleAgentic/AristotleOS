@@ -7,8 +7,8 @@
 #   docker/sitl/run.sh down     # tear SITL down
 #   docker/sitl/run.sh logs     # follow SITL logs
 #
-# The integration test (test:px4-sitl) auto-skips if SITL isn't reachable,
-# so running `test` without first running `up` is fine — it'll just skip.
+# The opted-in smoke test fails if no simulator traffic is received.
+# A skipped default run is not evidence of simulator or flight readiness.
 
 set -euo pipefail
 

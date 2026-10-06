@@ -50,6 +50,18 @@ jobs:
       - name: Durable effect boundary and adversarial HTTP regressions
         run: corepack pnpm test:proxy-effects
 
+      - name: Dependency backport exploit regressions
+        run: node --test scripts/dependency-security.test.mjs
+
+      - name: Production gateway and physical adapter boundaries
+        run: |
+          corepack pnpm --filter @aristotle/adapter-sdk build
+          corepack pnpm --filter @aristotle/adapter-sdk test
+          corepack pnpm test:protocol-adapters
+          corepack pnpm test:single-drone
+          corepack pnpm test:px4-sitl
+          node --import tsx --test adapters/http-gateway/src/preflight.test.ts
+
       - name: Runtime-backed 40-asset proof and reviewer verification
         run: |
           node --import tsx --test examples/mesh/swarm-partition-40-asset.test.ts examples/mesh/published.replay.test.ts

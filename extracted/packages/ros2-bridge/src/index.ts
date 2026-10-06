@@ -14,7 +14,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { governThroughAdapter } from "@aristotle/adapter-sdk";
+import { governThroughAdapter, type AdapterEffectBoundary } from "@aristotle/adapter-sdk";
 import { AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
 
 export interface RosMessage {
@@ -205,25 +205,31 @@ export interface GovernRosMessageOptions {
   nodeId: string;
   actionTypeFor?: (msg: RosMessage) => string;
   allowDemonstrationTransport?: boolean;
+  effectBoundary?: AdapterEffectBoundary;
+  operationId?: string;
 }
 
 export async function governRosMessage(
   msg: RosMessage,
   transport: RosControlTransport,
   options: GovernRosMessageOptions
-): Promise<{ ok: boolean; decision?: EvaluateResponse; outcome?: RosSubmissionOutcome; refusal?: { code: string; detail: string } }> {
+): Promise<{ ok: boolean; decision?: EvaluateResponse; outcome?: RosSubmissionOutcome; refusal?: { code: string; detail: string }; effect_attempt_id?: string; effect_state?: "IN_FLIGHT" | "EFFECT_UNKNOWN" }> {
+  options = { ...options };
   const result = await governThroughAdapter<RosMessage, RosAuthorization>(msg, {
     client: options.client,
     transport,
     allowDemonstrationTransport: options.allowDemonstrationTransport,
+    effectBoundary: options.effectBoundary,
     buildAction: (operation): CanonicalAction => ({
       action_id: `ros-${options.nodeId}-${Date.now().toString(16)}`,
       ward_id: options.wardId,
       subject: options.subject,
+      target: operation.target,
       action_type: options.actionTypeFor
         ? options.actionTypeFor(operation)
         : `ros.${operation.kind}.${operation.target.replace(/^\/+/, "").replace(/\//g, ".")}`,
       params: {
+        ...(options.operationId ? { operation_id: options.operationId } : {}),
         node_id: options.nodeId,
         kind: operation.kind,
         target: operation.target,
@@ -250,7 +256,9 @@ export async function governRosMessage(
     ok: result.ok,
     decision: result.decision,
     outcome: result.outcome as RosSubmissionOutcome | undefined,
-    refusal: result.refusal
+    refusal: result.refusal,
+    effect_attempt_id: result.effect_attempt_id,
+    effect_state: result.effect_state
   };
 }
 
