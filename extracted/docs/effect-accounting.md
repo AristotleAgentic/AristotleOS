@@ -79,6 +79,13 @@ operational recovery integration remains necessary for a deployed workflow.
 
 ## Security compatibility changes
 
+- HTTP dispatch now requires a writable durable SQLite sidecar (or an injected
+  shared store) and Node's `node:sqlite` module. Node 22.5–22.12 requires
+  `--experimental-sqlite`; Node 22.13+ on the 22.x line does not require that flag.
+  See [Node's SQLite version history](https://nodejs.org/download/release/v22.13.1/docs/api/sqlite.html).
+  The local checks used Node 24.15.0; older supported versions were not separately
+  exercised. An unavailable store refuses emission; it does not fall back to
+  non-durable dispatch.
 - Automatic HTTP redirects are disabled: a new destination needs its own governed
   action. The original redirect response is returned to the caller.
 - Credential prefixes now match URL origin and a path-segment boundary. Hostname
