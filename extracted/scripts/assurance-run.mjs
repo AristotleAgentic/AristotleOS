@@ -8,6 +8,8 @@ const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 const repo = path.dirname(workspace);
 const label = process.argv[2] ?? 'baseline';
 if (!/^[a-z0-9-]+$/.test(label)) throw new Error('invalid run label');
+const profile = process.argv[3] ?? 'full';
+if (!['full', 'dependency'].includes(profile)) throw new Error('invalid run profile');
 const output = path.join(repo, 'docs', 'assurance', label);
 mkdirSync(output, { recursive: true });
 const manifestPath = path.join(output, label === 'baseline' ? 'BASELINE_ASSURANCE_MANIFEST.json' : 'RESULTS.json');
@@ -17,7 +19,7 @@ const hash = data => createHash('sha256').update(data).digest('hex');
 const tracked = git('ls-files').split('\n');
 const pkg = JSON.parse(readFileSync(path.join(workspace, 'package.json'), 'utf8'));
 const manifest = {
-  schema_version: 1, label, started_at: new Date().toISOString(), source_commit: git('rev-parse', 'HEAD'),
+  schema_version: 1, label, profile, started_at: new Date().toISOString(), source_commit: git('rev-parse', 'HEAD'),
   branch: git('branch', '--show-current'), initial_status: git('status', '--porcelain'),
   environment: { node: process.version, platform: process.platform, architecture: process.arch, package_manager: pkg.packageManager },
   lock_sha256: hash(readFileSync(path.join(workspace, 'pnpm-lock.yaml'))),
@@ -36,7 +38,18 @@ const manifest = {
 };
 const save = () => writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
 save();
-const commands = [
+const commands = profile === 'dependency' ? [
+  ['frozen-install', 'corepack pnpm@10.32.1 install --frozen-lockfile --offline --ignore-scripts'],
+  ['affected-builds', 'corepack pnpm@10.32.1 -r --workspace-concurrency=1 --filter @aristotle/mastra --filter @aristotle/mcp-server-stdio --filter @aristotle/os-cli build'],
+  ['typecheck', 'corepack pnpm@10.32.1 typecheck'],
+  ['affected-package-tests', 'corepack pnpm@10.32.1 -r --workspace-concurrency=1 --filter @aristotle/http-gateway --filter @aristotle/agent-os --filter @aristotle/authority-router --filter @aristotle/evidence-ledger --filter @aristotle/execution-gate --filter @aristotle/governance-kernel --filter @aristotle/meta-authority-registry --filter @aristotle/policy-compiler --filter @aristotle/simulation-engine --filter @aristotle/witness-service --filter @aristotle/mcp-server-stdio --filter @aristotle/mastra test'],
+  ['effect-tests', 'corepack pnpm@10.32.1 test:proxy-effects'],
+  ['cli-tests', 'corepack pnpm@10.32.1 test:cli'],
+  ['audit-gate-tests', 'node --test scripts/audit-deps.test.mjs'],
+  ['dependency-audit', 'node scripts/audit-deps.mjs'],
+  ['sbom', 'node scripts/generate-sbom.mjs'],
+  ['boundary-pilot', 'node apps/aristotle-cli/dist/index.js pilot']
+] : [
   ['build-prerequisites', 'corepack pnpm@10.32.1 -r --filter @aristotle/shared-types --filter @aristotle/shared-schemas --filter @aristotle/governance-core --filter @aristotle/trial-engine --filter @aristotle/execution-control-runtime --filter @aristotle/mesh-runtime --filter @aristotle/os-sdk --workspace-concurrency=1 build'],
   ['typecheck', 'corepack pnpm@10.32.1 typecheck'],
   ...Object.keys(pkg.scripts).filter(s => s.startsWith('test:') && !['test:all'].includes(s)).map(s => [s.replaceAll(':', '-'), `corepack pnpm@10.32.1 run ${s}`]),
