@@ -274,7 +274,7 @@ export class Rfc3161TimestampAuthority implements TimestampAuthority {
     const res = await this.fetchImpl(this.endpoint, {
       method: "POST",
       headers: { "content-type": CONTENT_TYPE_TSREQ, "accept": CONTENT_TYPE_TSRESP },
-      body: built.derBytes
+      body: new Uint8Array(built.derBytes)
     });
     if (!res.ok) {
       throw new Error(

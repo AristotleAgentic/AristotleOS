@@ -12,6 +12,7 @@
     "test": "node --import tsx --test src/index.test.ts"
   },
   "dependencies": {
+    "@aristotle/execution-control-runtime": "workspace:*",
     "@aristotle/gel-timestamp": "workspace:*"
   }
 }

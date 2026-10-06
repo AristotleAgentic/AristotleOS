@@ -625,6 +625,9 @@ importers:
 
   shared/sigstore-rekor:
     dependencies:
+      '@aristotle/execution-control-runtime':
+        specifier: workspace:*
+        version: link:../execution-control-runtime
       '@aristotle/gel-timestamp':
         specifier: workspace:*
         version: link:../gel-timestamp
