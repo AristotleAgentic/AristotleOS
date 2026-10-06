@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "baseline_commit": "8380d27",
+  "scope": "Initial command-level regression contract; per-test results live in immutable run manifests. Not an exhaustive safety certification.",
+  "capabilities": [
+    {"id":"gate-decisions-and-warrants","commands":["test:execution-control","test:gate-property","test:warrant-time","test:gate-replay-property"]},
+    {"id":"authority-chain-and-constraints","commands":["test:chain","test:constraints-security","test:tenancy"]},
+    {"id":"gel-and-offline-evidence","commands":["test:gel-mutation","test:core","test:reviewer","reviewer:verify"]},
+    {"id":"budgets-dual-control-attribution","commands":["test:budget","test:dual-control","test:execution-control"]},
+    {"id":"degradation-and-edge-policy","commands":["test:fail-mode","test:degradation","test:edge-containment"]},
+    {"id":"credential-brokering-and-egress","commands":["test:execution-control","test:credential-minter","test:egress"]},
+    {"id":"disconnected-authority-and-reconciliation","commands":["test:mesh","test:reconcile","test:conflict-inbox","test:reviewer"],"proof":"examples/mesh/swarm-partition-40-asset.test.ts","assurance":"runtime simulation, not physical validation"},
+    {"id":"uav-presentation-demo","commands":["verify:uav-swarm-proof"],"assurance":"constructed scenario checks, not runtime enforcement proof"},
+    {"id":"industrial-and-robotic-adapters","commands":["test:protocol-adapters","test:refusal-before-emission","test:px4-sitl"],"assurance":"per-test transport assumptions; inspect skips before claiming SITL/hardware"},
+    {"id":"domain-physical-constraints","commands":["test:aviation","test:robotics","test:swarm","test:grid","test:water","test:mining","test:rail","test:port","test:automotive","test:telecom","test:space","test:logistics","test:pipeline","test:healthcare","test:title"]},
+    {"id":"operator-api-and-task-lifecycle","commands":["test:legacy-routes","test:api","test:ui-boundary"]},
+    {"id":"developer-and-reviewer-interfaces","commands":["typecheck","test:cli","test:sdk","test:adapters","test:reviewer-cli"]}
+  ],
+  "policy": "Preserve legitimate supported behavior; disclose security-driven compatibility changes. Missing, skipped or failing evidence is never a pass. New regressions block the increment."
+}
