@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_at": "2026-10-06T07:22:41.331Z",
   "baseline_commit": "8380d27cda05e15757482a3bcfa5b537abfb762c",
-  "source_commit": "cbf175db62bff71f946502b19c288ef5c03fec92",
+  "source_commit": "9ab096d893c1537e850465c61877370420e2fe2a",
   "branch": "harden/effect-boundary",
   "program_complete": false,
   "result": "BOUNDED_INCREMENT_VALIDATED_WITH_DISCLOSED_LIMITATIONS",
