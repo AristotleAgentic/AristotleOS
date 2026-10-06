@@ -83,7 +83,7 @@ See `THREAT_MODEL.md` Category D for the full enumeration. Highlights:
 |---|---|---|
 | Compromised edge mints unauthorized warrants while disconnected | Fluidity Token TTL + quota cap + reconciliation conflict flag | Compromised edge can issue up to `maxWarrantsWhileDisconnected` warrants in the disconnect window |
 | Malicious witness drops revocations | Multi-witness redundancy expected; substrate doesn't enforce it | Operator must configure ≥ 2 witnesses |
-| Witness flaps at the moment a revocation is gossiped | `chaos-harness::witness_flap` models this; recovery is via operator re-gossip | No auto-pull on edge side yet — see `LIMITATIONS.md` §5 |
+| Witness flaps at the moment a revocation is gossiped | Post-heal `pingRoot` auto-pull and explicit `pullRevocations` recover missed revocations | No periodic background pull; see `LIMITATIONS.md` §5 |
 | Gossip storm (same revocation re-emitted thousands of times) | Map deduplication by `revocation_id` | No outbound rate-limit; operator should configure at witness |
 | Envelope version downgrade | Edge rejects `env.version < existing.version` | — |
 
@@ -102,9 +102,9 @@ The live HTTP transport test occasionally has port-timing flakes on contended ho
 | Requirement | Status |
 |---|---|
 | mTLS or service-mesh authenticated transport | Hooks present (`httpClient`, `urlFor`); operator wires |
-| Per-node Ed25519 keypairs (replace shared HMAC) | Not yet — see `ROADMAP_TO_100.md` |
+| Per-node Ed25519 keypairs (replace shared HMAC) | Signer/verifier factories and production-mode guard ship; provision and pin per-node keys |
 | Persistent `MeshPersistence` backend (SQLite/Postgres) | Interface present; only in-memory ships |
-| Edge auto-pull of missed revocations post-heal | Not yet — see `LIMITATIONS.md` §5 |
+| Edge auto-pull of missed revocations post-heal | Implemented and tested; periodic background polling remains outside the current contract |
 | Real partition testing (not just `partitions: Set` mutation) | Not yet — operator should validate with their network |
 
 ## License

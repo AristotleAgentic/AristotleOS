@@ -47,6 +47,14 @@ jobs:
       - name: Test (governance · execution-control · cli · api · chain)
         run: corepack pnpm test
 
+      - name: Durable effect boundary and adversarial HTTP regressions
+        run: corepack pnpm test:proxy-effects
+
+      - name: Runtime-backed 40-asset proof and reviewer verification
+        run: |
+          node --import tsx --test examples/mesh/swarm-partition-40-asset.test.ts examples/mesh/published.replay.test.ts
+          corepack pnpm reviewer:verify
+
       - name: Build CLI bundle
         run: corepack pnpm -F @aristotle/os-cli build
 
@@ -153,3 +161,30 @@ jobs:
         # (high+critical) fails the build unless triaged in .audit-allowlist.json
         # with a reason and an expiry. Expired exceptions are themselves failures.
         run: corepack pnpm audit:ci
+
+  formal-model:
+    name: bounded mesh model and negative controls
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Download pinned TLC
+        run: curl --fail --location --output "$RUNNER_TEMP/tla2tools.jar" https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar
+      - name: Check bounded models and require seeded flaws to fail
+        env:
+          TLA_TOOLS_JAR: ${{ runner.temp }}/tla2tools.jar
+        run: node scripts/check-formal-model.mjs
+      - name: Preserve checker evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: formal-model-evidence
+          path: |
+            extracted/reports/formal/**/manifest.json
+            extracted/reports/formal/**/tlc.txt

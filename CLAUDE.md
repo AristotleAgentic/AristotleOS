@@ -28,7 +28,9 @@ Run these from `./extracted/`.
 
 Per-service: each workspace under `services/*`, `adapters/*`, `apps/*`, `shared/*` has `build` (`tsc -p tsconfig.json`), `dev` (`tsx watch src/index.ts`), and `start` (`node src/index.js`) scripts.
 
-`npm run lint` and `npm run test` are intentionally stubs (`echo 'not yet configured'`). Don't claim they ran.
+`npm run lint` remains a stub. `npm run test` now runs typechecking and the root
+regression suites. Additional workspace, mesh, reviewer, and adapter commands
+are listed in `extracted/package.json`; the root test command is not exhaustive.
 
 ### GOVERNANCE_CHAIN_V2 (Ward/Warrant chain — opt-in)
 
@@ -37,7 +39,7 @@ A second, stricter governance path lives behind `GOVERNANCE_CHAIN_V2` (off by de
 Env (`.env`): `GOVERNANCE_CHAIN_V2=true` to enable; `GOVERNANCE_CHAIN_MODE=shadow|enforce` (agent-os: record-only vs. block on a non-Allow chain verdict); `GOVERNANCE_CHAIN_STATE_PATH` for durable chain state (kernel; backed by the `kernel-data` compose volume and included in `enterprise:backup`/`restore`/`drill`); signing via `GOVERNANCE_CHAIN_SIGNING_SECRET` (HMAC) or `GOVERNANCE_CHAIN_SIGNING_PRIVATE_KEY_PATH` + `_PUBLIC_KEY_PATH` (ed25519, BYO trust root).
 
 Chain-specific commands:
-- `npm run test:chain` — the chain's own suite (core + kernel + agent-os + gateway, ~40 tests via `tsx`/`node:test`). Unlike the stubbed `npm run test`, this one really runs.
+- `npm run test:chain` — the chain's own suite (core + kernel + agent-os + gateway via `tsx`/`node:test`). Also included in the root test command.
 - `npm run validate:chain` — end-to-end validation against a running gateway (single-use enforcement, GEL integrity, fail-closed). Skips cleanly when the flag is off. Folded into `stack:verify`; `test:chain` is folded into `enterprise:verify`.
 - `npm run enterprise:chain-keys` — generate the ed25519 chain signing keypair under `./secrets/`.
 

@@ -1,84 +1,65 @@
-# Formal specifications
+# Bounded formal specifications
 
-This directory holds formal specifications of substrate invariants. They are
-documentation-grade: they explain what the implementation is supposed to do in
-a notation that a reviewer can check independently of the source.
+`MeshReconciliation.tla` models bounded offline issuance, logical token expiry,
+quota, revocation propagation, root contact, and explicit reconciliation. It is
+not a proof of the TypeScript implementation. The mapping is reviewed manually.
 
-These specs are **not** in the project's CI gate. Running them is a
-manual reviewer step. Wiring `tlc` into CI is a future-work item — see
-[ROADMAP_TO_100.md](../../ROADMAP_TO_100.md) Category 1.
+The original documentation-grade model failed its reconciliation invariant under
+TLC: an isolated edge was required to know a revocation before reconnecting.
+It also allowed connected issuance to violate its unconditional quota invariant,
+had unbounded warrant histories, and used a tautological monotonicity predicate.
+The counterexample is retained in `docs/assurance/baseline` at repository root.
 
-## Files
+The corrected model preserves permitted disconnected issuance. Reconciliation
+checks the snapshot actually reconciled; future or unseen revocations do not
+rewrite that snapshot. Quota counts disconnected issuance. Token renewal is a
+connected root action, and expired tokens cannot permit new offline issuance.
+Monotonicity is a temporal property, not a predicate comparing a set to itself.
 
-### `mesh-reconciliation.tla`
+## Running
 
-Models the partition → heal → reconcile → auto-pull → conflict-detection
-state machine implemented in `shared/mesh-runtime/src/index.ts`. Covers:
-
-- Root issuing envelopes and revocations.
-- Witness + Edge caches.
-- Edge issuing Warrants while disconnected, subject to the Fluidity Token
-  TTL and the disconnected-warrant quota.
-- `pingRoot` reconnect transition that auto-pulls missed revocations.
-- `reconcile` that surfaces a Warrant-after-revocation as a conflict.
-
-Asserts the safety invariants:
-- `Inv_NoWarrantAfterKnownRevocation` — no Warrant after the edge has cached the matching revocation
-- `Inv_QuotaCap` — disconnected-warrant counter is bounded
-- `Inv_ReconcileDetectsConflict` — every missed revocation either pre-dates the Warrant or is auto-pulled on heal
-
-And the liveness property:
-- `Live_EventualConsistencyOnHeal` — a permanently-healed edge eventually catches up to Root's full revocation set
-
-### Companion property tests
-
-The same invariants are exercised at the implementation level by:
-
-- `shared/mesh-runtime/src/index.test.ts` — `auto-pull: *` tests, `partition: *` tests, `reconciliation: *` tests
-- `shared/execution-control-runtime/src/gate.replay-property.test.ts` — Warrant replay invariants
-- `shared/execution-control-runtime/src/gel.mutation.test.ts` — GEL chain mutation invariants
-
-The TLA+ spec is a higher-level statement of the same invariants the test
-files assert at the code level. If they ever disagree, both should be
-reviewed before deciding which one is wrong.
-
-## Running TLC
-
-[TLA+ Toolbox](https://lamport.azurewebsites.net/tla/toolbox.html) or the
-command-line `tlc`:
+Use Java 21 and the official TLA+ `v1.7.4` release's `tla2tools.jar`.
+Set `TLA_TOOLS_JAR` to the jar's absolute path; optionally set `ARISTOTLE_JAVA`
+to a Java executable. From `extracted/`, run:
 
 ```sh
-# From this directory:
-tlc MeshReconciliation.tla -config <(cat <<EOF
-SPECIFICATION Spec
-INVARIANTS
-  Inv_NoWarrantAfterKnownRevocation
-  Inv_QuotaCap
-  Inv_ReconcileDetectsConflict
-PROPERTY
-  Live_EventualConsistencyOnHeal
-CONSTANTS
-  Edges = {"e1", "e2"}
-  MaxRevocations = 3
-  MaxDisconnectedWarrants = 2
-  MaxTime = 6
-EOF
-)
+node scripts/check-formal-model.mjs
 ```
 
-At those bounds the state space is roughly 10⁴ states; TLC completes in
-seconds.
+The runner verifies the pinned jar SHA-256, applies a three-minute timeout per
+configuration, and records exact source/configuration hashes, exit codes and
+logs under `reports/formal/`. CI runs the same checks and uploads evidence.
+Official tool usage: https://github.com/tlaplus/tlaplus/blob/master/USE.md
 
-## Limitations
+| Configuration | Bounds | Purpose |
+|---|---|---|
+| MeshReconciliation.cfg | 2 edges, time 0..2, 1 warrant/edge, quota 1, token TTL 1 | Partition/heal/reconciliation and per-edge liveness |
+| MeshReconciliation.quota.cfg | 1 edge, time 0..2, 3 warrants, quota 1, token TTL 1 | Repeated issuance and quota exhaustion |
+| Negative quota control | Quota configuration with issuance quota guard removed | Must produce an invariant counterexample |
+| Negative revocation control | Quota configuration with known-revocation guard removed | Must produce an invariant counterexample |
 
-- The spec deliberately abstracts the envelope. Real envelopes have
-  versioning, expiry, and per-subject scoping — none of which is modeled
-  here. A future iteration could lift those into the state space.
-- The spec models **one** witness implicitly (the witness's behavior is
-  folded into Root's gossip-on-issue). A multi-witness model with byzantine
-  quorum would be a separate spec.
-- The clock is logical (`rootClock`). Real deployments have clock skew,
-  which the substrate handles via `maxClockSkewMs` in
-  `verifyWarrant`. That's out of scope for this spec.
-- This is a model, not a proof. Refinement to executable code (Apalache or
-  TLAPS) is future work.
+Successful positive runs alone are insufficient: both seeded flaws must fail.
+These small configurations are repeatable CI bounds, not a proof for all fleet
+sizes or partitions. An earlier larger exploratory configuration was stopped
+before completion; it is not reported as passing evidence.
+
+## Implementation correspondence and assumptions
+
+- `Issue` corresponds to the edge gate's known-revocation, token TTL and offline
+  quota checks. `MaxWarrants` is an exploration cutoff, not production policy.
+- `Pull` abstracts a successful `pullRevocations`/post-heal `pingRoot` refresh;
+  the model assumes authenticated delivery and weak fairness separately per edge.
+- `Reconcile` abstracts root classification of the submitted historical snapshot.
+  Equal logical timestamps are conservatively classified as conflicts.
+- Root gossip abstracts witness forwarding. Per-witness faults, Byzantine peers,
+  transport authentication and cryptographic implementation are outside this model.
+- The liveness claim requires eventual permanent connectivity. It makes no
+  convergence promise during an endless partition.
+- One implicit authority envelope is modeled. Complete MAE/Ward/delegation scope,
+  real clock drift, envelope expiry, physical constraints, effect persistence,
+  Warrant consumption, crashes and database transactions remain outside this model.
+- `RevocationsMonotone` checks that learned revocations are never forgotten.
+  No runtime semantics were changed to make the checker pass.
+
+Runtime property/race tests remain separate evidence. Formal refinement and
+unbounded theorem proofs remain future work.
