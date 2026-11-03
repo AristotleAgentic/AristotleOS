@@ -68,7 +68,7 @@ jobs:
         run: corepack pnpm sbom
 
       - name: Attest build provenance (SLSA)
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: ${{ steps.pack.outputs.tarball }}
 
