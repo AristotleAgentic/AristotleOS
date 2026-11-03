@@ -205,7 +205,7 @@ jobs:
         run: node scripts/check-formal-model.mjs
       - name: Preserve checker evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: formal-model-evidence
           path: |
