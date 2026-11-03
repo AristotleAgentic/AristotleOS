@@ -14,6 +14,46 @@ const yaml = createRequire(matter.resolve('js-yaml'));
 const argparse = createRequire(yaml.resolve('argparse'));
 const sprintfPath = argparse.resolve('sprintf-js');
 
+for (const extension of ['js', 'mjs']) {
+  test(`legacy AI helper preserves Zod 4 tool constraints (${extension})`, async () => {
+    const entry = mastra.resolve('@ai-sdk/ui-utils-v5').replace(/index\.js$/, `index.${extension}`);
+    const helper = await import(pathToFileURL(entry).href);
+    const { z } = mastra('zod');
+    const schema = helper.zodSchema(z.object({ message: z.string().min(1), count: z.number().int().min(1).max(3) }));
+    assert.equal(schema.jsonSchema.type, 'object');
+    assert.equal(schema.jsonSchema.properties.message.minLength, 1);
+    assert.equal(schema.jsonSchema.properties.count.maximum, 3);
+    assert.deepEqual(schema.jsonSchema.required, ['message', 'count']);
+    assert.equal((await schema.validate({ message: 'ok', count: 2 })).success, true);
+    assert.equal((await schema.validate({ message: '', count: 9 })).success, false);
+    const legacy = mastra('zod/v3');
+    const legacySchema = helper.zodSchema(legacy.object({ message: legacy.string() }));
+    assert.equal(legacySchema.jsonSchema.properties.message.type, 'string');
+    assert.equal((await legacySchema.validate({ message: 42 })).success, false);
+  });
+}
+
+test('patched Zod rejects oversized constrained arrays before evaluating elements', () => {
+  const { z } = mastra('zod');
+  let visited = 0;
+  const schema = z.array(z.string().superRefine(() => { visited += 1; })).max(2);
+  assert.equal(schema.safeParse(['one', 'two']).success, true);
+  visited = 0;
+  assert.equal(schema.safeParse(Array(10000).fill('excess')).success, false);
+  assert.equal(visited, 0);
+});
+
+test('patched MCP SDK retains request schema validation and server registration', async () => {
+  const { Server } = mastra('@modelcontextprotocol/sdk/server/index.js');
+  const { CallToolRequestSchema, ListToolsRequestSchema } = mastra('@modelcontextprotocol/sdk/types.js');
+  const server = new Server({ name: 'compatibility-test', version: '1.0.0' }, { capabilities: { tools: {} } });
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [] }));
+  server.setRequestHandler(CallToolRequestSchema, async () => ({ content: [] }));
+  assert.equal(CallToolRequestSchema.safeParse({ method: 'tools/call', params: { name: 'echo', arguments: { message: 'ok' } } }).success, true);
+  assert.equal(CallToolRequestSchema.safeParse({ method: 'tools/call', params: { name: 42 } }).success, false);
+  await server.close();
+});
+
 for (const entry of [sprintfPath, path.resolve(path.dirname(sprintfPath), '../dist/sprintf.min.js')]) {
   test(`sprintf precision attack is bounded: ${path.basename(entry)}`, () => {
     const { sprintf } = require(entry);

@@ -1,5 +1,19 @@
 # Security backports
 
+## Release compatibility update
+
+The release uses upstream Zod 4.6.6, MCP SDK 1.32.0, body-parser 1.20.9/2.4.0,
+and the other security overrides recorded in package.json. Zod 4's constrained
+array parser is checked for early rejection before element evaluation.
+
+`@ai-sdk/ui-utils@1.2.11` is retained by Mastra's older AI compatibility path.
+Its original Zod 3 converter silently loses Zod 4 tool constraints. The local
+patch detects Zod 4 schemas and calls the native draft-7 exporter, preserving
+the original converter for Zod 3 schemas. Both CommonJS and ESM entries are
+tested for required properties, bounds, and validation behavior. This patch
+is a local compatibility change, not an upstream release. Upstream source maps
+remain unchanged. The existing security backports below remain in place.
+
 These are pnpm integrity-checked patches, not upstream releases or audit
 exceptions. `pnpm-lock.yaml` pins their hashes. CI runs
 `node --test scripts/dependency-security.test.mjs` against the active dependency

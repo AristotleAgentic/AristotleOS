@@ -196,7 +196,8 @@
     },
     "patchedDependencies": {
       "@ai-sdk/provider-utils@2.2.8": "patches/@ai-sdk__provider-utils@2.2.8.patch",
-      "sprintf-js@1.0.3": "patches/sprintf-js@1.0.3.patch"
+      "sprintf-js@1.0.3": "patches/sprintf-js@1.0.3.patch",
+      "@ai-sdk/ui-utils@1.2.11": "patches/@ai-sdk__ui-utils@1.2.11.patch"
     }
   }
 }

@@ -55,6 +55,7 @@ jobs:
 
       - name: Framework and MCP dependency compatibility
         run: |
+          corepack pnpm -r --filter @aristotle/mcp-server-stdio... --workspace-concurrency=1 build
           corepack pnpm test:framework-adapters
           corepack pnpm test:mcp-server
           corepack pnpm test:mcp-server-stdio
