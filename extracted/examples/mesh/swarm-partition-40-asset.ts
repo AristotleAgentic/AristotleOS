@@ -20,7 +20,7 @@
  *             half receives revocations via gossip; the fully-isolated
  *             half continues until Fluidity Token TTL.
  *
- *   PHASE 3 - Revocation under partition: root revokes 5 envelopes. The
+ *   PHASE 3 - Revocation under partition: root revokes 10 envelopes. The
  *             witness-reachable half blocks immediately; the fully-isolated
  *             half does not see the revocation until reconciliation.
  *
@@ -173,6 +173,13 @@ export async function runSwarmPartitionScenario(opts: {
   }
 
   // --- PHASE 3: root revokes envelopes for first 10 assets ----------------
+  // Reconciliation conservatively treats equal millisecond timestamps as a
+  // conflict. Keep the scenario's pre-revocation warrants strictly earlier
+  // than its revocations, even when phase 2 finishes within one clock tick.
+  const phase2CompletedAt = Date.now();
+  while (Date.now() <= phase2CompletedAt) {
+    await new Promise((r) => setTimeout(r, 1));
+  }
   for (let i = 0; i < 10; i++) {
     await root.revoke(`env-${edges[i].getId()}`, "envelope", "compromise-suspected");
     report.total_revocations++;
