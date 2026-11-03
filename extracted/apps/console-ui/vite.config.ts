@@ -15,7 +15,7 @@ export default defineConfig({
     }
   },
   server: {
-    host: "0.0.0.0",
+    host: "127.0.0.1",
     port: 4173,
     proxy: {
       "/health": gatewayTarget,
@@ -24,7 +24,7 @@ export default defineConfig({
     }
   },
   preview: {
-    host: "0.0.0.0",
+    host: "127.0.0.1",
     port: 4173
   }
 });

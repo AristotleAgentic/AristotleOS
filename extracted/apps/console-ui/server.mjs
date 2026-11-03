@@ -3,6 +3,7 @@ import { createReadStream, existsSync } from "node:fs";
 import { timingSafeEqual } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { RequestLimitError, readRequestBody, readResponseBody, createLoginLimiter } from "./http-limits.mjs";
 
 const app = express();
 const port = Number(process.env.PORT_CONSOLE ?? process.env.PORT ?? 4173);
@@ -14,6 +15,20 @@ const normalizeGatewayBaseUrl = (value) => {
 };
 const gatewayBaseUrl = normalizeGatewayBaseUrl(process.env.CONSOLE_GATEWAY_BASE_URL ?? process.env.CONSOLE_GATEWAY_HOSTPORT);
 const consoleAccessToken = process.env.CONSOLE_ACCESS_TOKEN?.trim() ?? "";
+const production = process.env.NODE_ENV === "production";
+if (production && !consoleAccessToken) throw new Error("Production console requires CONSOLE_ACCESS_TOKEN");
+const acceptLogin = createLoginLimiter();
+app.disable("x-powered-by");
+app.use((_req, res, next) => {
+  res.set({
+    "Content-Security-Policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self' data:",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer"
+  });
+  if (production) res.set("Strict-Transport-Security", "max-age=31536000");
+  next();
+});
 const operatorApiKey = process.env.CONSOLE_OPERATOR_API_KEY?.trim() ?? "";
 const operatorActor = process.env.CONSOLE_OPERATOR_ACTOR?.trim() ?? "operator:console";
 const operatorRole = process.env.CONSOLE_OPERATOR_ROLE?.trim() ?? "operator";
@@ -41,7 +56,8 @@ const parseCookies = (header = "") =>
       .map((item) => {
         const index = item.indexOf("=");
         if (index === -1) return [item, ""];
-        return [item.slice(0, index), decodeURIComponent(item.slice(index + 1))];
+        try { return [item.slice(0, index), decodeURIComponent(item.slice(index + 1))]; }
+        catch { return [item.slice(0, index), ""]; }
       })
   );
 
@@ -90,9 +106,7 @@ const sendConsoleIndex = (res) => {
 };
 
 const readFormBody = async (req) => {
-  const chunks = [];
-  for await (const chunk of req) chunks.push(Buffer.from(chunk));
-  return new URLSearchParams(Buffer.concat(chunks).toString("utf8"));
+  return new URLSearchParams((await readRequestBody(req, 8192)).toString("utf8"));
 };
 
 const consoleAuthorized = (req) => {
@@ -110,9 +124,8 @@ const requireConsoleAccess = (req, res, next) => {
 };
 
 const readRawBody = async (req) => {
-  const chunks = [];
-  for await (const chunk of req) chunks.push(Buffer.from(chunk));
-  return chunks.length ? Buffer.concat(chunks) : undefined;
+  const body = await readRequestBody(req, 1024 * 1024);
+  return body.length ? body : undefined;
 };
 
 const ensureOperatorSession = async () => {
@@ -126,14 +139,17 @@ const ensureOperatorSession = async () => {
   headers.set("x-operator-role", operatorRole);
   const response = await fetch(`${gatewayBaseUrl}/operator/auth/session`, {
     method: "POST",
-    headers
+    headers,
+    redirect: "error",
+    signal: AbortSignal.timeout(10_000)
   });
   if (!response.ok) {
+    await response.body?.cancel();
     operatorSessionToken = "";
     operatorSessionExpiresAt = 0;
     return "";
   }
-  const session = await response.json().catch(() => null);
+  const session = JSON.parse((await readResponseBody(response, 64 * 1024)).toString("utf8"));
   if (!session?.token) return "";
   operatorSessionToken = session.token;
   operatorSessionExpiresAt = Date.parse(session.expiresAt) || 0;
@@ -146,7 +162,7 @@ const proxyToGateway = async (req, res) => {
     const headers = new Headers();
     for (const [key, value] of Object.entries(req.headers)) {
       const lower = key.toLowerCase();
-      if (!value || lower === "host" || lower === "content-length" || lower === "authorization") continue;
+      if (!value || ["host", "content-length", "authorization", "cookie", "connection", "transfer-encoding", "upgrade", "proxy-authorization"].includes(lower) || lower.startsWith("x-operator-")) continue;
       headers.set(key, Array.isArray(value) ? value.join(",") : value);
     }
     if (operatorApiKey) {
@@ -160,16 +176,20 @@ const proxyToGateway = async (req, res) => {
       headers.set("x-operator-role", operatorRole);
     }
     const body = ["GET", "HEAD"].includes(req.method) ? undefined : await readRawBody(req);
-    const response = await fetch(target, { method: req.method, headers, body });
+    const response = await fetch(target, { method: req.method, headers, body, redirect: "error", signal: AbortSignal.timeout(30_000) });
+    const buffer = await readResponseBody(response, 8 * 1024 * 1024);
     res.status(response.status);
     response.headers.forEach((value, key) => {
-      if (!["content-encoding", "content-length", "transfer-encoding"].includes(key.toLowerCase())) {
+      if (!["content-encoding", "content-length", "transfer-encoding", "connection", "set-cookie", "content-security-policy", "strict-transport-security", "x-frame-options", "x-content-type-options", "referrer-policy"].includes(key.toLowerCase())) {
         res.setHeader(key, value);
       }
     });
-    const buffer = Buffer.from(await response.arrayBuffer());
     res.send(buffer);
   } catch (error) {
+    if (error instanceof RequestLimitError) {
+      res.set("Connection", "close").status(error.status).json({ error: error.message });
+      return;
+    }
     res.status(502).json({
       error: "gateway_proxy_unavailable",
       message: error instanceof Error ? error.message : String(error),
@@ -190,11 +210,20 @@ app.get("/console-health", (_req, res) => {
 });
 
 app.post("/console-login", async (req, res) => {
+  if (!acceptLogin()) {
+    res.set({ "Retry-After": "1", "Connection": "close" }).status(429).send("Too many login attempts");
+    return;
+  }
   if (!consoleAccessToken) {
     res.redirect(303, "/");
     return;
   }
-  const form = await readFormBody(req);
+  let form;
+  try { form = await readFormBody(req); }
+  catch (error) {
+    res.set("Connection", "close").status(error instanceof RequestLimitError ? error.status : 400).send("Invalid login request");
+    return;
+  }
   const token = form.get("token") ?? "";
   if (!safeEqual(token, consoleAccessToken)) {
     const page = loginPage("Invalid token.");
@@ -203,7 +232,7 @@ app.post("/console-login", async (req, res) => {
   }
   res
     .status(303)
-    .setHeader("set-cookie", `aristotle_console=${encodeURIComponent(consoleAccessToken)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=43200${req.secure ? "; Secure" : ""}`)
+    .setHeader("set-cookie", `aristotle_console=${encodeURIComponent(consoleAccessToken)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=43200${production || req.secure ? "; Secure" : ""}`)
     .setHeader("location", "/");
   res.end();
 });
@@ -232,6 +261,8 @@ app.get("*", (_req, res) => {
   sendConsoleIndex(res);
 });
 
-app.listen(port, "0.0.0.0", () => {
-  console.log(`console-ui serving ${distDir} on ${port}; gateway=${gatewayBaseUrl}`);
+const server = app.listen(port, "0.0.0.0", () => {
+  console.log(`console-ui serving ${distDir} on ${server.address().port}; gateway=${gatewayBaseUrl}`);
 });
+server.requestTimeout = 15_000;
+server.headersTimeout = 10_000;

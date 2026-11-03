@@ -14,6 +14,15 @@ const yaml = createRequire(matter.resolve('js-yaml'));
 const argparse = createRequire(yaml.resolve('argparse'));
 const sprintfPath = argparse.resolve('sprintf-js');
 
+test('Hono wildcard route cannot bypass scoped authentication middleware', async () => {
+  const { Hono } = mastra('hono');
+  const app = new Hono();
+  app.use('/admin/*', c => c.text('denied', 401));
+  app.get('/admin*', c => c.text('restricted fixture'));
+  const response = await app.request('/admin/secret');
+  assert.equal(response.status, 401);
+});
+
 for (const extension of ['js', 'mjs']) {
   test(`legacy AI helper preserves Zod 4 tool constraints (${extension})`, async () => {
     const entry = mastra.resolve('@ai-sdk/ui-utils-v5').replace(/index\.js$/, `index.${extension}`);
