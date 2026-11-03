@@ -82,7 +82,7 @@ importers:
         specifier: ^4.21.1
         version: 4.22.1
       zod:
-        specifier: 4.6.6
+        specifier: ^4.6.6
         version: 4.6.6
 
   apps/aristotle-cli:
@@ -133,7 +133,7 @@ importers:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
       zod:
-        specifier: 4.6.6
+        specifier: ^4.6.6
         version: 4.6.6
       zustand:
         specifier: ^5.0.13
@@ -385,7 +385,7 @@ importers:
         specifier: ^4.21.1
         version: 4.22.1
       zod:
-        specifier: 4.6.6
+        specifier: ^4.6.6
         version: 4.6.6
 
   services/evidence-ledger:
@@ -409,7 +409,7 @@ importers:
         specifier: ^4.21.1
         version: 4.22.1
       zod:
-        specifier: 4.6.6
+        specifier: ^4.6.6
         version: 4.6.6
 
   services/execution-gate:
@@ -433,7 +433,7 @@ importers:
         specifier: ^4.21.1
         version: 4.22.1
       zod:
-        specifier: 4.6.6
+        specifier: ^4.6.6
         version: 4.6.6
 
   services/governance-kernel:
@@ -460,7 +460,7 @@ importers:
         specifier: ^4.21.1
         version: 4.22.1
       zod:
-        specifier: 4.6.6
+        specifier: ^4.6.6
         version: 4.6.6
 
   services/meta-authority-registry:
@@ -484,7 +484,7 @@ importers:
         specifier: ^4.21.1
         version: 4.22.1
       zod:
-        specifier: 4.6.6
+        specifier: ^4.6.6
         version: 4.6.6
 
   services/policy-compiler:
@@ -508,7 +508,7 @@ importers:
         specifier: ^4.21.1
         version: 4.22.1
       zod:
-        specifier: 4.6.6
+        specifier: ^4.6.6
         version: 4.6.6
 
   services/simulation-engine:
@@ -535,7 +535,7 @@ importers:
         specifier: ^4.21.1
         version: 4.22.1
       zod:
-        specifier: 4.6.6
+        specifier: ^4.6.6
         version: 4.6.6
 
   services/witness-service:
@@ -559,7 +559,7 @@ importers:
         specifier: ^4.21.1
         version: 4.22.1
       zod:
-        specifier: 4.6.6
+        specifier: ^4.6.6
         version: 4.6.6
 
   shared/adapter-sdk:
