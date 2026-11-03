@@ -65,6 +65,11 @@ function main() {
   const viteActor = pick(envFile, "VITE_OPERATOR_ACTOR", "console-ui");
   const operatorActor = pick(envFile, "OPERATOR_ACTOR", "validate-core");
   const chainV2Enabled = isTruthy(pick(envFile, "GOVERNANCE_CHAIN_V2", "false"));
+  if (targetMode === "production") {
+    addCheck(checks, "governance-enforcement", chainV2Enabled && pick(envFile, "GOVERNANCE_CHAIN_MODE") === "enforce", "Production requires GOVERNANCE_CHAIN_V2=true and GOVERNANCE_CHAIN_MODE=enforce.");
+    addCheck(checks, "required-rbac", roleEnforcement, "Production requires OPERATOR_ROLE_ENFORCEMENT=true.");
+    addCheck(checks, "required-sessions", sessionEnforcement && Boolean(sessionSecret), "Production requires signed operator sessions.");
+  }
   const chainStatePath = pick(envFile, "GOVERNANCE_CHAIN_STATE_PATH", "");
   const chainSigningSecret = pick(envFile, "GOVERNANCE_CHAIN_SIGNING_SECRET", "");
   const chainSigningPrivateKeyPath = pick(envFile, "GOVERNANCE_CHAIN_SIGNING_PRIVATE_KEY_PATH", "");

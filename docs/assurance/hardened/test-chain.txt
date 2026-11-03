@@ -1,0 +1,94 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:chain C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/governance-core/src/test/run.test.ts && tsx services/governance-kernel/src/governance-chain.test.ts && tsx services/agent-os/src/governance-chain-client.test.ts && tsx adapters/http-gateway/src/governance-chain-proxy.test.ts
+
+✔ a valid MAE constitutes a valid Ward (11.356ms)
+✔ an invalid (revoked) MAE cannot back a Ward (2.6149ms)
+✔ a Ward can create an Authority Envelope within bounds (1.2314ms)
+✔ an Authority Envelope cannot exceed its Ward (0.9585ms)
+✔ a Warrant cannot exceed its Authority Envelope (2.0024ms)
+✔ a Warrant cannot be reused (single-use) (9.5401ms)
+✔ the store refuses to consume a Warrant twice (3.1272ms)
+✔ an expired Warrant fails (2.1902ms)
+✔ a stale commit presentation is denied before execution (3.0632ms)
+✔ commit presentation skew is an explicit gate option (5.5726ms)
+✔ a future-dated commit presentation is denied before execution (2.7767ms)
+✔ an unparseable commit presentation is denied before execution (2.8054ms)
+✔ revoking a Ward invalidates its Envelope and Warrant (3.0445ms)
+✔ revoking an Authority Envelope invalidates its Warrant (1.4848ms)
+✔ the Commit Gate fails closed when the Ward is missing (0.9148ms)
+✔ the Commit Gate fails closed when the Warrant is missing (0.7885ms)
+✔ the Commit Gate consumes the Warrant on allow (6.32ms)
+✔ the GEL Record carries the complete authority chain and the ledger verifies (3.522ms)
+✔ the GEL chain is tamper-evident (1.3621ms)
+✔ a ProtectedSpace Ward applies its boundary rules (drone above ceiling denied) (3.0421ms)
+✔ an Institutional Ward requires an accountable governance origin (0.7219ms)
+✔ a Ward's human origin act signature is verified, not merely present (0.7253ms)
+✔ a Ward without a presence proof is rejected when the MAE requires one (2.0179ms)
+✔ a Governor cannot author beyond its delegated scope (1.6188ms)
+✔ cross-Ward federation fails without a trust relationship (3.1606ms)
+✔ federation fails closed with no trust bridge at all (0.9023ms)
+✔ a valid federation trust bridge allows the federated act (1.2088ms)
+✔ authority determination occurs before the attribution record (1.2235ms)
+✔ payments: refund within limit allowed; over threshold escalates (1.6778ms)
+✔ payments: refund over the envelope monetary limit is denied (1.3248ms)
+✔ payments: a cumulative spend budget is enforced across acts (2.5682ms)
+✔ warrant issuance quota (max_warrants) is enforced (2.9399ms)
+✔ healthcare: agent may draft but never submit a medication order (3.3141ms)
+✔ denied and escalated commits still leave GEL evidence (1.1833ms)
+✔ a store snapshot round-trips, preserving warrant consumption and the GEL chain (4.3151ms)
+✔ chainMetrics aggregates the store after a commit (2.5481ms)
+✔ openApiSpec is a well-formed OpenAPI 3 document for the chain (0.6723ms)
+✔ scopeSnapshot isolates a tenant's primitives (0.3829ms)
+✔ chainMetrics scopes counts to a single MAE while integrity stays global (1.5252ms)
+✔ an evidence bundle exports and verifies offline; tampering is detected (7.0436ms)
+✔ execution outcomes are recorded as a separate ledger entry (2.43ms)
+ℹ tests 41
+ℹ suites 0
+ℹ pass 41
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 135.8675
+✔ kernel /v2 chain: create -> commit allows and consumes -> reuse denied -> GEL intact (378.1564ms)
+✔ kernel /v2 chain state survives a restart (durable store) (58.0543ms)
+✔ kernel /v2 chain signs and verifies with ed25519 when key paths are provided (27.6892ms)
+✔ kernel /v2 isolates tenants: scoped reads + cross-tenant commit denied (117.7285ms)
+✔ kernel /v2 exposes federated commit across a trust bridge (29.569ms)
+✔ kernel /v2 signing-key rotation: records signed before and after both verify (3.255ms)
+✔ GovernanceChainClient SDK drives the chain end to end + reads OpenAPI (46.8843ms)
+✔ kernel /v2 commit fails closed on a missing warrant (29.8953ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 731.4568
+✔ agent-os enforce mode: a normal task act flows through the chain and is allowed (154.8418ms)
+✔ agent-os: an active kill switch makes the act inadmissible at the Commit Gate (48.1577ms)
+✔ agent-os shadow mode: the chain runs and records a decision (26.05ms)
+✔ completion acts are accepted by the same mission chain (31.3551ms)
+✔ agent-os: a tool action flows through the chain and is allowed (28.5174ms)
+✔ agent-os: a tool action is denied at the gate when the kill switch is active (19.9983ms)
+✔ agent-os: witness obligation is enforced — required+accepted allows, required+unaccepted denies (26.075ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 344.857
+✔ gateway proxies the chain and forwards verdicts verbatim (allow then single-use deny) (200.541ms)
+✔ gateway returns 501 when GOVERNANCE_CHAIN_V2 is disabled (15.1828ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 221.4752

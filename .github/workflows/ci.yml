@@ -6,7 +6,7 @@ name: CI
 
 on:
   push:
-    branches: [main, ward-warrant-execution-control]
+    branches: [main, ward-warrant-execution-control, harden/production-contracts]
   pull_request:
   workflow_dispatch:
 
@@ -47,6 +47,34 @@ jobs:
       - name: Test (governance · execution-control · cli · api · chain)
         run: corepack pnpm test
 
+      - name: Durable effect boundary and adversarial HTTP regressions
+        run: corepack pnpm test:proxy-effects
+
+      - name: Dependency backport exploit regressions
+        run: node --test scripts/dependency-security.test.mjs
+
+      - name: Framework and MCP dependency compatibility
+        run: |
+          corepack pnpm -r --filter @aristotle/mcp-server-stdio... --workspace-concurrency=1 build
+          corepack pnpm test:framework-adapters
+          corepack pnpm test:mcp-server
+          corepack pnpm test:mcp-server-stdio
+
+      - name: Production gateway and physical adapter boundaries
+        run: |
+          corepack pnpm -r --filter @aristotle/mavlink-px4... --workspace-concurrency=1 build
+          corepack pnpm --filter @aristotle/adapter-sdk build
+          corepack pnpm --filter @aristotle/adapter-sdk test
+          corepack pnpm test:protocol-adapters
+          corepack pnpm test:single-drone
+          corepack pnpm test:px4-sitl
+          node --import tsx --test adapters/http-gateway/src/preflight.test.ts
+
+      - name: Runtime-backed 40-asset proof and reviewer verification
+        run: |
+          node --import tsx --test examples/mesh/swarm-partition-40-asset.test.ts examples/mesh/published.replay.test.ts
+          corepack pnpm reviewer:verify
+
       - name: Build CLI bundle
         run: corepack pnpm -F @aristotle/os-cli build
 
@@ -82,6 +110,9 @@ jobs:
 
       - name: Install dependencies
         run: corepack pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build CLI workspace prerequisites
+        run: corepack pnpm -r --filter @aristotle/shared-types --filter @aristotle/shared-schemas --filter @aristotle/governance-core --filter @aristotle/trial-engine --filter @aristotle/execution-control-runtime --filter @aristotle/mesh-runtime --filter @aristotle/os-sdk --workspace-concurrency=1 build
 
       - name: Validate @aristotle/os-cli is publish-ready
         # Packs the CLI, asserts tarball contents, installs it into a throwaway
@@ -153,3 +184,30 @@ jobs:
         # (high+critical) fails the build unless triaged in .audit-allowlist.json
         # with a reason and an expiry. Expired exceptions are themselves failures.
         run: corepack pnpm audit:ci
+
+  formal-model:
+    name: bounded mesh model and negative controls
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Download pinned TLC
+        run: curl --fail --location --output "$RUNNER_TEMP/tla2tools.jar" https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar
+      - name: Check bounded models and require seeded flaws to fail
+        env:
+          TLA_TOOLS_JAR: ${{ runner.temp }}/tla2tools.jar
+        run: node scripts/check-formal-model.mjs
+      - name: Preserve checker evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: formal-model-evidence
+          path: |
+            extracted/reports/formal/**/manifest.json
+            extracted/reports/formal/**/tlc.txt

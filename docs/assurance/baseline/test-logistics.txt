@@ -1,0 +1,18 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:logistics C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> tsx shared/execution-control-runtime/src/logistics.test.ts
+
+✔ logistics adapter builders produce Canonical Governed Actions (6.735ms)
+✔ sample logistics Ward and action fixtures load and drive the real gate (97.4894ms)
+✔ logistics hard interlocks refuse even if mistakenly allowed (10.2936ms)
+✔ dual-control logistics fuel actions fail closed without an approval store (12.9456ms)
+✔ dual-control logistics fuel actions issue a Warrant after plural approval (23.2733ms)
+✔ logistics evidence bundle wraps execution evidence with load context (23.7178ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 210.4337

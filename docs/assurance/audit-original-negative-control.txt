@@ -1,0 +1,20 @@
+Dependency audit — 48 advisory record(s); fail threshold: high+
+  BLOCKING: 16
+    · HIGH js-yaml GHSA-52cp-r559-cp3m — js-yaml: YAML merge-key chains can force quadratic CPU consumption https://github.com/advisories/GHSA-52cp-r559-cp3m
+    · HIGH hono GHSA-88fw-hqm2-52qc — hono: CORS Middleware reflects any Origin with credentials when `origin` defaults to the wildcard https://github.com/advisories/GHSA-88fw-hqm2-52qc
+    · HIGH fast-uri GHSA-v2hh-gcrm-f6hx — fast-uri vulnerable to host confusion via literal backslash authority delimiter https://github.com/advisories/GHSA-v2hh-gcrm-f6hx
+    · HIGH fast-uri GHSA-7p8r-x3mc-p8w7 — fast-uri vulnerable to host confusion via backslash authority introducer https://github.com/advisories/GHSA-7p8r-x3mc-p8w7
+    · HIGH ip-address GHSA-mwp4-54f8-5fhr — ip-address: Address4 decodes leading-zero octets as decimal while resolvers decode them as octal, allowing SSRF and trust-boundary bypass https://github.com/advisories/GHSA-mwp4-54f8-5fhr
+    · HIGH js-yaml GHSA-5p4m-2wfm-xmqj — JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) — CVE-2026-59870 fix not backported https://github.com/advisories/GHSA-5p4m-2wfm-xmqj
+    · HIGH nanoid GHSA-28wg-ghj8-5hjv — nanoid: non-secure generators can loop indefinitely with negative size https://github.com/advisories/GHSA-28wg-ghj8-5hjv
+    · HIGH nanoid GHSA-2v37-7h3g-55p8 — nanoid: custom generators can loop indefinitely when size is zero https://github.com/advisories/GHSA-2v37-7h3g-55p8
+    · HIGH nanoid GHSA-xwg4-73v4-xw9w — nanoid: Integer Overflow or Wraparound https://github.com/advisories/GHSA-xwg4-73v4-xw9w
+    · HIGH fast-uri GHSA-f65p-4m7j-42xc — fast-uri vulnerable to server-side request forgery via malformed IPv6 normalization https://github.com/advisories/GHSA-f65p-4m7j-42xc
+    · HIGH fast-uri GHSA-fph4-wmhf-6fwf — fast-uri vulnerable to server-side request forgery via repeated hostname percent-decoding https://github.com/advisories/GHSA-fph4-wmhf-6fwf
+    · HIGH fast-uri GHSA-jqff-g426-hqxp — fast-uri vulnerable to host confusion via percent-encoded scheme normalization https://github.com/advisories/GHSA-jqff-g426-hqxp
+    · HIGH js-yaml GHSA-2883-xcg3-v3hh — js-yaml: maxTotalMergeKeys does not limit CPU use for empty merge sources https://github.com/advisories/GHSA-2883-xcg3-v3hh
+    · HIGH fast-uri GHSA-4c8g-83qw-93j6 — fast-uri vulnerable to host confusion via failed IDN canonicalization https://github.com/advisories/GHSA-4c8g-83qw-93j6
+    · HIGH fast-uri GHSA-qw65-cvwx-89v3 — fast-uri vulnerable to authority injection via an unvalidated port in serialize https://github.com/advisories/GHSA-qw65-cvwx-89v3
+    · CRITICAL proxy-addr GHSA-jqcg-44mw-7w3h — proxy-addr vulnerable to IP spoofing via IPv4-mapped IPv6 trust subnet https://github.com/advisories/GHSA-jqcg-44mw-7w3h
+
+✗ dependency audit failed. Fix the dependency, or triage it in .audit-allowlist.json with a reason and expiry.

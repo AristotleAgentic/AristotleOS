@@ -1,0 +1,32 @@
+
+> @aristotle/adapter-sdk@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\adapter-sdk
+> node --import tsx --test src/index.test.ts
+
+✔ governThroughAdapter: ALLOW + production transport + effect boundary emits (4.3169ms)
+✔ governThroughAdapter: ALLOW + demo transport + allowDemonstrationTransport: true succeeds (0.51ms)
+✔ governThroughAdapter: REFUSE -> GATE_REFUSED, no emit (0.4604ms)
+✔ governThroughAdapter: HTTP 403 -> GATE_HTTP_403, no emit (0.4489ms)
+✔ governThroughAdapter: network error -> GATE_UNREACHABLE (0.4429ms)
+✔ governThroughAdapter: ALLOW + demo transport + !allowDemonstrationTransport -> DEMONSTRATION_ONLY_BLOCKED (0.3134ms)
+✔ governThroughAdapter: ALLOW + transport returns ok:false -> TRANSPORT_REFUSED (0.421ms)
+✔ governThroughAdapter: ALLOW without a warrant -> MISSING_WARRANT (defensive) (0.2969ms)
+✔ governThroughAdapter: buildAuthorization extends the base authz with adapter-specific fields (1.6156ms)
+✔ production flag and demonstration override cannot bypass missing durable boundary (0.4368ms)
+✔ boundary refusal emits nothing; transport exception finalizes unknown (0.5581ms)
+✔ DemonstrationTransport: production_validated is always false (0.1449ms)
+✔ DemonstrationTransport: emit appends to emitted[] and increments seq (0.3308ms)
+✔ governThroughHandler: ALLOW invokes handler with input + context, returns ok+output (0.4979ms)
+✔ governThroughHandler: REFUSE returns GATE_REFUSED, handler is NOT invoked (0.2504ms)
+✔ governThroughHandler: gate unreachable returns GATE_UNREACHABLE, handler is NOT invoked (0.5762ms)
+✔ governThroughHandler: gate HTTP 503 returns GATE_HTTP_503, handler is NOT invoked (0.3032ms)
+✔ governThroughHandler: ALLOW without a warrant returns MISSING_WARRANT (defensive) (0.2521ms)
+✔ governThroughHandler: handler throws after ALLOW -> TRANSPORT_REFUSED with throw message (0.2882ms)
+✔ governThroughHandler: synchronous handler return value is wrapped without await (0.2147ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 530.2089

@@ -1,0 +1,13 @@
+
+> aristotle-autonomous-governance-os@0.1.33 benchmark:runtime C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx scripts/benchmark-runtime.ts
+
+AristotleOS runtime benchmark complete
+scenario=payments iterations=1000 warmup=100
+ledger.records=3000 ledger.integrity_ok=true
+report=C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\reports\runtime-benchmark.json
+
+warrant_issuance: mean=0.063ms p95=0.105ms p99=0.522ms throughput=15946.42/s
+admissibility_commit_gate: mean=0.35ms p95=0.81ms p99=2.108ms throughput=2860.157/s
+fail_closed_missing_warrant: mean=0.072ms p95=0.094ms p99=0.529ms throughput=13983.45/s
+revocation_blocking: mean=0.38ms p95=0.758ms p99=2.82ms throughput=2633.096/s

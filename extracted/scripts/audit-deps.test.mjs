@@ -66,5 +66,26 @@ test("evaluateAudit --fail-on critical lets a high advisory pass", () => {
 
 test("evaluateAudit is clean on an empty report", () => {
   assert.equal(evaluateAudit({ advisories: [] }).ok, true);
-  assert.equal(parseAuditReport({}).length, 0);
+  assert.equal(parseAuditReport({ advisories: {} }).length, 0);
+});
+
+test("network errors and unsupported audit JSON cannot masquerade as a clean scan", () => {
+  for (const report of [undefined, null, {}, [], { error: { code: "ENETUNREACH" } }, { code: "ERR_PNPM_AUDIT_BAD_RESPONSE" }, { advisories: [] }, { vulnerabilities: [] }, { advisories: {}, vulnerabilities: {} }, { advisories: [], vulnerabilities: {} }]) {
+    assert.throws(() => parseAuditReport(report), /invalid audit report/);
+  }
+});
+
+test("malformed advisory records and unknown severities fail closed", () => {
+  for (const advisory of [null, {}, { severity: "catastrophic" }]) {
+    assert.throws(() => parseAuditReport({ advisories: { a: advisory } }), /invalid audit/);
+    assert.throws(() => parseAuditReport({ vulnerabilities: { a: advisory } }), /invalid audit/);
+  }
+});
+
+test("audit exceptions cannot be unreasoned or permanent through an invalid expiry", () => {
+  for (const expires of [undefined, "", "not-a-date"]) {
+    assert.throws(() => evaluateAudit({ advisories: parseAuditReport(v6Report), allowlist: [{ id: "GHSA-aaaa-bbbb-cccc", reason: "triage", expires }] }), /finite expiry/);
+  }
+  assert.throws(() => evaluateAudit({ failOn: "typo" }), /failure threshold/);
+  assert.throws(() => evaluateAudit({ now: "not-a-date" }), /audit clock/);
 });

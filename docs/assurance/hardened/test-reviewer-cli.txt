@@ -1,0 +1,31 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:reviewer-cli C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> corepack pnpm@10.32.1 --filter @aristotle/reviewer test
+
+
+> @aristotle/reviewer@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\reviewer
+> node --import tsx --test src/index.test.ts
+
+✔ CLI: --version prints the package version on stdout, exit 0 (138.2413ms)
+✔ CLI: help subcommand prints usage on stdout, exit 0 (134.3279ms)
+✔ CLI: no args prints usage on stdout, exit 1 (135.8427ms)
+✔ CLI: unknown subcommand exits 2 with usage on stderr (122.3592ms)
+✔ CLI verify: a known-good bundle returns exit 0 with ok: true in stdout (201.1047ms)
+✔ CLI verify: a tampered bundle returns non-zero exit (181.1806ms)
+✔ CLI verify: missing file argument exits 1 with stderr hint (128.46ms)
+✔ CLI verify: nonexistent file exits 1 (128.5178ms)
+✔ CLI verify-warrant: trusted key + matching hash returns ok: true, exit 0 (170.5178ms)
+✔ CLI verify-warrant: untrusted key returns ok: false, exit 1 (149.9134ms)
+✔ CLI verify-warrant: action hash mismatch returns ok: false, exit 1 (139.4686ms)
+✔ CLI verify-warrant: missing required args exits 1 (134.3873ms)
+✔ CLI verify-replay: a well-formed replay artifact returns ok: true, exit 0 (141.9233ms)
+✔ CLI verify-replay: a tampered report_hash returns ok: false, exit 1 (148.0807ms)
+✔ CLI verify-replay: invalid artifact format exits 1 (159.644ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3300.6671

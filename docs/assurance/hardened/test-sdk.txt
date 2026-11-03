@@ -1,0 +1,34 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:sdk C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx packages/os-sdk/src/index.test.ts
+
+✔ evaluate posts the action to the gate, sends the bearer token, and parses the decision (6.6095ms)
+✔ apiKey is sent as X-API-Key and GET requests carry no content-type/body (0.6362ms)
+✔ governance compile/diff/explain hit the right routes (0.8957ms)
+✔ auditTail builds the limit query; auditVerify parses the result (0.7096ms)
+✔ a non-2xx response throws AristotleApiError carrying status + body (1.1638ms)
+✔ operator engines hit the right routes with the right methods (1.249ms)
+✔ degradation() parses the live status (0.4529ms)
+✔ constructor rejects a missing baseUrl (0.4159ms)
+✔ metrics() reads the aggregate metrics endpoint (0.471ms)
+✔ approvals() lists the queue; decideApproval votes on a request (0.8877ms)
+✔ killSwitch() and revokeEnvelope() POST to the admin routes with the right body (0.5682ms)
+✔ governAndExecute: ALLOW runs the executor and returns its result with the warrant (0.6279ms)
+✔ governAndExecute: REFUSE throws AristotleApiError with the reason codes; executor never runs (1.214ms)
+✔ governAndExecute: ESCALATE returns an escalation handle and never calls the executor (0.8438ms)
+✔ AristotleClient.titleAction builds a typed title action with namespaced params (0.4658ms)
+✔ requestWarrant returns the warrant id on ALLOW and carries the canonical_action_hash (6.8388ms)
+✔ requestWarrant on REFUSE throws AristotleApiError with status 403 (0.586ms)
+✔ requestWarrant on EXPIRE throws AristotleApiError with status 410 (0.4579ms)
+✔ replay POSTs to /v1/execution-control/replay and parses the result (0.4014ms)
+✔ exportEvidence POSTs to /v1/execution-control/evidence/export and returns the bundle hash (0.3559ms)
+✔ verifyWarrant POSTs to /v1/execution-control/warrant/verify and parses the result (0.3269ms)
+✔ inspectChain POSTs to /v1/execution-control/warrant/inspect-chain and returns MAE -> Ward -> Envelope -> Warrant chain (0.4094ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 52.3654

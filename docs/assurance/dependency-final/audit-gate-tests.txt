@@ -1,0 +1,19 @@
+✔ parseAuditReport normalizes the v6 advisories map (2.7516ms)
+✔ parseAuditReport normalizes the v7+ vulnerabilities map (0.8447ms)
+✔ evaluateAudit blocks high+critical advisories by default (0.633ms)
+✔ evaluateAudit ignores advisories below the fail threshold (0.2526ms)
+✔ evaluateAudit honors a non-expired allowlist entry by GHSA id (0.4751ms)
+✔ evaluateAudit treats an expired allowlist entry as blocking (0.2957ms)
+✔ evaluateAudit --fail-on critical lets a high advisory pass (0.2951ms)
+✔ evaluateAudit is clean on an empty report (0.2255ms)
+✔ network errors and unsupported audit JSON cannot masquerade as a clean scan (1.1871ms)
+✔ malformed advisory records and unknown severities fail closed (0.6881ms)
+✔ audit exceptions cannot be unreasoned or permanent through an invalid expiry (0.5766ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 202.248

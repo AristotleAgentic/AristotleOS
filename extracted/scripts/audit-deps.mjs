@@ -31,13 +31,20 @@ export const SEVERITY_RANK = { info: 0, low: 1, moderate: 2, high: 3, critical: 
  * map. Returns [{ key, ids, severity, module, title, url }].
  */
 export function parseAuditReport(report) {
-  if (!report || typeof report !== "object") return [];
+  const map = value => value !== null && typeof value === "object" && !Array.isArray(value);
+  if (!map(report) || report.error || report.code ||
+      (Object.hasOwn(report, "advisories") && !map(report.advisories)) ||
+      (Object.hasOwn(report, "vulnerabilities") && !map(report.vulnerabilities)) ||
+      Number(map(report.advisories)) + Number(map(report.vulnerabilities)) !== 1) {
+    throw new Error("invalid audit report: an unavailable or malformed scan cannot establish zero advisories");
+  }
+  const validSeverity = value => typeof value === "string" && Object.hasOwn(SEVERITY_RANK, value.toLowerCase());
   const out = [];
 
   // v6 / pnpm style: { advisories: { "<id>": { id, github_advisory_id, severity, module_name, title, url } } }
   if (report.advisories && typeof report.advisories === "object") {
     for (const adv of Object.values(report.advisories)) {
-      if (!adv || typeof adv !== "object") continue;
+      if (!map(adv) || !validSeverity(adv.severity)) throw new Error("invalid audit advisory or severity");
       const ids = [adv.github_advisory_id, adv.id, adv.cve].filter((v) => v !== undefined && v !== null).map(String);
       out.push({
         key: String(adv.github_advisory_id ?? adv.id ?? adv.module_name ?? "unknown"),
@@ -54,7 +61,7 @@ export function parseAuditReport(report) {
   // v7+ style: { vulnerabilities: { "<pkg>": { severity, via: [{ source, name, url, title }] } } }
   if (report.vulnerabilities && typeof report.vulnerabilities === "object") {
     for (const [pkg, vuln] of Object.entries(report.vulnerabilities)) {
-      if (!vuln || typeof vuln !== "object") continue;
+      if (!map(vuln) || !validSeverity(vuln.severity)) throw new Error("invalid audit vulnerability or severity");
       const vias = Array.isArray(vuln.via) ? vuln.via.filter((v) => typeof v === "object") : [];
       const ids = vias.flatMap((v) => [v.source, v.url].filter(Boolean).map(String));
       out.push({
@@ -85,14 +92,22 @@ function matchesAllowlist(advisory, entry) {
  * when there are no blocking advisories and no expired allowlist exceptions.
  */
 export function evaluateAudit({ advisories = [], allowlist = [], failOn = "high", now = new Date() } = {}) {
+  if (!Object.hasOwn(SEVERITY_RANK, failOn)) throw new Error("invalid audit failure threshold");
   const threshold = SEVERITY_RANK[failOn] ?? SEVERITY_RANK.high;
   const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
+  if (!Number.isFinite(nowMs)) throw new Error("invalid audit clock");
+  for (const entry of allowlist) {
+    if (!entry || !String(entry.id ?? "").trim() || typeof entry.reason !== "string" || !entry.reason.trim() || typeof entry.expires !== "string" || !Number.isFinite(Date.parse(entry.expires))) {
+      throw new Error("invalid audit exception: id, reason and finite expiry are required");
+    }
+  }
 
   const blocking = [];
   const allowlisted = [];
   const expired = [];
 
   for (const adv of advisories) {
+    if (!Object.hasOwn(SEVERITY_RANK, adv.severity)) throw new Error("invalid audit severity");
     const rank = SEVERITY_RANK[adv.severity] ?? 0;
     if (rank < threshold) continue; // below the gate threshold — informational only
 
@@ -147,6 +162,7 @@ function main() {
   if (existsSync(allowlistPath)) {
     try {
       const parsed = JSON.parse(readFileSync(allowlistPath, "utf8"));
+      if (!Array.isArray(parsed) && !Array.isArray(parsed?.allow)) throw new Error("invalid exception list");
       allowlist = Array.isArray(parsed) ? parsed : Array.isArray(parsed.allow) ? parsed.allow : [];
     } catch (error) {
       console.error(`✗ .audit-allowlist.json is not valid JSON: ${error?.message ?? error}`);
@@ -162,8 +178,14 @@ function main() {
     process.exit(1);
   }
 
-  const advisories = parseAuditReport(report);
-  const result = evaluateAudit({ advisories, allowlist, failOn });
+  let advisories, result;
+  try {
+    advisories = parseAuditReport(report);
+    result = evaluateAudit({ advisories, allowlist, failOn });
+  } catch (error) {
+    console.error(`✗ ${error.message}`);
+    process.exit(1);
+  }
 
   console.log(`Dependency audit — ${advisories.length} advisory record(s); fail threshold: ${failOn}+`);
   if (result.allowlisted.length) {

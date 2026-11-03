@@ -1,0 +1,11 @@
+AristotleOS Helm chart validation
+
+  PASS  helm lint
+  PASS  helm template (default values)
+  PASS  helm template (kind-smoke values)
+  PASS  helm template (local profile)
+  PASS  helm template (staging profile)
+  PASS  helm template (pilot profile)
+  PASS  helm template (pilot + hardened overlay)
+
+OK — chart lints and renders (default + kind-smoke)

@@ -1,0 +1,13 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:production-preflight C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> node --import tsx --test adapters/http-gateway/src/preflight.test.ts
+
+✔ production cannot boot with shadow/off governance or an insecure override (1.336ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 381.9408

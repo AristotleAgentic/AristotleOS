@@ -1,0 +1,66 @@
+{
+  "source_commit": "2604ed08506c41166fc9be1550f70b883f0fd746",
+  "branch": "harden/production-contracts",
+  "generated_at": "2026-10-06T09:15:47.006Z",
+  "program_complete": false,
+  "production_ready": false,
+  "physically_validated": false,
+  "exactly_once_physical_effects": false,
+  "runs": [
+    {
+      "run": "production-contracts",
+      "manifest_sha256": "a41eadfa1f9f7f2c253b4653d95c57c7c625d0617168fd563aaabe3a3cded3d2",
+      "source_commit": "aa4649025f7652394dad7dc202baf28b015bc2e2",
+      "counts": {
+        "PASS": 95,
+        "UNAVAILABLE": 1,
+        "SKIPPED": 1
+      }
+    },
+    {
+      "run": "production-contracts-final",
+      "manifest_sha256": "1b977bf0fa6af6c64212d4ca34e42f0061ace4903ba62d3a4e48666e33047d0d",
+      "source_commit": "2604ed08506c41166fc9be1550f70b883f0fd746",
+      "counts": {
+        "PASS": 12,
+        "UNAVAILABLE": 1,
+        "SKIPPED": 1
+      }
+    }
+  ],
+  "verified_log_hashes": 107,
+  "verified_final_source_hashes": 719,
+  "registry_audit": {
+    "sha256": "81e4cbbc8cf3fef1eca406c623c0f6736fe8b34abf3f1db759cda9bd77cacc2d",
+    "advisories": [
+      {
+        "id": "GHSA-866g-f22w-33x8",
+        "module": "@ai-sdk/provider-utils",
+        "severity": "low",
+        "disposition": "Locally patched and exploit-tested; upstream version remains listed."
+      },
+      {
+        "id": "GHSA-hp3w-g68c-fv3c",
+        "module": "sprintf-js",
+        "severity": "moderate",
+        "disposition": "Locally patched and exploit-tested; upstream version remains listed."
+      }
+    ]
+  },
+  "remediations": [
+    "UUID 10 to upstream 11.1.1",
+    "provider-utils 2.2.8 bounded-response backport",
+    "sprintf-js 1.0.3 bounded-precision patch"
+  ],
+  "guarantee": "Durable local dispatch ownership with shared SQLite state and stable operation identity; external effects remain unknown pending signed reconciliation.",
+  "physical_target": "Single drone; autopilot, firmware and simulator/bench details pending.",
+  "unresolved": [
+    "Receiver-side exactly-once effects",
+    "Aircraft commissioning and authenticated telemetry",
+    "Complete mediation of remaining framework/response paths",
+    "Multi-process budget/approval atomicity",
+    "Deployment isolation, storage rollback resistance and independent anchors",
+    "Deployment recovery/load/soak evidence"
+  ],
+  "no_push_or_deployment": true
+}

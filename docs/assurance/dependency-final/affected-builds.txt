@@ -1,0 +1,18 @@
+Scope: 3 of 60 workspace projects
+
+> @aristotle/mastra@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\mastra
+> tsc -p tsconfig.json
+
+
+> @aristotle/mcp-server-stdio@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\mcp-server-stdio
+> tsc -p tsconfig.json
+
+
+> @aristotle/os-cli@0.2.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\apps\aristotle-cli
+> node build.mjs
+
+
+  dist\index.js  582.5kb
+
+Done in 66ms
+bundled AristotleOS CLI -> dist\index.js

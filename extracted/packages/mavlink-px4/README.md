@@ -1,14 +1,24 @@
 # @aristotle/mavlink-px4
 
-**Govern PX4 / ArduPilot flight commands with AristotleOS.** Protocol-level governance adapter for MAVLink v2 `COMMAND_LONG` framing. Emits only on Warrant verification.
+**Govern PX4 / ArduPilot flight commands with AristotleOS.** Protocol-level governance adapter for MAVLink v2 `COMMAND_LONG` framing. Production orchestration requires a verified durable effect boundary and a telemetry interlock. Direct low-level transport calls do not verify Warrants.
 
 Status: the UDP transport is tested against a `node:dgram` socket listener in the test process — **not against a real autopilot or PX4 SITL**. `productionValidated: false` by default; flips to `true` only after operator integration + range/counsel sign-off. See `docs/ADAPTER_VALIDATION.md` for the validation matrix.
+
+Setting that flag is insufficient to enable governed production emission. Supply
+`effectBoundary`, `safetyInterlock`, and a retry-stable `operationId`. See the
+[single-drone readiness contract](../../docs/single-drone-readiness.md) for
+configuration requirements, tested guarantees, and remaining commissioning work.
+UDP send completion never establishes exactly-once physical execution.
 
 ```sh
 npm install @aristotle/mavlink-px4 @aristotle/os-sdk
 ```
 
-## Quickstart against PX4 SITL
+## Demonstration against an explicitly provisioned local simulator
+
+This example exercises the demonstration path, without production effect or
+safety guarantees. Validate the selected autopilot's endpoint and altitude
+semantics before using it; it is not a flight-test procedure.
 
 ```ts
 import { AristotleClient } from "@aristotle/os-sdk";
@@ -76,7 +86,7 @@ The orchestrator:
 | `TAKEOFF` | `MAV_CMD_NAV_TAKEOFF` (22) | `param7`: takeoff altitude (m) |
 | `LAND` | `MAV_CMD_NAV_LAND` (21) | |
 | `RTL` | `MAV_CMD_NAV_RETURN_TO_LAUNCH` (20) | |
-| `GOTO_NED` | `MAV_CMD_DO_REPOSITION` (192) | NED waypoint via params |
+| `GOTO_NED` | Unsupported on this transport | Refused: DO_REPOSITION is not a local NED command |
 | `SET_MODE` | `MAV_CMD_DO_SET_MODE` (176) | |
 | `GEOFENCE_ARM` | `MAV_CMD_DO_FENCE_ENABLE` (2003) | |
 | `FTS_TRIGGER` | `MAV_CMD_DO_FLIGHTTERMINATION` (185) | Hard-interlocked at the gate by default |
@@ -92,12 +102,15 @@ The package emits **real MAVLink v2 frames** (start byte `0xFD`, X.25-style CRC 
 
 ## Tests
 
-12 tests pass against the package source:
+The package regression suite covers:
 
 - MAVLink v2 framing (start byte, command id offset, ARM uses 400, TAKEOFF uses 22)
 - Demonstration transport emits hash-bound receipt; refuses commands outside authz
 - **UDP transport sends a real UDP datagram to a real listener and the listener sees a MAVLink v2 frame**
 - `productionValidated: true` flag flows through
+- Durable-boundary requirement, immutable command binding, finite parameters,
+  single-aircraft targets, arm/disarm semantics, telemetry freshness, and one
+  socket under concurrent UDP emission
 - Orchestrator: ALLOW emits via transport; REFUSE skips transport; demo-transport refuses without opt-in; `actionTypeFor` overrides default; gate-unreachable fail-closed
 
 ## License

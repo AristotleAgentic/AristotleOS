@@ -1,0 +1,34 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:adapter-sdk C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> corepack pnpm@10.32.1 --filter @aristotle/adapter-sdk test
+
+
+> @aristotle/adapter-sdk@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\adapter-sdk
+> node --import tsx --test src/index.test.ts
+
+✔ governThroughAdapter: ALLOW + production_validated true emits and returns ok (5.9344ms)
+✔ governThroughAdapter: ALLOW + demo transport + allowDemonstrationTransport: true succeeds (0.7104ms)
+✔ governThroughAdapter: REFUSE -> GATE_REFUSED, no emit (0.6376ms)
+✔ governThroughAdapter: HTTP 403 -> GATE_HTTP_403, no emit (0.6424ms)
+✔ governThroughAdapter: network error -> GATE_UNREACHABLE (0.5687ms)
+✔ governThroughAdapter: ALLOW + demo transport + !allowDemonstrationTransport -> DEMONSTRATION_ONLY_BLOCKED (0.8944ms)
+✔ governThroughAdapter: ALLOW + transport returns ok:false -> TRANSPORT_REFUSED (0.392ms)
+✔ governThroughAdapter: ALLOW without a warrant -> MISSING_WARRANT (defensive) (0.3018ms)
+✔ governThroughAdapter: buildAuthorization extends the base authz with adapter-specific fields (1.469ms)
+✔ DemonstrationTransport: production_validated is always false (0.4764ms)
+✔ DemonstrationTransport: emit appends to emitted[] and increments seq (0.3906ms)
+✔ governThroughHandler: ALLOW invokes handler with input + context, returns ok+output (0.5264ms)
+✔ governThroughHandler: REFUSE returns GATE_REFUSED, handler is NOT invoked (0.2642ms)
+✔ governThroughHandler: gate unreachable returns GATE_UNREACHABLE, handler is NOT invoked (0.2967ms)
+✔ governThroughHandler: gate HTTP 503 returns GATE_HTTP_503, handler is NOT invoked (0.28ms)
+✔ governThroughHandler: ALLOW without a warrant returns MISSING_WARRANT (defensive) (0.2639ms)
+✔ governThroughHandler: handler throws after ALLOW -> TRANSPORT_REFUSED with throw message (0.3583ms)
+✔ governThroughHandler: synchronous handler return value is wrapped without await (0.2456ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 646.5881

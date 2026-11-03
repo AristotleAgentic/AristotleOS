@@ -1,15 +1,12 @@
 /**
  * PX4 SITL integration test.
  *
- * Closes the in-repo portion of ROADMAP_TO_100.md Category 1
- * "production hardware integration test for >= 1 adapter (PX4 SITL
- * is the most achievable)".
+ * Opt-in transport smoke test. This is not production hardware evidence,
+ * command acknowledgement, or proof of an aircraft's physical state.
  *
  * The test:
  *   1. Probes the configured UDP endpoint to see if SITL is running.
- *   2. If not reachable, SKIPS — never fails for the operator's setup.
- *      Honest CI behavior: the docker-compose.yml is opt-in and not
- *      every reviewer has Docker available.
+ *   2. Skips only when not opted in. An unavailable opted-in endpoint fails.
  *   3. If reachable, drives governFlightCommand through MavlinkUdpTransport
  *      against the live endpoint with an ALLOW-producing stub gate, and
  *      asserts a wire-level datagram landed (the simulator may not echo
@@ -21,8 +18,8 @@
  *   docker/sitl/run.sh up
  *   docker/sitl/run.sh test
  *
- *   # Or pointing at any other UDP listener:
- *   ARISTOTLE_PX4_SITL_HOST=192.168.1.50 \
+ *   # Explicitly provision a local simulator that returns MAVLink traffic:
+ *   ARISTOTLE_PX4_SITL_HOST=127.0.0.1 \
  *   ARISTOTLE_PX4_SITL_PORT=14550 \
  *     corepack pnpm@10.32.1 --filter @aristotle/tests-px4-sitl test
  */
@@ -43,19 +40,17 @@ const PROBE_TIMEOUT_MS = 1500;
 
 /**
  * Probe the UDP endpoint to see whether SITL is reachable. We send a
- * one-byte datagram and wait briefly. UDP is connectionless so this is
- * a best-effort liveness check: "no immediate ICMP unreachable" is
- * treated as "probably up". We don't trust silence too much; if SITL is
- * legitimately unreachable the subsequent test calls will fail fast.
+ * one-byte datagram and wait for incoming MAVLink-shaped traffic. A quiet
+ * socket is not proof of a running simulator. This is only a smoke check;
+ * it neither authenticates telemetry nor decodes command acknowledgements.
  */
 async function isSitlReachable(): Promise<boolean> {
   return await new Promise<boolean>((resolve) => {
     const sock = createSocket("udp4");
     const timer = setTimeout(() => {
       try { sock.close(); } catch { /* ignore */ }
-      // No immediate error -> assume reachable. UDP doesn't ack so this
-      // is the best we can do without protocol-level probing.
-      resolve(true);
+      // No incoming traffic: fail the opted-in test rather than claim success.
+      resolve(false);
     }, PROBE_TIMEOUT_MS);
     sock.on("error", (err) => {
       clearTimeout(timer);
@@ -67,6 +62,14 @@ async function isSitlReachable(): Promise<boolean> {
       } else {
         resolve(false);
       }
+    });
+    // Silence is never positive simulator evidence. This only establishes
+    // traffic from the configured endpoint; it does not establish an effect.
+    sock.on("message", (message, remote) => {
+      if (remote.address !== HOST || remote.port !== PORT || message.length < 12 || ![0xfd, 0xfe].includes(message[0])) return;
+      clearTimeout(timer);
+      sock.close();
+      resolve(true);
     });
     sock.send(Buffer.from([0]), PORT, HOST, (err) => {
       if (err) {
@@ -95,7 +98,7 @@ const TAKEOFF: FlightCommand = {
   command: "TAKEOFF",
   target_system: 1,
   target_component: 1,
-  params: { altitude_m: 10 },
+  params: { param7: 10 },
   requested_at: new Date().toISOString()
 };
 
@@ -110,11 +113,9 @@ test(`PX4 SITL integration: governFlightCommand drives MavlinkUdpTransport again
     t.skip("Set ARISTOTLE_PX4_SITL_OPT_IN=1 to run against a live SITL (see docker/sitl/run.sh)");
     return;
   }
+  assert.equal(HOST, "127.0.0.1", "This smoke test only supports an explicitly provisioned local simulator, never a remote aircraft");
   const reachable = await isSitlReachable();
-  if (!reachable) {
-    t.skip(`SITL not reachable at ${HOST}:${PORT} — bring it up with docker/sitl/run.sh up`);
-    return;
-  }
+  assert.equal(reachable, true, `No MAVLink traffic from the opted-in simulator at ${HOST}:${PORT}; silence is not success`);
   const transport = new MavlinkUdpTransport({
     remote: { host: HOST, port: PORT },
     systemId: 7,

@@ -1,0 +1,30 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:space C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/execution-control-runtime/src/space.test.ts
+
+✔ space adapter builders produce Canonical Governed Actions with snapshot params merged in (1.4048ms)
+✔ clean countdown-resume action ALLOWs through the gate with all invariants satisfied (38.1701ms)
+✔ propellant load action ALLOWs in nominal conditions (7.5905ms)
+✔ ignite REFUSEs when range is not clear (7.6793ms)
+✔ ignite REFUSEs when surface wind exceeds site limit (6.2002ms)
+✔ ignite REFUSEs when FTS is not armed (6.0393ms)
+✔ hard interlock: space.disable_flight_termination is REFUSEd even if envelope mistakenly allowed it (8.2324ms)
+✔ hard interlock: space.override_range_safety is REFUSEd (4.3365ms)
+✔ hard interlock: space.ignite_outside_window is REFUSEd (4.2598ms)
+✔ hard interlock: space.payload_deploy_outside_primary is REFUSEd (8.3137ms)
+✔ dual-control: ignite ESCALATEs without approvals then ALLOWs with two (15.3641ms)
+✔ space Evidence Bundle wraps execution evidence with space context and verifies; tampering breaks verification (12.1495ms)
+✔ orbital space adapter builders produce Canonical Governed Actions (1.565ms)
+✔ orbital stationkeeping ALLOWs and issues a Warrant (6.7847ms)
+✔ orbital invariants REFUSE unsafe or unauthorized mission state (4.2503ms)
+✔ orbital hard interlock REFUSEs even if envelope mistakenly allows it (8.2226ms)
+✔ orbital deorbit requires dual-control before ALLOW (9.0668ms)
+✔ orbital Space Evidence Bundle wraps execution evidence and verifies; tampering breaks verification (13.4452ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 186.4238

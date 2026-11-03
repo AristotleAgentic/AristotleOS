@@ -1,0 +1,13 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:single-drone C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> node --import tsx --test tests/cross-adapter/src/single-drone.test.ts
+
+✔ single-drone loopback: signed boundary, concurrent retry and restart emit only one datagram (158.388ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 979.1012

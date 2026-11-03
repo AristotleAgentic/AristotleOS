@@ -1,0 +1,17 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:ward-marshal-adapters C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> tsx shared/execution-control-runtime/src/ward-marshal-adapters.test.ts
+
+✔ Kubernetes scale-down adapter executes kubectl scale only after Warrant ALLOW (58.6476ms)
+✔ Kubernetes scale-down adapter does not execute when Commit Gate escalates (8.9661ms)
+✔ Credential revocation adapter writes a real revocation list and broker refuses revoked refs (22.1324ms)
+✔ Endpoint quarantine adapter applies a default-deny NetworkPolicy through kubectl (8.6334ms)
+✔ adapter mismatch records ALLOW but does not execute the wrong backend (8.825ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 127.0912

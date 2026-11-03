@@ -1,0 +1,1055 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:reviewer-cli C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> corepack pnpm@10.32.1 --filter @aristotle/reviewer test
+
+
+> @aristotle/reviewer@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer
+> node --import tsx --test src/index.test.ts
+
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+X [ERROR] Cannot read directory "../../../../..": Access is denied.
+
+X [ERROR] Could not resolve "C:\\Users\\Pepper\\Downloads\\AristotleOS-hardening-20261006\\extracted\\packages\\reviewer\\src\\cli.ts"
+
+2 errors
+node:child_process:964
+    throw err;
+    ^
+
+Error: Command failed: C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\@esbuild+win32-x64@0.28.0\node_modules\@esbuild\win32-x64\esbuild.exe C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts --bundle --platform=node --format=esm --target=node18 --tsconfig=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json --outfile=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at Object.execFileSync (node:child_process:961:15)
+    at Object.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\esbuild@0.28.0\node_modules\esbuild\bin\esbuild:222:28)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object..js (node:internal/modules/cjs/loader:1961:10)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 19704,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: npx -y esbuild@0.28.0 "C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts" --bundle --platform=node --format=esm --target=node18 --tsconfig="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json" --outfile="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js"
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at file:///C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/packages/reviewer/build.mjs:38:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 20032,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+X [ERROR] Cannot read directory "../../../../..": Access is denied.
+
+X [ERROR] Could not resolve "C:\\Users\\Pepper\\Downloads\\AristotleOS-hardening-20261006\\extracted\\packages\\reviewer\\src\\cli.ts"
+
+2 errors
+node:child_process:964
+    throw err;
+    ^
+
+Error: Command failed: C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\@esbuild+win32-x64@0.28.0\node_modules\@esbuild\win32-x64\esbuild.exe C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts --bundle --platform=node --format=esm --target=node18 --tsconfig=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json --outfile=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at Object.execFileSync (node:child_process:961:15)
+    at Object.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\esbuild@0.28.0\node_modules\esbuild\bin\esbuild:222:28)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object..js (node:internal/modules/cjs/loader:1961:10)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 2604,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: npx -y esbuild@0.28.0 "C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts" --bundle --platform=node --format=esm --target=node18 --tsconfig="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json" --outfile="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js"
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at file:///C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/packages/reviewer/build.mjs:38:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 20004,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+X [ERROR] Cannot read directory "../../../../..": Access is denied.
+
+X [ERROR] Could not resolve "C:\\Users\\Pepper\\Downloads\\AristotleOS-hardening-20261006\\extracted\\packages\\reviewer\\src\\cli.ts"
+
+2 errors
+node:child_process:964
+    throw err;
+    ^
+
+Error: Command failed: C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\@esbuild+win32-x64@0.28.0\node_modules\@esbuild\win32-x64\esbuild.exe C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts --bundle --platform=node --format=esm --target=node18 --tsconfig=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json --outfile=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at Object.execFileSync (node:child_process:961:15)
+    at Object.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\esbuild@0.28.0\node_modules\esbuild\bin\esbuild:222:28)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object..js (node:internal/modules/cjs/loader:1961:10)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 20884,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: npx -y esbuild@0.28.0 "C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts" --bundle --platform=node --format=esm --target=node18 --tsconfig="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json" --outfile="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js"
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at file:///C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/packages/reviewer/build.mjs:38:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 19428,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+X [ERROR] Cannot read directory "../../../../..": Access is denied.
+
+X [ERROR] Could not resolve "C:\\Users\\Pepper\\Downloads\\AristotleOS-hardening-20261006\\extracted\\packages\\reviewer\\src\\cli.ts"
+
+2 errors
+node:child_process:964
+    throw err;
+    ^
+
+Error: Command failed: C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\@esbuild+win32-x64@0.28.0\node_modules\@esbuild\win32-x64\esbuild.exe C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts --bundle --platform=node --format=esm --target=node18 --tsconfig=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json --outfile=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at Object.execFileSync (node:child_process:961:15)
+    at Object.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\esbuild@0.28.0\node_modules\esbuild\bin\esbuild:222:28)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object..js (node:internal/modules/cjs/loader:1961:10)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 17216,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: npx -y esbuild@0.28.0 "C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts" --bundle --platform=node --format=esm --target=node18 --tsconfig="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json" --outfile="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js"
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at file:///C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/packages/reviewer/build.mjs:38:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 4980,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+X [ERROR] Cannot read directory "../../../../..": Access is denied.
+
+X [ERROR] Could not resolve "C:\\Users\\Pepper\\Downloads\\AristotleOS-hardening-20261006\\extracted\\packages\\reviewer\\src\\cli.ts"
+
+2 errors
+node:child_process:964
+    throw err;
+    ^
+
+Error: Command failed: C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\@esbuild+win32-x64@0.28.0\node_modules\@esbuild\win32-x64\esbuild.exe C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts --bundle --platform=node --format=esm --target=node18 --tsconfig=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json --outfile=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at Object.execFileSync (node:child_process:961:15)
+    at Object.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\esbuild@0.28.0\node_modules\esbuild\bin\esbuild:222:28)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object..js (node:internal/modules/cjs/loader:1961:10)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 17760,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: npx -y esbuild@0.28.0 "C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts" --bundle --platform=node --format=esm --target=node18 --tsconfig="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json" --outfile="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js"
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at file:///C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/packages/reviewer/build.mjs:38:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 16496,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+X [ERROR] Cannot read directory "../../../../..": Access is denied.
+
+X [ERROR] Could not resolve "C:\\Users\\Pepper\\Downloads\\AristotleOS-hardening-20261006\\extracted\\packages\\reviewer\\src\\cli.ts"
+
+2 errors
+node:child_process:964
+    throw err;
+    ^
+
+Error: Command failed: C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\@esbuild+win32-x64@0.28.0\node_modules\@esbuild\win32-x64\esbuild.exe C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts --bundle --platform=node --format=esm --target=node18 --tsconfig=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json --outfile=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at Object.execFileSync (node:child_process:961:15)
+    at Object.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\esbuild@0.28.0\node_modules\esbuild\bin\esbuild:222:28)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object..js (node:internal/modules/cjs/loader:1961:10)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 5032,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: npx -y esbuild@0.28.0 "C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts" --bundle --platform=node --format=esm --target=node18 --tsconfig="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json" --outfile="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js"
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at file:///C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/packages/reviewer/build.mjs:38:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 9276,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+X [ERROR] Cannot read directory "../../../../..": Access is denied.
+
+X [ERROR] Could not resolve "C:\\Users\\Pepper\\Downloads\\AristotleOS-hardening-20261006\\extracted\\packages\\reviewer\\src\\cli.ts"
+
+2 errors
+node:child_process:964
+    throw err;
+    ^
+
+Error: Command failed: C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\@esbuild+win32-x64@0.28.0\node_modules\@esbuild\win32-x64\esbuild.exe C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts --bundle --platform=node --format=esm --target=node18 --tsconfig=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json --outfile=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at Object.execFileSync (node:child_process:961:15)
+    at Object.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\esbuild@0.28.0\node_modules\esbuild\bin\esbuild:222:28)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object..js (node:internal/modules/cjs/loader:1961:10)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 18080,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: npx -y esbuild@0.28.0 "C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts" --bundle --platform=node --format=esm --target=node18 --tsconfig="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json" --outfile="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js"
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at file:///C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/packages/reviewer/build.mjs:38:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 6592,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+X [ERROR] Cannot read directory "../../../../..": Access is denied.
+
+X [ERROR] Could not resolve "C:\\Users\\Pepper\\Downloads\\AristotleOS-hardening-20261006\\extracted\\packages\\reviewer\\src\\cli.ts"
+
+2 errors
+node:child_process:964
+    throw err;
+    ^
+
+Error: Command failed: C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\@esbuild+win32-x64@0.28.0\node_modules\@esbuild\win32-x64\esbuild.exe C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts --bundle --platform=node --format=esm --target=node18 --tsconfig=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json --outfile=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at Object.execFileSync (node:child_process:961:15)
+    at Object.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\esbuild@0.28.0\node_modules\esbuild\bin\esbuild:222:28)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object..js (node:internal/modules/cjs/loader:1961:10)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 19872,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: npx -y esbuild@0.28.0 "C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts" --bundle --platform=node --format=esm --target=node18 --tsconfig="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json" --outfile="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js"
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at file:///C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/packages/reviewer/build.mjs:38:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 1484,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+X [ERROR] Cannot read directory "../../../../..": Access is denied.
+
+X [ERROR] Could not resolve "C:\\Users\\Pepper\\Downloads\\AristotleOS-hardening-20261006\\extracted\\packages\\reviewer\\src\\cli.ts"
+
+2 errors
+node:child_process:964
+    throw err;
+    ^
+
+Error: Command failed: C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\@esbuild+win32-x64@0.28.0\node_modules\@esbuild\win32-x64\esbuild.exe C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts --bundle --platform=node --format=esm --target=node18 --tsconfig=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json --outfile=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at Object.execFileSync (node:child_process:961:15)
+    at Object.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\esbuild@0.28.0\node_modules\esbuild\bin\esbuild:222:28)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object..js (node:internal/modules/cjs/loader:1961:10)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 8116,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: npx -y esbuild@0.28.0 "C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts" --bundle --platform=node --format=esm --target=node18 --tsconfig="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json" --outfile="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js"
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at file:///C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/packages/reviewer/build.mjs:38:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 18560,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+X [ERROR] Cannot read directory "../../../../..": Access is denied.
+
+X [ERROR] Could not resolve "C:\\Users\\Pepper\\Downloads\\AristotleOS-hardening-20261006\\extracted\\packages\\reviewer\\src\\cli.ts"
+
+2 errors
+node:child_process:964
+    throw err;
+    ^
+
+Error: Command failed: C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\@esbuild+win32-x64@0.28.0\node_modules\@esbuild\win32-x64\esbuild.exe C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts --bundle --platform=node --format=esm --target=node18 --tsconfig=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json --outfile=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at Object.execFileSync (node:child_process:961:15)
+    at Object.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\esbuild@0.28.0\node_modules\esbuild\bin\esbuild:222:28)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object..js (node:internal/modules/cjs/loader:1961:10)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 7428,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: npx -y esbuild@0.28.0 "C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts" --bundle --platform=node --format=esm --target=node18 --tsconfig="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json" --outfile="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js"
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at file:///C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/packages/reviewer/build.mjs:38:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 12500,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+X [ERROR] Cannot read directory "../../../../..": Access is denied.
+
+X [ERROR] Could not resolve "C:\\Users\\Pepper\\Downloads\\AristotleOS-hardening-20261006\\extracted\\packages\\reviewer\\src\\cli.ts"
+
+2 errors
+node:child_process:964
+    throw err;
+    ^
+
+Error: Command failed: C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\@esbuild+win32-x64@0.28.0\node_modules\@esbuild\win32-x64\esbuild.exe C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts --bundle --platform=node --format=esm --target=node18 --tsconfig=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json --outfile=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at Object.execFileSync (node:child_process:961:15)
+    at Object.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\esbuild@0.28.0\node_modules\esbuild\bin\esbuild:222:28)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object..js (node:internal/modules/cjs/loader:1961:10)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 12880,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: npx -y esbuild@0.28.0 "C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts" --bundle --platform=node --format=esm --target=node18 --tsconfig="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json" --outfile="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js"
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at file:///C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/packages/reviewer/build.mjs:38:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 4732,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+X [ERROR] Cannot read directory "../../../../..": Access is denied.
+
+X [ERROR] Could not resolve "C:\\Users\\Pepper\\Downloads\\AristotleOS-hardening-20261006\\extracted\\packages\\reviewer\\src\\cli.ts"
+
+2 errors
+node:child_process:964
+    throw err;
+    ^
+
+Error: Command failed: C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\@esbuild+win32-x64@0.28.0\node_modules\@esbuild\win32-x64\esbuild.exe C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts --bundle --platform=node --format=esm --target=node18 --tsconfig=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json --outfile=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at Object.execFileSync (node:child_process:961:15)
+    at Object.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\esbuild@0.28.0\node_modules\esbuild\bin\esbuild:222:28)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object..js (node:internal/modules/cjs/loader:1961:10)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 18884,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: npx -y esbuild@0.28.0 "C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts" --bundle --platform=node --format=esm --target=node18 --tsconfig="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json" --outfile="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js"
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at file:///C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/packages/reviewer/build.mjs:38:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 8188,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+X [ERROR] Cannot read directory "../../../../..": Access is denied.
+
+X [ERROR] Could not resolve "C:\\Users\\Pepper\\Downloads\\AristotleOS-hardening-20261006\\extracted\\packages\\reviewer\\src\\cli.ts"
+
+2 errors
+node:child_process:964
+    throw err;
+    ^
+
+Error: Command failed: C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\@esbuild+win32-x64@0.28.0\node_modules\@esbuild\win32-x64\esbuild.exe C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts --bundle --platform=node --format=esm --target=node18 --tsconfig=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json --outfile=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at Object.execFileSync (node:child_process:961:15)
+    at Object.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\esbuild@0.28.0\node_modules\esbuild\bin\esbuild:222:28)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object..js (node:internal/modules/cjs/loader:1961:10)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 1416,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: npx -y esbuild@0.28.0 "C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts" --bundle --platform=node --format=esm --target=node18 --tsconfig="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json" --outfile="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js"
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at file:///C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/packages/reviewer/build.mjs:38:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 14544,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+X [ERROR] Cannot read directory "../../../../..": Access is denied.
+
+X [ERROR] Could not resolve "C:\\Users\\Pepper\\Downloads\\AristotleOS-hardening-20261006\\extracted\\packages\\reviewer\\src\\cli.ts"
+
+2 errors
+node:child_process:964
+    throw err;
+    ^
+
+Error: Command failed: C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\@esbuild+win32-x64@0.28.0\node_modules\@esbuild\win32-x64\esbuild.exe C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts --bundle --platform=node --format=esm --target=node18 --tsconfig=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json --outfile=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at Object.execFileSync (node:child_process:961:15)
+    at Object.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\esbuild@0.28.0\node_modules\esbuild\bin\esbuild:222:28)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object..js (node:internal/modules/cjs/loader:1961:10)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 16104,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: npx -y esbuild@0.28.0 "C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts" --bundle --platform=node --format=esm --target=node18 --tsconfig="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json" --outfile="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js"
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at file:///C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/packages/reviewer/build.mjs:38:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 8696,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "recursive". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+X [ERROR] Cannot read directory "../../../../..": Access is denied.
+
+X [ERROR] Could not resolve "C:\\Users\\Pepper\\Downloads\\AristotleOS-hardening-20261006\\extracted\\packages\\reviewer\\src\\cli.ts"
+
+2 errors
+node:child_process:964
+    throw err;
+    ^
+
+Error: Command failed: C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\@esbuild+win32-x64@0.28.0\node_modules\@esbuild\win32-x64\esbuild.exe C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts --bundle --platform=node --format=esm --target=node18 --tsconfig=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json --outfile=C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at Object.execFileSync (node:child_process:961:15)
+    at Object.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\node_modules\.pnpm\esbuild@0.28.0\node_modules\esbuild\bin\esbuild:222:28)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object..js (node:internal/modules/cjs/loader:1961:10)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 20872,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: npx -y esbuild@0.28.0 "C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\cli.ts" --bundle --platform=node --format=esm --target=node18 --tsconfig="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\tsconfig.json" --outfile="C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\dist\index.js"
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at file:///C:/Users/Pepper/Downloads/AristotleOS-hardening-20261006/extracted/packages/reviewer/build.mjs:38:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 1940,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.15.0
+✖ CLI: --version prints the package version on stdout, exit 0 (25611.4535ms)
+✖ CLI: help subcommand prints usage on stdout, exit 0 (5477.8881ms)
+✖ CLI: no args prints usage on stdout, exit 1 (4635.5657ms)
+✖ CLI: unknown subcommand exits 2 with usage on stderr (3991.0019ms)
+✖ CLI verify: a known-good bundle returns exit 0 with ok: true in stdout (3964.8488ms)
+✖ CLI verify: a tampered bundle returns non-zero exit (4599.6005ms)
+✖ CLI verify: missing file argument exits 1 with stderr hint (4490.6391ms)
+✖ CLI verify: nonexistent file exits 1 (8525.1434ms)
+✖ CLI verify-warrant: trusted key + matching hash returns ok: true, exit 0 (5123.723ms)
+✖ CLI verify-warrant: untrusted key returns ok: false, exit 1 (4822.0922ms)
+✖ CLI verify-warrant: action hash mismatch returns ok: false, exit 1 (5143.9531ms)
+✖ CLI verify-warrant: missing required args exits 1 (4751.9445ms)
+✖ CLI verify-replay: a well-formed replay artifact returns ok: true, exit 0 (4468.7879ms)
+✖ CLI verify-replay: a tampered report_hash returns ok: false, exit 1 (4205.6091ms)
+✖ CLI verify-replay: invalid artifact format exits 1 (4489.5468ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 0
+ℹ fail 15
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 95539.8114
+
+✖ failing tests:
+
+test at src\index.test.ts:1:3987
+✖ CLI: --version prints the package version on stdout, exit 0 (25611.4535ms)
+  Error: build.mjs failed (exit 1)
+      at ensureBundle (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:53:13)
+      at runBin (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:69:3)
+      at TestContext.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:186:15)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17)
+
+test at src\index.test.ts:1:4170
+✖ CLI: help subcommand prints usage on stdout, exit 0 (5477.8881ms)
+  Error: build.mjs failed (exit 1)
+      at ensureBundle (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:53:13)
+      at runBin (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:69:3)
+      at TestContext.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:193:15)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3)
+
+test at src\index.test.ts:1:4481
+✖ CLI: no args prints usage on stdout, exit 1 (4635.5657ms)
+  Error: build.mjs failed (exit 1)
+      at ensureBundle (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:53:13)
+      at runBin (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:69:3)
+      at TestContext.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:202:15)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+
+test at src\index.test.ts:1:4640
+✖ CLI: unknown subcommand exits 2 with usage on stderr (3991.0019ms)
+  Error: build.mjs failed (exit 1)
+      at ensureBundle (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:53:13)
+      at runBin (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:69:3)
+      at TestContext.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:208:15)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+
+test at src\index.test.ts:1:4822
+✖ CLI verify: a known-good bundle returns exit 0 with ok: true in stdout (3964.8488ms)
+  Error: build.mjs failed (exit 1)
+      at ensureBundle (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:53:13)
+      at runBin (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:69:3)
+      at TestContext.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:220:17)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+
+test at src\index.test.ts:1:5286
+✖ CLI verify: a tampered bundle returns non-zero exit (4599.6005ms)
+  Error: build.mjs failed (exit 1)
+      at ensureBundle (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:53:13)
+      at runBin (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:69:3)
+      at TestContext.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:244:17)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+
+test at src\index.test.ts:1:5874
+✖ CLI verify: missing file argument exits 1 with stderr hint (4490.6391ms)
+  Error: build.mjs failed (exit 1)
+      at ensureBundle (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:53:13)
+      at runBin (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:69:3)
+      at TestContext.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:255:15)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+
+test at src\index.test.ts:1:6060
+✖ CLI verify: nonexistent file exits 1 (8525.1434ms)
+  Error: build.mjs failed (exit 1)
+      at ensureBundle (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:53:13)
+      at runBin (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:69:3)
+      at TestContext.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:261:15)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+
+test at src\index.test.ts:1:6262
+✖ CLI verify-warrant: trusted key + matching hash returns ok: true, exit 0 (5123.723ms)
+  Error: build.mjs failed (exit 1)
+      at ensureBundle (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:53:13)
+      at runBin (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:69:3)
+      at TestContext.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:273:17)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+
+test at src\index.test.ts:1:6703
+✖ CLI verify-warrant: untrusted key returns ok: false, exit 1 (4822.0922ms)
+  Error: build.mjs failed (exit 1)
+      at ensureBundle (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:53:13)
+      at runBin (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:69:3)
+      at TestContext.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:291:17)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+
+test at src\index.test.ts:1:7141
+✖ CLI verify-warrant: action hash mismatch returns ok: false, exit 1 (5143.9531ms)
+  Error: build.mjs failed (exit 1)
+      at ensureBundle (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:53:13)
+      at runBin (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:69:3)
+      at TestContext.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:310:17)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+
+test at src\index.test.ts:1:7627
+✖ CLI verify-warrant: missing required args exits 1 (4751.9445ms)
+  Error: build.mjs failed (exit 1)
+      at ensureBundle (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:53:13)
+      at runBin (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:69:3)
+      at TestContext.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:327:15)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+
+test at src\index.test.ts:1:7818
+✖ CLI verify-replay: a well-formed replay artifact returns ok: true, exit 0 (4468.7879ms)
+  Error: build.mjs failed (exit 1)
+      at ensureBundle (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:53:13)
+      at runBin (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:69:3)
+      at TestContext.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:358:17)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+
+test at src\index.test.ts:1:8926
+✖ CLI verify-replay: a tampered report_hash returns ok: false, exit 1 (4205.6091ms)
+  Error: build.mjs failed (exit 1)
+      at ensureBundle (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:53:13)
+      at runBin (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:69:3)
+      at TestContext.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:396:17)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+
+test at src\index.test.ts:1:9971
+✖ CLI verify-replay: invalid artifact format exits 1 (4489.5468ms)
+  Error: build.mjs failed (exit 1)
+      at ensureBundle (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:53:13)
+      at runBin (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:69:3)
+      at TestContext.<anonymous> (C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer\src\index.test.ts:418:17)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\reviewer:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @aristotle/reviewer@0.1.0 test: `node --import tsx --test src/index.test.ts`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.

@@ -1,0 +1,26 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:gel-timestamp C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> corepack pnpm@10.32.1 --filter @aristotle/gel-timestamp test
+
+
+> @aristotle/gel-timestamp@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\gel-timestamp
+> node --import tsx --test src/index.test.ts
+
+✔ LocalTimestampAuthority: anchor() returns a TimestampAnchor that verifies (26.0194ms)
+✔ LocalTimestampAuthority: each anchor() persists one JSONL row (13.4503ms)
+✔ LocalTimestampAuthority: loadLedger reconstructs the full anchor history (12.5951ms)
+✔ LocalTimestampAuthority: ephemeral keypair when no signer is provided (5.1919ms)
+✔ verifyTimestampAnchor: record_hash mismatch -> ok=false with reason (7.6436ms)
+✔ verifyTimestampAnchor: wrong TSA public key -> ok=false with key-id mismatch reason (6.7013ms)
+✔ verifyTimestampAnchor: tampered signature -> ok=false (5.9185ms)
+✔ verifyTimestampAnchor: tampered timestamp -> ok=false (signature no longer matches material) (6.9517ms)
+✔ verifyTimestampAnchor: unsupported anchor kind -> ok=false (1.3259ms)
+✔ canonicalAnchorMessage: format is pinned to aristotle.gel-timestamp.v1:<rh>:<ts> (0.4108ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1084.2832

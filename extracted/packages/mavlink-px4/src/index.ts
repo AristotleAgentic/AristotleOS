@@ -28,8 +28,10 @@
 
 import { createSocket, type Socket } from "node:dgram";
 import { createHash } from "node:crypto";
-import { governThroughAdapter } from "@aristotle/adapter-sdk";
+import { governThroughAdapter, type AdapterEffectBoundary } from "@aristotle/adapter-sdk";
 import { AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
+import { SingleDroneSafetyInterlock } from "./safety.js";
+export * from "./safety.js";
 
 // ---------------------------------------------------------------------------
 // Flight command primitives
@@ -85,6 +87,7 @@ export interface FlightSubmissionReceipt {
 }
 
 export type FlightRefusalCode =
+  | "INVALID_COMMAND"
   | "MISSING_AUTHORIZATION"
   | "WARRANT_NOT_CONSUMED"
   | "COMMAND_OUTSIDE_AUTHZ"
@@ -145,6 +148,10 @@ export function encodeCommandLong(
   systemId: number, componentId: number, sequence: number,
   command: FlightCommand
 ): Uint8Array {
+  validateFlightCommand(command);
+  for (const id of [systemId, componentId]) {
+    if (!Number.isInteger(id) || id < 1 || id > 255) throw new Error("MAVLink sender IDs must be integers in 1..255");
+  }
   // COMMAND_LONG payload layout (33 bytes when full):
   //   float param1..param7 (28 bytes)
   //   uint16 command (2)
@@ -155,7 +162,7 @@ export function encodeCommandLong(
   const payload = new ArrayBuffer(33);
   const dv = new DataView(payload);
   const params = [
-    Number(command.params.param1 ?? 0),
+    Number(command.params.param1 ?? (command.command === "ARM" ? 1 : 0)),
     Number(command.params.param2 ?? 0),
     Number(command.params.param3 ?? 0),
     Number(command.params.param4 ?? 0),
@@ -224,6 +231,33 @@ function bytesToB64(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString("base64");
 }
 
+/** Validate before evaluation and again before encoding. Never coerce a
+ * malformed target into a broadcast, or change ARM into DISARM on the wire. */
+export function validateFlightCommand(command: FlightCommand): void {
+  if (!command || !Object.hasOwn(MAV_CMD, command.command)) throw new Error("unknown flight command");
+  if (command.command === "GOTO_NED") throw new Error("GOTO_NED requires a local-frame position transport; COMMAND_LONG DO_REPOSITION is not NED");
+  for (const id of [command.target_system, command.target_component]) {
+    if (!Number.isInteger(id) || id < 1 || id > 255) throw new Error("single-drone targets must be integers in 1..255; broadcast is forbidden");
+  }
+  if (!Number.isFinite(Date.parse(command.requested_at))) throw new Error("invalid command timestamp");
+  if (!command.params || typeof command.params !== "object" || Array.isArray(command.params)) throw new Error("invalid command parameters");
+  for (const [key, value] of Object.entries(command.params)) {
+    if (!/^param[1-7]$/.test(key) || typeof value !== "number" || !Number.isFinite(value) || !Number.isFinite(Math.fround(value))) {
+      throw new Error("flight parameters must be finite float32 values named param1..param7");
+    }
+  }
+  if (command.command === "ARM" || command.command === "DISARM") {
+    const expected = command.command === "ARM" ? 1 : 0;
+    if (command.params.param1 !== undefined && command.params.param1 !== expected) throw new Error("arm/disarm parameter contradicts command");
+    if ((command.params.param2 ?? 0) !== 0) throw new Error("forced arm/disarm is forbidden");
+  }
+}
+
+function invalidCommand(command: FlightCommand): FlightSubmissionOutcome | undefined {
+  try { validateFlightCommand(command); }
+  catch (error) { return { ok: false, refusal: { code: "INVALID_COMMAND", detail: String(error) } }; }
+}
+
 // ---------------------------------------------------------------------------
 // Demonstration transport (no socket)
 // ---------------------------------------------------------------------------
@@ -241,6 +275,8 @@ export class DemonstrationFlightControlTransport implements FlightControlTranspo
   }
 
   async emit(command: FlightCommand, authz: FlightAuthorization): Promise<FlightSubmissionOutcome> {
+    const invalid = invalidCommand(command);
+    if (invalid) return invalid;
     if (!authz.permitted_commands.includes(command.command)) {
       return { ok: false, refusal: { code: "COMMAND_OUTSIDE_AUTHZ", detail: `command ${command.command} not in authz.permitted_commands` } };
     }
@@ -291,26 +327,41 @@ export class MavlinkUdpTransport implements FlightControlTransport {
   private seq = 0;
   private socket: Socket | null = null;
   private opened = false;
+  private opening: Promise<void> | null = null;
+  private socketError: Error | null = null;
+  private readonly local: { host?: string; port?: number };
 
   constructor(opts: MavlinkUdpTransportOptions) {
-    this.remote = opts.remote;
+    this.remote = { ...opts.remote };
+    this.local = { ...opts.local };
     this.systemId = opts.systemId;
     this.componentId = opts.componentId;
     this.production_validated = opts.productionValidated ?? false;
   }
 
   private async openIfNeeded(): Promise<void> {
+    if (this.opening) return this.opening;
+    if (this.socketError) throw this.socketError;
     if (this.opened) return;
     const sock = createSocket("udp4");
-    await new Promise<void>((resolve, reject) => {
-      sock.once("error", reject);
-      sock.bind(0, () => resolve());
-    });
     this.socket = sock;
-    this.opened = true;
+    this.opening = new Promise<void>((resolve, reject) => {
+      // Retain an error listener after bind; a late UDP error must not become
+      // an unhandled process exception or enable an automatic resend.
+      sock.on("error", error => { this.socketError = error; reject(error); });
+      sock.bind(this.local.port ?? 0, this.local.host ?? "0.0.0.0", () => {
+        this.opened = true;
+        resolve();
+      });
+    });
+    try { await this.opening; }
+    finally { this.opening = null; }
   }
 
   async emit(command: FlightCommand, authz: FlightAuthorization): Promise<FlightSubmissionOutcome> {
+    command = structuredClone(command);
+    const invalid = invalidCommand(command);
+    if (invalid) return invalid;
     if (!authz.permitted_commands.includes(command.command)) {
       return { ok: false, refusal: { code: "COMMAND_OUTSIDE_AUTHZ", detail: `command ${command.command} not in authz.permitted_commands` } };
     }
@@ -344,9 +395,11 @@ export class MavlinkUdpTransport implements FlightControlTransport {
   }
 
   async close(): Promise<void> {
-    if (this.socket) await new Promise<void>((r) => this.socket!.close(() => r()));
+    try { await this.opening; } catch { /* close failed-open socket below */ }
+    if (this.socket) await new Promise<void>((r) => { try { this.socket!.close(() => r()); } catch { r(); } });
     this.socket = null;
     this.opened = false;
+    this.socketError = null;
   }
 }
 
@@ -355,6 +408,10 @@ export class MavlinkUdpTransport implements FlightControlTransport {
 // ---------------------------------------------------------------------------
 
 export interface GovernFlightCommandOptions {
+  safetyInterlock?: SingleDroneSafetyInterlock;
+  effectBoundary?: AdapterEffectBoundary;
+  /** Stable business operation identifier, reused on retries. Required by the durable boundary. */
+  operationId?: string;
   client: AristotleClient;
   wardId: string;
   subject: string;
@@ -370,6 +427,8 @@ export interface GovernFlightCommandResult {
   decision?: EvaluateResponse;
   outcome?: FlightSubmissionOutcome;
   refusal?: { code: string; detail: string };
+  effect_attempt_id?: string;
+  effect_state?: "IN_FLIGHT" | "EFFECT_UNKNOWN";
 }
 
 /**
@@ -388,23 +447,43 @@ export async function governFlightCommand(
   transport: FlightControlTransport,
   options: GovernFlightCommandOptions
 ): Promise<GovernFlightCommandResult> {
+  options = { ...options };
+  command = structuredClone(command);
+  const invalid = invalidCommand(command);
+  if (invalid && !invalid.ok) return { ok: false, refusal: invalid.refusal };
+  if (transport.production_validated && !options.safetyInterlock) {
+    return { ok: false, refusal: { code: "FLIGHT_SAFETY_INTERLOCK_REQUIRED", detail: "Production flight dispatch requires a trusted single-drone telemetry interlock" } };
+  }
+  const aircraftId = options.aircraftId;
+  const guardedTransport: FlightControlTransport = {
+    id: transport.id,
+    production_validated: transport.production_validated,
+    async emit(operation, authorization) {
+      try { options.safetyInterlock?.assert(operation, aircraftId); }
+      catch (error) { return { ok: false, refusal: { code: "TRANSPORT_REJECTED", detail: String(error) } }; }
+      return transport.emit(operation, authorization);
+    }
+  };
   const result = await governThroughAdapter<FlightCommand, FlightAuthorization>(command, {
     client: options.client,
-    transport,
+    effectBoundary: options.effectBoundary,
+    transport: guardedTransport,
     allowDemonstrationTransport: options.allowDemonstrationTransport,
     buildAction: (operation): CanonicalAction => ({
       action_id: `flight-${options.aircraftId}-${Date.now().toString(16)}`,
       ward_id: options.wardId,
       subject: options.subject,
+      target: options.aircraftId,
       action_type: options.actionTypeFor
         ? options.actionTypeFor(operation.command)
         : `aviation.flight.${operation.command.toLowerCase()}`,
       params: {
+        ...operation.params,
+        ...(options.operationId ? { operation_id: options.operationId } : {}),
         aircraft_id: options.aircraftId,
         command: operation.command,
         target_system: operation.target_system,
-        target_component: operation.target_component,
-        ...operation.params
+        target_component: operation.target_component
       },
       requested_at: operation.requested_at,
       telemetry: { agent_runtime: "px4-mavlink" }
@@ -426,7 +505,9 @@ export async function governFlightCommand(
     ok: result.ok,
     decision: result.decision,
     outcome: result.outcome as FlightSubmissionOutcome | undefined,
-    refusal: result.refusal
+    refusal: result.refusal,
+    effect_attempt_id: result.effect_attempt_id,
+    effect_state: result.effect_state
   };
 }
 

@@ -1,0 +1,37 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:demo C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/execution-control-runtime/demo.mts
+
+AristotleOS — evaluator walkthrough
+Doctrine: authority before consequence · warrant before execution · evidence after every decision
+
+—— 1. Authority before consequence — a permitted action is admitted ——
+  ✓ permitted takeoff → ALLOW — ALLOW
+  ✓ a single-use Warrant is issued — wrn-683c3ffe3eca988b3d4149df
+  ✓ Warrant verifies against the action hash
+  ✓ the decision is written to the evidence ledger
+
+—— 2. The boundary refuses what it must ——
+  ✓ explicitly denied action → REFUSE, no Warrant — ACTION_DENIED
+  ✓ missing runtime state → ESCALATE (ambiguity goes to a human) — RUNTIME_STATE_MISSING
+  ✓ out-of-bounds action → REFUSE on physical invariant
+
+—— 3. Warrants are single-use — replay is refused ——
+  ✓ first submission → ALLOW
+  ✓ identical replay → REFUSE (REPLAY_DETECTED)
+
+—— 4. Under degradation, criticality decides the fail mode ——
+  ✓ safety-critical + ledger unavailable → REFUSE (DEGRADED_MODE)
+
+—— 5. Evidence after every decision — offline-verifiable bundle ——
+  ✓ Evidence Bundle exports and self-verifies — bundle_hash b4324d2f557d…
+  ✓ an independent re-verification agrees
+
+—— 6. Tamper-evidence — altering the record is detected ——
+  ✓ a forged subject in the bundle → verification FAILS — selected GEL record does not match ledger chain material
+  ✓ the GEL hash-chain verifies as written
+  ✓ tampering a ledger record on disk → chain verification FAILS — record 0 hash mismatch
+
+========================================================
+Result: 15 passed, 0 failed
+DEMO PASSED — authority bound, warrants issued, evidence verifiable, tampering caught.

@@ -1,0 +1,27 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:marshal-behavior C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/execution-control-runtime/src/marshal-behavior.test.ts
+
+✔ denial burst: many REFUSE for one subject within the window is flagged (31.5192ms)
+✔ rate spike: a subject accelerating vs its own baseline is flagged (4.2592ms)
+✔ first_seen: a subject absent from the approved registry is flagged once (1.0955ms)
+✔ off_hours: activity outside the allowed UTC window is flagged (1.2802ms)
+✔ target fanout: one subject hitting many distinct targets is flagged (0.8465ms)
+✔ sequence chain: cross-agent read -> exfiltrate -> delete is detected (1.3544ms)
+✔ behaviorEventsFromGel maps the signed ledger into the event stream (0.3864ms)
+✔ a clean stream produces no findings (0.5ms)
+✔ coordinated_denial: the same action refused across many agents is a campaign (4.2825ms)
+✔ peer_anomaly: a volume outlier vs the cohort is flagged (1.5451ms)
+✔ privilege_escalation: routine → sensitive pivot (blocked) is high severity (2.0076ms)
+✔ privilege_escalation does not run without configured sensitive actions (0.6993ms)
+✔ new_capability: action types absent from baseline appearing later are scope creep (1.0016ms)
+✔ credential_reuse: one credential across distinct agents is lateral movement (0.8078ms)
+✔ higher-order detectors stay silent on a benign single-agent stream (0.7765ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 73.5002

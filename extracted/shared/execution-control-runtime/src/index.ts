@@ -45,8 +45,11 @@ import { type DegradationCondition, type WardCriticality, resolveFailMode } from
 import { type DegradationProbe, collectDegradation, ledgerUnavailableProbe } from "./degradation.js";
 import { BudgetGovernor, type BudgetPolicy, budgetPolicyFrom } from "./budget.js";
 import { ApprovalStore, dualControlPolicyFrom } from "./dual-control.js";
+import { SqliteEffectStore, type EffectEvent } from "./effects.js";
 
 export * from "./proxy.js";
+export * from "./effects.js";
+export * from "./adapter-effects.js";
 export * from "./mcp.js";
 export * from "./playground.js";
 export * from "./revocation.js";
@@ -670,6 +673,7 @@ export interface WarrantVerification {
   ok: boolean;
   reason?:
     | "WARRANT_CONSUMED"
+    | "WARRANT_INVALID_TIME"
     | "WARRANT_EXPIRED"
     | "WARRANT_NOT_YET_VALID"
     | "WARRANT_LIFETIME_EXCEEDED"
@@ -713,6 +717,8 @@ export interface GelActor {
 }
 
 export interface GelRecord {
+  /** Optional signed effect extension. Existing records retain their v1 hash. */
+  effect_event?: EffectEvent;
   record_id: string;
   previous_hash: string;
   record_hash: string;
@@ -880,6 +886,8 @@ export interface VerifyEvidenceBundleOptions {
 }
 
 export interface ExecutionControlRuntimeServerOptions {
+  /** Shared local effect ownership; omitted uses a durable ledger-path sidecar. */
+  effectStore?: SqliteEffectStore;
   ward: WardManifest;
   authorityEnvelope: AuthorityEnvelope;
   ledgerPath: string;
@@ -2665,6 +2673,7 @@ export function verifyWarrant(warrant: Warrant, canonicalActionHash: string, now
   if (warrant.consumed) return { ok: false, reason: "WARRANT_CONSUMED" };
   const nowMs = Date.parse(now);
   const issuedMs = Date.parse(warrant.issued_at);
+  if (!Number.isFinite(nowMs) || !Number.isFinite(issuedMs) || !Number.isFinite(Date.parse(warrant.expires_at))) return { ok: false, reason: "WARRANT_INVALID_TIME" };
   // Trusted-time hardening. expires_at/issued_at are signed, so they cannot be
   // tampered without the key — but a verifier with a skewed clock, or a forward-
   // skewed issuer, still needs guarding, and a verifier should enforce its own
@@ -2709,6 +2718,7 @@ export function consumeWarrant(warrant: Warrant, canonicalActionHash: string, no
 }
 
 interface BuildGelRecordInput {
+  effect_event?: EffectEvent;
   previous_hash: string;
   ward: WardManifest;
   action: CanonicalActionInput;
@@ -2742,7 +2752,8 @@ function buildGelRecord(input: BuildGelRecordInput): GelRecord {
     trace_context: input.trace_context,
     actor: input.actor,
     runtime_register_snapshot: input.decision.runtime_register_snapshot,
-    physical_invariant_result: input.decision.physical_invariant_result
+    physical_invariant_result: input.decision.physical_invariant_result,
+    ...(input.effect_event ? { effect_event: input.effect_event } : {})
   };
   // `actor` is undefined when no operator is attributed; stableStringify drops
   // undefined keys, so records without an actor hash identically to before
@@ -3189,6 +3200,9 @@ function evaluateBudget(input: Omit<EvaluateExecutionControlInput, "ledger">): {
   const nowMs = input.now ? Date.parse(input.now) : Date.now();
   const cost = typeof input.action.params.cost === "number" ? input.action.params.cost : 0;
   const policy = input.budgetGovernor ? budgetPolicyFrom((input.authorityEnvelope?.constraints as Record<string, unknown> | undefined)?.budget) : undefined;
+  if (input.budgetGovernor && input.authorityEnvelope?.constraints?.budget !== undefined && (!policy || input.action.params.cost !== undefined && typeof input.action.params.cost !== "number")) {
+    return { nowMs, cost, exceeded: { reason: "invalid budget policy or cost" } };
+  }
   if (!policy || !input.budgetGovernor) return { nowMs, cost, exceeded: null };
   const check = input.budgetGovernor.check(input.action.subject, policy, nowMs, cost);
   return { policy, nowMs, cost, exceeded: check.ok ? null : { reason: check.reason } };
@@ -3204,6 +3218,7 @@ function recordBudget(input: Omit<EvaluateExecutionControlInput, "ledger">, budg
 /** Resolve whether this action is under M-of-N dual control and already approved. */
 function evaluateDualControl(input: Omit<EvaluateExecutionControlInput, "ledger">, canonical: CanonicalAction): { required: number; ttlMs?: number; satisfied: boolean; now: string; storeAvailable: boolean } | null {
   const policy = dualControlPolicyFrom((input.authorityEnvelope?.constraints as Record<string, unknown> | undefined)?.dual_control);
+  if (input.authorityEnvelope?.constraints?.dual_control !== undefined && !policy) throw new Error("DUAL_CONTROL_POLICY_INVALID");
   if (!policy || !policy.actions.includes(input.action.action_type)) return null;
   const now = input.now ?? new Date().toISOString();
   if (!input.approvalStore) return { required: policy.required, ttlMs: policy.ttlMs, satisfied: false, now, storeAvailable: false };
@@ -3698,6 +3713,7 @@ export function executionControlOpenApiSpec() {
 }
 
 export function createExecutionControlRuntimeServer(options: ExecutionControlRuntimeServerOptions): ExecutionControlRuntimeServer {
+  let proxyEffectStore: SqliteEffectStore | undefined;
   const replayProtection = options.replayProtection !== false;
   // One ledger store for the whole server lifetime keeps append and replay checks
   // off the per-request full-scan path. A durable store (SQLite via options.ledger,
@@ -3954,7 +3970,8 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           runtimeRegister: body.runtime_register as RuntimeRegister | undefined,
           degradedConditions: conditions.length ? conditions : undefined,
           ledgerPath: options.ledgerPath,
-          now: typeof body.now === "string" ? body.now : options.now,
+          // The execution clock is boundary configuration, never caller input.
+          now: options.now,
           signer: options.signer,
           killSwitchPath: options.killSwitchPath,
           replayProtection,
@@ -4004,13 +4021,21 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
           return;
         }
         const result = await proxyGovernedAction({
+          effectStore: options.effectStore ?? (proxyEffectStore ??= new SqliteEffectStore(`${options.ledgerPath}.effects.sqlite`, options.signer ?? getDefaultDevSigner())),
           ward: options.ward,
           authorityEnvelope: options.authorityEnvelope,
           action,
+          runtimeRegister: body.runtime_register as RuntimeRegister | undefined,
+          degradedConditions: [
+            ...(Array.isArray(body.degraded_conditions) ? body.degraded_conditions as DegradationCondition[] : []),
+            ...collectDegradation(degradationProbes)
+          ],
+          budgetGovernor,
+          approvalStore,
           ledgerPath: options.ledgerPath,
           signer: options.signer,
           broker: options.broker,
-          now: typeof body.now === "string" ? body.now : options.now,
+          now: options.now,
           killSwitchPath: options.killSwitchPath,
           replayProtection,
           revocationListPath: options.revocationListPath,
@@ -4287,6 +4312,7 @@ export function createExecutionControlRuntimeServer(options: ExecutionControlRun
       sendJson(res, status, { error: "execution_control_runtime_error", message: error instanceof Error ? error.message : String(error) });
     }
   });
+  server.on("close", () => proxyEffectStore?.close());
   return { server };
 }
 

@@ -1,0 +1,30 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:gel-archive C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> corepack pnpm@10.32.1 --filter @aristotle/gel-archive test
+
+
+> @aristotle/gel-archive@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\gel-archive
+> node --import tsx --test src/index.test.ts
+
+✔ computeRetentionCutoff: maxRecords keeps N newest (69.0477ms)
+✔ computeRetentionCutoff: maxAgeMs keeps records younger than threshold (33.9166ms)
+✔ computeRetentionCutoff: maxRecords + maxAgeMs combine — more restrictive wins (32.0589ms)
+✔ archiveGelChain: splits chain at cutoff; both files verify independently (50.2853ms)
+✔ archiveGelChain: subsequent rounds append to the archive (multi-round retention) (66.8247ms)
+✔ archiveGelChain: empty active chain is a no-op (1.0819ms)
+✔ archiveGelChain: cutoff=0 is a no-op (active chain unchanged) (17.982ms)
+✔ archiveGelChain: throws when neither cutoff nor threshold provided (13.6577ms)
+✔ retentionRollover: maxRecords threshold drives archive in one call (50.7895ms)
+✔ restoreArchive: archive + active reassembles into a GENESIS-rooted chain that verifies (48.9363ms)
+✔ restoreArchive: archive tip / active first-previous mismatch fails fast (31.8756ms)
+✔ restoreArchive: empty archive returns just the active chain (17.0231ms)
+✔ verifyGelRecordsStartingFrom: GENESIS == standard verifyGelRecords (17.626ms)
+✔ verifyGelRecordsStartingFrom: wrong starting hash fails at record 0 (15.3505ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1094.3854

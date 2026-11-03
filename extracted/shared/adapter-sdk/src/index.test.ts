@@ -4,12 +4,21 @@ import type { AristotleClient, CanonicalAction, EvaluateResponse } from "@aristo
 import {
   AristotleApiError,
   type AdapterAuthorization,
+  type AdapterEffectBoundary,
   type HandlerContext,
   DemonstrationTransport,
   RecordingTransport,
   governThroughAdapter,
   governThroughHandler
 } from "./index.js";
+
+// Unit-test boundary only. Real signature/durability coverage lives in effects.test.ts.
+const fixtureBoundary: AdapterEffectBoundary = {
+  begin(_action, decision) {
+    return { authorization: { warrant_id: decision.warrant!.warrant_id, warrant_signature: 'fixture', consumed: true,
+      consumed_at: new Date().toISOString(), action_hash: decision.canonical_action_hash }, finishUnknown() {} };
+  }
+};
 
 // ---------------------------------------------------------------------------
 // A toy third-party adapter built entirely on this SDK.
@@ -102,7 +111,7 @@ function buildAction(op: NoopOp): CanonicalAction {
 // Happy path
 // ---------------------------------------------------------------------------
 
-test("governThroughAdapter: ALLOW + production_validated true emits and returns ok", async () => {
+test("governThroughAdapter: ALLOW + production transport + effect boundary emits", async () => {
   const transport = new RecordingTransport<NoopOp, AdapterAuthorization, NoopReceipt>({
     id: "noop-prod",
     productionValidated: true,
@@ -111,6 +120,7 @@ test("governThroughAdapter: ALLOW + production_validated true emits and returns 
   const result = await governThroughAdapter(NOOP_OP, {
     client: allowingClient(),
     buildAction,
+    effectBoundary: fixtureBoundary,
     transport
   });
   assert.equal(result.ok, true, `should succeed: ${JSON.stringify(result.refusal)}`);
@@ -182,7 +192,7 @@ test("governThroughAdapter: ALLOW + transport returns ok:false -> TRANSPORT_REFU
     productionValidated: true,
     onEmit: () => ({ ok: false, refusal: { code: "DEVICE_BUSY", detail: "PLC slot 3 is busy" } })
   });
-  const result = await governThroughAdapter(NOOP_OP, { client: allowingClient(), buildAction, transport });
+  const result = await governThroughAdapter(NOOP_OP, { client: allowingClient(), buildAction, transport, effectBoundary: fixtureBoundary });
   assert.equal(result.ok, false);
   assert.equal(result.refusal?.code, "TRANSPORT_REFUSED");
   assert.ok(result.refusal?.detail.includes("DEVICE_BUSY"));
@@ -240,11 +250,33 @@ test("governThroughAdapter: buildAuthorization extends the base authz with adapt
         action_hash: decision.canonical_action_hash,
         permitted_targets: [op.target]
       };
-    }
+    },
+    effectBoundary: fixtureBoundary
   });
   assert.equal(result.ok, true, `should succeed: ${JSON.stringify(result.refusal)}`);
   assert.equal(transport.emitCalls.length, 1);
   assert.deepEqual(transport.emitCalls[0].authz.permitted_targets, ["stub"]);
+});
+
+test("production flag and demonstration override cannot bypass missing durable boundary", async () => {
+  const transport = new RecordingTransport<NoopOp>({ productionValidated: true });
+  const result = await governThroughAdapter(NOOP_OP, { client: allowingClient(), buildAction, transport, allowDemonstrationTransport: true });
+  assert.equal(result.refusal?.code, 'EFFECT_BOUNDARY_REQUIRED');
+  assert.equal(transport.emitCalls.length, 0);
+});
+
+test("boundary refusal emits nothing; transport exception finalizes unknown", async () => {
+  const transport = new RecordingTransport<NoopOp>({ productionValidated: true, onEmit() { throw Error('lost acknowledgement'); } });
+  const blocked = await governThroughAdapter(NOOP_OP, { client: allowingClient(), buildAction, transport,
+    effectBoundary: { begin() { throw Error('replayed warrant'); } } });
+  assert.equal(blocked.refusal?.code, 'EFFECT_BOUNDARY_REFUSED');
+  assert.equal(transport.emitCalls.length, 0);
+  let finalized = 0;
+  const failed = await governThroughAdapter(NOOP_OP, { client: allowingClient(), buildAction, transport,
+    effectBoundary: { begin(a, d) { return { ...fixtureBoundary.begin(a, d), finishUnknown() { finalized++; } }; } } });
+  assert.equal(failed.refusal?.code, 'TRANSPORT_REFUSED');
+  assert.equal(transport.emitCalls.length, 1);
+  assert.equal(finalized, 1);
 });
 
 // ---------------------------------------------------------------------------

@@ -1,0 +1,17 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:trace-in-memory C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/execution-control-runtime/src/trace.in-memory.test.ts
+
+✔ createInMemoryTracer: starts empty, captures startSpan + attribute + status + end (2.9841ms)
+✔ createInMemoryTracer: findSpan throws on miss with a useful list of captured names (0.8866ms)
+✔ createInMemoryTracer: reset() clears captured state but keeps the tracer reusable (0.4235ms)
+✔ evaluateExecutionControl: emits aristotle.execution_control.evaluate span with ward + action attributes (37.1016ms)
+✔ evaluateExecutionControl: spans capture trace_context when provided (6.3178ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 68.853

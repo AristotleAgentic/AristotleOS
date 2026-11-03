@@ -3,6 +3,7 @@
 This document is the single source of truth for what AristotleOS proves and what it does not. Every claim made elsewhere in the repository (README, CHANGELOG, REVIEWER.md, package descriptions) must trace back to a row here. If a claim doesn't appear in this table or contradicts it, the claim is wrong, not this table.
 
 Statuses
+- **MODEL_CHECKED_WITH_BOUNDS** — The abstract specification passes the recorded finite configurations; this is not implementation refinement or an unbounded proof.
 - **PROVEN_BY_TEST** — A passing automated test in this repo demonstrates the claim. Evidence path identifies file + test name.
 - **DEMONSTRATED_BY_EXAMPLE** — A runnable example in this repo demonstrates the claim end-to-end. The example may include automated checks but the proof relies on the example's observable behavior.
 - **IMPLEMENTED_NOT_FULLY_TESTED** — Code exists but the test surface is shallow or partial. Listed risks describe what's missing.
@@ -19,7 +20,7 @@ Statuses
 | Commit Gate emits ALLOW / REFUSE / ESCALATE / EXPIRE with stable reason codes | `shared/execution-control-runtime/src/index.ts` lines 123-150 + `index.test.ts` | PROVEN_BY_TEST | Reason code taxonomy is internal; not published as a versioned spec. |
 | Canonical action hash is stable across re-runs of the same action | `shared/execution-control-runtime/src/index.ts::canonicalizeAction` + `index.test.ts` | PROVEN_BY_TEST | Stable serialization handles `undefined` correctly after the v0.1.63 fix; documented in `docs/CANONICALIZATION.md` once written. |
 | Warrant is Ed25519-signed and binds to canonical action hash + nonce | `shared/execution-control-runtime/src/index.ts::issueWarrant` + `warrant-time.test.ts` (5 tests) + `warrant-verifier/src/index.test.ts` (11 tests) | PROVEN_BY_TEST | Default dev signer is process-stable but not KMS-backed (LIMITATIONS.md §1). |
-| Warrant is single-use; replay of consumed warrant refuses | `shared/execution-control-runtime/src/index.ts::consumeWarrant` + `index.test.ts` "server enforces replay protection" | PROVEN_BY_TEST | Replay protection requires a durable `NonceSeenSet`; only in-memory implementation ships (see warrants-durable-nonce-store TODO below). |
+| Warrant replay checks refuse recorded use | `shared/execution-control-runtime/src/index.ts::consumeWarrant` + `index.test.ts` "server enforces replay protection" | PROVEN_BY_TEST | Scope depends on the consuming boundary/store. `nonce-store` includes filesystem persistence, but this does not establish global multi-node atomic consumption. HTTP effect attempts additionally use a shared local SQLite transaction. |
 | Tampering a warrant's nonce breaks the signature | `warrant-time.test.ts` "issued warrants carry a signed nonce; tampering ..." | PROVEN_BY_TEST | — |
 | Action-hash mismatch refuses verification | `warrant-verifier/src/index.test.ts` "REFUSEs when canonical_action_hash doesn't match" | PROVEN_BY_TEST | — |
 | Untrusted signing key refuses verification | `warrant-verifier/src/index.test.ts` "REFUSEs when the warrant's signing key is not in trustedKeyIds" | PROVEN_BY_TEST | — |
@@ -32,13 +33,24 @@ Statuses
 | Degraded-mode signals trigger fail-closed for safety_critical Wards | `fail-mode.test.ts` (9 tests) + `degradation.test.ts` (8 tests) | PROVEN_BY_TEST | — |
 | Multi-tenant key binding prevents cross-tenant forgery | `governance-core/src/validators.security.test.ts` (6 tests) + `tenant-onboarding/src/index.test.ts` (29 tests) | PROVEN_BY_TEST | — |
 
+## HTTP effect boundary (local durable profile)
+
+| Claim | Evidence path | Status | Risk / hardening required |
+|---|---|---|---|
+| Consumption and pre-dispatch events commit together before HTTP emission | `shared/execution-control-runtime/src/effects.test.ts` persistence, rollback and concurrent-connection tests | PROVEN_BY_TEST | All dispatchers must share one local SQLite database; no cross-host or rollback guarantee. |
+| Lost replies and finalization failures remain unresolved and block fresh-Warrant blind retries | `effects.test.ts` lost-response and finalization-failure tests | PROVEN_BY_TEST | Exactly-once external effects are not established. Business operation identity must be consistently assigned. |
+| Process exit after reservation does not free the attempt for reuse | `effects.test.ts` process-exit fixture | PROVEN_BY_TEST | Recovery needs dispatcher fencing and independent outcome evidence; no hardware/power-loss certification. |
+| Reconciliation requires pinned observer evidence and does not dispatch | `effects.ts::reconcile` + `effects.test.ts` observation rejection and no-effect tests | PROVEN_BY_TEST | Observer truth, settled finality and independent trust configuration remain assumptions. |
+| Offline effect verification distinguishes invalid, unresolved and anchored confirmed evidence | `effects.ts::verifyEffectEvidence` + `effects.test.ts` + CLI verifier tests | PROVEN_BY_TEST | Effect chain is separate from admission GEL. Independent anchor and keys are required; signatures alone do not prove physical truth or absence of hidden execution. |
+| HTTP redirects, credential prefix lookalikes and method substitution cannot reuse the original action's authority | `effects.test.ts` redirect, destination and method tests | PROVEN_BY_TEST | DNS rebinding and direct actuator/credential access require deployment isolation. |
+
 ## GEL (Governance Evidence Ledger)
 
 | Claim | Evidence path | Status | Risk / hardening required |
 |---|---|---|---|
 | GEL records are hash-chained | `shared/execution-control-runtime/src/index.ts::appendGelRecord` + `governance-core/src/gel.ts` + `chain.test.ts` (root script `test:chain`) | PROVEN_BY_TEST | — |
 | Tampering a record breaks chain verification | `chain.test.ts` + `governance-core/src/test/run.test.ts` | PROVEN_BY_TEST | — |
-| Records are signed (Ed25519 or HMAC keyring-backed) | `governance-core` validators + `index.test.ts` "operator identity is attributed in the GEL and is tamper-evident" | PROVEN_BY_TEST | External timestamp authority / Sigstore integration not present (see LIMITATIONS.md §3). |
+| Records are signed (Ed25519 or HMAC keyring-backed) | `governance-core` validators + `index.test.ts` "operator identity is attributed in the GEL and is tamper-evident" | PROVEN_BY_TEST | RFC3161 and Rekor clients exist as optional packages; a signed local GEL is not automatically independently anchored. |
 | Evidence bundle exports + verifies offline | `governance-core/src/test/run.test.ts` "an evidence bundle exports and verifies offline; tampering is detected" | PROVEN_BY_TEST | — |
 | Model lineage + hardware attestation fields are hashed into the chain | `shared/execution-control-runtime/src/index.ts` GelRecord interface + `index.test.ts` | PROVEN_BY_TEST | Hardware attestation field accepts caller-supplied content; no built-in TPM/SGX/TrustZone bridge ships. |
 
@@ -67,7 +79,7 @@ Statuses
 | Disconnected quota exhaustion → REFUSE / DISCONNECTED_QUOTA_EXCEEDED | `chaos-harness/src/index.test.ts` "quota_exhaustion" | PROVEN_BY_TEST | — |
 | Replay-attempt: every replay yields distinct warrant_id | `chaos-harness/src/index.test.ts` "replay_attempt" | PROVEN_BY_TEST | — |
 | Clock skew past local TTL → EXPIRE | `chaos-harness/src/index.test.ts` "clock_skew" | PROVEN_BY_TEST | Edge clock semantics are local-clock-driven by design; real wall-clock-skew between nodes requires NTP synchrony assumptions (LIMITATIONS.md §4). |
-| Witness flap + operator re-gossip restores edge view | `chaos-harness/src/index.test.ts` "witness_flap" | PROVEN_BY_TEST | Recovery requires explicit operator re-gossip; edge has no auto-pull of missed revocations (LIMITATIONS.md §5). |
+| Witness flap + operator re-gossip restores edge view | `chaos-harness/src/index.test.ts` "witness_flap" | PROVEN_BY_TEST | Post-heal auto-pull also ships; see `mesh-runtime/src/index.test.ts` auto-pull tests and LIMITATIONS.md §5. |
 | Gossip storm idempotency (Map dedup by revocation_id) | `chaos-harness/src/index.test.ts` "gossip_storm" | PROVEN_BY_TEST | — |
 | Envelope version downgrade rejected | `chaos-harness/src/index.test.ts` "envelope_version_downgrade" | PROVEN_BY_TEST | — |
 
@@ -144,9 +156,9 @@ Total: **18 checks, ~800ms, exit 0/1.** See `examples/reviewer/REVIEWER.md`.
 |---|---|---|
 | Production hardware integration | LIMITATIONS.md §1, ROADMAP_TO_100.md §1 | NOT_YET_IMPLEMENTED |
 | External security audit | LIMITATIONS.md §2 | NOT_YET_DONE |
-| Formal verification / TLA+ spec | ROADMAP_TO_100.md §1 | NOT_YET_DONE |
+| Bounded mesh specification | `docs/specs/MeshReconciliation.tla`, checked configurations and negative controls | MODEL_CHECKED_WITH_BOUNDS; full authority/effect kernel and implementation refinement remain outside the model |
 | KMS / HSM integration as default | LIMITATIONS.md §1 | NOT_YET_IMPLEMENTED |
-| External timestamp authority (TSA / Sigstore) for GEL records | LIMITATIONS.md §3 | NOT_YET_IMPLEMENTED |
+| External timestamp authority (TSA / Sigstore) for GEL records | `shared/gel-timestamp-rfc3161`, `shared/sigstore-rekor` and their tests | IMPLEMENTED_NOT_FULLY_TESTED (optional clients; deployment anchoring remains operator-configured) |
 | Real customer deployments | LIMITATIONS.md §6 | NONE |
 | Certification (SOC2 / ISO 27001 / regulatory) | LIMITATIONS.md §7 | NONE |
 | Standards-body governance of Warrant / GEL format | ROADMAP_TO_100.md §3 | OPEN |

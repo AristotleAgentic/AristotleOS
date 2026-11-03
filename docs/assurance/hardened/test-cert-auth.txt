@@ -1,0 +1,20 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:cert-auth C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/execution-control-runtime/src/cert-auth.test.ts
+
+✔ certCommonName extracts the CN from a DN (1.3353ms)
+✔ a verified cert matching a CN rule resolves to an mTLS principal (0.3502ms)
+✔ a PIV UPN SAN rule matches and defaults the subject to the CN (0.2896ms)
+✔ an unverified chain is rejected (requireVerified default true) (0.2003ms)
+✔ fingerprint pinning rejects an untrusted cert (0.2357ms)
+✔ a cert matching no rule is forbidden (0.196ms)
+✔ requireStrongAuth disables the standing admin api key (0.4919ms)
+✔ authEnabled is true when only cert auth is configured (2.0962ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 18.6275

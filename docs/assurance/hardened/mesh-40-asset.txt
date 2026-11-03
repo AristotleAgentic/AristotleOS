@@ -1,0 +1,18 @@
+✔ published.replay.json: file exists and parses (2.8017ms)
+✔ published.replay.json: verifies under local re-run (artifact_hash + report_hash + reproducibility + version all green) (297.8301ms)
+✔ published.replay.json: report meets the substrate audit's #12 claims (1.996ms)
+✔ 40-asset swarm scenario: nominal phase 1 issues 40 warrants (257.7333ms)
+✔ 40-asset swarm scenario: under partition, asset count still maps to either ALLOW / REFUSE / EXPIRE (no losses) (212.081ms)
+✔ 40-asset swarm scenario: witness-reachable subset refuses on revocation gossip; isolated subset keeps issuing under TTL (188.8404ms)
+✔ 40-asset swarm scenario: 30-asset config exercises the witness-reachable refusal path (127.8654ms)
+✔ 40-asset swarm scenario: reconciliation surfaces conflicts for warrants issued after revocation (183.5438ms)
+✔ 40-asset swarm scenario: total warrants issued equals warrants accumulated across phases 1+2+3 (187.2056ms)
+✔ 40-asset swarm scenario: total revocations issued by root equals 10 (181.4571ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2201.8652

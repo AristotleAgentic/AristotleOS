@@ -1,0 +1,27 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:observability-otel C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> corepack pnpm@10.32.1 --filter @aristotle/observability-otel test
+
+
+> @aristotle/observability-otel@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\observability-otel
+> node --import tsx --test src/index.test.ts
+
+✔ mapAristotleStatusToOtel: ok=true -> OK code, no message (1.9965ms)
+✔ mapAristotleStatusToOtel: ok=false -> ERROR code, message preserved (0.3649ms)
+✔ mapAristotleStatusToOtel: ok=false with no message -> ERROR + undefined message (0.3182ms)
+✔ adapter: startSpan forwards initial attributes to the OTel tracer (1.7333ms)
+✔ adapter: startSpan with no attributes does NOT pass an empty options object (0.51ms)
+✔ adapter: setAttribute after startSpan forwards to the OTel span (0.3928ms)
+✔ adapter: setStatus({ ok: true }) -> OTel SpanStatusCode.OK (0.3389ms)
+✔ adapter: setStatus({ ok: false, message }) -> OTel SpanStatusCode.ERROR + message (0.2792ms)
+✔ adapter: end() forwards to the OTel span (0.3779ms)
+✔ e2e: evaluateExecutionControl + OTel adapter emits the documented gate span (43.3967ms)
+✔ e2e: trace_context.trace_id is forwarded as aristotle.trace_id attribute (2.8804ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1423.7715

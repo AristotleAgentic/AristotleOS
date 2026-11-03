@@ -41,10 +41,19 @@ test("40-asset swarm scenario: 30-asset config exercises the witness-reachable r
 
 test("40-asset swarm scenario: reconciliation surfaces conflicts for warrants issued after revocation", async () => {
   const r = await runSwarmPartitionScenario({ assetCount: 40, fluidityTtlMs: 1500 });
-  // The fully-isolated subset issued phase2 + phase3 warrants after the root revoked them. On
+  // The fully-isolated subset issued phase3 warrants after the root revoked them. On
   // reconcile, the root flags warrants-after-revocation as conflicts. There should be at least
   // one conflict per isolated, revoked asset.
-  assert.ok(r.phase4_reconciled_conflicts > 0, "expected reconciliation to flag at least one conflict");
+  assert.equal(r.phase4_reconciled_conflicts, 10, "only the ten phase-3 warrants follow revocation");
+  assert.equal(r.phase4_reconciled_clean, 30);
+});
+
+test("40-asset swarm scenario: repeated runs do not classify phase-2 warrants as post-revocation", async () => {
+  for (let i = 0; i < 10; i++) {
+    const r = await runSwarmPartitionScenario();
+    assert.equal(r.phase4_reconciled_conflicts, 10, `run ${i}`);
+    assert.equal(r.total_warrants_issued, 90, `run ${i}`);
+  }
 });
 
 test("40-asset swarm scenario: total warrants issued equals warrants accumulated across phases 1+2+3", async () => {

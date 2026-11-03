@@ -1,0 +1,9 @@
+# Recorded assurance hashes cover exact bytes, including original log newlines.
+docs/assurance/** -text
+# Preserve the exact configuration bytes recorded by the local TLC runs.
+extracted/docs/specs/MeshReconciliation*.cfg -text
+extracted/docs/specs/MeshReconciliation.tla text eol=lf
+# pnpm verifies patch hashes over exact bytes on Windows and Linux.
+extracted/patches/** -text
+# Unified-diff context lines deliberately contain a leading space.
+extracted/patches/*.patch -whitespace

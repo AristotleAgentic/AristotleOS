@@ -1,15 +1,92 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createSocket } from "node:dgram";
+import { once } from "node:events";
 import { AristotleClient } from "@aristotle/os-sdk";
 import {
   DemonstrationFlightControlTransport,
   encodeCommandLong,
   governFlightCommand,
   MavlinkUdpTransport,
+  SingleDroneSafetyInterlock,
+  type SingleDroneTelemetry,
   type FlightAuthorization,
   type FlightCommand
 } from "./index.js";
+
+test('single-drone interlock fails closed on stale, missing, unsafe or mismatched state', () => {
+  const now = Date.parse('2026-05-26T15:00:00.000Z');
+  const good: SingleDroneTelemetry = { aircraftId: 'uav:demo-001', targetSystem: 1, targetComponent: 1,
+    receivedAtMs: now, batteryPct: 80, relativeAltitudeM: 0, positionValid: true, geofenceHealthy: true,
+    autopilotFailsafesHealthy: true, operatorEnabled: true, landed: true };
+  let telemetry = good;
+  const interlock = new SingleDroneSafetyInterlock({ aircraftId: good.aircraftId, targetSystem: 1, targetComponent: 1,
+    telemetryMaxAgeMs: 500, commandMaxAgeMs: 1000, minimumBatteryPct: 30, maximumRelativeAltitudeM: 60,
+    takeoffAltitudeReference: 'relative-home',
+    allowedCommands: ['ARM', 'TAKEOFF', 'LAND', 'RTL', 'DISARM'] }, () => telemetry, () => now);
+  assert.doesNotThrow(() => interlock.assert(TAKEOFF, good.aircraftId));
+  for (const change of [
+    { receivedAtMs: now - 501 }, { receivedAtMs: now + 1 }, { receivedAtMs: NaN },
+    { targetSystem: 2 }, { aircraftId: 'other' }, { batteryPct: NaN }, { batteryPct: 5 },
+    { relativeAltitudeM: 61 }, { positionValid: false }, { geofenceHealthy: false },
+    { autopilotFailsafesHealthy: false }, { operatorEnabled: false }, { landed: false }
+  ]) {
+    telemetry = { ...good, ...change };
+    assert.throws(() => interlock.assert(TAKEOFF, good.aircraftId), undefined, JSON.stringify(change));
+  }
+  telemetry = { ...good, batteryPct: 5, relativeAltitudeM: 61, landed: false };
+  assert.doesNotThrow(() => interlock.assert({ ...TAKEOFF, command: 'LAND', params: {} }, good.aircraftId));
+  assert.throws(() => interlock.assert({ ...TAKEOFF, command: 'DISARM', params: {} }, good.aircraftId), /ENVELOPE|LANDED/);
+  telemetry = good;
+  assert.throws(() => interlock.assert({ ...TAKEOFF, requested_at: '2020-01-01' }, good.aircraftId), /STALE/);
+  assert.throws(() => interlock.assert({ ...TAKEOFF, params: { param7: 61 } }, good.aircraftId), /TAKEOFF/);
+});
+
+test("ARM without param1 encodes arm, and contradictory commands refuse", () => {
+  const frame = encodeCommandLong(1, 1, 0, { ...TAKEOFF, command: "ARM", params: {} });
+  assert.equal(new DataView(frame.buffer).getFloat32(10, true), 1);
+  for (const command of [
+    { ...TAKEOFF, command: "ARM", params: { param1: 0 } },
+    { ...TAKEOFF, command: "DISARM", params: { param1: 1 } },
+    { ...TAKEOFF, command: "ARM", params: { param2: 21196 } },
+    { ...TAKEOFF, command: "GOTO_NED" },
+    { ...TAKEOFF, target_system: 0 },
+    { ...TAKEOFF, target_system: 257 },
+    { ...TAKEOFF, params: { param7: Infinity } },
+    { ...TAKEOFF, params: { param7: 1e100 } },
+    { ...TAKEOFF, params: { param7: "50" } },
+    { ...TAKEOFF, params: { aircraft_id: "substituted" } }
+  ]) assert.throws(() => encodeCommandLong(1, 1, 0, command as FlightCommand));
+});
+
+test("invalid target and policy-field injection refuse before gate or transport", async () => {
+  const { fn, calls } = mockFetch(() => ({ status: 200, body: ALLOW_BODY }));
+  const client = new AristotleClient({ baseUrl: "https://gate.internal", fetch: fn });
+  const transport = new DemonstrationFlightControlTransport();
+  for (const command of [{ ...TAKEOFF, target_system: 0 }, { ...TAKEOFF, params: { command: "LAND" } }]) {
+    const result = await governFlightCommand(command, transport, { client, wardId: "w", subject: "s", aircraftId: "a", allowDemonstrationTransport: true });
+    assert.equal(result.refusal?.code, "INVALID_COMMAND");
+  }
+  assert.equal(calls.length, 0);
+  assert.equal(transport.emitted.length, 0);
+});
+
+test("caller mutation during evaluation cannot change the emitted command", async () => {
+  const command = structuredClone(TAKEOFF);
+  const { fn } = mockFetch(() => {
+    command.target_system = 2;
+    command.params.param7 = 900;
+    return { status: 200, body: ALLOW_BODY };
+  });
+  const transport = new DemonstrationFlightControlTransport();
+  const result = await governFlightCommand(command, transport, {
+    client: new AristotleClient({ baseUrl: "https://gate.internal", fetch: fn }),
+    wardId: "w", subject: "s", aircraftId: "a", allowDemonstrationTransport: true
+  });
+  assert.equal(result.ok, true);
+  assert.equal(transport.emitted[0].command.target_system, 1);
+  assert.equal(transport.emitted[0].command.params.param7, 50);
+});
 
 function mockFetch(handler: (req: { url: string; body?: string }) => { status: number; body: unknown }) {
   const calls: Array<{ url: string; body?: string }> = [];
@@ -116,13 +193,16 @@ test("MavlinkUdpTransport sends a real UDP datagram to a listener", async () => 
     componentId: 1
   });
   try {
-    const out = await transport.emit(TAKEOFF, AUTHZ);
+    // Observe delivery, not an assumption that a busy host drains UDP in 30ms.
+    // Register before emitting so a fast receiver cannot race the listener.
+    const delivered = once(listener, "message", { signal: AbortSignal.timeout(5000) });
+    const [out] = await Promise.all([transport.emit(TAKEOFF, AUTHZ), delivered]);
     assert.equal(out.ok, true);
     if (out.ok) {
       assert.equal(out.receipt.transport, "px4-mavlink-udp");
       assert.equal(out.receipt.production_validated, false);
     }
-    // Wait briefly for delivery.
+    // Retain the original duplicate-observation window after actual delivery.
     await new Promise((r) => setTimeout(r, 30));
     assert.equal(received.length, 1, "listener must have received exactly one UDP datagram");
     assert.equal(received[0][0], 0xfd, "datagram must be MAVLink v2 (starts with 0xfd)");
@@ -140,6 +220,24 @@ test("MavlinkUdpTransport reports production_validated when explicitly opted in"
     productionValidated: true
   });
   assert.equal(transport.production_validated, true);
+});
+
+test('concurrent UDP emissions share one socket and honor configured local binding', async () => {
+  const listener = createSocket('udp4');
+  await new Promise<void>(resolve => listener.bind(0, '127.0.0.1', resolve));
+  const transport = new MavlinkUdpTransport({ remote: { host: '127.0.0.1', port: listener.address().port },
+    local: { host: '127.0.0.1', port: 0 }, systemId: 7, componentId: 1 });
+  const ports: number[] = [];
+  let timer: ReturnType<typeof setTimeout>;
+  const delivered = new Promise<void>((resolve, reject) => {
+    timer = setTimeout(() => reject(Error('missing datagrams')), 5000);
+    listener.on('message', (_data, remote) => { ports.push(remote.port); if (ports.length === 2) resolve(); });
+  });
+  try {
+    const [a, b] = await Promise.all([transport.emit(TAKEOFF, AUTHZ), transport.emit(TAKEOFF, AUTHZ), delivered]);
+    assert.equal(a.ok, true); assert.equal(b.ok, true);
+    assert.equal(new Set(ports).size, 1);
+  } finally { clearTimeout(timer!); await transport.close(); await new Promise<void>(resolve => listener.close(resolve)); }
 });
 
 // --- Orchestrator integration ---------------------------------------------

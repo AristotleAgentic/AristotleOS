@@ -1,0 +1,29 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:sigstore-rekor C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> corepack pnpm@10.32.1 --filter @aristotle/sigstore-rekor test
+
+
+> @aristotle/sigstore-rekor@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\sigstore-rekor
+> node --import tsx --test src/index.test.ts
+
+✔ RekorTimestampAuthority: defaults rekorUrl to the public Sigstore instance (6.4273ms)
+✔ RekorTimestampAuthority: trailing slash on rekorUrl is normalized away (0.9715ms)
+✔ RekorTimestampAuthority: tsaKeyId override is surfaced in the anchor (9.7222ms)
+✔ anchor: POSTs to /api/v1/log/entries with hashedrekord body (2.4961ms)
+✔ anchor: granted response is parsed into anchor envelope (uuid + logIndex + SET) (1.5125ms)
+✔ anchor: Rekor HTTP error throws with status info (1.653ms)
+✔ anchor: empty entry map throws (1.2019ms)
+✔ anchor: missing logIndex or integratedTime throws (1.2583ms)
+✔ inspectRekorAnchor: returns ok + parsed envelope for a valid anchor (1.4213ms)
+✔ inspectRekorAnchor: wrong kind -> ok=false with reason (0.3116ms)
+✔ inspectRekorAnchor: record_hash mismatch -> ok=false (1.1838ms)
+✔ inspectRekorAnchor: signature is not valid base64 envelope -> ok=false (2.4361ms)
+✔ inspectRekorAnchor: envelope missing required fields -> ok=false (3.5519ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 633.2312

@@ -51,18 +51,19 @@ export const runGatewayPreflight = () => {
                 ? "Production boot requires EVIDENCE_LEDGER_STATE_PATH and AGENT_OS_STATE_PATH."
                 : "State paths default to local development locations."
     });
-    const failedChecks = checks.filter((check) => check.status === "fail");
-    if (failedChecks.length > 0 && allowInsecureProduction) {
-        return {
-            ok: true,
-            mode,
-            checks: [
-                ...checks.map((check) => check.status === "fail"
-                    ? { ...check, status: "warn", detail: `${check.detail} Override active via ALLOW_INSECURE_PRODUCTION_BOOT.` }
-                    : check)
-            ]
-        };
+    if (mode === "production") {
+        const required = [
+            ["governance-enforcement", isTruthy(process.env.GOVERNANCE_CHAIN_V2) && process.env.GOVERNANCE_CHAIN_MODE === "enforce", "Production requires GOVERNANCE_CHAIN_V2=true and GOVERNANCE_CHAIN_MODE=enforce."],
+            ["chain-durability-signing", Boolean(process.env.GOVERNANCE_CHAIN_STATE_PATH?.trim()) && Boolean(process.env.GOVERNANCE_CHAIN_SIGNING_SECRET?.trim() || (process.env.GOVERNANCE_CHAIN_SIGNING_PRIVATE_KEY_PATH?.trim() && process.env.GOVERNANCE_CHAIN_SIGNING_PUBLIC_KEY_PATH?.trim())), "Production requires durable chain state and signing material."],
+            ["ledger-signing", Boolean(process.env.EVIDENCE_LEDGER_SIGNING_SECRET?.trim() || (process.env.EVIDENCE_LEDGER_SIGNING_PRIVATE_KEY_PATH?.trim() && process.env.EVIDENCE_LEDGER_SIGNING_PUBLIC_KEY_PATH?.trim())), "Production requires evidence signing material."],
+            ["operator-role-enforcement", isTruthy(process.env.OPERATOR_ROLE_ENFORCEMENT), "Production requires operator role enforcement."],
+            ["operator-session-enforcement", operatorSessionEnforcement && Boolean(operatorSessionSecret), "Production requires signed operator sessions."],
+            ["insecure-override", !allowInsecureProduction, "ALLOW_INSECURE_PRODUCTION_BOOT cannot bypass production readiness."]
+        ];
+        for (const [name, ok, detail] of required)
+            checks.push({ name, status: ok ? "pass" : "fail", detail });
     }
+    const failedChecks = checks.filter((check) => check.status === "fail");
     return {
         ok: failedChecks.length === 0,
         mode,

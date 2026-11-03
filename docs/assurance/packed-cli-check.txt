@@ -1,0 +1,19 @@
+AristotleOS CLI package check
+
+
+  dist\index.js  582.5kb
+
+Done in 85ms
+  PASS  npm pack succeeds  (@aristotle/os-cli@0.2.0, 7 files)
+  PASS  tarball includes the CLI bundle  (dist/index.js)
+  PASS  tarball includes package.json
+  PASS  tarball includes README.md
+  PASS  tarball excludes source/tests/secrets  (clean)
+  PASS  bundle carries a node shebang
+  PASS  bundle inlines @aristotle/* workspace deps  (no unresolved workspace imports)
+  PASS  bin target is published  (dist/index.js)
+  PASS  no runtime dependencies (self-contained)
+  PASS  installs into a clean consumer project
+  PASS  packed `aristotle pilot` passes  (all boundary checks green)
+
+OK — @aristotle/os-cli packs, installs, and self-checks cleanly

@@ -1,0 +1,19 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:robotics C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/execution-control-runtime/src/robotics.test.ts
+
+✔ robotics adapter builders produce Canonical Governed Actions (5.0003ms)
+✔ sample robotics Ward and action fixtures load and drive the real gate (66.0485ms)
+✔ robotics safety invariants refuse a broad set of unsafe conditions (86.0062ms)
+✔ robotics hard interlocks refuse even if mistakenly allowed (3.9076ms)
+✔ dual-control robotics actions fail closed without an approval store (7.7012ms)
+✔ dual-control robotics actions issue a Warrant after plural approval (10.4751ms)
+✔ robotics evidence bundle wraps execution evidence with cell context (14.197ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 213.7476

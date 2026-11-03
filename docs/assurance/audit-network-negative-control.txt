@@ -1,0 +1,1 @@
+✗ invalid audit report: an unavailable or malformed scan cannot establish zero advisories

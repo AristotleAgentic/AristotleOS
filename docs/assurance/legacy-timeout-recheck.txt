@@ -1,0 +1,14 @@
+✔ /v1/status returns ok=true, the doctrine string, scenarios catalog, and policy hash (1715.1379ms)
+✔ /v1/policy/check returns 200 + policyHash when validating the trial default (1758.6331ms)
+✔ /v1/policy/check returns 422 + ok=false on a malformed APL source (1522.9271ms)
+✔ /v1/policy/plan returns 200 + ok=true when planning the trial default against itself (1645.6755ms)
+✔ /v1/audit/tail returns { items: [...] } on a fresh gateway (never errors) (1900.3548ms)
+✔ /v1/audit/<unknown> returns 404 record_not_found (1943.3115ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11283.3301

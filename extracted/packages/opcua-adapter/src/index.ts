@@ -15,7 +15,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { governThroughAdapter } from "@aristotle/adapter-sdk";
+import { governThroughAdapter, type AdapterEffectBoundary } from "@aristotle/adapter-sdk";
 import { AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
 
 export interface OpcUaOperation {
@@ -189,23 +189,29 @@ export interface GovernOpcUaOptions {
   endpointUri: string;
   actionTypeFor?: (op: OpcUaOperation) => string;
   allowDemonstrationTransport?: boolean;
+  effectBoundary?: AdapterEffectBoundary;
+  operationId?: string;
 }
 
 export async function governOpcUaOperation(
   op: OpcUaOperation,
   transport: OpcUaControlTransport,
   options: GovernOpcUaOptions
-): Promise<{ ok: boolean; decision?: EvaluateResponse; outcome?: OpcUaSubmissionOutcome; refusal?: { code: string; detail: string } }> {
+): Promise<{ ok: boolean; decision?: EvaluateResponse; outcome?: OpcUaSubmissionOutcome; refusal?: { code: string; detail: string }; effect_attempt_id?: string; effect_state?: "IN_FLIGHT" | "EFFECT_UNKNOWN" }> {
+  options = { ...options };
   const result = await governThroughAdapter<OpcUaOperation, OpcUaAuthorization>(op, {
     client: options.client,
     transport,
     allowDemonstrationTransport: options.allowDemonstrationTransport,
+    effectBoundary: options.effectBoundary,
     buildAction: (operation): CanonicalAction => ({
       action_id: `opcua-${Date.now().toString(16)}`,
       ward_id: options.wardId,
       subject: options.subject,
+      target: options.endpointUri,
       action_type: options.actionTypeFor ? options.actionTypeFor(operation) : `opcua.${operation.kind}`,
       params: {
+        ...(options.operationId ? { operation_id: options.operationId } : {}),
         endpoint_uri: options.endpointUri,
         kind: operation.kind,
         node_id: operation.node_id,
@@ -232,7 +238,9 @@ export async function governOpcUaOperation(
     ok: result.ok,
     decision: result.decision,
     outcome: result.outcome as OpcUaSubmissionOutcome | undefined,
-    refusal: result.refusal
+    refusal: result.refusal,
+    effect_attempt_id: result.effect_attempt_id,
+    effect_state: result.effect_state
   };
 }
 

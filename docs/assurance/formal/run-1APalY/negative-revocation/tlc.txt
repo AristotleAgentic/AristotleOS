@@ -1,0 +1,75 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running breadth-first search Model-Checking with fp 63 and seed -2283781666656746561 with 2 workers on 4 cores with 910MB heap and 64MB offheap memory [pid: 13916] (Windows 11 10.0 amd64, Eclipse Adoptium 21.0.12.1 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file MeshReconciliation.tla
+Parsing file C:\Users\Pepper\AppData\Local\Temp\Naturals.tla
+Parsing file C:\Users\Pepper\AppData\Local\Temp\Sequences.tla
+Parsing file C:\Users\Pepper\AppData\Local\Temp\FiniteSets.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module MeshReconciliation
+Starting... (2026-10-06 00:33:24)
+Implied-temporal checking--satisfiability problem has 1 branches.
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-10-06 00:33:36.
+Error: Invariant Inv_NoWarrantAfterKnownRevocation is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ reconciledCount = [edge1 |-> 0]
+/\ revokedAt = 3
+/\ quota = [edge1 |-> 0]
+/\ reconciledRevocation = [edge1 |-> 3]
+/\ expires = [edge1 |-> 1]
+/\ conflicts = [edge1 |-> {}]
+/\ known = [edge1 |-> FALSE]
+/\ partitioned = [edge1 |-> FALSE]
+/\ warrants = [edge1 |-> <<>>]
+/\ clock = 0
+
+State 2: <Tick line 29, col 3 to line 32, col 68 of module MeshReconciliation>
+/\ reconciledCount = [edge1 |-> 0]
+/\ revokedAt = 3
+/\ quota = [edge1 |-> 0]
+/\ reconciledRevocation = [edge1 |-> 3]
+/\ expires = [edge1 |-> 1]
+/\ conflicts = [edge1 |-> {}]
+/\ known = [edge1 |-> FALSE]
+/\ partitioned = [edge1 |-> FALSE]
+/\ warrants = [edge1 |-> <<>>]
+/\ clock = 1
+
+State 3: <Revoke line 35, col 3 to line 39, col 68 of module MeshReconciliation>
+/\ reconciledCount = [edge1 |-> 0]
+/\ revokedAt = 1
+/\ quota = [edge1 |-> 0]
+/\ reconciledRevocation = [edge1 |-> 3]
+/\ expires = [edge1 |-> 1]
+/\ conflicts = [edge1 |-> {}]
+/\ known = [edge1 |-> TRUE]
+/\ partitioned = [edge1 |-> FALSE]
+/\ warrants = [edge1 |-> <<>>]
+/\ clock = 1
+
+State 4: <Issue line 70, col 3 to line 78, col 68 of module MeshReconciliation>
+/\ reconciledCount = [edge1 |-> 0]
+/\ revokedAt = 1
+/\ quota = [edge1 |-> 0]
+/\ reconciledRevocation = [edge1 |-> 3]
+/\ expires = [edge1 |-> 1]
+/\ conflicts = [edge1 |-> {}]
+/\ known = [edge1 |-> TRUE]
+/\ partitioned = [edge1 |-> FALSE]
+/\ warrants = [ edge1 |->
+      << [ at |-> 1,
+           knew |-> TRUE,
+           offline |-> FALSE,
+           used |-> 0,
+           expiry |-> 1 ] >> ]
+/\ clock = 1
+
+30 states generated, 20 distinct states found, 13 states left on queue.
+The depth of the complete state graph search is 4.
+The average outdegree of the complete state graph is 4 (minimum is 4, the maximum 5 and the 95th percentile is 5).
+Finished in 13s at (2026-10-06 00:33:36)
+
+

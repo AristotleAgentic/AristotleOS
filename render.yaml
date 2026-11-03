@@ -1,13 +1,16 @@
 services:
   - type: web
     name: aristotle-agentic
+    branch: harden/production-contracts
     runtime: node
     rootDir: extracted
-    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/website
+    buildCommand: corepack pnpm install --frozen-lockfile && npm run build -w @aristotle/website
     startCommand: npm run start -w @aristotle/website
     healthCheckPath: /readyz
     plan: starter
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: NODE_ENV
         value: production
       - key: HOST
@@ -35,12 +38,15 @@ services:
 
   - type: pserv
     name: meta-authority-registry
+    branch: harden/production-contracts
     runtime: node
     rootDir: extracted
-    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/meta-authority-registry
+    buildCommand: corepack pnpm install --frozen-lockfile && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/meta-authority-registry
     startCommand: npm run start -w @aristotle/meta-authority-registry
     plan: starter
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: NODE_ENV
         value: production
       - key: PORT
@@ -54,12 +60,15 @@ services:
 
   - type: pserv
     name: policy-compiler
+    branch: harden/production-contracts
     runtime: node
     rootDir: extracted
-    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/execution-control-runtime -w @aristotle/policy-compiler
+    buildCommand: corepack pnpm install --frozen-lockfile && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/execution-control-runtime -w @aristotle/policy-compiler
     startCommand: npm run start -w @aristotle/policy-compiler
     plan: starter
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: NODE_ENV
         value: production
       - key: PORT
@@ -69,12 +78,15 @@ services:
 
   - type: pserv
     name: evidence-ledger
+    branch: harden/production-contracts
     runtime: node
     rootDir: extracted
-    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/execution-control-runtime -w @aristotle/evidence-ledger
+    buildCommand: corepack pnpm install --frozen-lockfile && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/execution-control-runtime -w @aristotle/evidence-ledger
     startCommand: npm run start -w @aristotle/evidence-ledger
     plan: starter
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: NODE_ENV
         value: production
       - key: PORT
@@ -94,12 +106,15 @@ services:
 
   - type: pserv
     name: authority-router
+    branch: harden/production-contracts
     runtime: node
     rootDir: extracted
-    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/authority-router
+    buildCommand: corepack pnpm install --frozen-lockfile && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/authority-router
     startCommand: npm run start -w @aristotle/authority-router
     plan: starter
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: NODE_ENV
         value: production
       - key: PORT
@@ -109,12 +124,15 @@ services:
 
   - type: pserv
     name: witness-service
+    branch: harden/production-contracts
     runtime: node
     rootDir: extracted
-    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/witness-service
+    buildCommand: corepack pnpm install --frozen-lockfile && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/witness-service
     startCommand: npm run start -w @aristotle/witness-service
     plan: starter
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: NODE_ENV
         value: production
       - key: PORT
@@ -128,12 +146,15 @@ services:
 
   - type: pserv
     name: execution-gate
+    branch: harden/production-contracts
     runtime: node
     rootDir: extracted
-    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/execution-control-runtime -w @aristotle/execution-gate
+    buildCommand: corepack pnpm install --frozen-lockfile && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/execution-control-runtime -w @aristotle/execution-gate
     startCommand: npm run start -w @aristotle/execution-gate
     plan: starter
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: NODE_ENV
         value: production
       - key: PORT
@@ -143,12 +164,15 @@ services:
 
   - type: pserv
     name: governance-kernel
+    branch: harden/production-contracts
     runtime: node
     rootDir: extracted
-    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/governance-core -w @aristotle/execution-control-runtime -w @aristotle/governance-kernel
+    buildCommand: corepack pnpm install --frozen-lockfile && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/governance-core -w @aristotle/execution-control-runtime -w @aristotle/governance-kernel
     startCommand: npm run start -w @aristotle/governance-kernel
     plan: starter
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: NODE_ENV
         value: production
       - key: PORT
@@ -166,14 +190,30 @@ services:
           name: meta-authority-registry
           property: port
 
+      - key: GOVERNANCE_CHAIN_V2
+        value: "true"
+      - key: GOVERNANCE_CHAIN_MODE
+        value: enforce
+      - key: GOVERNANCE_CHAIN_STATE_PATH
+        value: /data/governance-chain.json
+      - key: GOVERNANCE_CHAIN_SIGNING_SECRET
+        generateValue: true
+    disk:
+      name: governance-kernel-data
+      mountPath: /data
+      sizeGB: 1
+
   - type: pserv
     name: simulation-engine
+    branch: harden/production-contracts
     runtime: node
     rootDir: extracted
-    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/chaos-harness -w @aristotle/simulation-engine
+    buildCommand: corepack pnpm install --frozen-lockfile && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/chaos-harness -w @aristotle/simulation-engine
     startCommand: npm run start -w @aristotle/simulation-engine
     plan: starter
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: NODE_ENV
         value: production
       - key: PORT
@@ -183,12 +223,15 @@ services:
 
   - type: pserv
     name: agent-os
+    branch: harden/production-contracts
     runtime: node
     rootDir: extracted
-    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/execution-control-runtime -w @aristotle/agent-os
+    buildCommand: corepack pnpm install --frozen-lockfile && npm run build -w @aristotle/shared-types -w @aristotle/service-runtime -w @aristotle/mesh-runtime -w @aristotle/execution-control-runtime -w @aristotle/agent-os
     startCommand: npm run start -w @aristotle/agent-os
     plan: starter
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: NODE_ENV
         value: production
       - key: PORT
@@ -278,12 +321,15 @@ services:
 
   - type: pserv
     name: http-gateway
+    branch: harden/production-contracts
     runtime: node
     rootDir: extracted
-    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/trial-engine && node --check adapters/http-gateway/src/index.js && node --check adapters/http-gateway/src/operator-auth.js && node --check adapters/http-gateway/src/trial-api.js
+    buildCommand: corepack pnpm install --frozen-lockfile && npm run build -w @aristotle/shared-types -w @aristotle/shared-schemas -w @aristotle/service-runtime -w @aristotle/trial-engine && node --check adapters/http-gateway/src/index.js && node --check adapters/http-gateway/src/operator-auth.js && node --check adapters/http-gateway/src/trial-api.js
     startCommand: npm run start -w @aristotle/http-gateway
     plan: starter
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: NODE_ENV
         value: production
       - key: PORT
@@ -392,16 +438,38 @@ services:
         sync: false
       - key: OPERATOR_SESSION_ENFORCEMENT
         value: "1"
+      - key: OPERATOR_ROLE_ENFORCEMENT
+        value: "true"
+      - key: GOVERNANCE_CHAIN_V2
+        value: "true"
+      - key: GOVERNANCE_CHAIN_MODE
+        value: enforce
+      # The kernel owns the chain state; the gateway proxies its API.
+      - key: GOVERNANCE_CHAIN_STATE_PATH
+        value: /data/governance-chain.json
+      - key: GOVERNANCE_CHAIN_SIGNING_SECRET
+        fromService:
+          type: pserv
+          name: governance-kernel
+          envVarKey: GOVERNANCE_CHAIN_SIGNING_SECRET
+      - key: EVIDENCE_LEDGER_SIGNING_SECRET
+        fromService:
+          type: pserv
+          name: evidence-ledger
+          envVarKey: EVIDENCE_LEDGER_SIGNING_SECRET
 
   - type: web
     name: aristotle-console
+    branch: harden/production-contracts
     runtime: node
     rootDir: extracted
-    buildCommand: corepack pnpm install --frozen-lockfile=false && npm run build -w @aristotle/console-ui
+    buildCommand: corepack pnpm install --frozen-lockfile && npm run build -w @aristotle/console-ui
     startCommand: npm run serve -w @aristotle/console-ui
     healthCheckPath: /console-health
     plan: starter
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: NODE_ENV
         value: production
       - key: PORT

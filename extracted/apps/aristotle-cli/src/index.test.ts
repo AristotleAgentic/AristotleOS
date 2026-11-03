@@ -25,6 +25,22 @@ test("cli init creates a valid governance file", async () => {
   }
 });
 
+test("cli effects verifier distinguishes unresolved evidence from invalid evidence", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "aristotle-effects-cli-"));
+  try {
+    writeFileSync(path.join(dir, "trust.json"), JSON.stringify({ trustedLedgerKeys: {}, trustedObservers: {}, allowedMethods: [] }));
+    writeFileSync(path.join(dir, "records.json"), "[]");
+    const args = ["execution-control", "effects", "verify", "--records", "records.json", "--trust", "trust.json", "--json"];
+    const unresolved = await capture(args, dir);
+    assert.equal(unresolved.code, 2);
+    assert.equal(JSON.parse(unresolved.stdout).status, "INDETERMINATE");
+    writeFileSync(path.join(dir, "records.json"), "[{}]");
+    const invalid = await capture(args, dir);
+    assert.equal(invalid.code, 1);
+    assert.equal(JSON.parse(invalid.stdout).status, "FAIL");
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test("cli execution-control evaluate runs Ward/Warrant action through AristotleOS", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "aristotle-cli-"));
   try {

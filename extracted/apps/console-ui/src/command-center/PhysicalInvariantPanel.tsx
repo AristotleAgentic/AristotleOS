@@ -20,7 +20,7 @@ export function PhysicalInvariantPanel({ compact }: { compact?: boolean }) {
       <Panel
         title="Physical Invariant Gater"
         icon={<Gauge size={15} />}
-        right={<span className="ac-badge t-green"><ShieldCheck size={12} /> hardware armed</span>}
+        right={<span className="ac-badge t-green"><ShieldCheck size={12} /> sample telemetry</span>}
       >
         <div className="ac-grid ac-cols-3">
           {PHYSICAL_CHANNELS.map((c) => {
@@ -67,7 +67,7 @@ export function PhysicalInvariantPanel({ compact }: { compact?: boolean }) {
             </div>
           </div>
           <div className="ac-muted" style={{ marginTop: 12, fontSize: 12 }}>
-            The Physical Invariant Gater holds independently of software authority. If the two ever disagree, the boundary fails closed and asserts physical containment.
+            Illustrative telemetry and interlock events. This panel is not connected to aircraft hardware and does not establish physical containment or flight readiness.
           </div>
         </Panel>
 

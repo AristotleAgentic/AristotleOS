@@ -1,0 +1,18 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:governance C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/trial-engine/src/index.test.ts
+
+✔ governance file validates required AristotleOS primitives (2.9813ms)
+✔ payments flagship scenario defers before warrant issuance (2.0522ms)
+✔ operator approval issues a single-use warrant and commits GEL (1.8009ms)
+✔ denied payout never receives a warrant (0.5114ms)
+✔ missing authority binding fails closed (2.2955ms)
+✔ plan reports governance artifact changes (0.9455ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 23.6036

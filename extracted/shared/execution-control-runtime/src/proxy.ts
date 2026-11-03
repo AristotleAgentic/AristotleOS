@@ -13,12 +13,19 @@ import {
   type TraceContext,
   type WardManifest,
   type Warrant,
+  type RuntimeRegister,
+  type DegradationCondition,
+  type BudgetGovernor,
+  type ApprovalStore,
+  getDefaultDevSigner,
   evaluateExecutionControl,
   evaluateExecutionControlAsync,
   verifyWarrant
 } from "./index.js";
 import { type CredentialRevocationList, credentialRevocationReason } from "./credential-revocation.js";
 import { classifyEgressUrl } from "./egress-guard.js";
+import { SqliteEffectStore, type EffectAttempt, type EffectState } from "./effects.js";
+import { loadRevocationList } from "./revocation.js";
 
 /**
  * Credential brokering + governed action proxy.
@@ -62,7 +69,16 @@ export class CredentialBroker {
 
   private matches(rule: CredentialRule, action: CanonicalActionInput): boolean {
     if (rule.action_type && rule.action_type !== action.action_type) return false;
-    if (rule.target_prefix && !action.target.startsWith(rule.target_prefix)) return false;
+    if (rule.target_prefix) {
+      try {
+        const prefix = new URL(rule.target_prefix), target = new URL(action.target);
+        if (!["http:", "https:"].includes(prefix.protocol) || prefix.username || prefix.password || target.username || target.password) return false;
+        if (prefix.origin !== target.origin) return false;
+        const basePath = prefix.pathname.replace(/\/$/, "");
+        if (target.pathname !== basePath && !target.pathname.startsWith(`${basePath}/`)) return false;
+        if (prefix.search && prefix.search !== target.search) return false;
+      } catch { return false; }
+    }
     return true;
   }
 
@@ -153,6 +169,13 @@ export interface ProxyGovernedActionInput {
    * schemes are refused regardless of this flag.
    */
   blockPrivateEgress?: boolean;
+  /** All competing dispatchers must share this store. Defaults to a durable
+   * local sidecar at ledgerPath + '.effects.sqlite'. Not a distributed lock. */
+  effectStore?: SqliteEffectStore;
+  runtimeRegister?: RuntimeRegister;
+  degradedConditions?: DegradationCondition[];
+  budgetGovernor?: BudgetGovernor;
+  approvalStore?: ApprovalStore;
 }
 
 export interface ProxyGovernedActionResult {
@@ -161,6 +184,10 @@ export interface ProxyGovernedActionResult {
   canonical_action_hash: string;
   warrant?: Warrant;
   forwarded: boolean;
+  /** Legacy forwarded describes response receipt, never business-effect certainty. */
+  dispatch_status: "NOT_ATTEMPTED" | "ATTEMPTED_UNKNOWN" | "RESPONSE_RECEIVED";
+  effect_state: EffectState;
+  effect_attempt?: EffectAttempt;
   /** Header names injected by the broker — never the values. */
   injected_headers: string[];
   response?: { status: number; headers: Record<string, string>; body: string };
@@ -174,6 +201,9 @@ export interface ProxyGovernedActionResult {
  * the moment of forwarding and never exposed to the caller.
  */
 export async function proxyGovernedAction(input: ProxyGovernedActionInput): Promise<ProxyGovernedActionResult> {
+  // Freeze the proposal across async ledger operations: caller mutation after
+  // admission must not change what is sent to the destination.
+  input = { ...input, action: structuredClone(input.action), ward: structuredClone(input.ward), authorityEnvelope: structuredClone(input.authorityEnvelope) };
   const evaluateParams = {
     ward: input.ward,
     authorityEnvelope: input.authorityEnvelope,
@@ -187,7 +217,11 @@ export async function proxyGovernedAction(input: ProxyGovernedActionInput): Prom
     warrantTtlSeconds: input.warrantTtlSeconds,
     actor: input.actor,
     trace_context: input.trace_context,
-    tracer: input.tracer
+    tracer: input.tracer,
+    runtimeRegister: input.runtimeRegister,
+    degradedConditions: input.degradedConditions,
+    budgetGovernor: input.budgetGovernor,
+    approvalStore: input.approvalStore
   };
   const evaluation = input.asyncLedger
     ? await evaluateExecutionControlAsync({ ...evaluateParams, ledger: input.asyncLedger })
@@ -200,56 +234,76 @@ export async function proxyGovernedAction(input: ProxyGovernedActionInput): Prom
     warrant: evaluation.warrant,
     gel_record: evaluation.gel_record
   };
+  const notAttempted = { dispatch_status: "NOT_ATTEMPTED" as const, effect_state: "CONFIRMED_NO_EFFECT" as const };
 
   if (evaluation.decision !== "ALLOW" || !evaluation.warrant) {
-    return { ...base, forwarded: false, injected_headers: [] };
+    return { ...base, ...notAttempted, forwarded: false, injected_headers: [] };
   }
 
   // Defense in depth: never forward against an unverifiable Warrant.
   const verification = verifyWarrant(evaluation.warrant, evaluation.canonical_action_hash, input.now);
   if (!verification.ok) {
-    return { ...base, forwarded: false, injected_headers: [], error: `warrant verification failed: ${verification.reason}` };
+    return { ...base, ...notAttempted, forwarded: false, injected_headers: [], error: `warrant verification failed: ${verification.reason}` };
   }
 
   const destination = resolveDestination(input.action);
   if ("error" in destination) {
-    return { ...base, forwarded: false, injected_headers: [], error: destination.error };
+    return { ...base, ...notAttempted, forwarded: false, injected_headers: [], error: destination.error };
   }
 
   // SSRF guard: refuse cloud-metadata / link-local / unspecified / non-http(s) targets
   // (and private networks when opted in) before any credential is brokered or sent.
   const egress = classifyEgressUrl(destination.url, { blockPrivateNetworks: input.blockPrivateEgress === true });
   if (!egress.ok) {
-    return { ...base, forwarded: false, injected_headers: [], error: `egress blocked: ${egress.reason}` };
+    return { ...base, ...notAttempted, forwarded: false, injected_headers: [], error: `egress blocked: ${egress.reason}` };
   }
 
   let injected: Record<string, string> = {};
   try {
     injected = input.broker ? input.broker.resolve(input.action) : {};
   } catch (error) {
-    return { ...base, forwarded: false, injected_headers: [], error: error instanceof Error ? error.message : String(error) };
+    return { ...base, ...notAttempted, forwarded: false, injected_headers: [], error: error instanceof Error ? error.message : String(error) };
   }
 
-  const declaredHeaders = (input.action.params.headers as Record<string, JsonValue> | undefined) ?? {};
-  const headers: Record<string, string> = {};
-  for (const [key, value] of Object.entries(declaredHeaders)) headers[key] = String(value);
-  Object.assign(headers, injected);
-
-  const fetchImpl = input.fetchImpl ?? fetch;
+  let store: SqliteEffectStore | undefined;
+  let attempt: EffectAttempt | undefined;
   try {
-    const response = await fetchImpl(destination.url, {
-      method: methodFor(input.action),
-      headers,
-      body: bodyFor(input.action)
-    });
-    const text = await response.text();
-    return {
-      ...base,
-      forwarded: true,
-      injected_headers: Object.keys(injected),
-      response: { status: response.status, headers: Object.fromEntries(response.headers), body: text }
-    };
+    const method = methodFor(input.action);
+    if (input.action.action_type !== "http.request" && METHOD_BY_TYPE[input.action.action_type] && method !== METHOD_BY_TYPE[input.action.action_type]) throw new Error("proxy method differs from authorized action type");
+    const headers = new Headers();
+    const declaredHeaders = (input.action.params.headers as Record<string, JsonValue> | undefined) ?? {};
+    for (const [key, value] of Object.entries(declaredHeaders)) {
+      if (["host", "connection", "content-length", "transfer-encoding"].includes(key.toLowerCase())) throw new Error("proxy transport header override refused");
+      headers.set(key, String(value));
+    }
+    for (const [key, value] of Object.entries(injected)) headers.set(key, value);
+    const body = bodyFor(input.action);
+    const signer = input.signer ?? getDefaultDevSigner();
+    store = input.effectStore ?? new SqliteEffectStore(`${input.ledgerPath}.effects.sqlite`, signer);
+    attempt = store.begin({ ward: input.ward, action: input.action, warrant: evaluation.warrant, admission: evaluation.gel_record,
+      now: input.now, verify: { trustedKeyIds: [signer.key_id], revocations: input.revocationListPath ? loadRevocationList(input.revocationListPath) : undefined } });
+    evaluation.warrant.consumed = true;
+    const fetchImpl = input.fetchImpl ?? fetch;
+    let response: ProxyGovernedActionResult["response"];
+    let error: string | undefined;
+    try {
+      const received = await fetchImpl(destination.url, { method, headers, body, redirect: "manual" });
+      response = { status: received.status, headers: Object.fromEntries(received.headers), body: await received.text() };
+    } catch (cause) { error = cause instanceof Error ? cause.message : String(cause); }
+    // A successful HTTP exchange is a transport receipt, not proof of effect.
+    // Persist uncertainty after both success and failure; only a trusted observer
+    // may move the attempt to a confirmed terminal state.
+    try { attempt = store.markUnknown(attempt.attempt_id, input.now); }
+    catch { error = "effect finalization unavailable; durable attempt remains in flight"; }
+    return { ...base, forwarded: !!response, dispatch_status: response ? "RESPONSE_RECEIVED" : "ATTEMPTED_UNKNOWN",
+      effect_state: "EFFECT_UNKNOWN", effect_attempt: attempt, injected_headers: Object.keys(injected),
+      ...(response ? { response } : {}), ...(error ? { error } : {}) };
   } catch (error) {
-    return { ...base, forwarded: false, injected_headers: Object.keys(injected), error: error instanceof Error ? error.message : String(error) };
+    const message = error instanceof Error ? error.message : String(error);
+    return { ...base, ...notAttempted, forwarded: false, injected_headers: [],
+      ...(attempt || message.includes("EFFECT_OPERATION_ALREADY_ATTEMPTED") ? { effect_state: "EFFECT_UNKNOWN" as const } : {}),
+      ...(attempt ? { effect_attempt: attempt, dispatch_status: "ATTEMPTED_UNKNOWN" as const } : {}), error: message };
+  } finally {
+    if (store && store !== input.effectStore) store.close();
   }
 }

@@ -1,0 +1,19 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:dual-control C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> tsx shared/execution-control-runtime/src/dual-control.test.ts
+
+✔ evaluateApproval: reject wins, then M distinct approvers, then TTL (4.8172ms)
+✔ dualControlPolicyFrom parses and rejects invalid blobs (2.6138ms)
+✔ ApprovalStore enforces separation of duties and one-vote-per-approver (1.5257ms)
+✔ ApprovalStore is idempotent on request and durable across instances (11.6367ms)
+✔ a dual-control action escalates and opens a pending request; approval then admits it (73.844ms)
+✔ a rejection keeps a dual-control action escalated (18.0033ms)
+✔ without an approval store, dual control fails closed instead of silently bypassing plural authority (8.3496ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 146.3981

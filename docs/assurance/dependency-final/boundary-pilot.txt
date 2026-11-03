@@ -1,0 +1,14 @@
+AristotleOS governed autonomous-action self-check
+
+  PASS  Node.js >= 18  (v24.15.0)
+  PASS  Durable Ed25519 signing key  (ed25519:fac177b65983534c7c76e933f3a09442)
+  PASS  ALLOW issues a Warrant  (wrn-898b2fe826a6cd081439a8c6)
+  PASS  Warrant signature verifies
+  PASS  Warrant key pinning works
+  PASS  REFUSE blocks a denied action  (ACTION_DENIED)
+  PASS  ESCALATE on missing runtime state  (RUNTIME_STATE_MISSING)
+  PASS  Evidence Bundle self-verifies
+  PASS  Evidence Bundle pinned-key verify
+  PASS  GEL hash chain verifies
+
+DEMO READY - Warrant, refusal, GEL, and Evidence Bundle checks passed.

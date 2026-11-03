@@ -1,0 +1,133 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:mesh C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> corepack pnpm@10.32.1 --filter @aristotle/mesh-runtime --filter @aristotle/chaos-harness --filter @aristotle/scenario-engine test
+
+Scope: 3 of 60 workspace projects
+shared/mesh-runtime test$ node --import tsx --test src/index.test.ts src/quorum-routing.test.ts src/ed25519-mesh.test.ts src/ingress-hardening.test.ts src/revocation-quorum.test.ts
+shared/mesh-runtime test: ✔ Ed25519 mesh: envelope propagates root -> witnesses -> edges with per-node keys (74.3708ms)
+shared/mesh-runtime test: ✔ Ed25519 mesh: revocation gossips end-to-end and edge refuses (82.9886ms)
+shared/mesh-runtime test: ✔ Ed25519 mesh: edge issues warrant signed by its own private key under valid token (50.2525ms)
+shared/mesh-runtime test: ✔ Ed25519 allowlist: witness without root's trust anchor REFUSES the envelope (45.5896ms)
+shared/mesh-runtime test: ✔ Ed25519 impersonation defense: trust anchor bound to wrong key REFUSES envelope (53.8492ms)
+shared/mesh-runtime test: ✔ MeshNode constructor: only signer (no verifier) throws (2.9983ms)
+shared/mesh-runtime test: ✔ MeshNode constructor: only verifier (no signer) throws (0.5424ms)
+shared/mesh-runtime test: ✔ MeshNode constructor: no secret AND no signer/verifier throws (0.349ms)
+shared/mesh-runtime test: [aristotle/mesh-runtime] WARNING: MeshNode "root-1" constructed with a known demo HMAC secret. This is not safe for production. Use createEd25519MeshSigner + createEd25519MeshVerifier and pass { signer, verifier } to the MeshNode constructor. See ROADMAP_TO_100.md Category 1 and LIMITATIONS.md.
+shared/mesh-runtime test: ✔ envelope propagates from root through witnesses to all edges (52.2063ms)
+shared/mesh-runtime test: ✔ edge issues warrant on ALLOW under valid Fluidity Token (36.1981ms)
+shared/mesh-runtime test: ✔ edge REFUSES when revocation has propagated (80.0612ms)
+shared/mesh-runtime test: ✔ partition: edge keeps issuing under Fluidity Token TTL, then EXPIRES on TTL expiry (149.7829ms)
+shared/mesh-runtime test: ✔ partition: revocation issued during split is detected via surviving witness (88.1423ms)
+shared/mesh-runtime test: ✔ disconnected-quota cap: edge fails closed after exceeding maxWarrantsWhileDisconnected (45.4771ms)
+shared/mesh-runtime test: ✔ reconciliation: edge submits local decisions to root after partition heal (47.2144ms)
+shared/mesh-runtime test: ✔ reconciliation: edge submitted-after-revocation decisions surface as conflicts (48.4142ms)
+shared/mesh-runtime test: ✔ envelope versioning: a higher-version envelope replaces a lower one (81.3019ms)
+shared/mesh-runtime test: ✔ envelope EXPIRED returns the distinct EXPIRE decision (not REFUSE) (39.8925ms)
+shared/mesh-runtime test: ✔ live HTTP transport: root and edge can talk over real TCP sockets (153.6994ms)
+shared/mesh-runtime test: ✔ auto-pull: pullRevocations() backfills the edge from root after a missed gossip window (75.0867ms)
+shared/mesh-runtime test: ✔ auto-pull: pingRoot reconnect transition fires pullRevocations automatically (105.8407ms)
+shared/mesh-runtime test: ✔ demo-secret WARN: known demo secret emits a one-time console.warn (2.8086ms)
+shared/mesh-runtime test: ✔ demo-secret WARN: suppressDemoSecretWarning silences it (0.4574ms)
+shared/mesh-runtime test: ✔ demo-secret WARN: a non-demo secret does NOT warn (0.3473ms)
+shared/mesh-runtime test: ✔ productionMode: secret-only construction throws (0.8946ms)
+shared/mesh-runtime test: ✔ productionMode: HMAC signer construction throws (0.5465ms)
+shared/mesh-runtime test: ✔ productionMode: Ed25519 signer construction succeeds (5.5452ms)
+shared/mesh-runtime test: ✔ ingress: oversized POST returns 413 with structured body (132.8668ms)
+shared/mesh-runtime test: ✔ ingress: non-JSON content-type returns 415 (31.1311ms)
+shared/mesh-runtime test: ✔ ingress: malformed JSON returns 400 with structured body (28.823ms)
+shared/mesh-runtime test: ✔ ingress: well-formed PING with JSON content-type succeeds (200) (20.9337ms)
+shared/mesh-runtime test: ✔ ingress: content-type with charset is accepted (18.684ms)
+shared/mesh-runtime test: ✔ replay cache: same body twice within TTL -> second returns 409 (28.5658ms)
+shared/mesh-runtime test: ✔ replay cache: different bodies are independent (53.5721ms)
+shared/mesh-runtime test: ✔ replay cache unit: TTL-expired entries are reaccepted (0.5898ms)
+shared/mesh-runtime test: ✔ replay cache unit: maxSize bounds memory (LRU-ish eviction) (0.3784ms)
+shared/mesh-runtime test: ✔ rate limiter unit: bursting up to capacity is allowed (1.0692ms)
+shared/mesh-runtime test: ✔ rate limiter unit: per-peer isolation — one flooder doesn't starve others (0.4015ms)
+shared/mesh-runtime test: ✔ rate limiter unit: refill restores tokens at the configured rate (0.5082ms)
+shared/mesh-runtime test: ✔ rate limiter unit: peek shows current tokens without consuming (0.623ms)
+shared/mesh-runtime test: ✔ ingress: rate-limited request returns 429 with structured body (28.5127ms)
+shared/mesh-runtime test: ✔ ingress: anonymous (no msg.from) traffic is bucketed under '*' (29.3088ms)
+shared/mesh-runtime test: ✔ ingress: rate limiter is per-peer — one flooder doesn't block others over HTTP (26.0636ms)
+shared/mesh-runtime test: ✔ QuorumCollector reaches required count after m witnesses sign (8.304ms)
+shared/mesh-runtime test: ✔ QuorumCollector deduplicates re-signing by the same witness (0.6969ms)
+shared/mesh-runtime test: ✔ QuorumCollector ignores signatures from non-witness ids (0.4374ms)
+shared/mesh-runtime test: ✔ verifyQuorumSignature: valid signature passes, tampered fails (0.6792ms)
+shared/mesh-runtime test: ✔ InMemoryMeshPersistence: save and load envelopes + revocations (4.3032ms)
+shared/mesh-runtime test: ✔ StaticSovereignRouter: local mae returns no route; foreign mae routes to anchor (0.7042ms)
+shared/mesh-runtime test: ✔ StaticSovereignRouter: unknown foreign mae returns undefined (0.3413ms)
+shared/mesh-runtime test: ✔ MeshNode.httpClient: injected client is used for cross-process sendTo (45.4836ms)
+shared/mesh-runtime test: ✔ MeshNode.urlFor: defaults to http when not provided (54.3661ms)
+shared/mesh-runtime test: ✔ InMemoryMeshPersistence: durability roundtrip — save envelopes + revocations and restore them under a new instance after JSON serialization (0.8937ms)
+shared/mesh-runtime test: ✔ InMemoryMeshPersistence: monotonic envelope versioning — a v2 save replaces v1 under the same envelope_id (0.4425ms)
+shared/mesh-runtime test: ✔ Q1: existing root.revoke() works for edges that don't require quorum (99.5314ms)
+shared/mesh-runtime test: ✔ Q2: revokeWithQuorum() produces a revocation with signing_quorum populated (48.203ms)
+shared/mesh-runtime test: ✔ Q3: edge requireRevocationQuorum=2 accepts revocation with 2 valid sigs and refuses subsequent commits (94.096ms)
+shared/mesh-runtime test: ✔ Q4: edge requireRevocationQuorum=2 REJECTS a single-signature revocation (no witness sigs) (88.3396ms)
+shared/mesh-runtime test: ✔ Q4b: edge requireRevocationQuorum=2 REJECTS a revocation with only 1 valid sig (one witness short) (83.2355ms)
+shared/mesh-runtime test: ✔ Q5: duplicate witness signatures from the same witness_id are deduplicated (48.1861ms)
+shared/mesh-runtime test: ✔ Q6: signatures from witnesses NOT in the verifier's allowlist are rejected (57.5014ms)
+shared/mesh-runtime test: ✔ Q7: signing_quorum from rev-A is NOT valid on rev-B (witnesses bind to root_signature) (67.4031ms)
+shared/mesh-runtime test: ✔ Q8: pullRevocations skips revocations that fail the quorum check (104.7777ms)
+shared/mesh-runtime test: ✔ Q9: revokeWithQuorum throws when fewer witnesses provided than requiredQuorum (14.8017ms)
+shared/mesh-runtime test: ✔ Q9b: revokeWithQuorum throws when requiredQuorum < 1 (5.7803ms)
+shared/mesh-runtime test: ✔ countValidRevocationQuorum: returns 0 for revocation without signing_quorum (0.9032ms)
+shared/mesh-runtime test: ℹ tests 66
+shared/mesh-runtime test: ℹ suites 0
+shared/mesh-runtime test: ℹ pass 66
+shared/mesh-runtime test: ℹ fail 0
+shared/mesh-runtime test: ℹ cancelled 0
+shared/mesh-runtime test: ℹ skipped 0
+shared/mesh-runtime test: ℹ todo 0
+shared/mesh-runtime test: ℹ duration_ms 3296.2247
+shared/mesh-runtime test: Done
+shared/scenario-engine test$ node --import tsx --test src/index.test.ts
+shared/chaos-harness test$ node --import tsx --test src/index.test.ts
+shared/chaos-harness test: C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\chaos-harness\src\index.ts:41
+shared/chaos-harness test:   EdgeNode,
+shared/chaos-harness test:   ^
+shared/chaos-harness test: SyntaxError: The requested module '@aristotle/mesh-runtime' does not provide an export named 'EdgeNode'
+shared/chaos-harness test:     at #asyncInstantiate (node:internal/modules/esm/module_job:326:21)
+shared/chaos-harness test:     at async ModuleJob.run (node:internal/modules/esm/module_job:429:5)
+shared/chaos-harness test:     at async node:internal/modules/esm/loader:639:26
+shared/chaos-harness test:     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+shared/chaos-harness test: Node.js v24.15.0
+shared/scenario-engine test: C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\scenario-engine\src\index.ts:32
+shared/scenario-engine test:   EdgeNode,
+shared/scenario-engine test:   ^
+shared/scenario-engine test: SyntaxError: The requested module '@aristotle/mesh-runtime' does not provide an export named 'EdgeNode'
+shared/scenario-engine test:     at #asyncInstantiate (node:internal/modules/esm/module_job:326:21)
+shared/scenario-engine test:     at async ModuleJob.run (node:internal/modules/esm/module_job:429:5)
+shared/scenario-engine test:     at async node:internal/modules/esm/loader:639:26
+shared/scenario-engine test:     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+shared/scenario-engine test: Node.js v24.15.0
+shared/chaos-harness test: ✖ src\index.test.ts (1433.8014ms)
+shared/chaos-harness test: ℹ tests 1
+shared/chaos-harness test: ℹ suites 0
+shared/chaos-harness test: ℹ pass 0
+shared/chaos-harness test: ℹ fail 1
+shared/chaos-harness test: ℹ cancelled 0
+shared/chaos-harness test: ℹ skipped 0
+shared/chaos-harness test: ℹ todo 0
+shared/chaos-harness test: ℹ duration_ms 1460.3153
+shared/chaos-harness test: ✖ failing tests:
+shared/chaos-harness test: test at src\index.test.ts:1:1
+shared/chaos-harness test: ✖ src\index.test.ts (1433.8014ms)
+shared/chaos-harness test:   'test failed'
+shared/scenario-engine test: ✖ src\index.test.ts (1444.7946ms)
+shared/scenario-engine test: ℹ tests 1
+shared/scenario-engine test: ℹ suites 0
+shared/scenario-engine test: ℹ pass 0
+shared/scenario-engine test: ℹ fail 1
+shared/scenario-engine test: ℹ cancelled 0
+shared/scenario-engine test: ℹ skipped 0
+shared/scenario-engine test: ℹ todo 0
+shared/scenario-engine test: ℹ duration_ms 1466.1115
+shared/scenario-engine test: ✖ failing tests:
+shared/scenario-engine test: test at src\index.test.ts:1:1
+shared/scenario-engine test: ✖ src\index.test.ts (1444.7946ms)
+shared/scenario-engine test:   'test failed'
+shared/chaos-harness test: Failed
+C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\shared\chaos-harness:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @aristotle/chaos-harness@0.1.0 test: `node --import tsx --test src/index.test.ts`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.

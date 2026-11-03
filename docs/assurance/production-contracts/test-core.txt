@@ -1,0 +1,259 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:core C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> corepack pnpm@10.32.1 --filter @aristotle/governance-core --filter @aristotle/execution-control-runtime --filter @aristotle/mesh-runtime --filter @aristotle/warrant-verifier --filter @aristotle/replay-artifact test
+
+Scope: 5 of 60 workspace projects
+shared/governance-core test$ tsx src/test/run.test.ts
+shared/mesh-runtime test$ node --import tsx --test src/index.test.ts src/quorum-routing.test.ts src/ed25519-mesh.test.ts src/ingress-hardening.test.ts src/revocation-quorum.test.ts
+shared/replay-artifact test$ node --import tsx --test src/index.test.ts
+shared/execution-control-runtime test$ tsx src/index.test.ts
+shared/replay-artifact test: ✔ buildReplayArtifact: emits an artifact with format tag, report hash, and artifact hash (2.933ms)
+shared/replay-artifact test: ✔ buildReplayArtifact: reproducible — same inputs + report yields identical artifact_hash (2.3758ms)
+shared/replay-artifact test: ✔ verifyReplayArtifact: happy path — all four gates pass (1.0741ms)
+shared/replay-artifact test: ✔ verifyReplayArtifact: tampered report breaks report_hash check (0.7268ms)
+shared/replay-artifact test: ✔ verifyReplayArtifact: tampered inputs break artifact_hash check (and reproducibility) (0.5552ms)
+shared/replay-artifact test: ✔ verifyReplayArtifact: version mismatch flags version_ok=false (0.634ms)
+shared/replay-artifact test: ✔ verifyReplayArtifact: non-deterministic local code breaks reproducibility (0.6323ms)
+shared/replay-artifact test: ✔ loadReplayArtifact: parses JSON string + raw object; rejects bad format / missing fields (11.4072ms)
+shared/replay-artifact test: ✔ summarizeReplayArtifact: produces a CI-friendly single-line summary (1.0798ms)
+shared/replay-artifact test: ✔ verifyReplayArtifact: skip version check by passing undefined localScenarioVersion (1.9363ms)
+shared/replay-artifact test: ℹ tests 10
+shared/replay-artifact test: ℹ suites 0
+shared/replay-artifact test: ℹ pass 10
+shared/replay-artifact test: ℹ fail 0
+shared/replay-artifact test: ℹ cancelled 0
+shared/replay-artifact test: ℹ skipped 0
+shared/replay-artifact test: ℹ todo 0
+shared/replay-artifact test: ℹ duration_ms 1729.4138
+shared/replay-artifact test: Done
+shared/governance-core test: ✔ a valid MAE constitutes a valid Ward (19.1517ms)
+shared/governance-core test: ✔ an invalid (revoked) MAE cannot back a Ward (50.2083ms)
+shared/governance-core test: ✔ a Ward can create an Authority Envelope within bounds (1.3992ms)
+shared/governance-core test: ✔ an Authority Envelope cannot exceed its Ward (6.8336ms)
+shared/governance-core test: ✔ a Warrant cannot exceed its Authority Envelope (7.1687ms)
+shared/governance-core test: ✔ a Warrant cannot be reused (single-use) (19.9641ms)
+shared/governance-core test: ✔ the store refuses to consume a Warrant twice (28.3452ms)
+shared/governance-core test: ✔ an expired Warrant fails (4.3323ms)
+shared/governance-core test: ✔ a stale commit presentation is denied before execution (6.5181ms)
+shared/governance-core test: ✔ commit presentation skew is an explicit gate option (2.4315ms)
+shared/governance-core test: ✔ a future-dated commit presentation is denied before execution (19.4171ms)
+shared/governance-core test: ✔ an unparseable commit presentation is denied before execution (2.8398ms)
+shared/governance-core test: ✔ revoking a Ward invalidates its Envelope and Warrant (17.7923ms)
+shared/governance-core test: ✔ revoking an Authority Envelope invalidates its Warrant (32.2971ms)
+shared/governance-core test: ✔ the Commit Gate fails closed when the Ward is missing (1.5422ms)
+shared/governance-core test: ✔ the Commit Gate fails closed when the Warrant is missing (7.1218ms)
+shared/governance-core test: ✔ the Commit Gate consumes the Warrant on allow (2.6138ms)
+shared/governance-core test: ✔ the GEL Record carries the complete authority chain and the ledger verifies (4.8019ms)
+shared/governance-core test: ✔ the GEL chain is tamper-evident (1.6382ms)
+shared/governance-core test: ✔ a ProtectedSpace Ward applies its boundary rules (drone above ceiling denied) (11.6791ms)
+shared/governance-core test: ✔ an Institutional Ward requires an accountable governance origin (0.8194ms)
+shared/governance-core test: ✔ a Ward's human origin act signature is verified, not merely present (0.8517ms)
+shared/governance-core test: ✔ a Ward without a presence proof is rejected when the MAE requires one (3.553ms)
+shared/governance-core test: ✔ a Governor cannot author beyond its delegated scope (6.0558ms)
+shared/governance-core test: ✔ cross-Ward federation fails without a trust relationship (10.1433ms)
+shared/governance-core test: ✔ federation fails closed with no trust bridge at all (2.0813ms)
+shared/governance-core test: ✔ a valid federation trust bridge allows the federated act (2.5502ms)
+shared/governance-core test: ✔ authority determination occurs before the attribution record (15.1793ms)
+shared/governance-core test: ✔ payments: refund within limit allowed; over threshold escalates (2.867ms)
+shared/governance-core test: ✔ payments: refund over the envelope monetary limit is denied (1.4315ms)
+shared/governance-core test: ✔ payments: a cumulative spend budget is enforced across acts (9.1308ms)
+shared/governance-core test: ✔ warrant issuance quota (max_warrants) is enforced (7.4867ms)
+shared/governance-core test: ✔ healthcare: agent may draft but never submit a medication order (8.5579ms)
+shared/governance-core test: ✔ denied and escalated commits still leave GEL evidence (3.7406ms)
+shared/governance-core test: ✔ a store snapshot round-trips, preserving warrant consumption and the GEL chain (19.9027ms)
+shared/governance-core test: ✔ chainMetrics aggregates the store after a commit (15.5703ms)
+shared/governance-core test: ✔ openApiSpec is a well-formed OpenAPI 3 document for the chain (28.6603ms)
+shared/governance-core test: ✔ scopeSnapshot isolates a tenant's primitives (1.1227ms)
+shared/governance-core test: ✔ chainMetrics scopes counts to a single MAE while integrity stays global (16.6961ms)
+shared/governance-core test: ✔ an evidence bundle exports and verifies offline; tampering is detected (6.4344ms)
+shared/governance-core test: ✔ execution outcomes are recorded as a separate ledger entry (7.9441ms)
+shared/governance-core test: ℹ tests 41
+shared/governance-core test: ℹ suites 0
+shared/governance-core test: ℹ pass 41
+shared/governance-core test: ℹ fail 0
+shared/governance-core test: ℹ cancelled 0
+shared/governance-core test: ℹ skipped 0
+shared/governance-core test: ℹ todo 0
+shared/governance-core test: ℹ duration_ms 467.8806
+shared/mesh-runtime test: ✔ Ed25519 mesh: envelope propagates root -> witnesses -> edges with per-node keys (50.5345ms)
+shared/mesh-runtime test: ✔ Ed25519 mesh: revocation gossips end-to-end and edge refuses (90.3045ms)
+shared/governance-core test: Done
+shared/mesh-runtime test: ✔ Ed25519 mesh: edge issues warrant signed by its own private key under valid token (56.9736ms)
+shared/mesh-runtime test: ✔ Ed25519 allowlist: witness without root's trust anchor REFUSES the envelope (35.3791ms)
+shared/mesh-runtime test: ✔ Ed25519 impersonation defense: trust anchor bound to wrong key REFUSES envelope (52.1037ms)
+shared/mesh-runtime test: ✔ MeshNode constructor: only signer (no verifier) throws (1.8754ms)
+shared/mesh-runtime test: ✔ MeshNode constructor: only verifier (no signer) throws (0.6052ms)
+shared/mesh-runtime test: ✔ MeshNode constructor: no secret AND no signer/verifier throws (0.7064ms)
+shared/mesh-runtime test: [aristotle/mesh-runtime] WARNING: MeshNode "root-1" constructed with a known demo HMAC secret. This is not safe for production. Use createEd25519MeshSigner + createEd25519MeshVerifier and pass { signer, verifier } to the MeshNode constructor. See ROADMAP_TO_100.md Category 1 and LIMITATIONS.md.
+shared/mesh-runtime test: ✔ envelope propagates from root through witnesses to all edges (57.4668ms)
+shared/mesh-runtime test: ✔ edge issues warrant on ALLOW under valid Fluidity Token (45.6964ms)
+shared/mesh-runtime test: ✔ edge REFUSES when revocation has propagated (109.6392ms)
+shared/mesh-runtime test: ✔ partition: edge keeps issuing under Fluidity Token TTL, then EXPIRES on TTL expiry (172.3602ms)
+shared/mesh-runtime test: ✔ partition: revocation issued during split is detected via surviving witness (65.8486ms)
+shared/mesh-runtime test: ✔ disconnected-quota cap: edge fails closed after exceeding maxWarrantsWhileDisconnected (36.4873ms)
+shared/mesh-runtime test: ✔ reconciliation: edge submits local decisions to root after partition heal (34.6379ms)
+shared/mesh-runtime test: ✔ reconciliation: edge submitted-after-revocation decisions surface as conflicts (67.1846ms)
+shared/mesh-runtime test: ✔ envelope versioning: a higher-version envelope replaces a lower one (83.4984ms)
+shared/mesh-runtime test: ✔ envelope EXPIRED returns the distinct EXPIRE decision (not REFUSE) (46.7821ms)
+shared/mesh-runtime test: ✔ live HTTP transport: root and edge can talk over real TCP sockets (198.8447ms)
+shared/mesh-runtime test: ✔ auto-pull: pullRevocations() backfills the edge from root after a missed gossip window (67.5397ms)
+shared/mesh-runtime test: ✔ auto-pull: pingRoot reconnect transition fires pullRevocations automatically (130.8156ms)
+shared/mesh-runtime test: ✔ demo-secret WARN: known demo secret emits a one-time console.warn (11.2521ms)
+shared/mesh-runtime test: ✔ demo-secret WARN: suppressDemoSecretWarning silences it (0.4162ms)
+shared/mesh-runtime test: ✔ demo-secret WARN: a non-demo secret does NOT warn (0.3106ms)
+shared/mesh-runtime test: ✔ productionMode: secret-only construction throws (0.8795ms)
+shared/mesh-runtime test: ✔ productionMode: HMAC signer construction throws (7.0971ms)
+shared/mesh-runtime test: ✔ productionMode: Ed25519 signer construction succeeds (28.4412ms)
+shared/mesh-runtime test: ✔ ingress: oversized POST returns 413 with structured body (286.082ms)
+shared/mesh-runtime test: ✔ ingress: non-JSON content-type returns 415 (56.3594ms)
+shared/mesh-runtime test: ✔ ingress: malformed JSON returns 400 with structured body (54.2645ms)
+shared/mesh-runtime test: ✔ ingress: well-formed PING with JSON content-type succeeds (200) (68.632ms)
+shared/mesh-runtime test: ✔ ingress: content-type with charset is accepted (39.4784ms)
+shared/mesh-runtime test: ✔ replay cache: same body twice within TTL -> second returns 409 (23.0821ms)
+shared/mesh-runtime test: ✔ replay cache: different bodies are independent (42.0905ms)
+shared/mesh-runtime test: ✔ replay cache unit: TTL-expired entries are reaccepted (0.4295ms)
+shared/mesh-runtime test: ✔ replay cache unit: maxSize bounds memory (LRU-ish eviction) (0.2798ms)
+shared/mesh-runtime test: ✔ rate limiter unit: bursting up to capacity is allowed (0.4653ms)
+shared/mesh-runtime test: ✔ rate limiter unit: per-peer isolation — one flooder doesn't starve others (0.2194ms)
+shared/mesh-runtime test: ✔ rate limiter unit: refill restores tokens at the configured rate (0.2322ms)
+shared/mesh-runtime test: ✔ rate limiter unit: peek shows current tokens without consuming (0.2714ms)
+shared/mesh-runtime test: ✔ ingress: rate-limited request returns 429 with structured body (47.4166ms)
+shared/mesh-runtime test: ✔ ingress: anonymous (no msg.from) traffic is bucketed under '*' (27.3175ms)
+shared/mesh-runtime test: ✔ ingress: rate limiter is per-peer — one flooder doesn't block others over HTTP (19.2237ms)
+shared/mesh-runtime test: ✔ QuorumCollector reaches required count after m witnesses sign (10.3469ms)
+shared/mesh-runtime test: ✔ QuorumCollector deduplicates re-signing by the same witness (0.4871ms)
+shared/mesh-runtime test: ✔ QuorumCollector ignores signatures from non-witness ids (8.3247ms)
+shared/mesh-runtime test: ✔ verifyQuorumSignature: valid signature passes, tampered fails (0.8609ms)
+shared/mesh-runtime test: ✔ InMemoryMeshPersistence: save and load envelopes + revocations (1.5234ms)
+shared/mesh-runtime test: ✔ StaticSovereignRouter: local mae returns no route; foreign mae routes to anchor (0.5187ms)
+shared/mesh-runtime test: ✔ StaticSovereignRouter: unknown foreign mae returns undefined (0.2808ms)
+shared/execution-control-runtime test: ✔ canonical action hash is stable across equivalent key orderings (32.2683ms)
+shared/execution-control-runtime test: ✔ allowed action produces ALLOW and issues a Warrant (16.4665ms)
+shared/execution-control-runtime test: ✔ denied action produces REFUSE and no Warrant (0.7114ms)
+shared/execution-control-runtime test: ✔ expired Authority Envelope produces REFUSE (0.3515ms)
+shared/execution-control-runtime test: ✔ missing runtime state produces ESCALATE (0.4307ms)
+shared/execution-control-runtime test: ✔ physical invariant violation produces REFUSE (0.4385ms)
+shared/execution-control-runtime test: ✔ degraded mode: a safety-critical Ward fails closed when the ledger is unavailable (0.7755ms)
+shared/execution-control-runtime test: ✔ degraded mode: a routine Ward escalates infra loss instead of hard-blocking (0.8648ms)
+shared/execution-control-runtime test: ✔ degraded mode: a best-effort Ward proceeds (allow_degraded) under a soft timeout (0.5776ms)
+shared/execution-control-runtime test: ✔ degraded mode: no conditions leaves the decision unchanged; unlabeled Ward defaults closed (0.799ms)
+shared/execution-control-runtime test: ✔ Warrant cannot be consumed twice (4.861ms)
+shared/execution-control-runtime test: ✔ Warrant verification fails for mismatched action hash (4.0244ms)
+shared/execution-control-runtime test: ✔ Warrant carries a real Ed25519 signature, not a recomputable hash (3.4261ms)
+shared/execution-control-runtime test: ✔ Warrant signature cannot be forged by recomputing a hash (1.351ms)
+shared/execution-control-runtime test: ✔ Tampering with signed Warrant material breaks verification (1.8134ms)
+shared/execution-control-runtime test: ✔ Warrant verification can pin a trusted signing key id (4.5801ms)
+shared/execution-control-runtime test: ✔ configured signer is non-ephemeral and verifiable against its embedded key (1.9361ms)
+shared/execution-control-runtime test: ✔ ephemeral dev signer is flagged ephemeral (0.9342ms)
+shared/execution-control-runtime test: ✔ createSignerFromKeyProvider loads the key from a managed provider and signs (2.1188ms)
+shared/execution-control-runtime test: ✔ GEL chain verifies after normal append (6.2351ms)
+shared/execution-control-runtime test: ✔ GEL chain verification fails after tampering with prior record (14.4616ms)
+shared/execution-control-runtime test: ✔ vertical slice evaluates action, writes GEL, and verifies ledger (8.2621ms)
+shared/execution-control-runtime test: ✔ Evidence Bundle exports Ward, Authority Envelope, Warrant, and GEL for offline verification (22.6141ms)
+shared/execution-control-runtime test: ✔ Evidence Bundle verification fails when selected record material is altered (10.8581ms)
+shared/execution-control-runtime test: ✔ GEL records are Ed25519-signed when a signer is configured (15.9562ms)
+shared/execution-control-runtime test: ✔ GEL verification fails when a record signature is tampered (16.1294ms)
+shared/execution-control-runtime test: ✔ Evidence Bundle carries a verifiable bundle-level signature (27.836ms)
+shared/execution-control-runtime test: ✔ Evidence Bundle signature fails when the bundle hash is altered (17.8859ms)
+shared/mesh-runtime test: ✔ MeshNode.httpClient: injected client is used for cross-process sendTo (42.5388ms)
+shared/mesh-runtime test: ✔ MeshNode.urlFor: defaults to http when not provided (41.3937ms)
+shared/mesh-runtime test: ✔ InMemoryMeshPersistence: durability roundtrip — save envelopes + revocations and restore them under a new instance after JSON serialization (1.8391ms)
+shared/mesh-runtime test: ✔ InMemoryMeshPersistence: monotonic envelope versioning — a v2 save replaces v1 under the same envelope_id (0.3439ms)
+shared/execution-control-runtime test: ✔ runtime server exposes health, evaluate, audit tail, and audit verify (231.2997ms)
+shared/mesh-runtime test: ✔ Q1: existing root.revoke() works for edges that don't require quorum (111.0935ms)
+shared/execution-control-runtime test: ✔ client helper submits action and requires a verified Warrant (49.9313ms)
+shared/execution-control-runtime test: ✔ kill switch refuses every action while engaged and audits the attempt (16.7402ms)
+shared/execution-control-runtime test: ✔ replay protection refuses an identical previously-admitted action (16.6292ms)
+shared/mesh-runtime test: ✔ Q2: revokeWithQuorum() produces a revocation with signing_quorum populated (53.6651ms)
+shared/mesh-runtime test: ✔ Q3: edge requireRevocationQuorum=2 accepts revocation with 2 valid sigs and refuses subsequent commits (96.2534ms)
+shared/execution-control-runtime test: ✔ server enforces an API key on /v1 routes, leaves health open, and serves metrics (45.2532ms)
+shared/execution-control-runtime test: ✔ gate refuses when the Authority Envelope is revoked (14.6823ms)
+shared/execution-control-runtime test: ✔ verifyWarrant rejects a warrant signed by a revoked key (2.0577ms)
+shared/execution-control-runtime test: ✔ evidence bundle verification fails against a revocation list (14.3062ms)
+shared/execution-control-runtime test: ✔ validateWardManifest and validateAuthorityEnvelope flag bad config (1.3314ms)
+shared/execution-control-runtime test: ✔ loadWardManifest throws a readable error on invalid config (3.5344ms)
+shared/execution-control-runtime test: ✔ warrant TTL is configurable (0.6307ms)
+shared/execution-control-runtime test: ✔ LedgerStore tracks tip/count/admitted in memory and rebuilds from disk (11.1475ms)
+shared/execution-control-runtime test: ✔ LedgerStore works over a pluggable in-memory backend (no file) (1.0059ms)
+shared/execution-control-runtime test: ✔ SqliteLedgerBackend is durable across restarts and enforces replay via SQL (28.6538ms)
+shared/execution-control-runtime test: ✔ evaluateExecutionControl enforces replay over a durable SQLite store (19.2225ms)
+shared/mesh-runtime test: ✔ Q4: edge requireRevocationQuorum=2 REJECTS a single-signature revocation (no witness sigs) (117.7953ms)
+shared/mesh-runtime test: ✔ Q4b: edge requireRevocationQuorum=2 REJECTS a revocation with only 1 valid sig (one witness short) (126.2581ms)
+shared/mesh-runtime test: ✔ Q5: duplicate witness signatures from the same witness_id are deduplicated (44.333ms)
+shared/mesh-runtime test: ✔ Q6: signatures from witnesses NOT in the verifier's allowlist are rejected (46.5235ms)
+shared/mesh-runtime test: ✔ Q7: signing_quorum from rev-A is NOT valid on rev-B (witnesses bind to root_signature) (76.4103ms)
+shared/mesh-runtime test: ✔ Q8: pullRevocations skips revocations that fail the quorum check (86.464ms)
+shared/mesh-runtime test: ✔ Q9: revokeWithQuorum throws when fewer witnesses provided than requiredQuorum (4.3919ms)
+shared/mesh-runtime test: ✔ Q9b: revokeWithQuorum throws when requiredQuorum < 1 (7.9124ms)
+shared/mesh-runtime test: ✔ countValidRevocationQuorum: returns 0 for revocation without signing_quorum (0.3254ms)
+shared/mesh-runtime test: ℹ tests 66
+shared/mesh-runtime test: ℹ suites 0
+shared/mesh-runtime test: ℹ pass 66
+shared/mesh-runtime test: ℹ fail 0
+shared/mesh-runtime test: ℹ cancelled 0
+shared/mesh-runtime test: ℹ skipped 0
+shared/mesh-runtime test: ℹ todo 0
+shared/mesh-runtime test: ℹ duration_ms 4253.7711
+shared/mesh-runtime test: Done
+shared/execution-control-runtime test: ✔ PostgresLedgerBackend (pglite): durable, ACID, with replay shared across instances (3972.2309ms)
+shared/execution-control-runtime test: ✔ SubjectRateLimiter enforces an independent per-subject budget (0.3895ms)
+shared/execution-control-runtime test: ✔ server returns 429 when a subject exceeds its rate limit (34.9349ms)
+shared/execution-control-runtime test: ✔ server enforces replay protection across requests via the shared ledger index (27.0753ms)
+shared/execution-control-runtime test: ✔ deliverAuditEvent posts the signed record to the sink (14.3504ms)
+shared/execution-control-runtime test: ✔ deliverAuditEvent reports failure when the sink is unreachable (0.989ms)
+shared/execution-control-runtime test: ✔ server exposes Prometheus metrics (19.5253ms)
+shared/execution-control-runtime test: ✔ runtime server serves the playground and context when enabled (14.7579ms)
+shared/execution-control-runtime test: ✔ runtime server does not serve the playground unless enabled (6.8543ms)
+shared/execution-control-runtime test: ✔ OpenAPI spec describes the execution boundary (0.818ms)
+shared/execution-control-runtime test: ✔ credential broker injects only matched secrets (1.5175ms)
+shared/execution-control-runtime test: ✔ credential broker throws when a matched secret is missing (0.8126ms)
+shared/execution-control-runtime test: ✔ proxy forwards an approved action with brokered credentials and never leaks the secret (40.7757ms)
+shared/execution-control-runtime test: ✔ proxy refuses to forward when params.url diverges from the authorized target (SSRF guard) (10.8401ms)
+shared/execution-control-runtime test: ✔ proxy refuses a denied action and never forwards (6.1845ms)
+shared/execution-control-runtime test: ✔ role hierarchy and static-token principal resolution (0.4547ms)
+shared/execution-control-runtime test: ✔ RBAC: viewer can read but not decide; operator can decide (27.9853ms)
+shared/execution-control-runtime test: ✔ operator identity is attributed in the GEL and is tamper-evident (22.7991ms)
+shared/execution-control-runtime test: ✔ admin-only kill switch and revocation; non-admins are refused (51.5304ms)
+shared/execution-control-runtime test: ✔ verifyJwt accepts RS256/ES256/EdDSA and enforces iss/aud/exp (108.5419ms)
+shared/execution-control-runtime test: ✔ verifyJwt rejects alg:none and HMAC alg-confusion (212.0655ms)
+shared/execution-control-runtime test: ✔ OIDC bearer token authenticates and attributes the sub at the HTTP boundary (143.1385ms)
+shared/execution-control-runtime test: ✔ jwkToOidcKey + importJwks materialize verification keys from a JWKS document (296.8557ms)
+shared/execution-control-runtime test: ✔ createJwksKeyStore caches, refreshes on key rotation, and fails static (167.8186ms)
+shared/execution-control-runtime test: ✔ governance builder endpoints compile/diff/explain over the real backend, role-gated (18.6988ms)
+shared/execution-control-runtime test: ✔ shadow/reconcile/marshal endpoints run the real engines over the boundary, role-gated (26.1861ms)
+shared/execution-control-runtime test: ✔ server enforces an Authority-Envelope budget (calls per window) ⇒ BUDGET_EXCEEDED (31.3442ms)
+shared/execution-control-runtime test: ✔ dual control: a guarded action escalates, two operators approve, then it is admitted (25.1155ms)
+shared/execution-control-runtime test: ✔ conflict inbox: ingest, list, resolve over the durable store, role-gated (19.7109ms)
+shared/execution-control-runtime test: ✔ evaluate endpoint honors degraded_conditions against the Ward criticality (15.0021ms)
+shared/execution-control-runtime test: ✔ evaluate self-detects an unavailable ledger and returns a governed degraded decision (no 500) (14.6969ms)
+shared/execution-control-runtime test: ✔ GET /degradation reports live health and the projected fail action (14.9975ms)
+shared/execution-control-runtime test: ℹ tests 75
+shared/execution-control-runtime test: ℹ suites 0
+shared/execution-control-runtime test: ℹ pass 75
+shared/execution-control-runtime test: ℹ fail 0
+shared/execution-control-runtime test: ℹ cancelled 0
+shared/execution-control-runtime test: ℹ skipped 0
+shared/execution-control-runtime test: ℹ todo 0
+shared/execution-control-runtime test: ℹ duration_ms 6052.4126
+shared/execution-control-runtime test: Done
+shared/warrant-verifier test$ node --import tsx --test src/index.test.ts
+shared/warrant-verifier test: ✔ verifyWarrantPublic: ALLOWs a fresh warrant with the issuer's key in trustedKeyIds (31.1444ms)
+shared/warrant-verifier test: ✔ verifyWarrantPublic: REFUSEs when the warrant's signing key is not in trustedKeyIds (1.3416ms)
+shared/warrant-verifier test: ✔ verifyWarrantPublic: REFUSEs when canonical_action_hash doesn't match the warrant (1.116ms)
+shared/warrant-verifier test: ✔ verifyWarrantPublic: REFUSEs an expired warrant (now > expires_at) (1.0121ms)
+shared/warrant-verifier test: ✔ verifyWarrantPublic: replay-protection — second verify of the same nonce returns WARRANT_REPLAYED (1.3781ms)
+shared/warrant-verifier test: ✔ createVerifierHandler: POST /verify ALLOWs and returns 200 with the verification body (1.4723ms)
+shared/warrant-verifier test: ✔ createVerifierHandler: refused warrant returns 422 with reason in body (1.0003ms)
+shared/warrant-verifier test: ✔ createVerifierHandler: non-POST returns 405 (0.3143ms)
+shared/warrant-verifier test: ✔ createVerifierHandler: malformed JSON returns 400 / MalformedJson (0.3199ms)
+shared/warrant-verifier test: ✔ createVerifierHandler: unsupported format returns 400 / UnsupportedFormat (0.3235ms)
+shared/warrant-verifier test: ✔ verifyWarrantPublic: signature tamper -> SIGNATURE_MISMATCH (9.3667ms)
+shared/warrant-verifier test: ℹ tests 11
+shared/warrant-verifier test: ℹ suites 0
+shared/warrant-verifier test: ℹ pass 11
+shared/warrant-verifier test: ℹ fail 0
+shared/warrant-verifier test: ℹ cancelled 0
+shared/warrant-verifier test: ℹ skipped 0
+shared/warrant-verifier test: ℹ todo 0
+shared/warrant-verifier test: ℹ duration_ms 712.2973
+shared/warrant-verifier test: Done

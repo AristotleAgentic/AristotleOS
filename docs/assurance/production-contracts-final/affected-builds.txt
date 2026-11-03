@@ -1,0 +1,37 @@
+Scope: 9 of 60 workspace projects
+
+> @aristotle/adapter-sdk@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\adapter-sdk
+> tsc -p tsconfig.json
+
+
+> @aristotle/execution-control-runtime@0.1.8 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\execution-control-runtime
+> tsc -p tsconfig.json
+
+
+> @aristotle/http-gateway@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\adapters\http-gateway
+> tsc -p tsconfig.json
+
+
+> @aristotle/mavlink-px4@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\mavlink-px4
+> tsc -p tsconfig.json
+
+
+> @aristotle/modbus-adapter@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\modbus-adapter
+> tsc -p tsconfig.json
+
+
+> @aristotle/bacnet-adapter@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\bacnet-adapter
+> tsc -p tsconfig.json
+
+
+> @aristotle/dnp3-adapter@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\dnp3-adapter
+> tsc -p tsconfig.json
+
+
+> @aristotle/opcua-adapter@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\opcua-adapter
+> tsc -p tsconfig.json
+
+
+> @aristotle/ros2-bridge@0.1.0 build C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\ros2-bridge
+> tsc -p tsconfig.json
+

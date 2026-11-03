@@ -1,0 +1,1903 @@
+{
+  "actions": [],
+  "advisories": {
+    "1119441": {
+      "findings": [
+        {
+          "version": "10.0.0",
+          "paths": [
+            "packages__langchain>@langchain/core>uuid"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/uuidjs/uuid/security/advisories/GHSA-w5hq-g745-h8pq\n- https://github.com/uuidjs/uuid/commit/3d2c5b0342f0fcb52a5ac681c3d47c13e7444b34\n- https://github.com/uuidjs/uuid/releases/tag/v14.0.0\n- https://nvd.nist.gov/vuln/detail/CVE-2026-41907\n- https://github.com/uuidjs/uuid/commit/32389c887c9e75f90442ee4cc95bbab0c4e8346e\n- https://github.com/uuidjs/uuid/commit/3d61d6ac1f782cf6b1dd8661c60f11722cd49a0d\n- https://github.com/uuidjs/uuid/commit/9d27ddf7046ce496ef39569ff84d948eeff9cb2a\n- https://github.com/uuidjs/uuid/releases/tag/v11.1.1\n- https://github.com/uuidjs/uuid/releases/tag/v12.0.1\n- https://github.com/uuidjs/uuid/releases/tag/v13.0.1\n- https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+      "created": "2026-04-22T20:53:24.000Z",
+      "id": 1119441,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\nThe `v3()`, `v5()`, and `v6()` [API methods](https://github.com/uuidjs/uuid#api-summary) (not `uuid` release versions) accept external output buffers but do not reject out-of-range writes (small `buf` or large `offset`).  \nBy contrast, `v4()`, `v1()`, and `v7()` API methods explicitly throw `RangeError` on invalid bounds.\n\nThis inconsistency allows **silent partial writes** into caller-provided buffers.\n\n\n### Affected code\n\n- `src/v35.ts` (`v3()`/`v5()` path) writes `buf[offset + i]` without bounds validation.\n- `src/v6.ts` writes `buf[offset + i]` without bounds validation.\n\n### Reproducible PoC\n\n```bash\ncd /home/StrawHat/uuid\nnpm ci\nnpm run build\n\nnode --input-type=module -e \"\nimport {v4,v5,v6} from './dist-node/index.js';\nconst ns='6ba7b810-9dad-11d1-80b4-00c04fd430c8';\nfor (const [name,fn] of [\n  ['v4()',()=>v4({},new Uint8Array(8),4)],\n  ['v5()',()=>v5('x',ns,new Uint8Array(8),4)],\n  ['v6()',()=>v6({},new Uint8Array(8),4)],\n]) {\n  try { fn(); console.log(name,'NO_THROW'); }\n  catch(e){ console.log(name,'THREW',e.name); }\n}\"\n```\n\nObserved:\n\n- `v4() THREW RangeError`\n- `v5() NO_THROW`\n- `v6() NO_THROW`\n\nExample partial overwrite evidence captured during audit:\n\n```text\nsame true buf [\n  170, 170, 170, 170,\n   75, 224, 100,  63\n]\nv6 [\n  187, 187, 187, 187,\n   31,  19, 185,  64\n]\n```\n\n### Security impact\n\n- **Primary**: integrity/robustness issue (silent partial output).\n- If an application assumes full UUID writes into preallocated buffers, this can produce malformed/truncated/partially stale identifiers without error.\n- In systems where caller-controlled offsets/buffer sizes are exposed indirectly, this may become a security-relevant logic flaw.\n\n### Suggested fix\n\nAdd the same guard used by `v4()`/`v1()`/`v7()`:\n\n```ts\nif (offset < 0 || offset + 16 > buf.length) {\n  throw new RangeError(`UUID byte range ${offset}:${offset + 15} is out of buffer bounds`);\n}\n```\n\nApply to:\n\n- `src/v35.ts` (covers `v3()` and `v5()`)\n- `src/v6.ts`",
+      "reported_by": null,
+      "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-41907"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "uuid",
+      "vulnerable_versions": "<11.1.1",
+      "github_advisory_id": "GHSA-w5hq-g745-h8pq",
+      "recommendation": "Upgrade to version 11.1.1 or later",
+      "patched_versions": ">=11.1.1",
+      "updated": "2026-05-21T18:25:57.000Z",
+      "cvss": {
+        "score": 7.5,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+      },
+      "cwe": [
+        "CWE-787",
+        "CWE-1285"
+      ],
+      "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq"
+    },
+    "1121859": {
+      "findings": [
+        {
+          "version": "3.14.2",
+          "paths": [
+            "packages__mastra>@mastra/core>gray-matter>js-yaml"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/nodeca/js-yaml/security/advisories/GHSA-h67p-54hq-rp68\n- https://nvd.nist.gov/vuln/detail/CVE-2026-53550\n- https://github.com/advisories/GHSA-h67p-54hq-rp68",
+      "created": "2026-06-15T17:15:07.000Z",
+      "id": 1121859,
+      "npm_advisory_id": null,
+      "overview": "### Summary\nA crafted YAML document can trigger algorithmic CPU exhaustion in `js-yaml` merge-key processing (`<<`) by repeating the same alias many times in a merge sequence.  \nThis causes quadratic parse-time behavior relative to input size and can block a Node.js worker/event loop for seconds with a relatively small payload (tens of KB), resulting in denial of service.\n\n### Details\nThe issue is in merge handling inside `lib/loader.js`:\n\n- `storeMappingPair(...)` iterates every element of a merge sequence when key tag is `tag:yaml.org,2002:merge`.\n- For each element, it calls `mergeMappings(...)`.\n- `mergeMappings(...)` computes `Object.keys(source)` and performs `_hasOwnProperty.call(destination, key)` checks for each key.\n\nWhen input is of the form:\n\na: &a {k0:0, k1:0, ..., kK:0}\nb: {<<: [*a, *a, *a, ... repeated M times ...]}\nall *a entries refer to the same anchored object. After the first merge, subsequent merges are semantically no-ops, but the parser still reprocesses all keys each time.\nResulting work is O(K * M), while input size is O(K + M), giving quadratic scaling as payload grows.\nRelevant code path:\nlib/loader.js in storeMappingPair(...) merge branch (keyTag === 'tag:yaml.org,2002:merge')\nlib/loader.js mergeMappings(...)\n\n\n### Root cause\nFile:       lib/loader.js\nFunction:   storeMappingPair(state, _result, overridableKeys, keyTag, keyNode,\n                             valueNode, startLine, startLineStart, startPos)\nLines:      ~359-366\n\n    if (keyTag === 'tag:yaml.org,2002:merge') {\n      if (Array.isArray(valueNode)) {\n        for (index = 0, quantity = valueNode.length; index < quantity; index += 1) {\n          mergeMappings(state, _result, valueNode[index], overridableKeys);\n        }\n      } else {\n        mergeMappings(state, _result, valueNode, overridableKeys);\n      }\n    }\n\nWhen the merge value is a sequence (YAML 1.1 <<: [ *a, *a, ... ]), each element\nis handed to mergeMappings() without deduplication. mergeMappings() then does\n\n    sourceKeys = Object.keys(source);\n    for (index = 0; index < sourceKeys.length; index += 1) {\n      key = sourceKeys[index];\n      if (!_hasOwnProperty.call(destination, key)) {\n        setProperty(destination, key, source[key]);\n        overridableKeys[key] = true;\n      }\n    }\n\nEvery alias reference in the sequence resolves (by design) to the SAME object\nvia state.anchorMap. After the first merge, every subsequent merge of that same\nreference is a pure no-op semantically, but still performs:\n\n  * one Object.keys(source) call (O(K))\n  * K _hasOwnProperty.call checks on the destination\n\nTotal: M * K hasOwnProperty checks + M Object.keys allocations, while the final\nobject and all observable side effects are identical to a single merge.\n\nYAML semantics for `<<:` are idempotent and commutative over duplicate sources,\nso collapsing duplicates preserves behavior exactly; this isn't a spec trade-off.\n\n\n### PoC\nEnvironment:\njs-yaml version: 4.1.1\nNode.js: v24.5.0\nPlatform: arm64 macOS (reproduced consistently)\nReproduction script:\nCreate many keys in one anchored map (&a).\nMerge that same alias repeatedly via <<: [*a, *a, ...].\nMeasure parse time and compare with control payload using single merge (<<: *a).\nObserved repeated runs (same machine):\nK=M=1000, input 9,909 bytes: ~33–36 ms\nK=M=2000, input 20,909 bytes: ~121–123 ms\nK=M=4000, input 42,909 bytes: ~524–537 ms\nK=M=6000, input 64,909 bytes: ~1,608–1,829 ms\nK=M=8000, input 86,909 bytes: ~3,395–3,565 ms\nControl (single merge, similar key counts):\nK=2000: ~1–2 ms\nK=4000: ~3 ms\nK=8000: ~5 ms\nAlso verified: repeated-merge output equals single-merge output (same key count and same JSON), confirming excess time is redundant computation.\n\n\n### Impact\nThis is a denial-of-service vulnerability (CPU exhaustion / algorithmic complexity).\nAny service parsing untrusted YAML with js-yaml can be impacted, including API backends, CI tools, config processors, and automation services. An attacker can submit crafted YAML to significantly increase CPU time and reduce availability.\n\n### Suggested fix:\nDedupe the merge source list by reference before invoking mergeMappings. Any of\nthe following are minimal and preserve YAML 1.1 merge semantics:\n\ndedupe in storeMappingPair:\n\n    if (keyTag === 'tag:yaml.org,2002:merge') {\n      if (Array.isArray(valueNode)) {\n        var seen = new Set();\n        for (index = 0, quantity = valueNode.length; index < quantity; index += 1) {\n          var src = valueNode[index];\n          if (seen.has(src)) continue;   // idempotent; skip redundant alias\n          seen.add(src);\n          mergeMappings(state, _result, src, overridableKeys);\n        }\n      } else {\n        mergeMappings(state, _result, valueNode, overridableKeys);\n      }\n    }",
+      "reported_by": null,
+      "title": "JS-YAML: Quadratic-complexity DoS in merge key handling via repeated aliases",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-53550"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "js-yaml",
+      "vulnerable_versions": "<3.15.0",
+      "github_advisory_id": "GHSA-h67p-54hq-rp68",
+      "recommendation": "Upgrade to version 3.15.0 or later",
+      "patched_versions": ">=3.15.0",
+      "updated": "2026-06-29T15:06:00.000Z",
+      "cvss": {
+        "score": 5.3,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+      },
+      "cwe": [
+        "CWE-407"
+      ],
+      "url": "https://github.com/advisories/GHSA-h67p-54hq-rp68"
+    },
+    "1123912": {
+      "findings": [
+        {
+          "version": "3.14.2",
+          "paths": [
+            "packages__mastra>@mastra/core>gray-matter>js-yaml"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/nodeca/js-yaml/security/advisories/GHSA-52cp-r559-cp3m\n- https://nvd.nist.gov/vuln/detail/CVE-2026-59869\n- https://github.com/nodeca/js-yaml/commit/24f13e79ee1343a7e30bd6f6c9d9cdbf0ac9b2b7\n- https://github.com/nodeca/js-yaml/commit/59423c6f8cdc78742ac00e25a4dd39ef16b702e4\n- https://github.com/nodeca/js-yaml/releases/tag/3.15.0\n- https://github.com/nodeca/js-yaml/releases/tag/4.3.0\n- https://github.com/advisories/GHSA-52cp-r559-cp3m",
+      "created": "2026-07-20T21:19:09.000Z",
+      "id": 1123912,
+      "npm_advisory_id": null,
+      "overview": "### Impact\n\njs-yaml can spend quadratic CPU time parsing a document whose size grows only linearly. The issue is triggered by a chain of mappings where each mapping merges the previous one:\n\n```yaml\na0: &a0 { k0: 0 }\na1: &a1 { <<: *a0, k1: 1 }\na2: &a2 { <<: *a1, k2: 2 }\na3: &a3 { <<: *a2, k3: 3 }\n...\nb: *aN\n```\n\nFor each new mapping, the loader has to enumerate the keys inherited from the previous mapping. With N chained mappings, this results in roughly 1 + 2 + ... + N merged-key visits, i.e., O(N^2) work for O(N) input size.\n\n### PoC\n\nFrom N = 4000 delay become > 1s (doc size < 100K)\n\n```js\nimport { performance } from 'node:perf_hooks'\nimport { Buffer } from 'node:buffer'\nimport { load, YAML11_SCHEMA } from 'js-yaml'\n\nconst n = Number(process.argv[2] || 4000)\n\nfunction makeMergeChain (count) {\n  const lines = ['a0: &a0 { k0: 0 }']\n\n  for (let i = 1; i < count; i++) {\n    lines.push(`a${i}: &a${i} { <<: *a${i - 1}, k${i}: ${i} }`)\n  }\n\n  lines.push(`b: *a${count - 1}`)\n  return `${lines.join('\\n')}\\n`\n}\n\nconst source = makeMergeChain(n)\n\nconsole.log(source.split('\\n').slice(0, 8).join('\\n'))\nconsole.log('...')\nconsole.log(source.split('\\n').slice(-4).join('\\n'))\nconsole.log()\nconsole.log(`N: ${n}`)\nconsole.log(`YAML size: ${Buffer.byteLength(source)} bytes`)\n\nconst started = performance.now()\nconst result = load(source, { schema: YAML11_SCHEMA })\nconst elapsed = performance.now() - started\n\nconsole.log(`parse time: ${elapsed.toFixed(1)} ms`)\nconsole.log(`top-level keys: ${Object.keys(result).length}`)\nconsole.log(`b keys: ${Object.keys(result.b).length}`)\n```\n\n### Patches\n\nFix released. The most robust protection is to limit the total number of merged keys per parse call. This should close all past and future edge cases with merge. The default 10K-key limit should be okay in most cases.",
+      "reported_by": null,
+      "title": "js-yaml: YAML merge-key chains can force quadratic CPU consumption",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-59869"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "js-yaml",
+      "vulnerable_versions": ">=3.0.0 <3.15.0",
+      "github_advisory_id": "GHSA-52cp-r559-cp3m",
+      "recommendation": "Upgrade to version 3.15.0 or later",
+      "patched_versions": ">=3.15.0",
+      "updated": "2026-07-20T21:19:10.000Z",
+      "cvss": {
+        "score": 7.5,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+      },
+      "cwe": [
+        "CWE-400",
+        "CWE-407"
+      ],
+      "url": "https://github.com/advisories/GHSA-52cp-r559-cp3m"
+    },
+    "1123976": {
+      "findings": [
+        {
+          "version": "2.2.2",
+          "paths": [
+            "packages__mastra>@mastra/core>@a2a-js/sdk>express>body-parser"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/expressjs/body-parser/security/advisories/GHSA-v422-hmwv-36x6\n- https://nvd.nist.gov/vuln/detail/CVE-2026-12590\n- https://github.com/expressjs/body-parser/pull/698\n- https://github.com/expressjs/body-parser/pull/741\n- https://github.com/expressjs/body-parser/commit/2322e111cc321413ec2b7b76d01be533d3de9d7d\n- https://github.com/expressjs/body-parser/commit/3492672eee593d5c158f239b6e9115498a5dbeac\n- https://cna.openjsf.org/security-advisories.html\n- https://github.com/expressjs/body-parser/releases/tag/1.20.6\n- https://github.com/expressjs/body-parser/releases/tag/v2.3.0\n- https://github.com/advisories/GHSA-v422-hmwv-36x6",
+      "created": "2026-07-20T23:23:26.000Z",
+      "id": 1123976,
+      "npm_advisory_id": null,
+      "overview": "### Impact\n\nWhen body-parser is configured with an invalid `limit` option value, such as an unparseable string or `NaN`, `bytes.parse()` returns `null` and the request body size check is silently skipped. Applications that rely on `limit` as their primary safeguard against oversized request bodies will accept arbitrarily large payloads, leading to excessive memory and CPU usage and denial of service.\n\nThis issue affects applications that pass a programmatically computed or user-configurable value to the `limit` option without validating it first.\n\n### Patches\n\nThis issue is fixed in [body-parser@2.3.0](https://github.com/expressjs/body-parser/releases/tag/v2.3.0) and [body-parser@1.20.6](https://github.com/expressjs/body-parser/releases/tag/v1.20.6) via [#698](https://github.com/expressjs/body-parser/pull/698). After the fix, invalid `limit` values throw a clear error at parser construction time instead of silently disabling enforcement. `null` and `undefined` continue to fall back to the default limit (`100kb`).\n\n### Workarounds\n\nValidate `limit` before passing it to body-parser. For example, parse the value with [`bytes.parse()`](https://github.com/visionmedia/bytes.js) at startup and reject any configuration where it returns `null` or a non-finite number.\n\n### References\n\n- [#698](https://github.com/expressjs/body-parser/pull/698): fix PR\n- [bytes.js](https://github.com/visionmedia/bytes.js): limit parser",
+      "reported_by": null,
+      "title": "body-parser vulnerable to denial of service when invalid limit value silently disables size enforcement",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-12590"
+      ],
+      "access": "public",
+      "severity": "low",
+      "module_name": "body-parser",
+      "vulnerable_versions": ">=2.0.0 <2.3.0",
+      "github_advisory_id": "GHSA-v422-hmwv-36x6",
+      "recommendation": "Upgrade to version 2.3.0 or later",
+      "patched_versions": ">=2.3.0",
+      "updated": "2026-07-20T23:23:28.000Z",
+      "cvss": {
+        "score": 3.7,
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L"
+      },
+      "cwe": [
+        "CWE-770"
+      ],
+      "url": "https://github.com/advisories/GHSA-v422-hmwv-36x6"
+    },
+    "1123977": {
+      "findings": [
+        {
+          "version": "1.20.4",
+          "paths": [
+            "adapters__http-gateway>express>body-parser"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/expressjs/body-parser/security/advisories/GHSA-v422-hmwv-36x6\n- https://nvd.nist.gov/vuln/detail/CVE-2026-12590\n- https://github.com/expressjs/body-parser/pull/698\n- https://github.com/expressjs/body-parser/pull/741\n- https://github.com/expressjs/body-parser/commit/2322e111cc321413ec2b7b76d01be533d3de9d7d\n- https://github.com/expressjs/body-parser/commit/3492672eee593d5c158f239b6e9115498a5dbeac\n- https://cna.openjsf.org/security-advisories.html\n- https://github.com/expressjs/body-parser/releases/tag/1.20.6\n- https://github.com/expressjs/body-parser/releases/tag/v2.3.0\n- https://github.com/advisories/GHSA-v422-hmwv-36x6",
+      "created": "2026-07-20T23:23:26.000Z",
+      "id": 1123977,
+      "npm_advisory_id": null,
+      "overview": "### Impact\n\nWhen body-parser is configured with an invalid `limit` option value, such as an unparseable string or `NaN`, `bytes.parse()` returns `null` and the request body size check is silently skipped. Applications that rely on `limit` as their primary safeguard against oversized request bodies will accept arbitrarily large payloads, leading to excessive memory and CPU usage and denial of service.\n\nThis issue affects applications that pass a programmatically computed or user-configurable value to the `limit` option without validating it first.\n\n### Patches\n\nThis issue is fixed in [body-parser@2.3.0](https://github.com/expressjs/body-parser/releases/tag/v2.3.0) and [body-parser@1.20.6](https://github.com/expressjs/body-parser/releases/tag/v1.20.6) via [#698](https://github.com/expressjs/body-parser/pull/698). After the fix, invalid `limit` values throw a clear error at parser construction time instead of silently disabling enforcement. `null` and `undefined` continue to fall back to the default limit (`100kb`).\n\n### Workarounds\n\nValidate `limit` before passing it to body-parser. For example, parse the value with [`bytes.parse()`](https://github.com/visionmedia/bytes.js) at startup and reject any configuration where it returns `null` or a non-finite number.\n\n### References\n\n- [#698](https://github.com/expressjs/body-parser/pull/698): fix PR\n- [bytes.js](https://github.com/visionmedia/bytes.js): limit parser",
+      "reported_by": null,
+      "title": "body-parser vulnerable to denial of service when invalid limit value silently disables size enforcement",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-12590"
+      ],
+      "access": "public",
+      "severity": "low",
+      "module_name": "body-parser",
+      "vulnerable_versions": "<1.20.6",
+      "github_advisory_id": "GHSA-v422-hmwv-36x6",
+      "recommendation": "Upgrade to version 1.20.6 or later",
+      "patched_versions": ">=1.20.6",
+      "updated": "2026-07-20T23:23:28.000Z",
+      "cvss": {
+        "score": 3.7,
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L"
+      },
+      "cwe": [
+        "CWE-770"
+      ],
+      "url": "https://github.com/advisories/GHSA-v422-hmwv-36x6"
+    },
+    "1123997": {
+      "findings": [
+        {
+          "version": "4.12.23",
+          "paths": [
+            "packages__mastra>@mastra/core>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-rv63-4mwf-qqc2\n- https://nvd.nist.gov/vuln/detail/CVE-2026-54288\n- https://github.com/advisories/GHSA-rv63-4mwf-qqc2",
+      "created": "2026-06-16T14:32:49.000Z",
+      "id": 1123997,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\nThe Body Limit Middleware trusts the request's `Content-Length` header to decide whether a body is within the limit. On AWS Lambda (API Gateway v1/v2, ALB, VPC Lattice, and Lambda@Edge) the body is delivered fully buffered and the adapter builds the request with the client-declared `Content-Length`, which need not match the actual payload. A client can declare a tiny `Content-Length` while sending a much larger body, slipping past the limit.\n\n### Details\n\nWhen `Content-Length` is present and `Transfer-Encoding` is absent, the middleware compares the declared value against the limit and passes the request through if it is small enough. On standards-based runtimes the transport enforces that `Content-Length` matches the body, so this is safe. The Lambda adapters instead reconstruct the request from a buffered payload and copy the client's `Content-Length` verbatim, so the declared length and the real body size are decoupled.\n\nThis issue affects applications deployed on AWS Lambda that rely on the Body Limit Middleware to cap request body size.\n\n### Impact\n\nThe declared body-size limit can be bypassed: a handler reads a payload larger than the configured maximum. Processing the oversized payload (large JSON, multipart, etc.) consumes additional CPU and memory per request. The payload remains bounded by the platform's request size limits, and Lambda isolates invocations, so the impact is increased per-request resource usage rather than full denial of service. This affects applications deployed on AWS Lambda that use the Body Limit Middleware.",
+      "reported_by": null,
+      "title": "hono: Body Limit Middleware can be bypassed on AWS Lambda by understating `Content-Length`",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-54288"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "hono",
+      "vulnerable_versions": "<4.12.25",
+      "github_advisory_id": "GHSA-rv63-4mwf-qqc2",
+      "recommendation": "Upgrade to version 4.12.25 or later",
+      "patched_versions": ">=4.12.25",
+      "updated": "2026-07-21T15:26:54.000Z",
+      "cvss": {
+        "score": 6.5,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N"
+      },
+      "cwe": [
+        "CWE-345"
+      ],
+      "url": "https://github.com/advisories/GHSA-rv63-4mwf-qqc2"
+    },
+    "1123998": {
+      "findings": [
+        {
+          "version": "4.12.23",
+          "paths": [
+            "packages__mastra>@mastra/core>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-wgpf-jwqj-8h8p\n- https://nvd.nist.gov/vuln/detail/CVE-2026-54289\n- https://github.com/advisories/GHSA-wgpf-jwqj-8h8p",
+      "created": "2026-06-16T14:32:31.000Z",
+      "id": 1123998,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\nOn AWS Lambda@Edge, CloudFront delivers a request header that appears more than once as several separate entries. The adapter writes each value with `Headers.set` instead of `Headers.append`, so every value overwrites the previous one and only the last reaches the application. Repeated request headers such as `X-Forwarded-For`, `Forwarded`, and `Via` are silently truncated to a single value.\n\n### Details\n\nA repeated request header carries an ordered list of values. The adapter iterates the list but overwrites on each step, keeping only the final value. Middleware that depends on the full list — for example IP restriction that walks the `X-Forwarded-For` chain, or auditing based on `Forwarded`/`Via` hops — receives incomplete data. The API Gateway adapter already appends repeated values and is not affected.\n\nThis issue arises only on Lambda@Edge deployments, for requests that contain the same header more than once.\n\n### Impact\n\nRequest middleware sees only the last value of a repeated header instead of the full chain. For applications that base access control on the `X-Forwarded-For` chain, this can weaken or alter that decision; for auditing, hop history is lost. This affects applications deployed on AWS Lambda@Edge that rely on multi-value request headers.",
+      "reported_by": null,
+      "title": "hono: Lambda@Edge adapter keeps only the last value of a repeated request header, dropping the rest",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-54289"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "hono",
+      "vulnerable_versions": "<4.12.25",
+      "github_advisory_id": "GHSA-wgpf-jwqj-8h8p",
+      "recommendation": "Upgrade to version 4.12.25 or later",
+      "patched_versions": ">=4.12.25",
+      "updated": "2026-07-21T15:26:59.000Z",
+      "cvss": {
+        "score": 4.8,
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:N"
+      },
+      "cwe": [
+        "CWE-348"
+      ],
+      "url": "https://github.com/advisories/GHSA-wgpf-jwqj-8h8p"
+    },
+    "1123999": {
+      "findings": [
+        {
+          "version": "4.12.23",
+          "paths": [
+            "packages__mastra>@mastra/core>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-88fw-hqm2-52qc\n- https://nvd.nist.gov/vuln/detail/CVE-2026-54290\n- https://github.com/advisories/GHSA-88fw-hqm2-52qc",
+      "created": "2026-06-16T14:15:39.000Z",
+      "id": 1123999,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\nWith `credentials: true` and no explicit `origin` (the default wildcard), the CORS Middleware reflects the request's `Origin` and sends `Access-Control-Allow-Credentials: true`. Any site can then make credentialed cross-origin requests and read the responses, exposing cookie-authenticated endpoints to arbitrary origins.\n\n### Details\n\nThe spec forbids `Access-Control-Allow-Origin: *` with credentials and browsers reject it, so this configuration used to fail closed. In affected versions the middleware reflects the request `Origin` instead, so it now succeeds for every origin, including `null`. The preflight also echoes the requested headers back, approving non-simple credentialed requests too.\n\nThis issue arises when an application enables `credentials: true` and leaves `origin` unset or set to the wildcard.\n\n### Impact\n\nAny third-party page a logged-in user visits can read the application's cookie-authenticated endpoints and perform credentialed state-changing requests. This affects applications that enable credentialed CORS without restricting `origin`.",
+      "reported_by": null,
+      "title": "hono: CORS Middleware reflects any Origin with credentials when `origin` defaults to the wildcard",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-54290"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "hono",
+      "vulnerable_versions": "<4.12.25",
+      "github_advisory_id": "GHSA-88fw-hqm2-52qc",
+      "recommendation": "Upgrade to version 4.12.25 or later",
+      "patched_versions": ">=4.12.25",
+      "updated": "2026-07-21T15:27:04.000Z",
+      "cvss": {
+        "score": 7.1,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:N"
+      },
+      "cwe": [
+        "CWE-942"
+      ],
+      "url": "https://github.com/advisories/GHSA-88fw-hqm2-52qc"
+    },
+    "1124000": {
+      "findings": [
+        {
+          "version": "4.12.23",
+          "paths": [
+            "packages__mastra>@mastra/core>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-wwfh-h76j-fc44\n- https://nvd.nist.gov/vuln/detail/CVE-2026-54286\n- https://github.com/advisories/GHSA-wwfh-h76j-fc44",
+      "created": "2026-06-16T14:09:03.000Z",
+      "id": 1124000,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\nOn Windows hosts, an encoded backslash (`%5C`) in the request path decodes to `\\`, which the Windows path resolver treats as a separator. `serve-static` then resolves a single URL segment such as `admin\\secret.txt` into a nested file under the root and serves it, letting an attacker read static files meant to be protected behind prefix-mounted middleware. Directory escape (`..`) remains blocked.\n\n### Details\n\nThe router splits paths only on `/`, so `/admin%5Csecret.txt` is one segment and middleware on `/admin/*` does not run. The `serve-static` guard rejects `.`/`..` and consecutive separators but lets a lone `\\` through; on Windows the file resolver re-splits it into the protected subtree.\n\nThis affects Windows hosts serving static files via the Node, Bun, or Deno adapters that guard a static subtree with prefix-mounted middleware.\n\n### Impact\n\nAn unauthenticated attacker can read static files under a middleware-guarded prefix on Windows hosts. The read stays within the configured root; escape outside the root is not possible.",
+      "reported_by": null,
+      "title": "hono: Path traversal in `serve-static` on Windows via encoded backslash (`%5C`)",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-54286"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "hono",
+      "vulnerable_versions": "<4.12.25",
+      "github_advisory_id": "GHSA-wwfh-h76j-fc44",
+      "recommendation": "Upgrade to version 4.12.25 or later",
+      "patched_versions": ">=4.12.25",
+      "updated": "2026-07-21T15:27:08.000Z",
+      "cvss": {
+        "score": 5.9,
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N"
+      },
+      "cwe": [
+        "CWE-22"
+      ],
+      "url": "https://github.com/advisories/GHSA-wwfh-h76j-fc44"
+    },
+    "1124001": {
+      "findings": [
+        {
+          "version": "4.12.23",
+          "paths": [
+            "packages__mastra>@mastra/core>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-j6c9-x7qj-28xf\n- https://nvd.nist.gov/vuln/detail/CVE-2026-54287\n- https://github.com/advisories/GHSA-j6c9-x7qj-28xf",
+      "created": "2026-06-16T14:08:40.000Z",
+      "id": 1124001,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\nOn AWS Lambda, the ALB single-header response and the VPC Lattice v2 response join multiple `Set-Cookie` headers into one comma-separated value. Because commas also appear inside cookie attributes (for example `Expires` dates), clients cannot split the value back into individual cookies and silently drop or misparse them.\n\n### Details\n\nPer RFC 6265, each cookie must be its own `Set-Cookie` header line, and commas may appear inside attribute values. Joining cookies with `\", \"` collides with those commas, producing a value that clients cannot reliably split. Only ALB single-header mode and VPC Lattice v2 are affected; API Gateway v1/v2 and ALB with multi-value headers enabled already use an array and are unaffected.\n\n### Impact\n\nA client may receive only one of the cookies, a malformed cookie, or none. Session, CSRF, or preference cookies can silently fail to apply, breaking sessions or forcing re-authentication. This affects applications that set multiple cookies per response and run on AWS Lambda behind an ALB in single-header mode (the default) or VPC Lattice v2.",
+      "reported_by": null,
+      "title": "hono: AWS Lambda adapter merges multiple `Set-Cookie` headers into one value, dropping cookies on ALB single-header and Lattice",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-54287"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "hono",
+      "vulnerable_versions": "<4.12.25",
+      "github_advisory_id": "GHSA-j6c9-x7qj-28xf",
+      "recommendation": "Upgrade to version 4.12.25 or later",
+      "patched_versions": ">=4.12.25",
+      "updated": "2026-07-21T15:26:49.000Z",
+      "cvss": {
+        "score": 5.3,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
+      },
+      "cwe": [
+        "CWE-116"
+      ],
+      "url": "https://github.com/advisories/GHSA-j6c9-x7qj-28xf"
+    },
+    "1124005": {
+      "findings": [
+        {
+          "version": "4.12.23",
+          "paths": [
+            "packages__mastra>@mastra/core>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-xgm2-5f3f-mvvc\n- https://nvd.nist.gov/vuln/detail/CVE-2026-59897\n- https://github.com/honojs/hono/commit/aa921770d09bc35970362d5a2630a878f6d982fd\n- https://github.com/honojs/hono/releases/tag/v4.12.27\n- https://github.com/advisories/GHSA-xgm2-5f3f-mvvc",
+      "created": "2026-07-21T18:18:13.000Z",
+      "id": 1124005,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\nThe AWS API Gateway v1 adapter can drop a distinct repeated request header value. When a header appears multiple times, the adapter de-duplicates values using a substring comparison instead of an exact match, so a value that is a substring of another value of the same header is omitted (for example, `203.0.113.1` is dropped when another value is `203.0.113.10`).\n\n### Details\n\nA repeated request header carries an ordered list of values. Middleware or application logic that depends on the complete list — such as IP restriction that walks the `X-Forwarded-For` chain, rate limiting, audit logging, or proxy-chain validation — can therefore receive incomplete data that differs from what the client actually sent.\n\nThis issue arises on deployments using the AWS API Gateway v1 adapter (the same pattern also affects the VPC Lattice adapter), for requests that contain the same header more than once.\n\n### Impact\n\nAn attacker can craft repeated header values so that one value is omitted before the application sees the request. Where a security or routing decision relies on the full chain, this can alter that decision.\n\nThis affects applications deployed through Hono's AWS API Gateway v1 (or VPC Lattice) adapter that rely on the complete set of repeated request header values.",
+      "reported_by": null,
+      "title": "Hono: API Gateway v1 adapter can drop a distinct repeated request header value during de-duplication",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-59897"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "hono",
+      "vulnerable_versions": ">=4.3.3 <4.12.27",
+      "github_advisory_id": "GHSA-xgm2-5f3f-mvvc",
+      "recommendation": "Upgrade to version 4.12.27 or later",
+      "patched_versions": ">=4.12.27",
+      "updated": "2026-07-21T18:18:14.000Z",
+      "cvss": {
+        "score": 4.8,
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:N"
+      },
+      "cwe": [
+        "CWE-348"
+      ],
+      "url": "https://github.com/advisories/GHSA-xgm2-5f3f-mvvc"
+    },
+    "1124009": {
+      "findings": [
+        {
+          "version": "4.12.23",
+          "paths": [
+            "packages__mastra>@mastra/core>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-hvrm-45r6-mjfj\n- https://nvd.nist.gov/vuln/detail/CVE-2026-59896\n- https://github.com/honojs/hono/commit/fab3b13639339cbd5ba1166a5b23d9ac30c5f64f\n- https://github.com/honojs/hono/releases/tag/v4.12.27\n- https://github.com/advisories/GHSA-hvrm-45r6-mjfj",
+      "created": "2026-07-21T18:34:19.000Z",
+      "id": 1124009,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\n`hono/jsx` did not isolate context values per request during server-side rendering. While an async component was suspended on `await`, its provided context value stayed observable to other requests rendering concurrently, so `useContext()` could return a value from a different in-flight request.\n\n### Details\n\nDuring server-side rendering, context values were kept in a process-wide structure rather than scoped to each request's render. While an async component awaited, another request entering the same provider could observe or replace the value; when the first render resumed, it could read the other request's context.\n\nThis affects the usual ways request-scoped data is passed through a server-rendered JSX tree:\n\n- `createContext()` / `useContext()`\n- the `jsxRenderer` middleware and `useRequestContext()`\n\nIt arises only when context is read after an `await` inside an async component while requests render concurrently. Reading context synchronously (before any `await`), purely synchronous rendering, and client-side (DOM) rendering are not affected.\n\n### Impact\n\nUnder concurrent requests, a response could be rendered with another request's context. A user may receive HTML rendered for a different user, and an authorization check performed after an `await` may be evaluated against another user's data.\n\nThis may lead to:\n\n- disclosure of rendered output intended for another user\n- authorization decisions made with the wrong request's context\n- cross-request mixing of session or other request-scoped state",
+      "reported_by": null,
+      "title": "hono/jsx does not isolate context per request, leading to cross-request data disclosure",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-59896"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "hono",
+      "vulnerable_versions": ">=4.11.8 <4.12.27",
+      "github_advisory_id": "GHSA-hvrm-45r6-mjfj",
+      "recommendation": "Upgrade to version 4.12.27 or later",
+      "patched_versions": ">=4.12.27",
+      "updated": "2026-07-21T18:34:20.000Z",
+      "cvss": {
+        "score": 6.5,
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:L/A:N"
+      },
+      "cwe": [
+        "CWE-362"
+      ],
+      "url": "https://github.com/advisories/GHSA-hvrm-45r6-mjfj"
+    },
+    "1124010": {
+      "findings": [
+        {
+          "version": "4.12.23",
+          "paths": [
+            "packages__mastra>@mastra/core>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-w62v-xxxg-mg59\n- https://nvd.nist.gov/vuln/detail/CVE-2026-59895\n- https://github.com/honojs/hono/commit/cd3f6f7194f0e5c9d4b26ae0cf232018d0f388fc\n- https://github.com/honojs/hono/releases/tag/v4.12.27\n- https://github.com/advisories/GHSA-w62v-xxxg-mg59",
+      "created": "2026-07-21T18:33:50.000Z",
+      "id": 1124010,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\n`cx()` in `hono/css` composes class names from plain strings but marks the result as already-escaped without HTML-escaping the input. When the result is used as a JSX `class` attribute during server-side rendering, the value is written into the attribute unescaped, so untrusted input can break out of the `class` attribute and inject arbitrary markup, leading to Cross-Site Scripting (XSS).\n\n### Details\n\nBecause the composed value is treated as pre-escaped, the HTML attribute escaping normally applied to interpolated values is skipped, and characters such as `\"` pass through unescaped — allowing a value to terminate the attribute and add further attributes or elements. This arises when an application passes untrusted, user-controlled input as a class name to `cx()`, for example when merging a base class with an externally provided `className`.\n\n### Impact\n\nDuring server-side rendering, an attacker who controls a value passed to `cx()` can inject arbitrary HTML into the page, resulting in stored or reflected XSS in the victim's browser.\n\nThis may lead to:\n\n- Execution of attacker-controlled script in the victim's browser session.\n- Session hijacking, credential theft, or actions performed on behalf of the victim.\n\nApplications are affected only if they render JSX server-side and pass untrusted input as a class name to `cx()`.",
+      "reported_by": null,
+      "title": "Hono: Server-Side XSS via JSX Escaping Bypass in cx() Utility",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-59895"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "hono",
+      "vulnerable_versions": ">=4.0.0 <4.12.27",
+      "github_advisory_id": "GHSA-w62v-xxxg-mg59",
+      "recommendation": "Upgrade to version 4.12.27 or later",
+      "patched_versions": ">=4.12.27",
+      "updated": "2026-07-21T18:33:50.000Z",
+      "cvss": {
+        "score": 6.1,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"
+      },
+      "cwe": [
+        "CWE-79",
+        "CWE-116"
+      ],
+      "url": "https://github.com/advisories/GHSA-w62v-xxxg-mg59"
+    },
+    "1124064": {
+      "findings": [
+        {
+          "version": "3.1.2",
+          "paths": [
+            "packages__mastra>@mastra/core>ajv>fast-uri"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/fastify/fast-uri/security/advisories/GHSA-v2hh-gcrm-f6hx\n- https://nvd.nist.gov/vuln/detail/CVE-2026-16221\n- https://github.com/fastify/fast-uri/commit/0542a216860fd70c062a4730e620576f62ded057\n- https://github.com/fastify/fast-uri/commit/2d50fbabc80e4d0884fe0f6a98fe118ce6faa353\n- https://github.com/fastify/fast-uri/commit/9438266d6a7ded688c8bc7c4ba506da17f44a17b\n- https://cna.openjsf.org/security-advisories.html\n- https://github.com/fastify/fast-uri/releases/tag/v2.4.3\n- https://github.com/fastify/fast-uri/releases/tag/v3.1.4\n- https://github.com/fastify/fast-uri/releases/tag/v4.1.1\n- https://github.com/advisories/GHSA-v2hh-gcrm-f6hx",
+      "created": "2026-07-21T22:08:28.000Z",
+      "id": 1124064,
+      "npm_advisory_id": null,
+      "overview": "### Impact\n\n`fast-uri` v4.1.0 and earlier do not treat a literal backslash (U+005C) as an authority delimiter. Node's native WHATWG `URL` (used by `fetch()`, `undici`, and Node's `http`/`https` clients) normalizes `\\` to `/` for special schemes (`http`, `https`, `ws`, `wss`, `ftp`, `file`), so the two parsers extract different hosts from the same input string.\n\nFor example, `http://evil.com\\@allowed.com` is treated by `fast-uri` as host `allowed.com` with userinfo `evil.com\\`, while Node's WHATWG URL parser and `fetch()` see host `evil.com` with path `/@allowed.com`.\n\nApplications that use `fast-uri` to enforce host-based policy (allowlists, denylists, loopback/SSRF filtering, redirect validation, outbound proxy routing) before passing the same URL into Node's URL or `fetch()` consumers see a policy/use desync and can be steered to an unintended destination, including cloud metadata endpoints, loopback, or internal hosts.\n\n### Patches\n\nUpgrade to `fast-uri` v4.1.1, v3.1.4, or v2.4.3.\n\n### Workarounds\n\nNone. Upgrade to the patched version.",
+      "reported_by": null,
+      "title": "fast-uri vulnerable to host confusion via literal backslash authority delimiter",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-16221"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "fast-uri",
+      "vulnerable_versions": ">=3.0.0 <=3.1.3",
+      "github_advisory_id": "GHSA-v2hh-gcrm-f6hx",
+      "recommendation": "Upgrade to version 3.1.4 or later",
+      "patched_versions": ">=3.1.4",
+      "updated": "2026-07-21T22:08:29.000Z",
+      "cvss": {
+        "score": 7.5,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+      },
+      "cwe": [
+        "CWE-436"
+      ],
+      "url": "https://github.com/advisories/GHSA-v2hh-gcrm-f6hx"
+    },
+    "1130720": {
+      "findings": [
+        {
+          "version": "3.1.2",
+          "paths": [
+            "packages__mastra>@mastra/core>ajv>fast-uri"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/fastify/fast-uri/security/advisories/GHSA-7p8r-x3mc-p8w7\n- https://nvd.nist.gov/vuln/detail/CVE-2026-18446\n- https://github.com/fastify/fast-uri/commit/f3c6c905f47831007490f466c5945012e905cc52\n- https://cna.openjsf.org/security-advisories.html\n- https://github.com/fastify/fast-uri/releases/tag/v4.1.2\n- https://github.com/advisories/GHSA-7p8r-x3mc-p8w7",
+      "created": "2026-08-03T19:16:43.000Z",
+      "id": 1130720,
+      "npm_advisory_id": null,
+      "overview": "### Impact\n\n`fast-uri` v4.1.1 and earlier require a literal `//` to recognize a URI authority, so a reference that uses `\\\\`, `/\\`, or `\\/` as the authority introducer (in place of `//`, after an optional scheme) is parsed with no authority: the sequence and everything after it fold into the path. Node's native WHATWG `URL` (used by `fetch()`, `undici`, and Node's `http`/`https` clients) instead treats `\\` as interchangeable with `/` for special schemes (`http`, `https`, `ws`, `wss`, `ftp`, `file`), so the two parsers extract different hosts from the same input.\n\nFor example, `fast-uri` resolves `\\\\evil.com/path` against base `https://allowed.com/` to `https://allowed.com/%5C%5Cevil.com/path` (confined to the trusted host), while Node's WHATWG URL resolves the same reference to `https://evil.com/path`.\n\nApplications that use `fast-uri` to enforce host-based policy (allowlists, denylists, loopback/SSRF filtering, redirect validation, outbound proxy routing) before passing the same URL into Node's URL or `fetch()` consumers see a policy/use desync and can be steered to an unintended destination.\n\n### Patches\n\nUpgrade to `fast-uri` v4.1.2, v3.1.5, v2.4.4.\n\n### Workarounds\n\nNone. Upgrade to the patched version.",
+      "reported_by": null,
+      "title": "fast-uri vulnerable to host confusion via backslash authority introducer",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-18446"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "fast-uri",
+      "vulnerable_versions": ">=3.0.0 <3.1.5",
+      "github_advisory_id": "GHSA-7p8r-x3mc-p8w7",
+      "recommendation": "Upgrade to version 3.1.5 or later",
+      "patched_versions": ">=3.1.5",
+      "updated": "2026-08-03T19:16:43.000Z",
+      "cvss": {
+        "score": 7.5,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+      },
+      "cwe": [
+        "CWE-436"
+      ],
+      "url": "https://github.com/advisories/GHSA-7p8r-x3mc-p8w7"
+    },
+    "1130722": {
+      "findings": [
+        {
+          "version": "10.2.0",
+          "paths": [
+            "packages__mcp-server-stdio>@modelcontextprotocol/sdk>express-rate-limit>ip-address"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/beaugunderson/ip-address/security/advisories/GHSA-mwp4-54f8-5fhr\n- https://github.com/beaugunderson/ip-address/commit/56368cb3d66c73ba0ee9b6b834fd31b22c2fd71e\n- https://github.com/beaugunderson/ip-address/releases/tag/v10.3.1\n- https://github.com/advisories/GHSA-mwp4-54f8-5fhr",
+      "created": "2026-08-03T19:59:44.000Z",
+      "id": 1130722,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\n`Address4` accepts an octet written with a leading zero and decodes it as decimal, while the WHATWG URL host parser, `inet_aton`, and `getaddrinfo` all decode a leading zero as octal. The library and the network stack therefore disagree about which host a string names. `new Address4('012.0.0.1')` reports `correctForm()` of `12.0.0.1` and `isPrivate()` of `false`, but `fetch('http://012.0.0.1/')` connects to `10.0.0.1`.\n\nAn application that builds a network trust-boundary decision on these checks (for example a filter intended to block Server-Side Request Forgery, or SSRF) will classify an internal target as external and allow the request. SSRF is an attack in which a user-supplied address coaxes the server into making a request to an internal destination the user could not otherwise reach, such as a loopback service or a cloud metadata endpoint.\n\n### Details\n\n`Address4.parse` gates untrusted input on `RE_ADDRESS` (`src/v4/constants.ts:5`), whose per-octet alternative is:\n\n```\n(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\n```\n\nThe `[01]?[0-9][0-9]?` branch matches a leading zero, so `012` passes validation. Every downstream decode then reads the octet with `parseInt(part, 10)` (`src/common.ts:87`), yielding 12. A resolver reading the same string treats the leading `0` as base 8 and yields 10.\n\nThe defect is in the parse gate rather than in any one classifier, so every consumer of `Address4` inherits it: `isPrivate()`, `isLoopback()`, `isLinkLocal()`, `isCGNAT()`, `isInSubnet()`, `isHostInSubnet()`, and `correctForm()` are all computed from the mis-decoded octets.\n\n`Address6` already rejects this notation on its IPv4-in-IPv6 path, throwing \"IPv4 addresses can't have leading zeroes.\" (`src/ipv6.ts:751-762`), so `Address4` is the outlier within the library.\n\n### Affected versions\n\n`<= 10.3.0`. Unlike GHSA-22jq-vg5j-6vgg and GHSA-4xrf-jv44-h6hh, which were bounded below by the `is*` classification API introduced in 10.1.1, this defect is in `parse` and reaches every release: a guard built on `isInSubnet()` against the RFC 1918 ranges is affected in versions predating that API.\n\n### Impact\n\nThe disagreement runs in both directions. Under-blocking is the security-relevant case; over-blocking is a correctness and availability problem.\n\n| Input | `correctForm()` | Classified as | Resolver reaches | Effect |\n|---|---|---|---|---|\n| `012.0.0.1` | `12.0.0.1` | public | `10.0.0.1` | internal target allowed |\n| `012.012.012.012` | `12.12.12.12` | public | `10.10.10.10` | internal target allowed |\n| `010.0.0.1` | `10.0.0.1` | private | `8.0.0.1` | public target blocked |\n\nReachable targets are those whose leading octet is expressible as a three-character octal literal, which covers the whole of `10.0.0.0/8` and `0.0.0.0/8`. A four-character octet such as `0177` for 127 is rejected by the regex, so loopback is not reachable through this path; see the note on rejection below for why rejection is not the same as safety.\n\n### Reachability\n\nA leading-zero address is a legal URL host, so this is reachable through the ordinary URL path with no unusual application shape required:\n\n```js\nnew URL('http://012.0.0.1/').hostname   // '10.0.0.1'\n```\n\nThis distinguishes it from GHSA-4xrf-jv44-h6hh, where the `/0` CIDR suffix could not survive URL parsing and exploitation therefore required an application that accepted a bare suffix-bearing string. Here the attack rides the same code path a normal user-supplied URL takes.\n\n### Proof of concept\n\n`npm i ip-address@10.3.0`, then:\n\n```js\nconst { Address4 } = require('ip-address');\n\n// A guard of the shape the library documents.\nfunction isBlocked(host) {\n  return Address4.isValid(host) && new Address4(host).isPrivate();\n}\n\nfor (const h of ['10.0.0.1', '012.0.0.1', '012.012.012.012']) {\n  console.log(isBlocked(h) ? 'BLOCK' : 'ALLOW', h,\n              '-> resolver reaches', new URL('http://' + h + '/').hostname);\n}\n```\n\nOn affected versions:\n\n```\nBLOCK 10.0.0.1 -> resolver reaches 10.0.0.1\nALLOW 012.0.0.1 -> resolver reaches 10.0.0.1\nALLOW 012.012.012.012 -> resolver reaches 10.10.10.10\n```\n\nThe literal RFC 1918 address is blocked as expected; the octal-ambiguous spellings of the same destinations are allowed through.\n\n### Remediation\n\nUpgrade to the patched release. In the fix, `Address4.parse` rejects any octet with a leading zero followed by further digits, mirroring the check `Address6` already applies at `src/ipv6.ts:751`, and `RE_ADDRESS` is tightened so those forms no longer appear in the valid corpus. After upgrading, `Address4.isValid('012.0.0.1')` returns `false` and the constructor throws `AddressError`.\n\nThis rejects input that previous releases accepted. An application that deliberately feeds zero-padded addresses such as `010.010.010.010` from a legacy system must strip the padding before parsing.\n\nIf you cannot upgrade immediately, reject any host whose octets carry a leading zero before you parse it:\n\n```js\nif (host.split('.').some((octet) => /^0\\d/.test(octet))) throw new Error('ambiguous address');\n```\n\n### A note on SSRF defense\n\nThese methods are address classifiers, not a complete SSRF defense. Regardless of this fix, a robust SSRF guard must resolve the hostname and validate the *resolved* IP against the socket it connects to, and account for DNS rebinding and redirects. Treat these checks as one layer, not the only one.\n\nOne specific pitfall is worth naming, because the fix above does not remove it. `Address4.isValid()` returning `false` means \"this is not a dotted-quad IPv4 literal\"; it does not mean \"this is not an address that will reach an internal host\". Every one of the following is rejected by `isValid()` and still resolves to loopback:\n\n```\n0177.0.0.1    0x7f.0.0.1    0x7f000001    2130706433\n127.1         127.0.1       127.0.0.1.    １２７.0.0.1\n```\n\nA guard shaped `if (Address4.isValid(h)) { check() } else { treatAsHostname() }` therefore routes all of them past the IP check. Rejecting these is correct behavior for an IPv4 parser and is not changed by this advisory, but a guard must treat \"not a valid literal\" as a case to resolve and re-check, never as a case to allow.",
+      "reported_by": null,
+      "title": "ip-address: Address4 decodes leading-zero octets as decimal while resolvers decode them as octal, allowing SSRF and trust-boundary bypass",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-69192"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "ip-address",
+      "vulnerable_versions": "<=10.3.0",
+      "github_advisory_id": "GHSA-mwp4-54f8-5fhr",
+      "recommendation": "Upgrade to version 10.3.1 or later",
+      "patched_versions": ">=10.3.1",
+      "updated": "2026-08-03T19:59:46.000Z",
+      "cvss": {
+        "score": 0,
+        "vectorString": null
+      },
+      "cwe": [
+        "CWE-20",
+        "CWE-918"
+      ],
+      "url": "https://github.com/advisories/GHSA-mwp4-54f8-5fhr"
+    },
+    "1130723": {
+      "findings": [
+        {
+          "version": "10.2.0",
+          "paths": [
+            "packages__mcp-server-stdio>@modelcontextprotocol/sdk>express-rate-limit>ip-address"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/beaugunderson/ip-address/security/advisories/GHSA-4xrf-jv44-h6hh\n- https://github.com/beaugunderson/ip-address/commit/488fe9bc7c35363b4b090494fc38c266d217740d\n- https://github.com/beaugunderson/ip-address/releases/tag/v10.2.2\n- https://github.com/advisories/GHSA-4xrf-jv44-h6hh",
+      "created": "2026-08-03T19:59:33.000Z",
+      "id": 1130723,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\nEvery special-use classification method is built on `isInSubnet`, which short-circuits to `false` whenever the address's own subnet mask is *shorter* than the reference range's mask. That mask comes verbatim from the CIDR suffix on the parsed input, so appending a suffix such as `/0` suppresses classification entirely: `isLoopback()`, `isPrivate()`, `isLinkLocal()`, `isCGNAT()`, `isMulticast()`, `isUnspecified()`, `isBroadcast()`, `isULA()`, and `getType()` all report an internal address as unremarkable, while `correctForm()` and `address` still return the real internal target.\n\nAn application that builds a network trust-boundary decision on these checks (for example a filter intended to block Server-Side Request Forgery, or SSRF) may therefore treat an internal target as external and allow the request. SSRF is an attack in which a user-supplied address coaxes the server into making a request to an internal destination the user could not otherwise reach, such as a loopback service or a cloud metadata endpoint.\n\n### Details\n\n`isInSubnet` in `src/common.ts` opens with a guard that compares the two prefix lengths:\n\n```js\nexport function isInSubnet(this, address) {\n  if (this.subnetMask < address.subnetMask) {\n    return false;                                  // <-- reached before any bit comparison\n  }\n\n  if (this.mask(address.subnetMask) === address.mask()) {\n    return true;\n  }\n\n  return false;\n}\n```\n\nThat guard is correct for the question `isInSubnet` is named for — whether one *network* is contained in another, where a `/0` network genuinely is not inside a `/8`. It is wrong for classification, which asks a question about the address itself and must not depend on the prefix the caller happened to write. `/0` is shorter than every reference prefix in the special-use tables (loopback `/8`, link-local `/16`, CGNAT `/10`, ULA `/7`, multicast `/4`), so for a classification call the bit comparison is never reached and the method returns `false`.\n\nThe underlying bit comparison is correct, and `mask(n)` already returns the first `n` bits of the full parsed address independently of `subnetMask` — the defect is solely that the containment guard sits in the classification path. Host bits are retained through parsing, so `correctForm()` still yields the real target and the address remains fully usable for connecting.\n\n`/0` is the universal case because it is shorter than every reference prefix, but any suffix shorter than the specific range being tested has the same effect: `10.0.0.5/7` defeats `isPrivate()` for `10.0.0.0/8`.\n\n### Affected versions\n\n`>= 10.1.1, <= 10.2.1`. The `is*` classification API was introduced for `Address4` in 10.1.1 and extended to `Address6` in 10.2.0; releases before 10.1.1 do not expose it and are not affected through this vector. The containment guard itself is much older, but `isInSubnet` alone is a subnet-containment predicate whose behavior here is correct.\n\nThis also defeats the fix released in 10.2.1 for GHSA-22jq-vg5j-6vgg: that release classifies IPv4-mapped and NAT64 addresses by their embedded IPv4 address, but the normalization is reached through `isInSubnet`, so `::ffff:127.0.0.1/0` reverts to being reported as non-internal.\n\n### Impact\n\nEvery classifier is affected on both `Address4` and `Address6`. The sole exception is `Address6.isLinkLocal()` for *native* `fe80::/10` addresses, which compares raw bits directly; its IPv4-mapped path is still affected.\n\n| Address | Reported as | Actually points at |\n|---|---|---|\n| `127.0.0.1/0` | not loopback | loopback (`127.0.0.0/8`) |\n| `10.0.0.1/0`, `10.0.0.5/7` | not private | RFC 1918 `10/8` |\n| `172.16.5.5/0` | not private | RFC 1918 `172.16/12` |\n| `192.168.1.1/0` | not private | RFC 1918 `192.168/16` |\n| `169.254.169.254/0` | not link-local | link-local / cloud metadata (IMDS) |\n| `100.64.0.1/0` | not CGNAT | CGNAT `100.64/10` |\n| `0.0.0.0/0`, `255.255.255.255/0` | not unspecified / not broadcast | unspecified / broadcast |\n| `::1/0` | not loopback | IPv6 loopback |\n| `fc00::1/0` | not ULA, not private | IPv6 ULA `fc00::/7` |\n| `ff02::1/0` | not multicast | IPv6 multicast |\n| `::ffff:127.0.0.1/0` | not loopback | loopback, via IPv4-mapped |\n| `::ffff:169.254.169.254/0` | not link-local | IMDS, via IPv4-mapped |\n| `64:ff9b::7f00:1/0` | not loopback | loopback, via NAT64 |\n\n`getType()` returns `Global unicast` for all of the IPv6 cases above, and `getScope()` follows it.\n\n### Reachability\n\nA CIDR suffix is not legal in a URL host, so this is not reachable through the most common SSRF shape. `new URL('http://127.0.0.1/0')` parses `hostname` as `127.0.0.1` and `pathname` as `/0`, and a guard that classifies the extracted hostname is unaffected. Exploitation requires an application that accepts a bare address string that may carry a suffix and passes it to the constructor before classifying — for example an allow/deny field, a webhook target, or a proxy destination taken as a plain host rather than parsed out of a URL.\n\n### Proof of concept\n\n`npm i ip-address@10.2.1`, then:\n\n```js\nconst { Address4, Address6 } = require('ip-address');\n\n// true => block as internal, false => allow outbound\nfunction isBlocked(host) {\n  try {\n    const a = new Address4(host);\n    return a.isPrivate() || a.isLoopback() || a.isLinkLocal() || a.isCGNAT()\n        || a.isMulticast() || a.isUnspecified() || a.isBroadcast();\n  } catch {}\n  try {\n    const a = new Address6(host);\n    return a.isPrivate() || a.isLoopback() || a.isLinkLocal() || a.isULA()\n        || a.isMulticast() || a.isUnspecified();\n  } catch {}\n  return false;\n}\n\nfor (const h of ['127.0.0.1', '10.0.0.1', '::1',\n                 '127.0.0.1/0', '10.0.0.5/7', '169.254.169.254/0',\n                 '::1/0', '::ffff:127.0.0.1/0', '64:ff9b::7f00:1/0']) {\n  console.log(isBlocked(h) ? 'BLOCK ' : 'ALLOW ', h, '->', new (h.includes(':') ? Address6 : Address4)(h).correctForm());\n}\n```\n\nOn affected versions every suffixed internal target is allowed, and `correctForm()` shows the request would reach the real internal address:\n\n```\nBLOCK  127.0.0.1 -> 127.0.0.1\nBLOCK  10.0.0.1 -> 10.0.0.1\nBLOCK  ::1 -> ::1\nALLOW  127.0.0.1/0 -> 127.0.0.1\nALLOW  10.0.0.5/7 -> 10.0.0.5\nALLOW  169.254.169.254/0 -> 169.254.169.254\nALLOW  ::1/0 -> ::1\nALLOW  ::ffff:127.0.0.1/0 -> ::ffff:7f00:1\nALLOW  64:ff9b::7f00:1/0 -> 64:ff9b::7f00:1\n```\n\nThe first three lines are blocked as expected; the same destinations with a CIDR suffix are allowed through.\n\n### Remediation\n\nUpgrade to the patched release. In the fix, classification no longer consults the address's own prefix: a new `isHostInSubnet()` compares the address's host bits against the reference range only, and every classifier (`isLoopback`, `isPrivate`, `isLinkLocal`, `isCGNAT`, `isMulticast`, `isUnspecified`, `isBroadcast`, `isULA`, `isMapped4`, `isTeredo`, `is6to4`, `isDocumentation`, `getType`, and the IPv4-mapped/NAT64 normalization behind `embeddedIPv4`) uses it. `isInSubnet` keeps its subnet-containment semantics unchanged, including the guard that a wider network is not contained in a narrower one. After upgrading, `new Address4('127.0.0.1/0').isLoopback()` returns `true`.\n\nIf you cannot upgrade immediately, strip the suffix before classifying by re-parsing `addressMinusSuffix`:\n\n```js\nconst parsed = new Address4(userInput);\nconst host = new Address4(parsed.addressMinusSuffix);   // classify this one\n```\n\n### A note on SSRF defense\n\nThese methods are address classifiers, not a complete SSRF defense. Regardless of this fix, a robust SSRF guard must resolve the hostname and validate the *resolved* IP against the socket it connects to, and account for DNS rebinding and redirects. Treat these checks as one layer, not the only one.\n\n### Credit\n\nReported by @hi-im-glitchless.",
+      "reported_by": null,
+      "title": "ip-address: a CIDR suffix on the parsed address suppresses special-use classification and can bypass SSRF and trust-boundary checks",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-69198"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "ip-address",
+      "vulnerable_versions": ">=10.1.1 <=10.2.1",
+      "github_advisory_id": "GHSA-4xrf-jv44-h6hh",
+      "recommendation": "Upgrade to version 10.2.2 or later",
+      "patched_versions": ">=10.2.2",
+      "updated": "2026-08-03T19:59:34.000Z",
+      "cvss": {
+        "score": 0,
+        "vectorString": null
+      },
+      "cwe": [
+        "CWE-20",
+        "CWE-918"
+      ],
+      "url": "https://github.com/advisories/GHSA-4xrf-jv44-h6hh"
+    },
+    "1130724": {
+      "findings": [
+        {
+          "version": "10.2.0",
+          "paths": [
+            "packages__mcp-server-stdio>@modelcontextprotocol/sdk>express-rate-limit>ip-address"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/beaugunderson/ip-address/security/advisories/GHSA-22jq-vg5j-6vgg\n- https://nvd.nist.gov/vuln/detail/CVE-2026-54272\n- https://github.com/beaugunderson/ip-address/commit/4a1f613f4c1bec915677dea923c10aaa09361ef9\n- https://github.com/beaugunderson/ip-address/releases/tag/v10.2.1\n- https://github.com/advisories/GHSA-22jq-vg5j-6vgg",
+      "created": "2026-08-03T19:52:33.000Z",
+      "id": 1130724,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\n`Address6`'s special-property checks misclassify IPv4-mapped (`::ffff:0:0/96`) and NAT64 well-known (`64:ff9b::/96`) IPv6 addresses. These checks classify an address by its IPv6 wrapper rather than by the IPv4 address it embeds, so `isLoopback()`, `isLinkLocal()`, `isMulticast()`, and `isUnspecified()` all return `false` for literals such as `::ffff:127.0.0.1` or `::ffff:169.254.169.254` that actually route to loopback, RFC 1918, or link-local (cloud-metadata) destinations. `Address6` also had no `isPrivate()` method, so a mapped RFC 1918 address could not be detected at all.\n\nAn application that builds a network trust-boundary decision on these checks (for example, a filter intended to block Server-Side Request Forgery, or SSRF) may therefore treat an internal target as external and allow the request. SSRF is an attack in which a user-supplied address coaxes the server into making a request to an internal destination the user could not otherwise reach, such as a loopback service or a cloud metadata endpoint.\n\n### Details\n\n`Address6.getType()` classifies an address by matching it against a table of known IPv6 special-use prefixes, returning `Global unicast` when nothing matches. That table had no entry for the IPv4-mapped range (`::ffff:0:0/96`), so every mapped address fell through to `Global unicast`; NAT64 addresses matched their own `NAT64 …` labels. The boolean checks `isLoopback`, `isUnspecified`, and `isMulticast` compared `getType()` against a fixed label and so returned `false`, while `isLinkLocal` and `isULA` checked only the native IPv6 ranges.\n\nThe library already exposed `isMapped4()` and `to4()`, but did not apply them inside these checks, so a mapped or NAT64 address was never normalized to its embedded IPv4 address before classification. The underlying CIDR matching is correct; the defect is that the special-use table omitted the IPv4-mapped range and the checks performed no embedded-IPv4 normalization.\n\n### Affected versions\n\n`>= 10.1.1, <= 10.2.0`. The `is*` classification API was introduced for `Address4` in 10.1.1 and extended to `Address6` in 10.2.0. Releases before 10.1.1 do not expose this API and are not affected through this vector.\n\n### Impact\n\nThe misclassification covers the entire `::ffff:0:0/96` range, in both dotted and hex notation and case-insensitively, plus the `64:ff9b::/96` NAT64 well-known prefix:\n\n| Address | Reported as | Actually points at |\n|---|---|---|\n| `::ffff:127.0.0.1` / `::ffff:7f00:1` | Global unicast | loopback (`127.0.0.0/8`) |\n| `::ffff:10.0.0.1` | Global unicast | RFC 1918 `10/8` |\n| `::ffff:172.16.5.5` | Global unicast | RFC 1918 `172.16/12` |\n| `::ffff:192.168.1.1` | Global unicast | RFC 1918 `192.168/16` |\n| `::ffff:169.254.169.254` / `::ffff:a9fe:a9fe` | Global unicast | link-local / cloud metadata (IMDS) |\n| `::ffff:100.64.0.1` | Global unicast | CGNAT `100.64/10` |\n| `::ffff:0.0.0.0` / `::ffff:255.255.255.255` | Global unicast | unspecified / broadcast |\n| `64:ff9b::7f00:1` / `64:ff9b::a9fe:a9fe` | NAT64 (well-known) | loopback / IMDS via NAT64 |\n\nFor IPv4-mapped addresses the host OS routes to the IPv4 stack, so the misclassification is reachable on any dual-stack host. For NAT64, the classification bypass is unconditional but end-to-end reachability additionally requires a NAT64/DNS64 gateway in the deployment network.\n\n### Proof of concept\n\nA guard assembled from these checks lets internal hosts through:\n\n```js\nconst { Address4, Address6 } = require('ip-address');\n\n// true => block as internal, false => allow outbound\nfunction isBlocked(host) {\n  try {\n    const a = new Address4(host);\n    return a.isPrivate() || a.isLoopback() || a.isLinkLocal() || a.isCGNAT()\n        || a.isMulticast() || a.isUnspecified() || a.isBroadcast();\n  } catch {}\n  try {\n    const a = new Address6(host);\n    return a.isLoopback() || a.isLinkLocal() || a.isULA()\n        || a.isMulticast() || a.isUnspecified();\n  } catch {}\n  return false;\n}\n\nfor (const h of ['127.0.0.1', '::1', '10.0.0.1', '8.8.8.8',\n                 '::ffff:127.0.0.1', '::ffff:10.0.0.1',\n                 '::ffff:169.254.169.254', '64:ff9b::7f00:1']) {\n  console.log(isBlocked(h) ? 'BLOCK ' : 'ALLOW ', h);\n}\n```\n\nOn affected versions this prints (note that every `::ffff:…` and `64:ff9b::…` internal target is allowed):\n\n```\nBLOCK  127.0.0.1\nBLOCK  ::1\nBLOCK  10.0.0.1\nALLOW  8.8.8.8\nALLOW  ::ffff:127.0.0.1\nALLOW  ::ffff:10.0.0.1\nALLOW  ::ffff:169.254.169.254\nALLOW  64:ff9b::7f00:1\n```\n\nThe first three lines (native loopback, native IPv6 loopback, and a literal RFC 1918 address) are blocked as expected; the IPv4-mapped and NAT64 forms of the same internal destinations are allowed through.\n\n### Remediation\n\nUpgrade to the patched release. In the fix, `Address6` normalizes IPv4-mapped and NAT64 well-known addresses to their embedded IPv4 address before classifying, via a new `embeddedIPv4()` helper that `isLoopback`, `isLinkLocal`, `isMulticast`, and `isUnspecified` consult first. `Address6` also gains `isPrivate()`, `isCGNAT()`, and `isBroadcast()` for parity with `Address4`, and `getType()` now labels the `::ffff:0:0/96` range as `IPv4-mapped`. After upgrading, `new Address6('::ffff:127.0.0.1').isLoopback()` returns `true` and `new Address6('::ffff:10.0.0.1').isPrivate()` returns `true`.\n\nIf you cannot upgrade immediately, normalize embedded IPv4 addresses yourself before classifying: call `to4()` on any address where `isMapped4()` (or membership in `64:ff9b::/96`) is true, and run your IPv4 checks against the result.\n\n### A note on SSRF defense\n\nThese methods are address classifiers, not a complete SSRF defense. Regardless of this fix, a robust SSRF guard must resolve the hostname and validate the *resolved* IP against the socket it connects to, and account for DNS rebinding and redirects. Treat these checks as one layer, not the only one.\n\n### Credit\n\nReported by @OV-0-VO.",
+      "reported_by": null,
+      "title": "ip-address: misclassification of IPv4-mapped/NAT64 IPv6 addresses can bypass SSRF and trust-boundary checks",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-54272"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "ip-address",
+      "vulnerable_versions": ">=10.1.1 <=10.2.0",
+      "github_advisory_id": "GHSA-22jq-vg5j-6vgg",
+      "recommendation": "Upgrade to version 10.2.1 or later",
+      "patched_versions": ">=10.2.1",
+      "updated": "2026-08-03T19:52:34.000Z",
+      "cvss": {
+        "score": 0,
+        "vectorString": null
+      },
+      "cwe": [
+        "CWE-20",
+        "CWE-918"
+      ],
+      "url": "https://github.com/advisories/GHSA-22jq-vg5j-6vgg"
+    },
+    "1130733": {
+      "findings": [
+        {
+          "version": "4.12.23",
+          "paths": [
+            "packages__mastra>@mastra/core>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-8j4g-w8fx-2239\n- https://github.com/honojs/hono/commit/93fc250d8b4df58ea542cb945171de8013d5e6d5\n- https://github.com/honojs/hono/releases/tag/v4.12.34\n- https://github.com/advisories/GHSA-8j4g-w8fx-2239",
+      "created": "2026-08-03T20:23:30.000Z",
+      "id": 1130733,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\nThe built-in CORS middleware (`hono/cors`) parses the attacker-controlled `Access-Control-Request-Headers` request header during a preflight (`OPTIONS`) request using a regular expression whose running time is quadratic in the input length. A single request carrying a long run of whitespace can consume seconds of CPU, and repeated requests can render the service unresponsive. This parsing runs under the default configuration.\n\n### Details\n\nOn a CORS preflight, when `allowHeaders` is not configured - the default - the middleware reflects and parses the `Access-Control-Request-Headers` value. The parser used a whitespace-tolerant regular expression whose backtracking makes the work grow quadratically (O(n²)) with the length of the value when it contains a long whitespace sequence without a delimiter.\n\nBecause the header value is bounded only by the deployment's maximum HTTP header size, a single preflight can block request processing for a noticeable amount of time; on runtimes that share one execution thread across requests, this stalls concurrent requests as well. No authentication, special origin, or user interaction is required.\n\nThis issue arises for any application using `cors()` with the default (or an empty) `allowHeaders`. Applications that set a non-empty `allowHeaders` do not reach the affected path.\n\n### Impact\n\nAn unauthenticated attacker can send preflight requests that each consume disproportionate CPU relative to their size, degrading or denying service. This is a denial-of-service issue only; it does not expose or modify data.",
+      "reported_by": null,
+      "title": "Hono: ReDoS in CORS middleware via Access-Control-Request-Headers",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-69207"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "hono",
+      "vulnerable_versions": "<4.12.34",
+      "github_advisory_id": "GHSA-8j4g-w8fx-2239",
+      "recommendation": "Upgrade to version 4.12.34 or later",
+      "patched_versions": ">=4.12.34",
+      "updated": "2026-08-03T20:23:59.000Z",
+      "cvss": {
+        "score": 5.3,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+      },
+      "cwe": [
+        "CWE-1333"
+      ],
+      "url": "https://github.com/advisories/GHSA-8j4g-w8fx-2239"
+    },
+    "1138114": {
+      "findings": [
+        {
+          "version": "3.14.2",
+          "paths": [
+            "packages__mastra>@mastra/core>gray-matter>js-yaml"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/nodeca/js-yaml/security/advisories/GHSA-5p4m-2wfm-xmqj\n- https://github.com/advisories/GHSA-5p4m-2wfm-xmqj",
+      "created": "2026-08-06T20:27:32.000Z",
+      "id": 1138114,
+      "npm_advisory_id": null,
+      "overview": "# Quadratic CPU consumption in `!!omap` resolution (js-yaml 3.x and 4.x)\n\n## Summary\n\n`resolveYamlOmap()` enforces key uniqueness for `!!omap` sequences with a linear\nscan (`objectKeys.indexOf(...)`) inside the per-element loop, making resolution\n**O(n²)** in the number of entries. A modestly sized YAML document therefore\nconsumes disproportionate CPU inside `yaml.load()`, giving a denial of service\nagainst any consumer that parses untrusted YAML.\n\n`!!omap` is registered in the **default schema**\n(`lib/schema/default.js` → `require('../type/omap')`), so a plain\n`yaml.load(untrustedInput)` with no options is affected — no custom schema or\nnon-default configuration is required.\n\n**This is the same weakness as CVE-2026-59870 / GHSA-724g-mxrg-4qvm**, which was\nfixed in the 5.x line in 5.2.1. That fix was never backported: both currently\nmaintained legacy lines still carry the original implementation.\n\n## Affected versions\n\n| Line | Latest tested | Status |\n|---|---|---|\n| 3.x | **3.15.0** | Affected — `objectKeys.indexOf(pairKey)` at `lib/type/omap.js:29` |\n| 4.x | **4.3.0** | Affected — `objectKeys.indexOf(pairKey)` at `lib/type/omap.js:30` |\n| 5.x | 5.2.2 | **Not affected** — fixed in 5.2.1 (uses a `Set`) |\n\nBoth figures are the newest release of each line at the time of writing, so\nthis is not a \"you are on an old version\" issue.\n\n## Details\n\n`lib/type/omap.js` (js-yaml 4.3.0):\n\n```js\nif (objectKeys.indexOf(pairKey) === -1) objectKeys.push(pairKey)\nelse return false\n```\n\n`objectKeys` grows by one element per entry, and `Array.prototype.indexOf` is a\nlinear scan, so resolving an `n`-entry `!!omap` performs roughly\n`1 + 2 + … + n` comparisons — quadratic in `n`. The work happens synchronously\ninside `yaml.load()`, blocking the event loop for its whole duration.\n\nThe 5.x line already solves exactly this by tracking seen keys in a `Set`\n(`src/tag/sequence/omap.ts`):\n\n```ts\nif (carrier.seen.has(key)) return 'duplicate key in ordered map'\ncarrier.seen.add(key)\n```\n\n## Proof of concept\n\n```js\n// poc.js  —  node poc.js\nconst yaml = require('js-yaml');\nconst doc = n => '!!omap\\n' + Array.from({length: n}, (_, i) => `- k${i}: ${i}`).join('\\n') + '\\n';\n\nfor (const n of [10000, 20000, 40000, 80000]) {\n  const d = doc(n), t = Date.now();\n  yaml.load(d);                      // default schema, no options\n  console.log(`n=${n} bytes=${d.length} load=${Date.now() - t}ms`);\n}\n```\n\n### Measured (node v20.20.2, default heap, no flags)\n\n**js-yaml 4.3.0**\n\n```\nn=10000  bytes=137787   load=54ms\nn=20000  bytes=297787   load=169ms\nn=40000  bytes=617787   load=646ms\nn=80000  bytes=1257787  load=2607ms\n```\n\n**js-yaml 3.15.0**\n\n```\nn=10000  bytes=137787   load=53ms\nn=20000  bytes=297787   load=166ms\nn=40000  bytes=617787   load=641ms\nn=80000  bytes=1257787  load=2567ms\n```\n\nRuntime grows by a factor of ~4 for each doubling of `n`, which is the\nsignature of O(n²) (linear growth would be ~2×).\n\nScaling further: a **2.48 MB** document with 150,000 entries blocked\n`yaml.load()` for **10.8 seconds**.\n\n## Impact\n\nAny service that parses attacker-influenced YAML with js-yaml 3.x or 4.x can be\nstalled with a small input. Because the loop is synchronous, a single request\nblocks the Node.js event loop and stalls every other request in the process —\nso the amplification is per-process, not just per-request.\n\nSuggested severity: consistent with **CVE-2026-59870** (the same weakness in\n5.x), i.e. Availability-only impact, network attack vector, no privileges or\nuser interaction required.\n\n## Suggested fix\n\nMirror the 5.x fix — replace the linear scan with a `Set`:\n\n```js\n// lib/type/omap.js\nconst seen = new Set()\n// ...\nif (seen.has(pairKey)) return false\nseen.add(pairKey)\n```\n\nThis preserves the existing duplicate-key rejection semantics exactly while\nmaking resolution O(n). A `maxOmapLength`-style cap would also work, but the\n`Set` matches what 5.x already ships and requires no new option.\n\n## References\n\n- CVE-2026-59870 / GHSA-724g-mxrg-4qvm — same weakness in 5.0.0–5.2.0, fixed in 5.2.1\n- `lib/type/omap.js` (3.x, 4.x) — the affected resolver\n- `lib/schema/default.js` — registers `!!omap` in the default schema\n\n## Discovery\n\nFound by an automated static-analysis and executed-proof-of-concept scanner run\nagainst js-yaml 4.2.0, then manually verified against 3.15.0 and 4.3.0 by\nexecuting the proof of concept above. All timings in this report were measured\non the **current** releases of each line, not on the version originally scanned.",
+      "reported_by": null,
+      "title": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) — CVE-2026-59870 fix not backported",
+      "metadata": null,
+      "cves": [],
+      "access": "public",
+      "severity": "high",
+      "module_name": "js-yaml",
+      "vulnerable_versions": ">=3.0.0 <3.15.1",
+      "github_advisory_id": "GHSA-5p4m-2wfm-xmqj",
+      "recommendation": "Upgrade to version 3.15.1 or later",
+      "patched_versions": ">=3.15.1",
+      "updated": "2026-08-06T20:27:32.000Z",
+      "cvss": {
+        "score": 7.5,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+      },
+      "cwe": [
+        "CWE-407"
+      ],
+      "url": "https://github.com/advisories/GHSA-5p4m-2wfm-xmqj"
+    },
+    "1138771": {
+      "findings": [
+        {
+          "version": "4.12.23",
+          "paths": [
+            "packages__mastra>@mastra/core>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-f23p-vx2j-j53r\n- https://github.com/honojs/hono/commit/0c45036d6b0ddf42ab2fa44639dc8710825d5c0f\n- https://github.com/honojs/hono/releases/tag/v4.12.34\n- https://github.com/advisories/GHSA-f23p-vx2j-j53r",
+      "created": "2026-08-07T18:42:01.000Z",
+      "id": 1138771,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\n`memo()` from `hono/jsx` retains the result of a server-side render and reuses it for later renders with comparator-equal props. Request-scoped values read inside the component take no part in that comparison, so a response can contain HTML rendered for another user's request.\n\n### Details\n\nComponents wrapped with `memo()` are compared by props alone. Values read implicitly during rendering do not participate: JSX Context through `createContext()` and `useContext()`, `useRequestContext()` from `hono/jsx-renderer`, and `getContext()` from `hono/context-storage`. The retained result lives as long as the wrapped component, so it outlives the request that produced it.\n\nPer-request context isolation is not what fails: the current request's values are established correctly, but the memoized component is skipped before anything reads them.\n\nThis issue arises when a component wrapped in `memo()` obtains user- or request-specific data from an ambient context instead of through props.\n\n### Impact\n\nA user may receive a response containing HTML rendered for another user, when both render the same memoized component with comparator-equal props on the same warm instance.\n\nThis may lead to:\n\n- Disclosure of another user's account or profile data\n- Disclosure of request-scoped secrets embedded in HTML, such as CSRF tokens\n- Exposure of role-specific content to users who should not receive it\n\nExploitation depends on the order in which renders populate the retained value and on both requests reaching the same warm instance.\n\nThis issue affects applications that render with `hono/jsx` on the server and wrap a component reading ambient request state in `memo()`. Applications that pass all request-specific values through props, or that do not use `memo()`, are unaffected. Client-side rendering is unaffected.",
+      "reported_by": null,
+      "title": "Hono: `memo()` retains SSR output across requests, leading to cross-user data disclosure",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-71850"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "hono",
+      "vulnerable_versions": ">=3.8.0 <4.12.34",
+      "github_advisory_id": "GHSA-f23p-vx2j-j53r",
+      "recommendation": "Upgrade to version 4.12.34 or later",
+      "patched_versions": ">=4.12.34",
+      "updated": "2026-08-07T18:42:04.000Z",
+      "cvss": {
+        "score": 4.8,
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:U/C:H/I:N/A:N"
+      },
+      "cwe": [
+        "CWE-488"
+      ],
+      "url": "https://github.com/advisories/GHSA-f23p-vx2j-j53r"
+    },
+    "1138772": {
+      "findings": [
+        {
+          "version": "4.12.23",
+          "paths": [
+            "packages__mastra>@mastra/core>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-79qm-7rj5-m7r9\n- https://github.com/honojs/hono/commit/720b566290793d4358bf39843adcb7cf4da4548f\n- https://github.com/honojs/hono/releases/tag/v4.12.34\n- https://github.com/advisories/GHSA-79qm-7rj5-m7r9",
+      "created": "2026-08-07T18:38:48.000Z",
+      "id": 1138772,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\nThe Proxy Helper (`hono/proxy`) does not remove response headers named by the origin's `Connection` header. Headers that the origin marked as connection-scoped are therefore forwarded to clients.\n\n### Details\n\nPer RFC 9110 Section 7.6.1, an intermediary must remove the header fields listed in a message's `Connection` header field before forwarding the message, in addition to the well-known hop-by-hop headers. The `proxy()` function removed the well-known hop-by-hop headers (including `Connection` itself) from origin responses, but did not remove the headers that the response's `Connection` header field designated as connection-scoped.\n\nThis issue arises when an application proxies responses from an origin that declares additional, non-standard headers as hop-by-hop via the `Connection` response header.\n\n### Impact\n\nA client may receive response headers that the origin intended only for its immediate peer. This may lead to:\n\n- Disclosure of connection-scoped or internal metadata contained in such headers\n\nThis issue affects applications that use the Proxy Helper (`hono/proxy`) to forward responses from origins that list custom header names in their `Connection` response header. Applications whose origins only use the standard hop-by-hop headers are not affected.",
+      "reported_by": null,
+      "title": "Hono: Proxy Helper does not remove response headers listed in the `Connection` header",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-71849"
+      ],
+      "access": "public",
+      "severity": "low",
+      "module_name": "hono",
+      "vulnerable_versions": ">=4.7.0 <4.12.34",
+      "github_advisory_id": "GHSA-79qm-7rj5-m7r9",
+      "recommendation": "Upgrade to version 4.12.34 or later",
+      "patched_versions": ">=4.12.34",
+      "updated": "2026-08-07T18:38:49.000Z",
+      "cvss": {
+        "score": 3.7,
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N"
+      },
+      "cwe": [
+        "CWE-200"
+      ],
+      "url": "https://github.com/advisories/GHSA-79qm-7rj5-m7r9"
+    },
+    "1138773": {
+      "findings": [
+        {
+          "version": "4.12.23",
+          "paths": [
+            "packages__mastra>@mastra/core>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-54fx-42gc-7vw4\n- https://github.com/honojs/hono/commit/f70e2c31684387b3231cc38512a31df6ca76a1c7\n- https://github.com/honojs/hono/releases/tag/v4.12.34\n- https://github.com/advisories/GHSA-54fx-42gc-7vw4",
+      "created": "2026-08-07T18:36:31.000Z",
+      "id": 1138773,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\nThe `languageDetector` middleware is vulnerable to algorithmic complexity denial of service when processing a crafted language tag containing a large number of hyphen-separated subtags.\n\n### Details\n\nTo implement progressive language-tag truncation, `normalizeLanguage()` repeatedly calls `parts.slice(0, i).join('-')` for every possible prefix. The total amount of string processing grows quadratically with the number of subtags.\n\nLanguage values may come from a query parameter, cookie, `Accept-Language` header, or URL path, depending on the detector configuration. The default detector order enables query-string, cookie, and header detection, so applications using `languageDetector()` may expose this processing to unauthenticated requests.\n\nRequest-size limits reduce the maximum cost of a single request but do not eliminate the issue. Inputs accepted by common JavaScript runtimes can still cause noticeable synchronous event-loop blocking.\n\n### Impact\n\nAn attacker may repeatedly send requests containing long, hyphen-separated language tags, causing excessive CPU consumption and preventing unrelated requests from being processed.\n\nThe practical impact depends on the runtime's request-size limits, reverse-proxy configuration, and the detectors enabled by the application.\n\n### Resolution\n\nThe progressive lookup should avoid reconstructing every shorter prefix. The implementation can instead inspect the configured supported languages and select the longest value that matches the input at a hyphen boundary.",
+      "reported_by": null,
+      "title": "Hono: Algorithmic Complexity DoS in Language Middleware",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-71848"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "hono",
+      "vulnerable_versions": ">=4.12.0 <4.12.34",
+      "github_advisory_id": "GHSA-54fx-42gc-7vw4",
+      "recommendation": "Upgrade to version 4.12.34 or later",
+      "patched_versions": ">=4.12.34",
+      "updated": "2026-08-07T18:36:33.000Z",
+      "cvss": {
+        "score": 5.3,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+      },
+      "cwe": [
+        "CWE-407"
+      ],
+      "url": "https://github.com/advisories/GHSA-54fx-42gc-7vw4"
+    },
+    "1138811": {
+      "findings": [
+        {
+          "version": "3.3.11",
+          "paths": [
+            "packages__mastra>@mastra/core>@ai-sdk/ui-utils>@ai-sdk/provider-utils>nanoid"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://nvd.nist.gov/vuln/detail/CVE-2026-67214\n- https://github.com/ai/nanoid/commit/6ccc67bbaba71d3d77a21d9b636f4171a268ce49\n- https://github.com/ai/nanoid/releases/tag/5.1.16\n- https://www.vulncheck.com/advisories/nanoid-before-infinite-loop-via-negative-size-in-non-secure-module\n- https://github.com/ai/nanoid/pull/600\n- https://github.com/ai/nanoid/pull/601\n- https://github.com/ai/nanoid/commit/e835c9b71eab832bc6106944bdd26ea96cf2c66d\n- https://github.com/advisories/GHSA-28wg-ghj8-5hjv",
+      "created": "2026-07-29T15:31:12.000Z",
+      "id": 1138811,
+      "npm_advisory_id": null,
+      "overview": "nanoid (Nano ID) before 5.1.16 contains an infinite loop in the customAlphabet and nanoid functions of its non-secure module (nanoid/non-secure). When these functions are given a negative size, the loop counter is decremented from a negative value and never reaches its termination condition, spinning indefinitely and hanging the calling thread. An application that passes an unvalidated, attacker-controlled negative size to these functions is exposed to a denial-of-service condition.",
+      "reported_by": null,
+      "title": "nanoid: non-secure generators can loop indefinitely with negative size",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-67214"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "nanoid",
+      "vulnerable_versions": "<3.3.16",
+      "github_advisory_id": "GHSA-28wg-ghj8-5hjv",
+      "recommendation": "Upgrade to version 3.3.16 or later",
+      "patched_versions": ">=3.3.16",
+      "updated": "2026-08-07T20:53:01.000Z",
+      "cvss": {
+        "score": 5.9,
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H"
+      },
+      "cwe": [
+        "CWE-835"
+      ],
+      "url": "https://github.com/advisories/GHSA-28wg-ghj8-5hjv"
+    },
+    "1139322": {
+      "findings": [
+        {
+          "version": "1.19.14",
+          "paths": [
+            "packages__mcp-server-stdio>@modelcontextprotocol/sdk>@hono/node-server"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/node-server/security/advisories/GHSA-frvp-7c67-39w9\n- https://github.com/honojs/node-server/commit/cd076e117cfe4cb8d31f9eb11d2e8f38a6cb8faf\n- https://github.com/honojs/node-server/releases/tag/v2.0.5\n- https://github.com/advisories/GHSA-frvp-7c67-39w9",
+      "created": "2026-07-21T18:17:25.000Z",
+      "id": 1139322,
+      "npm_advisory_id": null,
+      "overview": "The same as the `hono` core [Path traversal in `serve-static` on Windows via encoded backslash (`%5C`)](https://github.com/honojs/hono/security/advisories/GHSA-wwfh-h76j-fc44).\n\n### Summary\n\nOn Windows hosts, an encoded backslash (`%5C`) in the request path decodes to `\\`, which the Windows path resolver treats as a separator. `serve-static` then resolves a single URL segment such as `admin\\secret.txt` into a nested file under the root and serves it, letting an attacker read static files meant to be protected behind prefix-mounted middleware. Directory escape (`..`) remains blocked.\n\n### Details\n\nThe router splits paths only on `/`, so `/admin%5Csecret.txt` is one segment and middleware on `/admin/*` does not run. The `serve-static` guard rejects `.`/`..` and consecutive separators but lets a lone `\\` through; on Windows the file resolver re-splits it into the protected subtree.\n\nThis affects Windows hosts serving static files via the Node, Bun, or Deno adapters that guard a static subtree with prefix-mounted middleware.\n\n### Impact\n\nAn unauthenticated attacker can read static files under a middleware-guarded prefix on Windows hosts. The read stays within the configured root; escape outside the root is not possible.",
+      "reported_by": null,
+      "title": "Node.js Adapter for Hono: Path traversal in `serve-static` on Windows via encoded backslash (`%5C`)",
+      "metadata": null,
+      "cves": [],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "@hono/node-server",
+      "vulnerable_versions": "<1.19.15",
+      "github_advisory_id": "GHSA-frvp-7c67-39w9",
+      "recommendation": "Upgrade to version 1.19.15 or later",
+      "patched_versions": ">=1.19.15",
+      "updated": "2026-08-12T18:26:51.000Z",
+      "cvss": {
+        "score": 5.9,
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N"
+      },
+      "cwe": [
+        "CWE-22"
+      ],
+      "url": "https://github.com/advisories/GHSA-frvp-7c67-39w9"
+    },
+    "1139427": {
+      "findings": [
+        {
+          "version": "3.3.11",
+          "paths": [
+            "packages__mastra>@mastra/core>@ai-sdk/ui-utils>@ai-sdk/provider-utils>nanoid"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://nvd.nist.gov/vuln/detail/CVE-2026-67213\n- https://github.com/ai/nanoid/commit/cb3626d0f3342fdf179cd425fd9c4fbb92c7d0e7\n- https://github.com/ai/nanoid/releases/tag/5.1.6\n- https://www.vulncheck.com/advisories/nanoid-before-infinite-loop-via-zero-size-in-customalphabet-and-customrandom\n- https://github.com/ai/nanoid/commit/f9d13f150847d117877adee3460a46eceb0cf49b\n- https://github.com/ai/nanoid/releases/tag/3.3.17\n- https://github.com/ai/nanoid/commit/e10f8d40ce9d1ab47f66d65a16b48086432730d0\n- https://github.com/ai/nanoid/releases/tag/3.3.18\n- https://github.com/advisories/GHSA-2v37-7h3g-55p8",
+      "created": "2026-07-29T15:31:12.000Z",
+      "id": 1139427,
+      "npm_advisory_id": null,
+      "overview": "nanoid (Nano ID) before 5.1.6 contains an infinite loop in the customAlphabet and customRandom functions. When these functions are configured with a size of 0, the internal generation loop never satisfies its exit condition and spins indefinitely, hanging the calling thread. An application that passes an unvalidated, attacker-controlled size of 0 to these functions is exposed to a denial-of-service condition.",
+      "reported_by": null,
+      "title": "nanoid: custom generators can loop indefinitely when size is zero",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-67213"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "nanoid",
+      "vulnerable_versions": "<3.3.18",
+      "github_advisory_id": "GHSA-2v37-7h3g-55p8",
+      "recommendation": "Upgrade to version 3.3.18 or later",
+      "patched_versions": ">=3.3.18",
+      "updated": "2026-08-13T15:43:02.000Z",
+      "cvss": {
+        "score": 5.9,
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H"
+      },
+      "cwe": [
+        "CWE-835"
+      ],
+      "url": "https://github.com/advisories/GHSA-2v37-7h3g-55p8"
+    },
+    "1153189": {
+      "findings": [
+        {
+          "version": "3.3.11",
+          "paths": [
+            "packages__mastra>@mastra/core>@ai-sdk/ui-utils>@ai-sdk/provider-utils>nanoid"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/ai/nanoid/security/advisories/GHSA-xwg4-73v4-xw9w\n- https://nvd.nist.gov/vuln/detail/CVE-2026-73086\n- https://github.com/ai/nanoid/commit/7087969281cab8ba8ae3babf1894e819068b3bb4\n- https://github.com/ai/nanoid/commit/821dfed7b5db7f88e92f56c60eef32c8135077c3\n- https://github.com/ai/nanoid/commit/b0036ed60dc9facd7f1191a50dfb3076500202ac\n- https://github.com/ai/nanoid/releases/tag/3.3.12\n- https://github.com/ai/nanoid/releases/tag/5.1.11\n- https://github.com/advisories/GHSA-xwg4-73v4-xw9w",
+      "created": "2026-09-01T19:23:45.000Z",
+      "id": 1153189,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\nAn integer overflow in `nanoid(size)` permanently corrupts the process-wide CSPRNG pool, causing all subsequent ID generation to return the deterministic string `\"uuuuuuuuuuuuuuuuuuuuu\"`. Any application that passes user-influenced values to the `size` parameter loses all randomness guarantees for session tokens, CSRF tokens, and unique identifiers until process restart.\n\n### Details\n\n`nanoid()` at [`index.js:101`](https://github.com/ai/nanoid/blob/main/index.js#L101) coerces the `size` parameter with `size |= 0`, which converts it to a signed 32-bit integer. When `size >= 2^31` (e.g., `2147483648`), this wraps to `-2147483648`.\n\nThe negative value is passed to `fillPool()` ([`index.js:15`](https://github.com/ai/nanoid/blob/main/index.js#L15)):\n\n```javascript\nfunction fillPool(bytes) {\n  if (!pool || pool.length < bytes) {       // false: pool exists, -2B < pool.length\n    pool = Buffer.allocUnsafe(bytes * POOL_SIZE_MULTIPLIER)\n    crypto.getRandomValues(pool)\n    poolOffset = 0\n  } else if (poolOffset + bytes > pool.length) {  // false: poolOffset + (-2B) < pool.length\n    crypto.getRandomValues(pool)\n    poolOffset = 0\n  }\n  poolOffset += bytes  // poolOffset += -2147483648 → deeply negative\n}\n```\n\nNeither branch triggers, so the pool is never refreshed. `poolOffset` becomes ~-2.1 billion.\n\nSubsequent `nanoid()` calls execute:\n```javascript\nfor (let i = poolOffset - size; i < poolOffset; i++) {\n  id += scopedUrlAlphabet[pool[i] & 63]\n}\n```\n\n`pool[negative_index]` returns `undefined`. `undefined & 63` evaluates to `0`. `urlAlphabet[0]` is `'u'`. Every ID becomes `\"uuuuuuuuuuuuuuuuuuuuu\"`.\n\nThe corruption is **persistent** — it affects all subsequent calls in the process until ~100 million calls eventually wrap `poolOffset` back to positive, or the process restarts.\n\n### PoC\n\n```javascript\nimport { nanoid } from 'nanoid'\n\n// Step 1: Normal operation\nconsole.log(nanoid())  // e.g., \"V1StGXR8_Z5jdHi6B-myT\"\n\n// Step 2: Trigger overflow (e.g., from an API parameter)\ntry { nanoid(2147483648) } catch(e) {}\n\n// Step 3: All subsequent IDs are deterministic\nconsole.log(nanoid())  // \"uuuuuuuuuuuuuuuuuuuuu\"\nconsole.log(nanoid())  // \"uuuuuuuuuuuuuuuuuuuuu\"\nconsole.log(nanoid())  // \"uuuuuuuuuuuuuuuuuuuuu\"\n// ... forever, process-wide\n```\n\nRun with: `node --experimental-vm-modules poc.mjs`\n\nAttack scenario: Any API endpoint that accepts a user-controlled length/size parameter (URL shortener slug length, configurable token size, etc.) and passes it to `nanoid(userInput)`.\n\n### Impact\n\n**Complete loss of ID unpredictability and uniqueness, process-wide, from a single request.**\n\n- All session IDs, CSRF tokens, API keys, and database identifiers generated after the attack are identical and predictable\n- An attacker can predict all tokens issued to other users, enabling session hijacking and authentication bypass\n- The corruption is persistent (survives across requests) and affects all consumers of `nanoid` in the same process\n- No special privileges or preconditions required — a single unauthenticated request is sufficient\n- Affects any application that passes external input to the `size` parameter without validation",
+      "reported_by": null,
+      "title": "nanoid: Integer Overflow or Wraparound",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-73086"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "nanoid",
+      "vulnerable_versions": "<3.3.12",
+      "github_advisory_id": "GHSA-xwg4-73v4-xw9w",
+      "recommendation": "Upgrade to version 3.3.12 or later",
+      "patched_versions": ">=3.3.12",
+      "updated": "2026-09-01T19:23:46.000Z",
+      "cvss": {
+        "score": 7.4,
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"
+      },
+      "cwe": [
+        "CWE-190"
+      ],
+      "url": "https://github.com/advisories/GHSA-xwg4-73v4-xw9w"
+    },
+    "1158506": {
+      "findings": [
+        {
+          "version": "6.15.2",
+          "paths": [
+            "adapters__http-gateway>express>qs"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/ljharb/qs/security/advisories/GHSA-w7fw-mjwx-w883\n- https://github.com/ljharb/qs/security/advisories/GHSA-x5fp-wj9c-mxmx\n- https://nvd.nist.gov/vuln/detail/CVE-2026-82562\n- https://github.com/ljharb/qs/commit/8859c37470e11b42b547b275e4e9bd0bc8cc5464\n- https://github.com/advisories/GHSA-x5fp-wj9c-mxmx",
+      "created": "2026-09-02T14:46:57.000Z",
+      "id": 1158506,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\n`qs` `v6.15.3` allows bracket-key input to bypass `arrayLimit` and `throwOnLimitExceeded` when `comma: true`. The input `a[]=1,2,3,4` succeeds with `arrayLimit: 3`, while the equivalent plain-key input is rejected.\n\nAffected version tested:\n\n```text\nqs v6.15.3\ncommit 18d085e919dae70c8f1b200ab99323058edab2c2\n```\n\n### Details\n\n`parseArrayValue()` enforces the comma limit only for flat values. The `a[]` form is marked non-flat, so its comma-separated value is wrapped after parsing and the inner array is not checked. A single parameter can therefore materialize arbitrarily large arrays.\n\n### PoC\n\n```js\nconst qs = require('qs')\nconst options = { comma: true, arrayLimit: 3, throwOnLimitExceeded: true }\n\nconst result = qs.parse('a[]=1,2,3,4', options)\nconsole.log(result.a[0].length) // 4; expected RangeError\n\nconst big = qs.parse('a[]=' + '1,'.repeat(1000000) + '1', { comma: true, arrayLimit: 20 })\nconsole.log(big.a[0].length) // 1000001\n```\n\nOn `v6.15.3`, the first input parses successfully and the second creates an array with 1,000,001 elements. The equivalent `a=1,2,3,4` input throws `RangeError` as expected.\n\n### Impact\n\nAn attacker who can supply a query string or form body can bypass configured array limits and force excessive memory allocation, causing denial of service. The limit must be applied after comma splitting and before the resulting array is wrapped.",
+      "reported_by": null,
+      "title": "qs array-limit bypass via bracket-key comma parsing",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-82562"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "qs",
+      "vulnerable_versions": ">=6.14.2 <=6.15.3",
+      "github_advisory_id": "GHSA-x5fp-wj9c-mxmx",
+      "recommendation": "Upgrade to version 6.16.0 or later",
+      "patched_versions": ">=6.16.0",
+      "updated": "2026-09-02T14:46:58.000Z",
+      "cvss": {
+        "score": 3.7,
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L"
+      },
+      "cwe": [
+        "CWE-770"
+      ],
+      "url": "https://github.com/advisories/GHSA-x5fp-wj9c-mxmx"
+    },
+    "1158507": {
+      "findings": [
+        {
+          "version": "6.15.2",
+          "paths": [
+            "adapters__http-gateway>express>qs"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/ljharb/qs/security/advisories/GHSA-4mjr-xmp4-gh2g\n- https://nvd.nist.gov/vuln/detail/CVE-2026-82417\n- https://github.com/ljharb/qs/commit/e83d321ffafb38cf210683ac31714fce6ce1c6c6\n- https://github.com/advisories/GHSA-4mjr-xmp4-gh2g",
+      "created": "2026-09-02T14:45:13.000Z",
+      "id": 1158507,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\n`qs.stringify()` calls `utils.isBuffer()` on every value it serializes, and `utils.isBuffer()` invokes `obj.constructor.isBuffer(obj)` without checking that it is callable. A value whose own `constructor.isBuffer` is a non-function makes `qs` call a non-callable and throw `TypeError`. Such a value is produced **by `qs.parse` itself** from an untrusted query string when `plainObjects: true` or `allowPrototypes: true` is set, so a pure-`qs` `parse` → `stringify` round-trip — no `JSON.parse` — turns an unauthenticated query string into an uncaught throw.\n\nAn attacker-controlled `parse` input reaches the host application's availability asset — via `qs`'s own recommended `plainObjects` mitigation — and triggers an uncaught exception during a `parse` → `stringify` round-trip.\n\n### Details\n`utils.isBuffer` runs at `lib/stringify.js:127` for every serialized value:\n\n```js\nif (isNonNullishPrimitive(obj) || utils.isBuffer(obj)) { ... }\n```\n\n`utils.isBuffer` (`lib/utils.js:327-333`) invokes `obj.constructor.isBuffer` without verifying it is callable:\n\n```js\nvar isBuffer = function isBuffer(obj) {\n    if (!obj || typeof obj !== 'object') { return false; }\n    return !!(obj.constructor && obj.constructor.isBuffer && obj.constructor.isBuffer(obj));\n};\n```\n\n`constructor` and `isBuffer` are ordinary keys. `qs.parse` with `plainObjects: true` or `allowPrototypes: true` keeps them as own properties, so the parsed value carries a non-function `constructor.isBuffer`; `stringify` then calls a non-callable and throws `TypeError`. By contrast `utils.isRegExp` uses a brand check (`Object.prototype.toString`); the missing guard here is an internal inconsistency, not a platform limitation.\n\n\n### Trust Boundary Note\n\n`qs.stringify` alone treats its input as caller-constructed, so serializing a hostile object could be argued outside its contract. This report does not depend on that framing: the malicious shape is produced by **`qs.parse`, whose input is untrusted by design**. `qs.parse` normally strips a `constructor` key via its prototype guard, but with the documented options `plainObjects: true` or `allowPrototypes: true` the key survives and lands as an own property. Feeding the parsed object back into `qs.stringify` — the standard round-trip in gateways and request-forwarders — then hits the unchecked call. \n\n\n### PoC\n`poc02c_isBuffer_qs_only_roundtrip.js` — pure-`qs` chain, no `JSON.parse`; an untrusted query string alone reaches the throw:\n\n```js\n'use strict';\nvar qs = require('qs');\n\nvar untrustedQueryString = 'x%5Bconstructor%5D%5BisBuffer%5D=y'; // x[constructor][isBuffer]=y\n\nvar parsed = qs.parse(untrustedQueryString, { plainObjects: true });\nconsole.log('[parse] kept constructor key:', JSON.stringify(parsed));\n\ntry {\n    qs.stringify(parsed);\n    console.log('[stringify] no throw (unexpected)');\n} catch (e) {\n    console.log('[stringify] DoS reproduced ->', e.constructor.name + ':', e.message);\n}\n```\n\n`poc02_isBuffer.js` — the minimal defect:\n\n```js\n'use strict';\nvar qs = require('qs');\ntry {\n    qs.stringify(JSON.parse('{\"a\":{\"constructor\":{\"isBuffer\":\"x\"}}}'));\n} catch (e) {\n    console.log('[A] DoS reproduced ->', e.constructor.name + ':', e.message);\n}\n```\n\n`poc02b_isBuffer_async_crash.js` — worker death in an async sink:\n\n```js\n'use strict';\nvar qs = require('qs');\n\nfunction handleRequestAsync(clientJsonBody) {\n    try {\n        setImmediate(function () {                 // async continuation, outside the try\n            qs.stringify(JSON.parse(clientJsonBody)); // throws here, uncaught\n        });\n        console.log('[handler] returned 200 synchronously; async work scheduled');\n    } catch (e) {\n        console.log('[handler] caught synchronously (will NOT happen):', e.message);\n    }\n}\nprocess.on('exit', function (code) {\n    console.log('[proc] process exiting with code:', code);\n});\nhandleRequestAsync('{\"filters\":{\"constructor\":{\"isBuffer\":\"x\"}}}');\n```\n\n### Execution Steps\n\n```bash\ncd poc\nnpm install qs@6.15.3\nnode poc02c_isBuffer_qs_only_roundtrip.js  # pure qs parse->stringify -> TypeError\nnode poc02_isBuffer.js                      # minimal defect -> TypeError inside stringify\nnode poc02b_isBuffer_async_crash.js         # async sink -> uncaught throw -> exit code 1\n```\n\n### Reproduction Evidence\n\n`poc02c_isBuffer_qs_only_roundtrip.js` :\n\n```\n[parse] kept constructor key: {\"x\":{\"constructor\":{\"isBuffer\":\"y\"}}}\n[stringify] DoS reproduced -> TypeError: obj.constructor.isBuffer is not a function\n```\n\n`poc02_isBuffer.js`:\n\n```\n[A] DoS reproduced -> TypeError: obj.constructor.isBuffer is not a function\n```\n\n`poc02b_isBuffer_async_crash.js` :\n\n```\n[handler] returned 200 synchronously; async work scheduled\n[proc] process exiting with code: 1\nTypeError: obj.constructor.isBuffer is not a function\n    at Object.isBuffer (.../qs/lib/utils.js:332:78)\n    at stringify (.../qs/lib/stringify.js:127:45)\n=== EXIT CODE: 1 ===\n```\n\nThe pure-`qs` round-trip shows the malicious shape originates from `qs.parse` of an untrusted query string, with no `JSON.parse`. The synchronous `try/catch` in the async case does not catch the throw; the process exits with code 1, denying service to all requests on that worker.\n\n### Impact\n\nAn unauthenticated request degrades any endpoint that re-serializes deserialized client data with `qs.stringify`. The primary impact is a per-request failure: the handler throws and the framework returns HTTP 500. Where the call sits in an unguarded async continuation, the throw escapes and the worker process exits, denying service to all requests it was handling, which means a higher impact that depends on the application's error handling, not on `qs`.\n\n### Recommended Fix\n\nReplace the duck-type with a brand check mirroring `utils.isRegExp`:\n\n```js\nvar isBuffer = function isBuffer(obj) {\n    if (!obj || typeof obj !== 'object') { return false; }\n    if (typeof Buffer !== 'undefined' && typeof Buffer.isBuffer === 'function') {\n        return Buffer.isBuffer(obj);\n    }\n    return Object.prototype.toString.call(obj) === '[object Uint8Array]';\n};\n```\n\nIf duck-typing must remain, require `typeof obj.constructor.isBuffer === 'function'` before invoking and wrap the call in `try/catch`.",
+      "reported_by": null,
+      "title": "qs: Denial of Service via Attacker Controlled isBuffer",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-82417"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "qs",
+      "vulnerable_versions": ">=2.2.5 <6.16.0",
+      "github_advisory_id": "GHSA-4mjr-xmp4-gh2g",
+      "recommendation": "Upgrade to version 6.16.0 or later",
+      "patched_versions": ">=6.16.0",
+      "updated": "2026-09-02T14:45:15.000Z",
+      "cvss": {
+        "score": 5.3,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+      },
+      "cwe": [
+        "CWE-248",
+        "CWE-703"
+      ],
+      "url": "https://github.com/advisories/GHSA-4mjr-xmp4-gh2g"
+    },
+    "1158524": {
+      "findings": [
+        {
+          "version": "3.1.2",
+          "paths": [
+            "packages__mastra>@mastra/core>ajv>fast-uri"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/fastify/fast-uri/security/advisories/GHSA-f65p-4m7j-42xc\n- https://nvd.nist.gov/vuln/detail/CVE-2026-75975\n- https://github.com/fastify/fast-uri/commit/3728465caacef4b16bc84b7d14760f1c8fe41595\n- https://github.com/fastify/fast-uri/commit/607bfbe953f28a14c2e06ae64aff38c81ca2937f\n- https://github.com/fastify/fast-uri/commit/9161eded1ff55fad9d9714c6ad6c0f0283547799\n- https://cna.openjsf.org/security-advisories.html\n- https://github.com/fastify/fast-uri/releases/tag/v2.4.5\n- https://github.com/fastify/fast-uri/releases/tag/v3.1.6\n- https://github.com/fastify/fast-uri/releases/tag/v4.1.3\n- https://github.com/advisories/GHSA-f65p-4m7j-42xc",
+      "created": "2026-09-02T15:43:30.000Z",
+      "id": 1158524,
+      "npm_advisory_id": null,
+      "overview": "### Impact\n\n`fast-uri` does not validate the complete RFC 3986 grammar for bracketed IPv6 literals, so a malformed literal with invalid trailing text is silently truncated to a different valid IPv6 address with no error reported. For example, `normalize('http://[::not-valid]/private')` returns `http://[::]/private`, and `[fc00::not-hex]` and `[fe80::not-hex]` collapse to `[fc00::]` and `[fe80::]`. An application that normalizes an untrusted URL before an outbound request, redirect, or host-policy check can be routed to a local or private address such as loopback (`::1`), unique-local, or link-local. Because `parse().error` is unset for these inputs, checking it does not protect the consumer.\n\n### Patches\n\nUpgrade to `fast-uri` 2.4.5, 3.1.6, or 4.1.3. Malformed IPv6 literals are now rejected with a host error instead of being normalized to a valid address.\n\n### Workarounds\n\nReject untrusted URLs whose host is a bracketed IPv6 literal before passing them to `fast-uri`, or route outbound requests against an explicit allowlist of addresses rather than trusting the normalized host.",
+      "reported_by": null,
+      "title": "fast-uri vulnerable to server-side request forgery via malformed IPv6 normalization",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-75975"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "fast-uri",
+      "vulnerable_versions": ">=3.0.0 <3.1.6",
+      "github_advisory_id": "GHSA-f65p-4m7j-42xc",
+      "recommendation": "Upgrade to version 3.1.6 or later",
+      "patched_versions": ">=3.1.6",
+      "updated": "2026-09-02T15:43:32.000Z",
+      "cvss": {
+        "score": 7.5,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+      },
+      "cwe": [
+        "CWE-20",
+        "CWE-918"
+      ],
+      "url": "https://github.com/advisories/GHSA-f65p-4m7j-42xc"
+    },
+    "1158527": {
+      "findings": [
+        {
+          "version": "3.1.2",
+          "paths": [
+            "packages__mastra>@mastra/core>ajv>fast-uri"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/fastify/fast-uri/security/advisories/GHSA-fph4-wmhf-6fwf\n- https://nvd.nist.gov/vuln/detail/CVE-2026-75899\n- https://github.com/fastify/fast-uri/commit/2642290672e7211c990aaed3749c2ce667d0af4f\n- https://github.com/fastify/fast-uri/commit/8c15dbe94ec50bb8e595791ebb42c35cef0fd304\n- https://github.com/fastify/fast-uri/commit/ae92a4c5d8c4b6c9e447f048d5fcbde7eebd5514\n- https://cna.openjsf.org/security-advisories.html\n- https://github.com/fastify/fast-uri/releases/tag/v2.4.5\n- https://github.com/fastify/fast-uri/releases/tag/v3.1.6\n- https://github.com/fastify/fast-uri/releases/tag/v4.1.3\n- https://github.com/advisories/GHSA-fph4-wmhf-6fwf",
+      "created": "2026-09-02T15:42:39.000Z",
+      "id": 1158527,
+      "npm_advisory_id": null,
+      "overview": "### Impact\n\n`fast-uri` decodes a hostname's percent escapes twice in a single `normalize()` or `resolve()` call: once during parsing and again during authority recomposition. A nested percent-encoded host therefore survives the first decode and is turned into a live destination by the second, so `normalize('http://%256c%256f%2563%2561%256c%2568%256f%2573%2574/')` returns `http://localhost/`. Applications that normalize or resolve an untrusted URI before an SSRF check, redirect validation, or host allowlist can be steered to a different destination, including internal addresses such as loopback or a cloud metadata endpoint, than the encoded input appeared to contain. This is an incomplete-fix variant of CVE-2026-6322, whose encoded-authority-delimiter fix introduced the second decode.\n\n### Patches\n\nFixed in `fast-uri` 2.4.5, 3.1.6, and 4.1.3.\n\n### Workarounds\n\nReject untrusted URIs whose host component contains an encoded percent sign (`%25`) before passing them to `normalize()` or `resolve()`.",
+      "reported_by": null,
+      "title": "fast-uri vulnerable to server-side request forgery via repeated hostname percent-decoding",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-75899"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "fast-uri",
+      "vulnerable_versions": ">=3.1.2 <3.1.6",
+      "github_advisory_id": "GHSA-fph4-wmhf-6fwf",
+      "recommendation": "Upgrade to version 3.1.6 or later",
+      "patched_versions": ">=3.1.6",
+      "updated": "2026-09-02T15:42:41.000Z",
+      "cvss": {
+        "score": 7.5,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+      },
+      "cwe": [
+        "CWE-174",
+        "CWE-918"
+      ],
+      "url": "https://github.com/advisories/GHSA-fph4-wmhf-6fwf"
+    },
+    "1158530": {
+      "findings": [
+        {
+          "version": "3.1.2",
+          "paths": [
+            "packages__mastra>@mastra/core>ajv>fast-uri"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/fastify/fast-uri/security/advisories/GHSA-jqff-g426-hqxp\n- https://nvd.nist.gov/vuln/detail/CVE-2026-76172\n- https://github.com/fastify/fast-uri/commit/37f3417c82994279656854f83ce938acd81c3862\n- https://github.com/fastify/fast-uri/commit/a941e626411f576f8d90883231e57b6c9d0ff98b\n- https://github.com/fastify/fast-uri/commit/c6a74bfd9d8c6b0df5362b3c7ae88d8021cb1e39\n- https://cna.openjsf.org/security-advisories.html\n- https://github.com/fastify/fast-uri/releases/tag/v2.4.5\n- https://github.com/fastify/fast-uri/releases/tag/v3.1.6\n- https://github.com/fastify/fast-uri/releases/tag/v4.1.3\n- https://github.com/advisories/GHSA-jqff-g426-hqxp",
+      "created": "2026-09-02T15:41:53.000Z",
+      "id": 1158530,
+      "npm_advisory_id": null,
+      "overview": "### Impact\n\n`fast-uri` decodes percent-encoded characters in the scheme component with the legacy global `unescape()` and serializes the result back as raw characters, without re-escaping it or validating it as a scheme. A scheme that decodes to characters outside the RFC 3986 scheme grammar can therefore introduce structure the original input did not contain.\n\nFor example, `%2f%2fevil.example:/pwn` parses with no authority (`parse().host` is `undefined`), but `resolve()` and `normalize()` return `//evil.example:/pwn`, which reparses with host `evil.example`. The `%uXXXX` form (`%u002f%u002fevil.example:/pwn`) produces the same result, and a scheme containing `%0d%0a` reaches the output as a raw CR LF.\n\nApplications that normalize or resolve untrusted URLs before a redirect check, host allowlist, or outbound request decision, especially ones that treat a missing authority as same-origin, can be steered to an attacker-chosen authority, and a normalized URI placed in a response header can carry an injected CR LF.\n\n### Patches\n\nUpgrade to `fast-uri` >= 4.1.3, or >= 3.1.6 in the v3.x release line, or >= 2.4.5 in the v2.x release line.\n\n### Workarounds\n\nNone. Upgrade to the patched version.",
+      "reported_by": null,
+      "title": "fast-uri vulnerable to host confusion via percent-encoded scheme normalization",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-76172"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "fast-uri",
+      "vulnerable_versions": ">=3.0.0 <3.1.6",
+      "github_advisory_id": "GHSA-jqff-g426-hqxp",
+      "recommendation": "Upgrade to version 3.1.6 or later",
+      "patched_versions": ">=3.1.6",
+      "updated": "2026-09-02T15:41:56.000Z",
+      "cvss": {
+        "score": 7.5,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+      },
+      "cwe": [
+        "CWE-177"
+      ],
+      "url": "https://github.com/advisories/GHSA-jqff-g426-hqxp"
+    },
+    "1193659": {
+      "findings": [
+        {
+          "version": "4.0.27",
+          "paths": [
+            "packages__mastra>@mastra/core>@ai-sdk/provider-utils"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://nvd.nist.gov/vuln/detail/CVE-2026-8769\n- https://gist.github.com/YLChen-007/fb1096bc8428bed9a428f764d9d103bb\n- https://vuldb.com/submit/811406\n- https://vuldb.com/vuln/364394\n- https://vuldb.com/vuln/364394/cti\n- https://github.com/vercel/ai/pull/16374\n- https://github.com/vercel/ai/commit/6a436e31d247d678ddaedfc6f61e73ac0595e4b4\n- https://github.com/vercel/ai/commit/b30e43ac3fae2432a40b4f4f27f844f3d78b119e\n- https://github.com/vercel/ai/commit/b85c4fbc603b8173cf50a9790823397aada908a9\n- https://github.com/vercel/ai/blob/main/packages/provider-utils/CHANGELOG.md#501\n- https://github.com/vercel/ai/releases/tag/@ai-sdk/provider-utils@3.0.28\n- https://github.com/vercel/ai/releases/tag/@ai-sdk/provider-utils@4.0.33\n- https://github.com/vercel/ai/releases/tag/@ai-sdk/provider-utils@5.0.1\n- https://github.com/advisories/GHSA-866g-f22w-33x8",
+      "created": "2026-05-18T00:31:37.000Z",
+      "id": 1193659,
+      "npm_advisory_id": null,
+      "overview": "Versions of `@ai-sdk/provider-utils` before 3.0.28, from 4.0.0 before 4.0.33, and from 5.0.0 before 5.0.1 are vulnerable to uncontrolled resource consumption. The `createJsonResponseHandler`, `createJsonErrorResponseHandler`, and `createStatusCodeErrorResponseHandler` functions in `packages/provider-utils/src/response-handler.ts` read response bodies without a shared size limit, allowing a remote attacker with low privileges to cause excessive memory consumption. The exploit has been publicly disclosed and may be utilized.",
+      "reported_by": null,
+      "title": "@ai-sdk/provider-utils has an Uncontrolled Resource Consumption issue",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-8769"
+      ],
+      "access": "public",
+      "severity": "low",
+      "module_name": "@ai-sdk/provider-utils",
+      "vulnerable_versions": ">=4.0.0-beta.10 <4.0.33",
+      "github_advisory_id": "GHSA-866g-f22w-33x8",
+      "recommendation": "Upgrade to version 4.0.33 or later",
+      "patched_versions": ">=4.0.33",
+      "updated": "2026-09-08T16:16:51.000Z",
+      "cvss": {
+        "score": 4.3,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:L"
+      },
+      "cwe": [
+        "CWE-400"
+      ],
+      "url": "https://github.com/advisories/GHSA-866g-f22w-33x8"
+    },
+    "1193660": {
+      "findings": [
+        {
+          "version": "2.2.8",
+          "paths": [
+            "packages__mastra>@mastra/core>@ai-sdk/ui-utils>@ai-sdk/provider-utils"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://nvd.nist.gov/vuln/detail/CVE-2026-8769\n- https://gist.github.com/YLChen-007/fb1096bc8428bed9a428f764d9d103bb\n- https://vuldb.com/submit/811406\n- https://vuldb.com/vuln/364394\n- https://vuldb.com/vuln/364394/cti\n- https://github.com/vercel/ai/pull/16374\n- https://github.com/vercel/ai/commit/6a436e31d247d678ddaedfc6f61e73ac0595e4b4\n- https://github.com/vercel/ai/commit/b30e43ac3fae2432a40b4f4f27f844f3d78b119e\n- https://github.com/vercel/ai/commit/b85c4fbc603b8173cf50a9790823397aada908a9\n- https://github.com/vercel/ai/blob/main/packages/provider-utils/CHANGELOG.md#501\n- https://github.com/vercel/ai/releases/tag/@ai-sdk/provider-utils@3.0.28\n- https://github.com/vercel/ai/releases/tag/@ai-sdk/provider-utils@4.0.33\n- https://github.com/vercel/ai/releases/tag/@ai-sdk/provider-utils@5.0.1\n- https://github.com/advisories/GHSA-866g-f22w-33x8",
+      "created": "2026-05-18T00:31:37.000Z",
+      "id": 1193660,
+      "npm_advisory_id": null,
+      "overview": "Versions of `@ai-sdk/provider-utils` before 3.0.28, from 4.0.0 before 4.0.33, and from 5.0.0 before 5.0.1 are vulnerable to uncontrolled resource consumption. The `createJsonResponseHandler`, `createJsonErrorResponseHandler`, and `createStatusCodeErrorResponseHandler` functions in `packages/provider-utils/src/response-handler.ts` read response bodies without a shared size limit, allowing a remote attacker with low privileges to cause excessive memory consumption. The exploit has been publicly disclosed and may be utilized.",
+      "reported_by": null,
+      "title": "@ai-sdk/provider-utils has an Uncontrolled Resource Consumption issue",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-8769"
+      ],
+      "access": "public",
+      "severity": "low",
+      "module_name": "@ai-sdk/provider-utils",
+      "vulnerable_versions": "<3.0.28",
+      "github_advisory_id": "GHSA-866g-f22w-33x8",
+      "recommendation": "Upgrade to version 3.0.28 or later",
+      "patched_versions": ">=3.0.28",
+      "updated": "2026-09-08T16:16:51.000Z",
+      "cvss": {
+        "score": 4.3,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:L"
+      },
+      "cwe": [
+        "CWE-400"
+      ],
+      "url": "https://github.com/advisories/GHSA-866g-f22w-33x8"
+    },
+    "1193726": {
+      "findings": [
+        {
+          "version": "3.14.2",
+          "paths": [
+            "packages__mastra>@mastra/core>gray-matter>js-yaml"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/nodeca/js-yaml/security/advisories/GHSA-2883-xcg3-v3hh\n- https://nvd.nist.gov/vuln/detail/CVE-2026-84375\n- https://github.com/nodeca/js-yaml/pull/797\n- https://github.com/nodeca/js-yaml/commit/3485bc06ff8a0251505f44a00414d90df2466639\n- https://github.com/nodeca/js-yaml/commit/6a8e05f9a485188ed730ac81e81ae221352ef480\n- https://github.com/nodeca/js-yaml/commit/d90b6612a5a84385bdcb556c44578eac76dc0f6b\n- https://github.com/nodeca/js-yaml/releases/tag/3.15.2\n- https://github.com/nodeca/js-yaml/releases/tag/4.3.2\n- https://github.com/advisories/GHSA-2883-xcg3-v3hh",
+      "created": "2026-09-08T21:24:51.000Z",
+      "id": 1193726,
+      "npm_advisory_id": null,
+      "overview": "## Summary\n\n`maxTotalMergeKeys` does not count empty mappings. An attacker can repeatedly merge a large sequence of them and consume significant CPU without reaching the configured limit.\n\n## Example\n\n```yaml\narr: &arr [{}, {}, {}, ...] # N empty mappings\ntargets:\n  - <<: *arr                # repeated K times\n```\n\nFor every target, the loader iterates all `N` elements of `arr`. This results in `O(N * K)` work while `totalMergeKeys` remains unchanged.\n\n## PoC\n\n```js\nimport { performance } from 'node:perf_hooks'\nimport { load, YAML11_SCHEMA } from 'js-yaml'\n\nconst n = 20000\n\nconst src =\n  'arr: &arr [' + '{},'.repeat(n).slice(0, -1) + ']\\n' +\n  'targets:\\n' +\n  '  - <<: *arr\\n'.repeat(n)\n\nconst started = performance.now()\n\nload(src, { schema: YAML11_SCHEMA })\n\nconsole.log(`${(performance.now() - started).toFixed(1)} ms`)\n```\n\nObserved results:\n\n| N | YAML size | Time |\n|---:|---:|---:|\n| 800 | ~13 KB | ~20 ms |\n| 3200 | ~50 KB | ~180 ms |\n| 20000 | ~500 KB | ~13 s |\n\n## Impact\n\nAn attacker can submit a relatively small YAML document that causes prolonged CPU consumption despite the default `maxTotalMergeKeys` limit.\n\n## Fix\n\nCount each merge-source mapping as one budget unit, in addition to counting its keys.\n\n## Difference with v5\n\nIn v3 & v4, merge is enabled by default. So, the severity score is higher.",
+      "reported_by": null,
+      "title": "js-yaml: maxTotalMergeKeys does not limit CPU use for empty merge sources",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-84375"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "js-yaml",
+      "vulnerable_versions": ">=3.0.0 <3.15.2",
+      "github_advisory_id": "GHSA-2883-xcg3-v3hh",
+      "recommendation": "Upgrade to version 3.15.2 or later",
+      "patched_versions": ">=3.15.2",
+      "updated": "2026-09-08T21:24:52.000Z",
+      "cvss": {
+        "score": 7.5,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+      },
+      "cwe": [
+        "CWE-400",
+        "CWE-407"
+      ],
+      "url": "https://github.com/advisories/GHSA-2883-xcg3-v3hh"
+    },
+    "1193729": {
+      "findings": [
+        {
+          "version": "4.12.23",
+          "paths": [
+            "packages__mastra>@mastra/core>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-gqvv-2mrq-wpjv\n- https://nvd.nist.gov/vuln/detail/CVE-2026-84365\n- https://github.com/honojs/hono/commit/3a67f7f3997e1437d108f7bcba2dbcee2df69221\n- https://github.com/honojs/hono/releases/tag/v4.13.5\n- https://github.com/advisories/GHSA-gqvv-2mrq-wpjv",
+      "created": "2026-09-08T21:23:51.000Z",
+      "id": 1193729,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\nThe fix released for CVE-2026-39408 does not cover every traversal sequence. `toSSG()` can still write files outside the configured output directory when a route parameter contains consecutive parent-directory segments.\n\n### Details\n\nStatic site generation builds each output path from the route path and the values supplied through `ssgParams`, then verifies that the result stays inside the output directory. That check normalizes the path with the same routine that built it, and the routine did not fully collapse runs of consecutive parent-directory segments. A value carrying enough of them produces a path the check accepts, but the filesystem resolves outside the output directory.\n\nThe earlier fix handled a single parent-directory segment, so it blocks the sequence reported at the time while leaving longer runs unhandled. The check also treated output directories that differ only in how they are rooted as equivalent.\n\nThis arises when an application generates a static site from route parameter values it does not fully control — slugs coming from a CMS, an API, or user submissions.\n\n### Impact\n\nA value reaching `ssgParams` from an untrusted source can cause build output to be written outside the intended output directory, carrying whatever content the route handler produced.\n\nThis may lead to:\n\n- files being created or overwritten elsewhere in the build environment\n- generated artifacts or deployment output being altered\n\nThis affects build-time static site generation only; request-time routing is not affected. Applications whose `ssgParams` values are entirely developer-controlled are not affected.",
+      "reported_by": null,
+      "title": "Hono: Incomplete fix for CVE-2026-39408: `toSSG()` still writes files outside the output directory",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-84365"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "hono",
+      "vulnerable_versions": "<4.13.5",
+      "github_advisory_id": "GHSA-gqvv-2mrq-wpjv",
+      "recommendation": "Upgrade to version 4.13.5 or later",
+      "patched_versions": ">=4.13.5",
+      "updated": "2026-09-08T21:23:51.000Z",
+      "cvss": {
+        "score": 6.5,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N"
+      },
+      "cwe": [
+        "CWE-22"
+      ],
+      "url": "https://github.com/advisories/GHSA-gqvv-2mrq-wpjv"
+    },
+    "1193730": {
+      "findings": [
+        {
+          "version": "4.12.23",
+          "paths": [
+            "packages__mastra>@mastra/core>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-g6gw-c38x-mqfc\n- https://nvd.nist.gov/vuln/detail/CVE-2026-84364\n- https://github.com/honojs/hono/commit/531e9c5a3ae058d10de33f643055bd4009a87178\n- https://github.com/honojs/hono/releases/tag/v4.13.5\n- https://github.com/advisories/GHSA-g6gw-c38x-mqfc",
+      "created": "2026-09-08T21:23:02.000Z",
+      "id": 1193730,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\nWhen `parseBody()` expands dot-separated form field names into nested objects, it does not limit the nesting depth or the total number of objects created. A request body well within a normal size limit can therefore allocate an object graph far larger than the request itself, and concurrent requests can exhaust the heap and terminate the process.\n\n### Details\n\nEach dot-separated segment of a field name creates an intermediate object. Neither the segments within a single field name nor the total across a request was bounded, and empty segments were preserved, so a field name could encode one nesting level per byte.\n\nBoth shapes produce the effect: a single deeply dotted field name, and a large number of shallowly dotted ones within one body. A request body size limit does not prevent it, because the amplification happens after the body has been accepted.\n\nDot-notation parsing is not enabled by default.\n\n### Impact\n\nAn attacker who can reach an endpoint that parses request bodies with dot-notation enabled can send concurrent requests whose memory cost is disproportionate to their size.\n\nThis may lead to:\n\n- exhaustion of the JavaScript heap and termination of the server process\n- the service remaining unavailable until it is restarted\n\nThis issue affects applications that explicitly enable dot-notation parsing. Applications using the default behaviour are not affected.",
+      "reported_by": null,
+      "title": "Hono: Unbounded dot-notation nesting in `parseBody()` can cause memory exhaustion",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-84364"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "hono",
+      "vulnerable_versions": "<4.13.5",
+      "github_advisory_id": "GHSA-g6gw-c38x-mqfc",
+      "recommendation": "Upgrade to version 4.13.5 or later",
+      "patched_versions": ">=4.13.5",
+      "updated": "2026-09-08T21:23:04.000Z",
+      "cvss": {
+        "score": 5.3,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+      },
+      "cwe": [
+        "CWE-400"
+      ],
+      "url": "https://github.com/advisories/GHSA-g6gw-c38x-mqfc"
+    },
+    "1193731": {
+      "findings": [
+        {
+          "version": "4.12.23",
+          "paths": [
+            "packages__mastra>@mastra/core>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-crvj-82cr-hjcx\n- https://nvd.nist.gov/vuln/detail/CVE-2026-84363\n- https://github.com/honojs/hono/commit/9c28d724c5a7fb086ebaa812fdc1ad6e957c63bc\n- https://github.com/honojs/hono/releases/tag/v4.13.5\n- https://github.com/advisories/GHSA-crvj-82cr-hjcx",
+      "created": "2026-09-08T21:22:50.000Z",
+      "id": 1193731,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\nHono's query parsing does not stop at the URL fragment: a `?` appearing after a `#` is treated as the start of a query string. As a result, the application can read request parameters that no other component involved in handling the request can see.\n\n### Details\n\nA fragment is never part of the query, and every standard URL consumer — browsers, `new URL()`, reverse proxies — ignores everything from the first `#` onward. Hono's routing followed that rule; its query helpers did not.\n\nFor one and the same request, this produces an interpretation differential:\n\n- A component in front of the application that inspects the query string — filtering rules, parameter allow/deny lists, access logging — observes no parameters, while the application reads and acts on them.\n- The cache middleware removed the fragment when building its cache key, so a response influenced by parameters carried inside the fragment could be stored under a key that did not reflect them and later returned to other users.\n\nThe same divergence reaches request validation and any middleware that reads query parameters.\n\nThis requires a request target containing a literal `#` to reach the application. Deployments on runtimes that normalise such a target — including Cloudflare Workers — are not affected, and neither are those behind an intermediary that strips the fragment.\n\n### Impact\n\nAn attacker can cause the application to act on parameters that components in front of it never observe.\n\nThis may lead to:\n\n- filtering rules, allow/deny lists, and audit logging being blind to parameters the application still processes\n- a cached response being stored under a key that does not reflect the parameters used to produce it, and served to other users\n- stored cross-site scripting, where such a parameter is reflected into a cached HTML response without escaping\n\nThis issue affects applications that read query parameters and run on a runtime that passes a literal `#` through to the request URL.",
+      "reported_by": null,
+      "title": "Hono: Query parser reads parameters after the URL fragment, causing cache-key and proxy interpretation differentials",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-84363"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "hono",
+      "vulnerable_versions": "<4.13.5",
+      "github_advisory_id": "GHSA-crvj-82cr-hjcx",
+      "recommendation": "Upgrade to version 4.13.5 or later",
+      "patched_versions": ">=4.13.5",
+      "updated": "2026-09-08T21:22:51.000Z",
+      "cvss": {
+        "score": 5.9,
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:N"
+      },
+      "cwe": [
+        "CWE-444"
+      ],
+      "url": "https://github.com/advisories/GHSA-crvj-82cr-hjcx"
+    },
+    "1204921": {
+      "findings": [
+        {
+          "version": "3.1.2",
+          "paths": [
+            "packages__mastra>@mastra/core>ajv>fast-uri"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/fastify/fast-uri/security/advisories/GHSA-4c8g-83qw-93j6\n- https://nvd.nist.gov/vuln/detail/CVE-2026-13676\n- https://github.com/fastify/fast-uri/pull/188\n- https://github.com/fastify/fast-uri/commit/2a6d357a18a68e6d812824379fd3388a1ae50d05\n- https://github.com/fastify/fast-uri/commit/21ea1f9d70495c931f55dff893a8fa38f4f2e6bd\n- https://github.com/fastify/fast-uri/commit/01db48010f594b98f7b323be18b393791c66ed1d\n- https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-13676.json\n- https://github.com/fastify/fast-uri/releases/tag/v4.0.1\n- https://github.com/fastify/fast-uri/releases/tag/v3.1.3\n- https://github.com/fastify/fast-uri/releases/tag/v2.4.2\n- https://cna.openjsf.org/security-advisories.html\n- https://bugzilla.redhat.com/show_bug.cgi?id=2494197\n- https://access.redhat.com/security/cve/CVE-2026-13676\n- https://access.redhat.com/errata/RHSA-2026:41929\n- https://access.redhat.com/errata/RHSA-2026:41928\n- https://access.redhat.com/errata/RHSA-2026:41066\n- https://access.redhat.com/errata/RHSA-2026:40945\n- https://access.redhat.com/errata/RHSA-2026:40262\n- https://access.redhat.com/errata/RHSA-2026:40118\n- https://access.redhat.com/errata/RHSA-2026:37628\n- https://access.redhat.com/errata/RHSA-2026:37585\n- https://access.redhat.com/errata/RHSA-2026:37186\n- https://access.redhat.com/errata/RHSA-2026:43038\n- https://access.redhat.com/errata/RHSA-2026:42815\n- https://access.redhat.com/errata/RHSA-2026:40765\n- https://access.redhat.com/errata/RHSA-2026:44239\n- https://access.redhat.com/errata/RHSA-2026:44268\n- https://access.redhat.com/errata/RHSA-2026:48126\n- https://access.redhat.com/errata/RHSA-2026:48124\n- https://access.redhat.com/errata/RHSA-2026:49642\n- https://access.redhat.com/errata/RHSA-2026:50479\n- https://access.redhat.com/errata/RHSA-2026:50340\n- https://access.redhat.com/errata/RHSA-2026:47728\n- https://access.redhat.com/errata/RHSA-2026:51196\n- https://access.redhat.com/errata/RHSA-2026:51197\n- https://access.redhat.com/errata/RHSA-2026:51342\n- https://access.redhat.com/errata/RHSA-2026:51348\n- https://access.redhat.com/errata/RHSA-2026:51349\n- https://access.redhat.com/errata/RHSA-2026:50758\n- https://access.redhat.com/errata/RHSA-2026:54760\n- https://access.redhat.com/errata/RHSA-2026:56366\n- https://access.redhat.com/errata/RHSA-2026:56431\n- https://access.redhat.com/errata/RHSA-2026:57013\n- https://access.redhat.com/errata/RHSA-2026:57191\n- https://access.redhat.com/errata/RHSA-2026:57194\n- https://access.redhat.com/errata/RHSA-2026:57590\n- https://access.redhat.com/errata/RHSA-2026:59593\n- https://access.redhat.com/errata/RHSA-2026:60386\n- https://access.redhat.com/errata/RHSA-2026:60520\n- https://access.redhat.com/errata/RHSA-2026:61314\n- https://access.redhat.com/errata/RHSA-2026:63371\n- https://access.redhat.com/errata/RHSA-2026:66488\n- https://access.redhat.com/errata/RHSA-2026:66545\n- https://github.com/advisories/GHSA-4c8g-83qw-93j6",
+      "created": "2026-07-21T19:03:11.000Z",
+      "id": 1204921,
+      "npm_advisory_id": null,
+      "overview": "### Impact\n\n`fast-uri` versions `>= 2.3.1, <= 4.0.0` fail to canonicalize Unicode/IDN hostnames for HTTP-family URLs. The IDN conversion path calls `URL.domainToASCII(...)` on the global WHATWG `URL` constructor, where that helper does not exist. The resulting `TypeError` is silently routed into `parsed.error`, but `parse()`, `normalize()`, and `equal()` all return with the host left in its original Unicode form.\n\nFor example, `http://127。0。0。1/` is treated by `fast-uri` as host `127。0。0。1`, while Node's WHATWG URL parser and `fetch()` canonicalize the same input to `127.0.0.1`.\n\nApplications that use `fast-uri` to enforce host-based policy (denylists, loopback filtering, redirect validation, outbound proxy routing) before passing the same URL into Node's URL or `fetch()` consumers see a policy/use desync and can be steered to an unintended destination.\n\n### Patches\n\nUpgrade to `fast-uri` v4.0.1, v3.1.3, or v2.4.2\n\n### Workarounds\n\nNone. Upgrade to the patched version.",
+      "reported_by": null,
+      "title": "fast-uri vulnerable to host confusion via failed IDN canonicalization",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-13676"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "fast-uri",
+      "vulnerable_versions": ">=3.0.0 <3.1.3",
+      "github_advisory_id": "GHSA-4c8g-83qw-93j6",
+      "recommendation": "Upgrade to version 3.1.3 or later",
+      "patched_versions": ">=3.1.3",
+      "updated": "2026-09-11T15:32:26.000Z",
+      "cvss": {
+        "score": 7.5,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+      },
+      "cwe": [
+        "CWE-436",
+        "CWE-551"
+      ],
+      "url": "https://github.com/advisories/GHSA-4c8g-83qw-93j6"
+    },
+    "1239943": {
+      "findings": [
+        {
+          "version": "3.1.2",
+          "paths": [
+            "packages__mastra>@mastra/core>ajv>fast-uri"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/fastify/fast-uri/security/advisories/GHSA-qw65-cvwx-89v3\n- https://nvd.nist.gov/vuln/detail/CVE-2026-84292\n- https://github.com/fastify/fast-uri/commit/820e8478dd7da3d09f187bfaf35d50b71f67b8b4\n- https://cna.openjsf.org/security-advisories.html\n- https://github.com/fastify/fast-uri/releases/tag/v2.4.6\n- https://github.com/fastify/fast-uri/releases/tag/v3.1.7\n- https://github.com/fastify/fast-uri/releases/tag/v4.1.4\n- https://github.com/advisories/GHSA-qw65-cvwx-89v3",
+      "created": "2026-09-28T21:24:39.000Z",
+      "id": 1239943,
+      "npm_advisory_id": null,
+      "overview": "### Impact\n\n`fast-uri` serializes the `port` component of a URI without validating it. When recomposing the authority, `fast-uri` escapes the userinfo and host components but concatenates the port verbatim, so a `port` value that is not a sequence of digits can inject authority delimiters. For example, serializing a component whose `port` is `@127.0.0.1:8124` produces `http://trusted.example:@127.0.0.1:8124/app`, demoting the intended host to userinfo and pointing the authority at an attacker-controlled host. Both `fast-uri` and Node's `URL` read the result back as the attacker's host with no error, so re-validating the built URI does not catch it.\n\nThis affects applications that build URIs from parts and assign untrusted data to the `port` component (for example a fixed host from configuration and a port taken from user input or a service record). The same path is reachable through `serialize()`, `normalize()`, and `equal()` in their object forms. A `port` obtained from `parse()` is always digits and is not affected.\n\n### Patches\n\nThis vulnerability has been patched in fast-uri `4.1.4`, `3.1.7`, and `2.4.6`. `recomposeAuthority` now rejects any port that is not `*DIGIT` per RFC 3986. All users should upgrade.\n\n### Workarounds\n\nIf upgrading is not immediately possible, validate the `port` value against the RFC 3986 grammar (digits only) before passing a component to `serialize()`, `normalize()`, or `equal()`, and reject anything else, for example `if (!/^\\d*$/.test(String(port))) throw new Error('invalid port')`.",
+      "reported_by": null,
+      "title": "fast-uri vulnerable to authority injection via an unvalidated port in serialize",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-84292"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "fast-uri",
+      "vulnerable_versions": ">=3.0.0 <3.1.7",
+      "github_advisory_id": "GHSA-qw65-cvwx-89v3",
+      "recommendation": "Upgrade to version 3.1.7 or later",
+      "patched_versions": ">=3.1.7",
+      "updated": "2026-09-28T21:24:40.000Z",
+      "cvss": {
+        "score": 7.5,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+      },
+      "cwe": [
+        "CWE-116"
+      ],
+      "url": "https://github.com/advisories/GHSA-qw65-cvwx-89v3"
+    },
+    "1239948": {
+      "findings": [
+        {
+          "version": "10.2.0",
+          "paths": [
+            "packages__mcp-server-stdio>@modelcontextprotocol/sdk>express-rate-limit>ip-address"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/beaugunderson/ip-address/security/advisories/GHSA-rpw4-54j3-4h4q\n- https://nvd.nist.gov/vuln/detail/CVE-2026-101913\n- https://github.com/beaugunderson/ip-address/commit/d03e960c7cc3179ef25c8a44b4f94dd499625546\n- https://github.com/beaugunderson/ip-address/releases/tag/v10.5.1\n- https://github.com/advisories/GHSA-rpw4-54j3-4h4q",
+      "created": "2026-09-28T20:43:55.000Z",
+      "id": 1239948,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\n`Address6.isLinkLocal()` recognizes `fe80::/64` rather than `fe80::/10`. Link-local unicast is the whole `/10` under RFC 4291 §2.4 and the IANA IPv6 Special-Purpose Address Registry, so the method returns `false` for every link-local address outside the one `/64` that stateless address autoconfiguration happens to use. `new Address6('fe81::1').isLinkLocal()` is `false`.\n\nThe library contradicts itself on the same object: for `fe81::1`, `getType()` returns `'Link-local unicast'`, `getScope()` returns `'Link local'`, and `isHostInSubnet(new Address6('fe80::/10'))` returns `true`, while `isLinkLocal()` returns `false`.\n\nAn application that builds a network trust-boundary decision on these checks (for example a filter intended to block Server-Side Request Forgery, or SSRF) will classify a link-local target as unremarkable and allow the request. SSRF is an attack in which a user-supplied address coaxes the server into making a request to an internal destination the user could not otherwise reach.\n\n### Details\n\n`isLinkLocal()` in `src/ipv6.ts` compares the first 64 bits of the address against a literal string:\n\n```ts\n// Zeroes are required, i.e. we can't check isHostInSubnet with 'fe80::/10'\nif (\n  this.getBitsBase2(0, 64) ===\n  '1111111010000000000000000000000000000000000000000000000000000000'\n) {\n  return true;\n}\n```\n\nThe comparison requires the first 64 bits to be exactly `fe80:0000:0000:0000`, so it accepts 2⁶⁴ of the 2¹¹⁸ addresses in `fe80::/10`. The comment states a premise the library disproves: `getType()` classifies the same range with `isHostInSubnet` against the `'fe80::/10': 'Link-local unicast'` entry in `src/v6/constants.ts`, and `Address4.isLinkLocal()` is a plain `isHostInSubnet` test against `169.254.0.0/16`. RFC 4291 §2.5.6 constrains the format of an autoconfigured link-local address; it does not define the range, and reading it as the definition is the likeliest origin of the `/64` comparison.\n\nThe IPv4-mapped and NAT64 well-known paths of `isLinkLocal()` are unaffected: `::ffff:169.254.169.254` and `64:ff9b::a9fe:a9fe` are classified by their embedded IPv4 address and report `true`.\n\n### Affected versions\n\n`<= 10.5.0`. The comparison has had this shape since `Address6.isLinkLocal()` was introduced, so every release exposing the method is affected.\n\n### Impact\n\nEvery well-formed address in `fe80::/10` outside `fe80::/64` is parsed successfully, `isValid()` is `true`, and the classifier reports something untrue about it. No other classifier catches these addresses: `isPrivate()` covers ULA (`fc00::/7`), not link-local.\n\n| Address | `isLinkLocal()` | `getType()` | `getScope()` |\n|---|---|---|---|\n| `fe80::1` | `true` | Link-local unicast | Link local |\n| `fe81::1` | `false` | Link-local unicast | Link local |\n| `fe8f::1` | `false` | Link-local unicast | Link local |\n| `febf::1` | `false` | Link-local unicast | Link local |\n| `fe80:0:0:1::1` | `false` | Link-local unicast | Link local |\n| `fe80::1:0:0:0:1` | `false` | Link-local unicast | Link local |\n\nPython's `ipaddress` module, the `IN6_IS_ADDR_LINKLOCAL` macro in `netinet6/in6.h`, and Linux's `ipv6_addr_type()` all apply a ten-bit prefix test and classify every row above as link-local.\n\nA request admitted through a guard built on `isLinkLocal()` reaches a link-local host on the server's own segment: a neighboring machine or the on-link router. An IPv6 link-local destination generally needs a zone index and a neighbor on the same link, so the reach is the server's own segment rather than the internet or a universal metadata endpoint, and the severity reflects that.\n\n### Proof of concept\n\n`npm i ip-address@10.5.0`, then:\n\n```js\nconst { Address6 } = require('ip-address');\n\n// A guard of the shape the library documents.\nfunction isBlocked(host) {\n  const a = new Address6(host);\n  return a.isLoopback() || a.isLinkLocal() || a.isPrivate() || a.isMulticast() || a.isUnspecified();\n}\n\nfor (const h of ['fe80::1', 'fe81::1', 'febf::1', 'fe80:0:0:1::1']) {\n  const a = new Address6(h);\n  console.log(isBlocked(h) ? 'BLOCK' : 'ALLOW', h, '-> getType()', a.getType());\n}\n```\n\nOn affected versions:\n\n```\nBLOCK fe80::1 -> getType() Link-local unicast\nALLOW fe81::1 -> getType() Link-local unicast\nALLOW febf::1 -> getType() Link-local unicast\nALLOW fe80:0:0:1::1 -> getType() Link-local unicast\n```\n\n### Remediation\n\nUpgrade to the patched release. In the fix, `isLinkLocal()` tests the address against `fe80::/10` with the same `isHostInSubnet` predicate `getType()` and `Address4.isLinkLocal()` use. The same release adds `2001::/32` to the type table so `getType()` reports `'Teredo'` for the addresses `isTeredo()` returns `true` for; that is a consistency correction with no security effect.\n\nIf you cannot upgrade immediately, test the range directly:\n\n```js\nconst LINK_LOCAL = new Address6('fe80::/10');\nconst linkLocal = new Address6(host).isHostInSubnet(LINK_LOCAL);\n```\n\n### A note on SSRF defense\n\nThese methods are address classifiers, not a complete SSRF defense. Regardless of this fix, a robust SSRF guard must resolve the hostname and validate the *resolved* IP against the socket it connects to, and account for DNS rebinding and redirects. Treat these checks as one layer, not the only one.",
+      "reported_by": null,
+      "title": "ip-address: Address6.isLinkLocal() recognizes fe80::/64 rather than fe80::/10, allowing SSRF and trust-boundary bypass to on-link hosts",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-101913"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "ip-address",
+      "vulnerable_versions": "<=10.5.0",
+      "github_advisory_id": "GHSA-rpw4-54j3-4h4q",
+      "recommendation": "Upgrade to version 10.5.1 or later",
+      "patched_versions": ">=10.5.1",
+      "updated": "2026-09-28T20:43:57.000Z",
+      "cvss": {
+        "score": 0,
+        "vectorString": null
+      },
+      "cwe": [
+        "CWE-697",
+        "CWE-918"
+      ],
+      "url": "https://github.com/advisories/GHSA-rpw4-54j3-4h4q"
+    },
+    "1239949": {
+      "findings": [
+        {
+          "version": "10.2.0",
+          "paths": [
+            "packages__mcp-server-stdio>@modelcontextprotocol/sdk>express-rate-limit>ip-address"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/beaugunderson/ip-address/security/advisories/GHSA-2vr4-cq9g-pvrc\n- https://nvd.nist.gov/vuln/detail/CVE-2026-101910\n- https://github.com/beaugunderson/ip-address/commit/ab3dc88bcf5374344168a2ba075ca7ac4ff257f8\n- https://github.com/beaugunderson/ip-address/releases/tag/v10.5.1\n- https://github.com/advisories/GHSA-2vr4-cq9g-pvrc",
+      "created": "2026-09-28T20:43:03.000Z",
+      "id": 1239949,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\nNo classifier on `Address6` recognizes the NAT64 local-use range `64:ff9b:1::/48` (RFC 8215). `isPrivate()`, `isLoopback()`, `isLinkLocal()` and their siblings all return `false` for every address in it, so an internal IPv4 destination written through a local-use NAT64 prefix (`64:ff9b:1:7f00:0:100::` for `127.0.0.1`, `64:ff9b:1:a9fe:a9:fe00::` for `169.254.169.254`) reads as an ordinary global address. `getType()` names the range `'NAT64 (local-use)'`, so the library knows what the address is and classifies it as nothing.\n\nAn application that builds a network trust-boundary decision on these checks (for example a filter intended to block Server-Side Request Forgery, or SSRF) will classify an internal target as external and allow the request. SSRF is an attack in which a user-supplied address coaxes the server into making a request to an internal destination the user could not otherwise reach, such as a loopback service or a cloud metadata endpoint.\n\n### Details\n\nThe fix for GHSA-22jq-vg5j-6vgg (10.2.1) classifies IPv4-mapped (`::ffff:0:0/96`) and NAT64 well-known (`64:ff9b::/96`) addresses by their embedded IPv4 address: `embeddedIPv4()` in `src/ipv6.ts` decodes the trailing 32 bits and every special-use classifier delegates to the resulting `Address4`. Those are the only two ranges `embeddedIPv4()` handles.\n\nThe local-use range differs in kind from the well-known prefix, which is why extending the decoder does not fix it. RFC 8215 reserves `64:ff9b:1::/48` so an operator can carve their own NAT64 prefix out of it, of any length RFC 6052 allows (`/48`, `/56`, `/64`, or `/96`). Where the IPv4 address sits depends on that choice: `127.0.0.1` is `64:ff9b:1:7f00:0:100::` under a `/48` prefix and `64:ff9b:1::7f00:1` under a `/96` prefix, and each of those decodes to a different address under the other prefix length. There is no single embedded IPv4 address for the library to classify by.\n\nWhat is well-defined is the range as a whole. The IANA IPv6 Special-Purpose Address Registry lists `64:ff9b:1::/48` as not globally reachable, and Python's `ipaddress` module reports `is_private` as `True` and `is_global` as `False` for every address in it. `isPrivate()` covered ULA (`fc00::/7`) plus the decoded mapped and well-known cases, and nothing in the local-use range.\n\n### Affected versions\n\n`>= 10.2.0, <= 10.5.0`. The `is*` classification API was extended to `Address6` in 10.2.0; releases before it do not expose the method and are not affected through this vector.\n\n### Impact\n\nEvery address in `64:ff9b:1::/48` parses successfully, `isValid()` is `true`, and no classifier catches it. Which internal target is reached depends on the NAT64 prefix deployed on the server's network; the well-known prefix column is the patched control from GHSA-22jq-vg5j-6vgg.\n\n| Internal target | Well-known form | Classified | Local-use form (`/48` prefix) | Classified |\n|---|---|---|---|---|\n| `127.0.0.1` | `64:ff9b::7f00:1` | loopback | `64:ff9b:1:7f00:0:100::` | nothing |\n| `10.0.0.1` | `64:ff9b::a00:1` | private | `64:ff9b:1:a00:0:100::` | nothing |\n| `169.254.169.254` | `64:ff9b::a9fe:a9fe` | link-local | `64:ff9b:1:a9fe:a9:fe00::` | nothing |\n| `192.168.1.1` | `64:ff9b::c0a8:101` | private | `64:ff9b:1:c0a8:1:100::` | nothing |\n\n### Reachability\n\nReaching an internal host through one of these addresses requires that the server's network run a NAT64 translator on a prefix inside `64:ff9b:1::/48` and that the attacker guess or know the prefix length. That is the same precondition the well-known prefix carries (a translator on `64:ff9b::/96`), with the additional constraint that the prefix is operator-chosen rather than fixed. The severity reflects that precondition.\n\n### Proof of concept\n\n`npm i ip-address@10.5.0`, then:\n\n```js\nconst { Address6 } = require('ip-address');\n\n// A guard of the shape the library documents.\nfunction isBlocked(host) {\n  const a = new Address6(host);\n  return a.isLoopback() || a.isLinkLocal() || a.isPrivate() || a.isMulticast() || a.isUnspecified();\n}\n\nfor (const h of ['64:ff9b::7f00:1', '64:ff9b:1:7f00:0:100::', '64:ff9b:1::7f00:1']) {\n  console.log(isBlocked(h) ? 'BLOCK' : 'ALLOW', h, '-> getType()', new Address6(h).getType());\n}\n```\n\nOn affected versions:\n\n```\nBLOCK 64:ff9b::7f00:1 -> getType() NAT64 (well-known)\nALLOW 64:ff9b:1:7f00:0:100:: -> getType() NAT64 (local-use)\nALLOW 64:ff9b:1::7f00:1 -> getType() NAT64 (local-use)\n```\n\n### Remediation\n\nUpgrade to the patched release. In the fix, `isPrivate()` returns `true` for every address in `64:ff9b:1::/48`, alongside ULA and the decoded mapped and well-known cases. The range is reported private as a whole rather than by a decoded IPv4 address, for the reason given above; `toAddress4Nat64(prefix)` remains the way to decode an address under a known deployment prefix. `isLoopback()` and `isLinkLocal()` are unchanged for this range, since without the prefix length the library cannot know which IPv4 address is embedded.\n\nIf you cannot upgrade immediately, test the range directly:\n\n```js\nconst NAT64_LOCAL_USE = new Address6('64:ff9b:1::/48');\nconst localUse = new Address6(host).isHostInSubnet(NAT64_LOCAL_USE);\n```\n\n### A note on SSRF defense\n\nThese methods are address classifiers, not a complete SSRF defense. Regardless of this fix, a robust SSRF guard must resolve the hostname and validate the *resolved* IP against the socket it connects to, and account for DNS rebinding and redirects. Treat these checks as one layer, not the only one.",
+      "reported_by": null,
+      "title": "ip-address: no classifier recognizes the NAT64 local-use range 64:ff9b:1::/48, allowing SSRF and trust-boundary bypass",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-101910"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "ip-address",
+      "vulnerable_versions": ">=10.2.0 <=10.5.0",
+      "github_advisory_id": "GHSA-2vr4-cq9g-pvrc",
+      "recommendation": "Upgrade to version 10.5.1 or later",
+      "patched_versions": ">=10.5.1",
+      "updated": "2026-09-28T20:43:07.000Z",
+      "cvss": {
+        "score": 0,
+        "vectorString": null
+      },
+      "cwe": [
+        "CWE-918"
+      ],
+      "url": "https://github.com/advisories/GHSA-2vr4-cq9g-pvrc"
+    },
+    "1240091": {
+      "findings": [
+        {
+          "version": "3.1.2",
+          "paths": [
+            "packages__mastra>@mastra/core>ajv>fast-uri"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/fastify/fast-uri/security/advisories/GHSA-hrr3-gc8f-f4qj\n- https://nvd.nist.gov/vuln/detail/CVE-2026-86472\n- https://github.com/fastify/fast-uri/commit/5dabb86732aa2a7655e258719970e61e12b6b4d1\n- https://cna.openjsf.org/security-advisories.html\n- https://github.com/fastify/fast-uri/releases/tag/v2.4.7\n- https://github.com/fastify/fast-uri/releases/tag/v3.1.8\n- https://github.com/fastify/fast-uri/releases/tag/v4.1.5\n- https://github.com/advisories/GHSA-hrr3-gc8f-f4qj",
+      "created": "2026-09-29T23:54:25.000Z",
+      "id": 1240091,
+      "npm_advisory_id": null,
+      "overview": "### Impact\n\n`fast-uri` folds the host to lowercase before it percent-decodes the host, so a percent-encoded uppercase unreserved octet such as `%41` decodes to a literal `A` that is never folded. For a scheme-relative reference (`//host`) there is no scheme, so the host canonicalization that repairs this on a scheme-bearing URL does not run. As a result `parse`, `normalize`, and `equal` disagree on the same host: `parse(\"//%41.com\").host` returns `\"A.com\"` while `parse(\"//a.com\").host` and `parse(\"//A.com\").host` return `\"a.com\"`, and `equal(\"//%41.com\", \"//a.com\")` is `false` even though `equal(\"//A.com\", \"//a.com\")` is `true`. An application that makes a case-sensitive host decision on `fast-uri` output for a scheme-relative reference, for example a host allowlist or denylist that compares `parse(url).host` or uses `fast-uri.equal`, can be steered past the check with a percent-encoded uppercase octet. Because a hostname is case-insensitive in DNS and HTTP routing, the evading spelling reaches the same host the check meant to gate, so the effect is check evasion rather than reaching a different registrable host.\n\n### Patches\n\nUpgrade to `fast-uri` 4.1.5, 3.1.8, or 2.4.7.\n\n### Workarounds\n\nCompare hosts case-insensitively (lowercase the parsed host before any allowlist or denylist decision), or avoid making case-sensitive host decisions on scheme-relative input until upgrading.",
+      "reported_by": null,
+      "title": "fast-uri vulnerable to inconsistent host case normalization via percent-encoded octets",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-86472"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "fast-uri",
+      "vulnerable_versions": ">=3.0.0 <3.1.8",
+      "github_advisory_id": "GHSA-hrr3-gc8f-f4qj",
+      "recommendation": "Upgrade to version 3.1.8 or later",
+      "patched_versions": ">=3.1.8",
+      "updated": "2026-09-29T23:54:26.000Z",
+      "cvss": {
+        "score": 4.8,
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:N"
+      },
+      "cwe": [
+        "CWE-178"
+      ],
+      "url": "https://github.com/advisories/GHSA-hrr3-gc8f-f4qj"
+    },
+    "1240097": {
+      "findings": [
+        {
+          "version": "10.2.0",
+          "paths": [
+            "packages__mcp-server-stdio>@modelcontextprotocol/sdk>express-rate-limit>ip-address"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/beaugunderson/ip-address/security/advisories/GHSA-j6r3-76f7-8jcv\n- https://nvd.nist.gov/vuln/detail/CVE-2026-101912\n- https://github.com/beaugunderson/ip-address/commit/1343629d57fea413644a5c9d41ff1e59619f3f28\n- https://github.com/beaugunderson/ip-address/releases/tag/v10.7.1\n- https://github.com/advisories/GHSA-j6r3-76f7-8jcv",
+      "created": "2026-09-29T23:46:52.000Z",
+      "id": 1240097,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\n`isInSubnet()` and `isHostInSubnet()` accept an address of either family and compare masked binary strings without checking that both operands are the same family. `Address4` pads to 32 bits and `Address6` to 128, so whenever the leading bits agree the strings are equal: `new Address6('a00::1').isInSubnet(new Address4('10.0.0.0/8'))` is `true`, and `new Address4('32.0.0.1').isInSubnet(new Address6('2000::/3'))` is `true`. No IPv4 address is inside an IPv6 network, so both answers are untrue.\n\nAn application that parses untrusted input as whichever family accepts it and then tests the result against a fixed-family allowlist can admit an address outside the list.\n\n### Details\n\nBoth methods are in `src/common.ts`:\n\n```ts\nexport function isInSubnet(this: Address4 | Address6, address: Address4 | Address6) {\n  if (this.subnetMask < address.subnetMask) {\n    return false;\n  }\n\n  return isHostInSubnet.call(this, address);\n}\n\nexport function isHostInSubnet(this: Address4 | Address6, address: Address4 | Address6) {\n  return this.mask(address.subnetMask) === address.mask();\n}\n```\n\n`mask(n)` returns the first `n` bits of the address as a string of `0` and `1`, taken from a representation padded to the family's width. `new Address6('a00::1').mask(8)` is `'00001010'`, and so is `new Address4('10.0.0.0/8').mask()`, so string equality reports containment. The signature admits either family on either side, so TypeScript raises nothing, and the `v4` property on `Address6` marks IPv4 notation (`::ffff:10.0.0.1`) rather than family, so it does not discriminate either.\n\nWhich cross-family pairs coincide depends on the network's prefix length. `mask(n)` on an `Address4` returns at most 32 bits, so an IPv6 network longer than `/32` never matches an IPv4 address, and an IPv6 network of `/32` or shorter matches exactly the IPv4 addresses whose leading bits equal its prefix. An IPv4 network is at most 32 bits and matches every IPv6 address whose leading bits equal its prefix.\n\n### Affected versions\n\n`<= 10.7.0`. The comparison has had this shape since the methods were written, so every release is affected.\n\n### Impact\n\n| Expression | Result | Reason |\n|---|---|---|\n| `new Address6('a00::1').isInSubnet(new Address4('10.0.0.0/8'))` | `true` | both mask to `00001010` |\n| `new Address4('10.0.0.1').isInSubnet(new Address6('a00::/8'))` | `true` | the same bits, reversed |\n| `new Address4('32.0.0.1').isInSubnet(new Address6('2000::/3'))` | `true` | both begin `001` |\n| `new Address4('32.1.13.184').isInSubnet(new Address6('2001:db8::/32'))` | `true` | the `/32` spells an IPv4 address |\n| `new Address6('cb00:7100::1').isInSubnet(new Address4('203.0.113.0/24'))` | `true` | the `/24` spells an IPv6 prefix |\n| `new Address4('10.0.0.1').isInSubnet(new Address6('::ffff:10.0.0.0/104'))` | `false` | `/104` is longer than 32 bits |\n| `new Address4('8.8.8.8').isInSubnet(new Address4('10.0.0.0/8'))` | `false` | same-family control |\n\nIn the allowlist direction the check admits an address outside the list; in the denylist direction it blocks an address outside the list. What the coincidence can admit is narrow. An IPv6 allowlist of `/32` or shorter admits the IPv4 addresses its prefix spells: `2001:db8::/32` admits exactly `32.1.13.184`, and `2000::/3` admits `32.0.0.0/3`. Those are public IPv4 addresses; the private, loopback, and link-local ranges begin with bit patterns no allocated IPv6 prefix shares. An IPv4 allowlist admits the IPv6 addresses its prefix spells, and those all sit in blocks IANA has not allocated. So a request admitted through this defect reaches an address outside the intended list, not an internal host, and the severity reflects that.\n\n### Proof of concept\n\n`npm i ip-address@10.7.0`, then:\n\n```js\nconst { Address4, Address6 } = require('ip-address');\n\n// An allowlist of the application's own IPv6 range, tested against whichever\n// family the input parses as.\nconst allowed = new Address6('2001:db8::/32');\n\nfunction parse(host) {\n  return Address4.isValid(host) ? new Address4(host) : new Address6(host);\n}\n\nfor (const h of ['2001:db8::1', '2001:db9::1', '32.1.13.184', '32.1.13.185']) {\n  console.log(parse(h).isInSubnet(allowed) ? 'ALLOW' : 'BLOCK', h);\n}\n```\n\nOn affected versions:\n\n```\nALLOW 2001:db8::1\nBLOCK 2001:db9::1\nALLOW 32.1.13.184\nBLOCK 32.1.13.185\n```\n\nThe IPv6 rows are right. The IPv4 address whose 32 bits equal the allowlist's prefix is admitted; the one next to it is not.\n\n### Remediation\n\nUpgrade to the patched release. In the fix, `isHostInSubnet()` returns `false` when the two addresses are of different families, and `isInSubnet()` inherits the answer. The methods keep accepting either family so existing call sites compile. A caller that means to compare across families converts first, with `Address6.fromAddress4()`, `to4()`, or `toAddress4Nat64()`: `new Address6('::ffff:10.0.0.1').to4().isInSubnet(new Address4('10.0.0.0/8'))` is `true`, as before.\n\nIf you cannot upgrade immediately, compare the classes before you compare the addresses:\n\n```js\nconst contained = host.constructor === network.constructor && host.isInSubnet(network);\n```\n\n### A note on SSRF defense\n\nThese methods are address classifiers, not a complete SSRF defense. Regardless of this fix, a robust SSRF guard must resolve the hostname and validate the *resolved* IP against the socket it connects to, and account for DNS rebinding and redirects. Treat these checks as one layer, not the only one.",
+      "reported_by": null,
+      "title": "ip-address: isInSubnet() and isHostInSubnet() compare addresses of different families as if they shared an address space, allowing an allowlist check to admit an address outside its range",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-101912"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "ip-address",
+      "vulnerable_versions": "<=10.7.0",
+      "github_advisory_id": "GHSA-j6r3-76f7-8jcv",
+      "recommendation": "Upgrade to version 10.7.1 or later",
+      "patched_versions": ">=10.7.1",
+      "updated": "2026-09-29T23:46:54.000Z",
+      "cvss": {
+        "score": 0,
+        "vectorString": null
+      },
+      "cwe": [
+        "CWE-697",
+        "CWE-843"
+      ],
+      "url": "https://github.com/advisories/GHSA-j6r3-76f7-8jcv"
+    },
+    "1240098": {
+      "findings": [
+        {
+          "version": "10.2.0",
+          "paths": [
+            "packages__mcp-server-stdio>@modelcontextprotocol/sdk>express-rate-limit>ip-address"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/beaugunderson/ip-address/security/advisories/GHSA-h3mg-xc3c-68pw\n- https://nvd.nist.gov/vuln/detail/CVE-2026-101911\n- https://github.com/beaugunderson/ip-address/commit/469ead1231b4cc059f2150c626e1e0c2895c0134\n- https://github.com/beaugunderson/ip-address/commit/8b34a21e0839b37c094066816fb2c2c48a2adcf5\n- https://github.com/beaugunderson/ip-address/releases/tag/v10.7.1\n- https://github.com/advisories/GHSA-h3mg-xc3c-68pw",
+      "created": "2026-09-29T23:46:39.000Z",
+      "id": 1240098,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\n`new Address6()` and `Address6.isValid()` place no bound on the length of the string they parse. When the string contains a character that cannot appear in an IPv6 address, the parser builds a diagnostic that wraps every such character in a 34-byte `<span class=\"parse-error\">`, so the work and the memory scale with the input rather than with an address. A 1 MiB string of `!` costs about 110 MB and 70 ms of synchronous work, 8 MiB costs about 800 MB and half a second, 16 MiB throws a `RangeError` in place of the documented `AddressError`, and 32 MiB aborts the Node process. `isValid()` builds the diagnostic and discards it, so a caller that only asks whether a string is valid pays the full price.\n\nAn application that validates an attacker-supplied string with these methods can be stalled or crashed by a single oversized request. This is a crash on input that should have been rejected cleanly, which SECURITY.md lists as in scope.\n\n### Details\n\n`parse()` in `src/ipv6.ts` checks for characters outside `[0-9a-f:/%]` and, on finding any, throws an `AddressError` whose `parseMessage` is the whole input with each offending character wrapped:\n\n```ts\nconst badCharacters = address.match(constants6.RE_BAD_CHARACTERS);\n\nif (badCharacters) {\n  throw new AddressError(\n    `Bad character${badCharacters.length > 1 ? 's' : ''} detected in address: ${badCharacters.join('')}`,\n    address.replace(constants6.RE_BAD_CHARACTERS, '<span class=\"parse-error\">$1</span>'),\n  );\n}\n```\n\n`RE_BAD_CHARACTERS` is `/([^0-9a-f:/%])/gi`. For an input made entirely of punctuation the `match` allocates one string per character, the `join` copies them all into the message, and the `replace` produces a string 34 times the input. Nothing before this point looks at the length: the constructor strips a CIDR suffix and a zone identifier and hands the rest to `parse()`. The `RE_BAD_ADDRESS` branch below it builds its diagnostic the same way at about a third of the ratio, for input in the hex-and-colon alphabet such as `fffff:` repeated.\n\n`parse()` is reached only through the constructor, so every entry point that constructs an `Address6` from a string it has not already bounded is affected: `new Address6()`, `isValid()`, both arguments of `fromAddressAndMask()` and `fromAddressAndWildcardMask()`, `fromWildcard()`, and the prefix argument of `fromAddress4Nat64()` and `toAddress4Nat64()`. `fromURL()` admits only hex, colons, and dots in a host, so it reaches the `RE_BAD_ADDRESS` branch and not the other. `fromArpa()` caps its input at 32 nibbles before constructing anything, and `fromBigInt()`, `fromByteArray()`, and `fromAddress4()` build the string themselves, so those are unaffected.\n\nThe `replace` is where size becomes fatal. V8 caps a string at 2^29 - 24 characters, so past 16 MiB of input the `replace` throws `RangeError: Invalid string length` rather than the `AddressError` callers catch; `isValid()` swallows it, but a constructor call guarded by `instanceof AddressError` does not. Past 32 MiB the replacement builder's internal array exceeds its maximum size and V8 aborts the process with `Fatal JavaScript invalid size error`, which no `try`/`catch` intercepts.\n\n### Affected versions\n\n`<= 10.7.0`. The diagnostic has had this shape since the parser was written, so every release is affected.\n\n### Impact\n\n`Address6.isValid()` on N bytes of `!`, measured on node 24.19.0:\n\n| Input | Wall time | Transient heap | Outcome |\n|---|---|---|---|\n| 16 KiB | 1 ms | 1 MB | `false` |\n| 1 MiB | 73 ms | 112 MB | `false` |\n| 8 MiB | 464 ms | 784 MB | `false` |\n| 16 MiB | | | `RangeError: Invalid string length` from the constructor; `isValid()` returns `false` |\n| 32 MiB | | | the process aborts |\n\nThe parse is synchronous, so the event loop is blocked for the whole of the wall time and nothing else on that process is served. The heap is transient and is reclaimed after the call returns, so memory does not accumulate across requests; the abort at 32 MiB is a single request. `Address4` has no diagnostic of this shape and parses the same 8 MiB in a few milliseconds.\n\n### Reachability\n\nReaching the sizes above requires that the application hand the parser a string it has not already bounded. A host taken from a URL or an HTTP header is bounded by the server's header limit (Node's default is 16 KB), and at that size the cost is a millisecond. The megabyte sizes need a request body the application accepts at that scale and passes through unchecked. Common body parsers default to between 100 KB and 1 MB, which caps the effect at a stall of under 100 ms per request, and the abort needs 32 MiB in a single field, which no default admits. The severity is scored for the stall, not the abort: an application that accepts 32 MiB bodies into an address parser is the exception, and the reader running one should treat this as a crash.\n\n### Proof of concept\n\n`npm i ip-address@10.7.0`, then:\n\n```js\nconst { Address6 } = require('ip-address');\n\nfor (const mib of [1, 8]) {\n  const input = '!'.repeat(mib * 1024 * 1024);\n  const before = process.memoryUsage().heapUsed;\n  const start = process.hrtime.bigint();\n\n  Address6.isValid(input);\n\n  const ms = Number(process.hrtime.bigint() - start) / 1e6;\n  const mb = (process.memoryUsage().heapUsed - before) / 1048576;\n\n  console.log(`${mib} MiB: ${ms.toFixed(0)} ms, ${mb.toFixed(0)} MB`);\n}\n\ntry {\n  new Address6('!'.repeat(16 * 1024 * 1024));\n} catch (e) {\n  console.log(`16 MiB: ${e.name}: ${e.message}`);\n}\n\nnew Address6('!'.repeat(32 * 1024 * 1024));\n```\n\nOn affected versions (node 24.19.0):\n\n```\n1 MiB: 73 ms, 112 MB\n8 MiB: 464 ms, 784 MB\n16 MiB: RangeError: Invalid string length\n\n\n#\n# Fatal error in , line 0\n# Fatal JavaScript invalid size error 142606336\n#\n```\n\nThe last line is V8 terminating the process; the script does not reach its end.\n\n### Remediation\n\nUpgrade to the patched release. In the fix, the constructor rejects an address longer than the family allows before `parse()` runs: 45 characters for IPv6 once the CIDR suffix and zone identifier are stripped (six four-digit groups, six colons, and a dotted quad, the same line CPython's `ipaddress` module draws), and 15 characters for IPv4. The rejection is an `AddressError` with no `parseMessage`, so `isValid()` returns `false` for the cost of a length comparison and the 32 MiB input above is rejected in the same time as a 46-character one. A zone identifier is not counted, since it never reaches the diagnostic.\n\nThis rejects nothing a previous release accepted: every string longer than the limit already failed to parse.\n\nIf you cannot upgrade immediately, reject a candidate longer than an address with a zone identifier can be before you parse it:\n\n```js\nif (host.length > 64) throw new Error('not an IP address');\n```",
+      "reported_by": null,
+      "title": "ip-address: Address6 builds a parse diagnostic proportional to the input with no length bound, allowing a single long string to stall or crash the process",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-101911"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "ip-address",
+      "vulnerable_versions": "<=10.7.0",
+      "github_advisory_id": "GHSA-h3mg-xc3c-68pw",
+      "recommendation": "Upgrade to version 10.7.1 or later",
+      "patched_versions": ">=10.7.1",
+      "updated": "2026-09-29T23:46:40.000Z",
+      "cvss": {
+        "score": 0,
+        "vectorString": null
+      },
+      "cwe": [
+        "CWE-400",
+        "CWE-770"
+      ],
+      "url": "https://github.com/advisories/GHSA-h3mg-xc3c-68pw"
+    },
+    "1240640": {
+      "findings": [
+        {
+          "version": "4.12.23",
+          "paths": [
+            "packages__mastra>@mastra/core>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-hxh3-vqpv-xpqv\n- https://nvd.nist.gov/vuln/detail/CVE-2026-93981\n- https://github.com/honojs/hono/commit/2b8ed402cdab6dfc5e829b480806dcd8db94161e\n- https://github.com/honojs/hono/releases/tag/v4.13.7\n- https://www.vulncheck.com/advisories/hono-jsx-before-4.13.7-cross-site-scripting-via-unescaped-strings\n- https://github.com/advisories/GHSA-hxh3-vqpv-xpqv",
+      "created": "2026-09-30T23:46:16.000Z",
+      "id": 1240640,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\n`hono/jsx` does not HTML-escape a plain string placed directly as a child or `fallback` of `Suspense` or `ErrorBoundary`, as the only child of a `Context.Provider`, or as the root value of `renderToString()` / `renderToReadableStream()` from `hono/jsx/dom/server`. Such a string is emitted as markup instead of text.\n\n### Details\n\nThese paths stringify their input and treat the result as already-escaped HTML, so a plain string passes through unchanged. Notable cases:\n\n- `Suspense`: a string child, or a string `fallback` while a child suspends. With streaming, the fallback reaches the browser in the initial chunk.\n- `ErrorBoundary`: a string child alongside an asynchronous sibling. The all-synchronous case was fixed in 4.11.7 (GHSA-9r54-q6cx-xmh5).\n- `Context.Provider`: a single string child. Multiple children are escaped.\n- `hono/jsx/dom/server`: a string, or an array containing strings, passed as the root.\n\nA lone `{children}` forwarded by a wrapper component is enough to reach these paths. Strings wrapped in an element, values from `raw()` or the `html` helper, and client-side rendering with `hono/jsx/dom` are not affected.\n\n### Impact\n\nAn attacker who controls a string rendered in an affected position can inject arbitrary HTML into the server-rendered page, leading to cross-site scripting under the application's origin.\n\nThis issue affects applications that render untrusted strings directly in one of the positions above during server-side rendering.",
+      "reported_by": null,
+      "title": "hono/jsx renders plain strings unescaped in boundary components, leading to XSS",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-93981"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "hono",
+      "vulnerable_versions": "<4.13.7",
+      "github_advisory_id": "GHSA-hxh3-vqpv-xpqv",
+      "recommendation": "Upgrade to version 4.13.7 or later",
+      "patched_versions": ">=4.13.7",
+      "updated": "2026-09-30T23:46:17.000Z",
+      "cvss": {
+        "score": 4.7,
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:L/I:L/A:N"
+      },
+      "cwe": [
+        "CWE-79"
+      ],
+      "url": "https://github.com/advisories/GHSA-hxh3-vqpv-xpqv"
+    },
+    "1241202": {
+      "findings": [
+        {
+          "version": "1.0.3",
+          "paths": [
+            "packages__mastra>@mastra/core>gray-matter>js-yaml>argparse>sprintf-js"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://nvd.nist.gov/vuln/detail/CVE-2026-97058\n- https://github.com/alexei/sprintf.js/issues/237\n- https://github.com/alexei/sprintf.js/blob/3a0d8c26d291b5bd9f1974877ecc50739921d6f5/src/sprintf.js#L17\n- https://github.com/alexei/sprintf.js/blob/3a0d8c26d291b5bd9f1974877ecc50739921d6f5/src/sprintf.js#L84-L90\n- https://www.vulncheck.com/advisories/sprintf-js-through-1.1.3-denial-of-service-via-unbounded-precision\n- https://github.com/advisories/GHSA-hp3w-g68c-fv3c",
+      "created": "2026-09-24T15:31:31.000Z",
+      "id": 1241202,
+      "npm_advisory_id": null,
+      "overview": "sprintf-js through 1.1.3 passes unbounded precision specifiers to toFixed, toExponential, and toPrecision methods without validation, causing uncaught RangeError exceptions. Attackers who control format strings can inject precision values exceeding ECMAScript limits to abort calling operations with minimal payload.",
+      "reported_by": null,
+      "title": "sprintf-js vulnerable to denial of service through unbounded precision specifiers",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-97058"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "sprintf-js",
+      "vulnerable_versions": "<=1.1.3",
+      "github_advisory_id": "GHSA-hp3w-g68c-fv3c",
+      "recommendation": "None",
+      "patched_versions": "<0.0.0",
+      "updated": "2026-10-05T23:47:35.000Z",
+      "cvss": {
+        "score": 5.3,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+      },
+      "cwe": [
+        "CWE-1284"
+      ],
+      "url": "https://github.com/advisories/GHSA-hp3w-g68c-fv3c"
+    },
+    "1241210": {
+      "findings": [
+        {
+          "version": "2.0.7",
+          "paths": [
+            "adapters__http-gateway>express>proxy-addr"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/jshttp/proxy-addr/security/advisories/GHSA-jqcg-44mw-7w3h\n- https://nvd.nist.gov/vuln/detail/CVE-2026-90711\n- https://github.com/jshttp/proxy-addr/commit/780911d84d18e2c5fa008ed0c0d387631ec11965\n- https://cna.openjsf.org/security-advisories.html\n- https://github.com/jshttp/proxy-addr/releases/tag/v2.0.8\n- https://github.com/advisories/GHSA-jqcg-44mw-7w3h",
+      "created": "2026-10-05T23:30:26.000Z",
+      "id": 1241210,
+      "npm_advisory_id": null,
+      "overview": "### Impact\n\n`proxy-addr` determines which network hops are trusted proxies so that `X-Forwarded-For` can be believed. When an application configures a trust subnet as an IPv4-mapped IPv6 address with a short prefix, such as `::ffff:10.0.0.0/8` (the correct spelling is `::ffff:10.0.0.0/104`), the subnet compiles with all-zero leading bits and matches every IPv4 address instead of the block it names. The same happens for any IPv6 trust subnet with zero leading bits, such as `::/1`.\n\nEvery unauthenticated client is then trusted as a proxy at hop 0, so `proxyaddr(req, trust)`, and therefore `req.ip` and `req.ips` in Express, returns whatever the client sends in `X-Forwarded-For`. This defeats IP-based access control, rate limiting, geolocation, and audit logging. The misconfiguration compiles without any error, and the same block written correctly behaves correctly, so the difference is not visible from the configuration.\n\n### Patches\n\nUpgrade to `proxy-addr` 2.0.8. An IPv4 address now matches an IPv6 trust subnet only when that subnet is a genuine IPv4-mapped subnet whose prefix covers the mapped marker.\n\n### Workarounds\n\nWrite IPv4 trust subnets in plain IPv4 notation (for example `10.0.0.0/8`). If IPv4-mapped IPv6 notation is required, use the full form so the prefix covers the mapped marker (for example `::ffff:10.0.0.0/104` for the `10.0.0.0/8` block).",
+      "reported_by": null,
+      "title": "proxy-addr vulnerable to IP spoofing via IPv4-mapped IPv6 trust subnet",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-90711"
+      ],
+      "access": "public",
+      "severity": "critical",
+      "module_name": "proxy-addr",
+      "vulnerable_versions": ">=1.1.0 <2.0.8",
+      "github_advisory_id": "GHSA-jqcg-44mw-7w3h",
+      "recommendation": "Upgrade to version 2.0.8 or later",
+      "patched_versions": ">=2.0.8",
+      "updated": "2026-10-05T23:30:27.000Z",
+      "cvss": {
+        "score": 9.1,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N"
+      },
+      "cwe": [
+        "CWE-290",
+        "CWE-348",
+        "CWE-697"
+      ],
+      "url": "https://github.com/advisories/GHSA-jqcg-44mw-7w3h"
+    }
+  },
+  "muted": [],
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 5,
+      "moderate": 27,
+      "high": 15,
+      "critical": 1
+    },
+    "dependencies": 374,
+    "devDependencies": 0,
+    "optionalDependencies": 0,
+    "totalDependencies": 374
+  }
+}

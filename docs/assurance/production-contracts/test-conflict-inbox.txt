@@ -1,0 +1,19 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:conflict-inbox C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/execution-control-runtime/src/conflict-inbox.test.ts
+
+✔ ingest classifies conflicts open and agreements reconciled (22.71ms)
+✔ list orders conflicts before agreements (0.5855ms)
+✔ resolve transitions an open conflict and attributes the operator (1.0136ms)
+✔ resolve rejects an unknown conflict and a double resolution (1.2961ms)
+✔ re-ingest preserves an operator resolution and refreshes evidence (1.1822ms)
+✔ summary counts open/conflicts/by-status (0.6032ms)
+✔ file-backed store persists across instances (7.5783ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 57.6087

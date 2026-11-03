@@ -1,0 +1,1513 @@
+Scope: 58 of 60 workspace projects
+
+> @aristotle/os-sdk@0.2.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\os-sdk
+> node --import tsx --test src/index.test.ts
+
+✔ evaluate posts the action to the gate, sends the bearer token, and parses the decision (4.0278ms)
+✔ apiKey is sent as X-API-Key and GET requests carry no content-type/body (0.6399ms)
+✔ governance compile/diff/explain hit the right routes (3.1722ms)
+✔ auditTail builds the limit query; auditVerify parses the result (1.5118ms)
+✔ a non-2xx response throws AristotleApiError carrying status + body (2.8424ms)
+✔ operator engines hit the right routes with the right methods (1.8802ms)
+✔ degradation() parses the live status (0.8465ms)
+✔ constructor rejects a missing baseUrl (0.4352ms)
+✔ metrics() reads the aggregate metrics endpoint (0.5453ms)
+✔ approvals() lists the queue; decideApproval votes on a request (1.346ms)
+✔ killSwitch() and revokeEnvelope() POST to the admin routes with the right body (0.507ms)
+✔ governAndExecute: ALLOW runs the executor and returns its result with the warrant (1.0602ms)
+✔ governAndExecute: REFUSE throws AristotleApiError with the reason codes; executor never runs (1.0008ms)
+✔ governAndExecute: ESCALATE returns an escalation handle and never calls the executor (0.5036ms)
+✔ AristotleClient.titleAction builds a typed title action with namespaced params (0.3214ms)
+✔ requestWarrant returns the warrant id on ALLOW and carries the canonical_action_hash (4.6876ms)
+✔ requestWarrant on REFUSE throws AristotleApiError with status 403 (0.4673ms)
+✔ requestWarrant on EXPIRE throws AristotleApiError with status 410 (0.4006ms)
+✔ replay POSTs to /v1/execution-control/replay and parses the result (0.3527ms)
+✔ exportEvidence POSTs to /v1/execution-control/evidence/export and returns the bundle hash (0.3132ms)
+✔ verifyWarrant POSTs to /v1/execution-control/warrant/verify and parses the result (0.2889ms)
+✔ inspectChain POSTs to /v1/execution-control/warrant/inspect-chain and returns MAE -> Ward -> Envelope -> Warrant chain (0.3916ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1522.0093
+
+> @aristotle/event-stream@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\event-stream
+> node --import tsx --test src/index.test.ts
+
+✔ makeEvent: defaults format, event_id, emitted_at (8.5206ms)
+✔ eventMatches: filter by event_type (1.1277ms)
+✔ eventMatches: filter by action_type_prefix and subject_prefix (0.5797ms)
+✔ EventBus: subscribers receive matching events; unsubscribe stops delivery (0.9916ms)
+✔ EventBus: filter restricts delivery (0.5389ms)
+✔ EventBus: a throwing subscriber doesn't poison the bus (0.4142ms)
+✔ WebhookDispatcher: ALLOW path POSTs with HMAC signature header (1.8719ms)
+✔ WebhookDispatcher: retries on non-2xx and stops after maxAttempts; calls onDeadLetter (31.9456ms)
+✔ WebhookDispatcher: filter excludes non-matching subscriptions (0.8186ms)
+✔ WebhookDispatcher.verifySignature: tamper detection (0.6007ms)
+✔ attachSseHandler: writes SSE-framed events on publish; closes on response close (0.8868ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 786.2703
+
+> @aristotle/execution-control-runtime@0.1.8 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\execution-control-runtime
+> tsx src/index.test.ts
+
+✔ canonical action hash is stable across equivalent key orderings (35.3678ms)
+✔ allowed action produces ALLOW and issues a Warrant (16.9645ms)
+✔ denied action produces REFUSE and no Warrant (0.783ms)
+✔ expired Authority Envelope produces REFUSE (0.3635ms)
+✔ missing runtime state produces ESCALATE (0.3857ms)
+✔ physical invariant violation produces REFUSE (0.4117ms)
+✔ degraded mode: a safety-critical Ward fails closed when the ledger is unavailable (0.5242ms)
+✔ degraded mode: a routine Ward escalates infra loss instead of hard-blocking (0.417ms)
+✔ degraded mode: a best-effort Ward proceeds (allow_degraded) under a soft timeout (0.5427ms)
+✔ degraded mode: no conditions leaves the decision unchanged; unlabeled Ward defaults closed (5.8946ms)
+✔ Warrant cannot be consumed twice (4.2868ms)
+✔ Warrant verification fails for mismatched action hash (0.9943ms)
+✔ Warrant carries a real Ed25519 signature, not a recomputable hash (3.0156ms)
+✔ Warrant signature cannot be forged by recomputing a hash (0.8508ms)
+✔ Tampering with signed Warrant material breaks verification (0.8992ms)
+✔ Warrant verification can pin a trusted signing key id (6.3401ms)
+✔ configured signer is non-ephemeral and verifiable against its embedded key (3.1217ms)
+✔ ephemeral dev signer is flagged ephemeral (0.7564ms)
+✔ createSignerFromKeyProvider loads the key from a managed provider and signs (2.0514ms)
+✔ GEL chain verifies after normal append (9.3779ms)
+✔ GEL chain verification fails after tampering with prior record (16.3511ms)
+✔ vertical slice evaluates action, writes GEL, and verifies ledger (8.7203ms)
+✔ Evidence Bundle exports Ward, Authority Envelope, Warrant, and GEL for offline verification (12.3588ms)
+✔ Evidence Bundle verification fails when selected record material is altered (10.7181ms)
+✔ GEL records are Ed25519-signed when a signer is configured (11.685ms)
+✔ GEL verification fails when a record signature is tampered (12.9272ms)
+✔ Evidence Bundle carries a verifiable bundle-level signature (12.6346ms)
+✔ Evidence Bundle signature fails when the bundle hash is altered (9.2282ms)
+✔ runtime server exposes health, evaluate, audit tail, and audit verify (122.8538ms)
+✔ client helper submits action and requires a verified Warrant (37.5747ms)
+✔ kill switch refuses every action while engaged and audits the attempt (10.3569ms)
+✔ replay protection refuses an identical previously-admitted action (16.4547ms)
+✔ server enforces an API key on /v1 routes, leaves health open, and serves metrics (33.0878ms)
+✔ gate refuses when the Authority Envelope is revoked (7.3924ms)
+✔ verifyWarrant rejects a warrant signed by a revoked key (1.5605ms)
+✔ evidence bundle verification fails against a revocation list (9.1899ms)
+✔ validateWardManifest and validateAuthorityEnvelope flag bad config (1.3281ms)
+✔ loadWardManifest throws a readable error on invalid config (3.7732ms)
+✔ warrant TTL is configurable (0.7725ms)
+✔ LedgerStore tracks tip/count/admitted in memory and rebuilds from disk (6.6375ms)
+✔ LedgerStore works over a pluggable in-memory backend (no file) (1.4959ms)
+✔ SqliteLedgerBackend is durable across restarts and enforces replay via SQL (21.9682ms)
+✔ evaluateExecutionControl enforces replay over a durable SQLite store (15.409ms)
+✔ PostgresLedgerBackend (pglite): durable, ACID, with replay shared across instances (4532.7018ms)
+✔ SubjectRateLimiter enforces an independent per-subject budget (0.5597ms)
+✔ server returns 429 when a subject exceeds its rate limit (33.4851ms)
+✔ server enforces replay protection across requests via the shared ledger index (22.9139ms)
+✔ deliverAuditEvent posts the signed record to the sink (12.877ms)
+✔ deliverAuditEvent reports failure when the sink is unreachable (0.6663ms)
+✔ server exposes Prometheus metrics (20.048ms)
+✔ runtime server serves the playground and context when enabled (11.8818ms)
+✔ runtime server does not serve the playground unless enabled (8.1856ms)
+✔ OpenAPI spec describes the execution boundary (0.5086ms)
+✔ credential broker injects only matched secrets (0.7004ms)
+✔ credential broker throws when a matched secret is missing (0.8354ms)
+✔ proxy forwards an approved action with brokered credentials and never leaks the secret (40.8015ms)
+✔ proxy refuses to forward when params.url diverges from the authorized target (SSRF guard) (11.4168ms)
+✔ proxy refuses a denied action and never forwards (5.8982ms)
+✔ role hierarchy and static-token principal resolution (0.4717ms)
+✔ RBAC: viewer can read but not decide; operator can decide (24.7859ms)
+✔ operator identity is attributed in the GEL and is tamper-evident (23.5772ms)
+✔ admin-only kill switch and revocation; non-admins are refused (48.5128ms)
+✔ verifyJwt accepts RS256/ES256/EdDSA and enforces iss/aud/exp (73.5081ms)
+✔ verifyJwt rejects alg:none and HMAC alg-confusion (214.6163ms)
+✔ OIDC bearer token authenticates and attributes the sub at the HTTP boundary (48.2595ms)
+✔ jwkToOidcKey + importJwks materialize verification keys from a JWKS document (194.4064ms)
+✔ createJwksKeyStore caches, refreshes on key rotation, and fails static (271.5113ms)
+✔ governance builder endpoints compile/diff/explain over the real backend, role-gated (16.3151ms)
+✔ shadow/reconcile/marshal endpoints run the real engines over the boundary, role-gated (28.051ms)
+✔ server enforces an Authority-Envelope budget (calls per window) ⇒ BUDGET_EXCEEDED (27.0767ms)
+✔ dual control: a guarded action escalates, two operators approve, then it is admitted (26.7428ms)
+✔ conflict inbox: ingest, list, resolve over the durable store, role-gated (24.9076ms)
+✔ evaluate endpoint honors degraded_conditions against the Ward criticality (19.8699ms)
+✔ evaluate self-detects an unavailable ledger and returns a governed degraded decision (no 500) (15.9187ms)
+✔ GET /degradation reports live health and the projected fail action (16.7266ms)
+ℹ tests 75
+ℹ suites 0
+ℹ pass 75
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6313.2941
+
+> @aristotle/governance-core@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\governance-core
+> tsx src/test/run.test.ts
+
+✔ a valid MAE constitutes a valid Ward (15.2889ms)
+✔ an invalid (revoked) MAE cannot back a Ward (2.0733ms)
+✔ a Ward can create an Authority Envelope within bounds (1.5994ms)
+✔ an Authority Envelope cannot exceed its Ward (3.6096ms)
+✔ a Warrant cannot exceed its Authority Envelope (6.1193ms)
+✔ a Warrant cannot be reused (single-use) (9.739ms)
+✔ the store refuses to consume a Warrant twice (2.0556ms)
+✔ an expired Warrant fails (2.9178ms)
+✔ a stale commit presentation is denied before execution (1.9923ms)
+✔ commit presentation skew is an explicit gate option (2.2352ms)
+✔ a future-dated commit presentation is denied before execution (1.7762ms)
+✔ an unparseable commit presentation is denied before execution (1.7789ms)
+✔ revoking a Ward invalidates its Envelope and Warrant (5.4878ms)
+✔ revoking an Authority Envelope invalidates its Warrant (2.7228ms)
+✔ the Commit Gate fails closed when the Ward is missing (2.2245ms)
+✔ the Commit Gate fails closed when the Warrant is missing (1.766ms)
+✔ the Commit Gate consumes the Warrant on allow (2.624ms)
+✔ the GEL Record carries the complete authority chain and the ledger verifies (4.8439ms)
+✔ the GEL chain is tamper-evident (4.5519ms)
+✔ a ProtectedSpace Ward applies its boundary rules (drone above ceiling denied) (4.8709ms)
+✔ an Institutional Ward requires an accountable governance origin (0.9979ms)
+✔ a Ward's human origin act signature is verified, not merely present (0.9981ms)
+✔ a Ward without a presence proof is rejected when the MAE requires one (1.4169ms)
+✔ a Governor cannot author beyond its delegated scope (3.4052ms)
+✔ cross-Ward federation fails without a trust relationship (2.9744ms)
+✔ federation fails closed with no trust bridge at all (1.4233ms)
+✔ a valid federation trust bridge allows the federated act (2.0495ms)
+✔ authority determination occurs before the attribution record (1.7016ms)
+✔ payments: refund within limit allowed; over threshold escalates (2.2006ms)
+✔ payments: refund over the envelope monetary limit is denied (1.5163ms)
+✔ payments: a cumulative spend budget is enforced across acts (10.2786ms)
+✔ warrant issuance quota (max_warrants) is enforced (1.9952ms)
+✔ healthcare: agent may draft but never submit a medication order (2.6554ms)
+✔ denied and escalated commits still leave GEL evidence (1.259ms)
+✔ a store snapshot round-trips, preserving warrant consumption and the GEL chain (6.4852ms)
+✔ chainMetrics aggregates the store after a commit (3.6306ms)
+✔ openApiSpec is a well-formed OpenAPI 3 document for the chain (0.6895ms)
+✔ scopeSnapshot isolates a tenant's primitives (0.3905ms)
+✔ chainMetrics scopes counts to a single MAE while integrity stays global (1.4611ms)
+✔ an evidence bundle exports and verifies offline; tampering is detected (1.9448ms)
+✔ execution outcomes are recorded as a separate ledger entry (1.6983ms)
+ℹ tests 41
+ℹ suites 0
+ℹ pass 41
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 166.8846
+
+> @aristotle/mesh-runtime@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\mesh-runtime
+> node --import tsx --test src/index.test.ts src/quorum-routing.test.ts src/ed25519-mesh.test.ts src/ingress-hardening.test.ts src/revocation-quorum.test.ts
+
+✔ Ed25519 mesh: envelope propagates root -> witnesses -> edges with per-node keys (66.5343ms)
+✔ Ed25519 mesh: revocation gossips end-to-end and edge refuses (81.4393ms)
+✔ Ed25519 mesh: edge issues warrant signed by its own private key under valid token (64.5661ms)
+✔ Ed25519 allowlist: witness without root's trust anchor REFUSES the envelope (46.9015ms)
+✔ Ed25519 impersonation defense: trust anchor bound to wrong key REFUSES envelope (36.2654ms)
+✔ MeshNode constructor: only signer (no verifier) throws (3.0988ms)
+✔ MeshNode constructor: only verifier (no signer) throws (0.5932ms)
+✔ MeshNode constructor: no secret AND no signer/verifier throws (0.3679ms)
+[aristotle/mesh-runtime] WARNING: MeshNode "root-1" constructed with a known demo HMAC secret. This is not safe for production. Use createEd25519MeshSigner + createEd25519MeshVerifier and pass { signer, verifier } to the MeshNode constructor. See ROADMAP_TO_100.md Category 1 and LIMITATIONS.md.
+✔ envelope propagates from root through witnesses to all edges (41.0225ms)
+✔ edge issues warrant on ALLOW under valid Fluidity Token (38.0724ms)
+✔ edge REFUSES when revocation has propagated (82.1456ms)
+✔ partition: edge keeps issuing under Fluidity Token TTL, then EXPIRES on TTL expiry (134.8544ms)
+✔ partition: revocation issued during split is detected via surviving witness (77.3213ms)
+✔ disconnected-quota cap: edge fails closed after exceeding maxWarrantsWhileDisconnected (54.8272ms)
+✔ reconciliation: edge submits local decisions to root after partition heal (42.7291ms)
+✔ reconciliation: edge submitted-after-revocation decisions surface as conflicts (48.702ms)
+✔ envelope versioning: a higher-version envelope replaces a lower one (72.4795ms)
+✔ envelope EXPIRED returns the distinct EXPIRE decision (not REFUSE) (33.1259ms)
+✔ live HTTP transport: root and edge can talk over real TCP sockets (166.0085ms)
+✔ auto-pull: pullRevocations() backfills the edge from root after a missed gossip window (67.7522ms)
+✔ auto-pull: pingRoot reconnect transition fires pullRevocations automatically (118.4198ms)
+✔ demo-secret WARN: known demo secret emits a one-time console.warn (10.7928ms)
+✔ demo-secret WARN: suppressDemoSecretWarning silences it (0.5524ms)
+✔ demo-secret WARN: a non-demo secret does NOT warn (0.3319ms)
+✔ productionMode: secret-only construction throws (0.8697ms)
+✔ productionMode: HMAC signer construction throws (0.4398ms)
+✔ productionMode: Ed25519 signer construction succeeds (9.9048ms)
+✔ ingress: oversized POST returns 413 with structured body (158.379ms)
+✔ ingress: non-JSON content-type returns 415 (29.3319ms)
+✔ ingress: malformed JSON returns 400 with structured body (15.501ms)
+✔ ingress: well-formed PING with JSON content-type succeeds (200) (13.8873ms)
+✔ ingress: content-type with charset is accepted (21.7694ms)
+✔ replay cache: same body twice within TTL -> second returns 409 (18.5722ms)
+✔ replay cache: different bodies are independent (39.4793ms)
+✔ replay cache unit: TTL-expired entries are reaccepted (0.4618ms)
+✔ replay cache unit: maxSize bounds memory (LRU-ish eviction) (0.2861ms)
+✔ rate limiter unit: bursting up to capacity is allowed (0.4166ms)
+✔ rate limiter unit: per-peer isolation — one flooder doesn't starve others (0.212ms)
+✔ rate limiter unit: refill restores tokens at the configured rate (0.224ms)
+✔ rate limiter unit: peek shows current tokens without consuming (0.2701ms)
+✔ ingress: rate-limited request returns 429 with structured body (32.9805ms)
+✔ ingress: anonymous (no msg.from) traffic is bucketed under '*' (17.698ms)
+✔ ingress: rate limiter is per-peer — one flooder doesn't block others over HTTP (18.861ms)
+✔ QuorumCollector reaches required count after m witnesses sign (4.3867ms)
+✔ QuorumCollector deduplicates re-signing by the same witness (0.4726ms)
+✔ QuorumCollector ignores signatures from non-witness ids (10.1151ms)
+✔ verifyQuorumSignature: valid signature passes, tampered fails (0.4289ms)
+✔ InMemoryMeshPersistence: save and load envelopes + revocations (1.7979ms)
+✔ StaticSovereignRouter: local mae returns no route; foreign mae routes to anchor (0.5412ms)
+✔ StaticSovereignRouter: unknown foreign mae returns undefined (0.256ms)
+✔ MeshNode.httpClient: injected client is used for cross-process sendTo (47.2061ms)
+✔ MeshNode.urlFor: defaults to http when not provided (43.7074ms)
+✔ InMemoryMeshPersistence: durability roundtrip — save envelopes + revocations and restore them under a new instance after JSON serialization (1.415ms)
+✔ InMemoryMeshPersistence: monotonic envelope versioning — a v2 save replaces v1 under the same envelope_id (0.3547ms)
+✔ Q1: existing root.revoke() works for edges that don't require quorum (101.2951ms)
+✔ Q2: revokeWithQuorum() produces a revocation with signing_quorum populated (51.4461ms)
+✔ Q3: edge requireRevocationQuorum=2 accepts revocation with 2 valid sigs and refuses subsequent commits (79.785ms)
+✔ Q4: edge requireRevocationQuorum=2 REJECTS a single-signature revocation (no witness sigs) (84.0081ms)
+✔ Q4b: edge requireRevocationQuorum=2 REJECTS a revocation with only 1 valid sig (one witness short) (81.8896ms)
+✔ Q5: duplicate witness signatures from the same witness_id are deduplicated (51.3893ms)
+✔ Q6: signatures from witnesses NOT in the verifier's allowlist are rejected (46.456ms)
+✔ Q7: signing_quorum from rev-A is NOT valid on rev-B (witnesses bind to root_signature) (45.7454ms)
+✔ Q8: pullRevocations skips revocations that fail the quorum check (72.5288ms)
+✔ Q9: revokeWithQuorum throws when fewer witnesses provided than requiredQuorum (4.7262ms)
+✔ Q9b: revokeWithQuorum throws when requiredQuorum < 1 (5.6604ms)
+✔ countValidRevocationQuorum: returns 0 for revocation without signing_quorum (0.4794ms)
+ℹ tests 66
+ℹ suites 0
+ℹ pass 66
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3112.887
+
+> @aristotle/replay-artifact@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\replay-artifact
+> node --import tsx --test src/index.test.ts
+
+✔ buildReplayArtifact: emits an artifact with format tag, report hash, and artifact hash (4.5077ms)
+✔ buildReplayArtifact: reproducible — same inputs + report yields identical artifact_hash (0.5592ms)
+✔ verifyReplayArtifact: happy path — all four gates pass (0.8469ms)
+✔ verifyReplayArtifact: tampered report breaks report_hash check (0.5163ms)
+✔ verifyReplayArtifact: tampered inputs break artifact_hash check (and reproducibility) (0.4966ms)
+✔ verifyReplayArtifact: version mismatch flags version_ok=false (0.5648ms)
+✔ verifyReplayArtifact: non-deterministic local code breaks reproducibility (0.6437ms)
+✔ loadReplayArtifact: parses JSON string + raw object; rejects bad format / missing fields (4.5657ms)
+✔ summarizeReplayArtifact: produces a CI-friendly single-line summary (0.7485ms)
+✔ verifyReplayArtifact: skip version check by passing undefined localScenarioVersion (0.6512ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1093.4214
+
+> @aristotle/service-runtime@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\service-runtime
+> node --import tsx --test src/index.test.ts
+
+✔ mountHealthEndpoints: registers /health, /healthz, /readyz by default (3.7123ms)
+✔ mountHealthEndpoints: /health returns { ok, service } envelope (1.6407ms)
+✔ mountHealthEndpoints: mountLegacyHealth: false skips /health (0.3872ms)
+✔ mountHealthEndpoints: /healthz always 200 with structured body (1.822ms)
+✔ mountHealthEndpoints: /readyz returns 200 + ok=true when no readiness closure (0.6001ms)
+✔ mountHealthEndpoints: /readyz returns 200 when all checks ok (0.4196ms)
+✔ mountHealthEndpoints: /readyz returns 503 when any check fails (0.504ms)
+✔ mountHealthEndpoints: readiness closure runs on every /readyz call (late binding) (0.3745ms)
+✔ ReadinessChecks: builder fluent API produces the expected array (0.4121ms)
+✔ ReadinessChecks: addTry catches thrown errors (2.4213ms)
+✔ ReadinessChecks: addDemoSecretCheck flags known demo secrets (0.6795ms)
+✔ ReadinessChecks: addDemoSecretCheck honors override env var (0.2828ms)
+✔ ReadinessChecks: addDemoSecretCheck passes for a real-looking secret (0.3345ms)
+✔ ReadinessChecks: addDemoSecretCheck fails when no secret provided (0.2969ms)
+✔ ReadinessChecks: addPeersConfiguredCheck reflects peer count (0.348ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 811.8226
+
+> @aristotle/trial-engine@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\trial-engine
+> tsx src/index.test.ts
+
+✔ governance file validates required AristotleOS primitives (5.6296ms)
+✔ payments flagship scenario defers before warrant issuance (3.4376ms)
+✔ operator approval issues a single-use warrant and commits GEL (3.0397ms)
+✔ denied payout never receives a warrant (0.8794ms)
+✔ missing authority binding fails closed (0.7782ms)
+✔ plan reports governance artifact changes (0.7825ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 36.5594
+
+> @aristotle/http-gateway@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\adapters\http-gateway
+> tsx src/governance-chain-proxy.test.ts && node --import tsx --test src/index.test.ts src/trial-api.test.ts
+
+✔ gateway proxies the chain and forwards verdicts verbatim (allow then single-use deny) (296.8634ms)
+✔ gateway returns 501 when GOVERNANCE_CHAIN_V2 is disabled (27.7666ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 337.5701
+✔ /health reports ok (1627.9894ms)
+✔ /operator/* refuses with 401 when no credential is presented (1629.6584ms)
+✔ /operator/* refuses with 401 when bearer session token is malformed (1324.7433ms)
+✔ /operator/auth/session refuses with 401 when x-operator-key is wrong (1694.2809ms)
+✔ /operator/auth/session returns a Bearer token when x-operator-key matches (1923.5356ms)
+✔ /operator/auth/session is 503 when OPERATOR_SESSION_SECRET is missing while OPERATOR_API_KEY is set (1295.9074ms)
+✔ /v1/status returns ok=true, the doctrine string, scenarios catalog, and policy hash (1580.466ms)
+✔ /v1/policy/check returns 200 + policyHash when validating the trial default (1656.6205ms)
+✔ /v1/policy/check returns 422 + ok=false on a malformed APL source (1331.2409ms)
+✔ /v1/policy/plan returns 200 + ok=true when planning the trial default against itself (1688.8022ms)
+✔ /v1/audit/tail returns { items: [...] } on a fresh gateway (never errors) (1879.5605ms)
+✔ /v1/audit/<unknown> returns 404 record_not_found (1288.9226ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10278.6991
+
+> @aristotle/bedrock@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\bedrock
+> node --import tsx --test src/index.test.ts
+
+✔ ALLOW dispatches to the tool implementation and returns success (5.9379ms)
+✔ REFUSE returns tool-result with status:error + outcome JSON; inner never runs (1.2725ms)
+✔ REFUSE throws AristotleGateError when onRefuse:'throw' (1.6983ms)
+✔ ESCALATE returns tool-result with __aristotle:'ESCALATE' by default (0.5119ms)
+✔ Gate unreachable throws AristotleGateError by default (fail-closed) (0.7372ms)
+✔ Gate unreachable returns tool-result when onError:'tool-result' (0.5915ms)
+✔ passthroughTools dispatches without calling the gate (0.4816ms)
+✔ actionTypeFor routes specific tools into vertical namespace (0.6207ms)
+✔ onDecision telemetry fires with verdict + elapsedMs (0.7987ms)
+✔ Unknown tool returns an error result without contacting the gate (0.5165ms)
+✔ Constructor refuses missing required options (0.5565ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 902.0053
+
+> @aristotle/gateway-client@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\gateway-client
+> node --import tsx --test src/index.test.ts src/routes.test.ts
+
+✔ OPENAPI_YAML is a non-empty string that parses as JSON (2.8936ms)
+✔ OPENAPI_SPEC is a frozen object matching OPENAPI_YAML (1.888ms)
+✔ OPENAPI_VERSION reports OpenAPI 3.1.0 (0.2439ms)
+✔ OPENAPI_TITLE / OPENAPI_API_VERSION are non-empty (0.2308ms)
+✔ OPENAPI_PATHS includes the core commit-gate endpoint (0.2726ms)
+✔ OPENAPI_PATHS contains every route AristotleClient calls on the substrate (0.2886ms)
+✔ OPENAPI_SPEC declares the bearerAuth and apiKeyAuth security schemes (0.1928ms)
+✔ OPENAPI_SPEC declares the CanonicalAction and EvaluateResponse schemas (0.2578ms)
+✔ AristotleClient is constructible (the re-export path works) (0.5017ms)
+✔ AristotleApiError carries the HTTP status it was constructed with (0.4762ms)
+✔ createTypedRoutes: returns an object with every documented route (3.1548ms)
+✔ routes.evaluate delegates to client.evaluate with action + options (1.6243ms)
+✔ routes.evaluate: omitted options defaults to empty object (0.2963ms)
+✔ routes.replay delegates to client.replay (0.3611ms)
+✔ routes.compileGovernance delegates to client.compileGovernance (0.4188ms)
+✔ routes.diffGovernance delegates to client.diffGovernance (0.3366ms)
+✔ routes.explainPolicy delegates to client.explainPolicy (0.3291ms)
+✔ routes.shadowReplay delegates to client.shadowReplay (0.3805ms)
+✔ routes.evaluate: throws a clear error if client.evaluate is missing (1.2163ms)
+✔ routes.compileGovernance: rejects with a clear error when method missing (0.6373ms)
+✔ routes.health: GETs <baseUrl>/health and parses ok+service (11.7407ms)
+✔ routes.health: !res.ok -> { ok: false } (0.6222ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 943.1159
+
+> @aristotle/agent-os@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\agent-os
+> tsx src/governance-chain-client.test.ts && node --import tsx --test src/index.test.ts src/tasks.test.ts src/tasks-lifecycle.test.ts src/tasks-claim.test.ts src/agents-workspaces.test.ts
+
+✔ agent-os enforce mode: a normal task act flows through the chain and is allowed (165.4689ms)
+✔ agent-os: an active kill switch makes the act inadmissible at the Commit Gate (46.3811ms)
+✔ agent-os shadow mode: the chain runs and records a decision (27.3836ms)
+✔ completion acts are accepted by the same mission chain (38.3735ms)
+✔ agent-os: a tool action flows through the chain and is allowed (28.4509ms)
+✔ agent-os: a tool action is denied at the gate when the kill switch is active (18.9008ms)
+✔ agent-os: witness obligation is enforced — required+accepted allows, required+unaccepted denies (30.4385ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 366.486
+✔ POST /agents/register with minimal body returns 201 with documented defaults (2727.4932ms)
+✔ POST /agents/register with explicit fields preserves them and lists agent in /state (1933.9886ms)
+✔ POST /workspaces with minimal body returns 201 with documented defaults (2180.7367ms)
+✔ POST /workspaces with explicit fields preserves them and lists workspace in /state (3493.9329ms)
+✔ POST /missions creates a mission and persists in /missions list (2675.7771ms)
+✔ GET /missions lists missions created via POST (1928.9711ms)
+✔ end-to-end: /missions/:id/advance with full happy mocks dispatches the context task to running (2808.073ms)
+✔ /tasks/<running-id>/claim returns 409 task_not_eligible (already-claimed envelope) (2088.0165ms)
+✔ POST /missions/:missionId/advance seeds 3 execution tasks and commits queue.created to the ledger (2743.909ms)
+✔ seedMissionExecutionTasks is idempotent: /advance again does not duplicate the queue (2812.134ms)
+✔ /health reflects the mocked downstream killSwitchState=inactive (kill-switch poll wiring smoke) (1675.5095ms)
+✔ GET /tasks/next returns 404 task_not_found on a fresh service with no missions (2798.8708ms)
+✔ POST /tasks/<unknown>/claim returns 404 task_not_found before any downstream call (2790.6753ms)
+✔ POST /tasks/<unknown>/heartbeat returns 404 task_not_found (1675.1238ms)
+✔ POST /tasks/<unknown>/complete returns 404 task_not_found (1660.5012ms)
+✔ GET /tasks/<unknown>/actions returns 404 task_not_found (1479.3083ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17000.9492
+
+> @aristotle/authority-router@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\authority-router
+> node --import tsx --test src/index.test.ts
+
+✔ /health surfaces readiness with trust anchor count (1253.0183ms)
+✔ /route picks mesh.alpha for the default mission/dispatch/medium lane (1235.5799ms)
+✔ /route escalates safety domain to mesh.delta (1367.3233ms)
+✔ /route escalates riskLevel=high to mesh.delta even when domain is mission (1376.7816ms)
+✔ /route routes completion phase via mesh.gamma and tool-action via mesh.beta (884.9037ms)
+✔ /route reports degraded continuity when the primary relay is in degradedNodes (1190.6377ms)
+✔ /route reports disconnected when both primary and failover relays are degraded (1025.355ms)
+✔ /v1/mesh/route returns is_local=true for the configured local MAE (1006.2139ms)
+✔ /v1/mesh/route returns 400 on missing mae_id (834.5022ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10754.574
+
+> @aristotle/evidence-ledger@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\evidence-ledger
+> node --import tsx --test src/index.test.ts src/gel-chain.test.ts
+
+✔ /gel/append on a fresh ledger creates record 1 anchored at GENESIS_HASH (1679.3909ms)
+✔ /gel/append twice links the chain: record 2's previous_hash == record 1's record_hash (1376.7904ms)
+✔ /gel/chain reports count, tip_hash, and full records consistently with /gel/append (1387.409ms)
+✔ /gel/verify returns ok=true on a chain of honest appends (1560.2763ms)
+✔ /gel/append with missing required fields returns 400 missing_required_fields (1705.5104ms)
+✔ /health reports the persisted-state path and committed-event count (1599.1457ms)
+✔ POST /events/commit appends a replay event and assigns a monotonic index (1356.3904ms)
+✔ GET /replay filters committed events by traceId (1389.6675ms)
+✔ POST /branches creates a counterfactual branch; /branches/:id/events appends hypothetical events (1567.9618ms)
+✔ POST /branches/:id/events returns 404 for an unknown branch (1715.362ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8265.45
+
+> @aristotle/execution-gate@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\execution-gate
+> node --import tsx --test src/index.test.ts
+
+✔ /health surfaces killSwitchState, activeKillScopes, and substrate_wired=true (1748.4873ms)
+✔ global /kill-switch → /commit-point returns halt + killSwitchState=active (1383.1788ms)
+✔ mission-scope /kill-switch halts ONLY the matching mission (1706.5921ms)
+✔ /commit-point happy path returns allow with verification=verified (1370.9845ms)
+✔ /commit-point with witnessRequired=true + witnessAccepted=false → deny with witness reason (1376.7238ms)
+✔ /commit-point with identityLegitimate=false → deny with identity reason (1387.3594ms)
+✔ /commit-point with telemetrySatisfied=false + telemetryReasons → deny + custom reasons surface (1362.964ms)
+✔ /decide happy path with witnessAccepted=true returns allow (1376.3397ms)
+✔ /decide with witnessRequired=true + witnessAccepted=false returns deny (1366.7609ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13871.1083
+
+> @aristotle/governance-kernel@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\governance-kernel
+> tsx src/governance-chain.test.ts && node --import tsx --test src/index.test.ts
+
+✔ kernel /v2 chain: create -> commit allows and consumes -> reuse denied -> GEL intact (207.6748ms)
+✔ kernel /v2 chain state survives a restart (durable store) (28.6551ms)
+✔ kernel /v2 chain signs and verifies with ed25519 when key paths are provided (22.0991ms)
+✔ kernel /v2 isolates tenants: scoped reads + cross-tenant commit denied (54.4748ms)
+✔ kernel /v2 exposes federated commit across a trust bridge (19.8284ms)
+✔ kernel /v2 signing-key rotation: records signed before and after both verify (2.3545ms)
+✔ GovernanceChainClient SDK drives the chain end to end + reads OpenAPI (31.8729ms)
+✔ kernel /v2 commit fails closed on a missing warrant (23.3806ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 404.8413
+✔ /health reports killSwitchState and activeKillScopes (1226.2614ms)
+✔ POST /kill-switch global sets killSwitchState and records event (1711.1883ms)
+✔ Mission-scope kill-switch records event without toggling the global field (2664.7005ms)
+✔ /issue-warrant fails closed with 423 when global kill-switch is active (1959.5192ms)
+✔ /issue-warrant returns a warrant when no kill-switch is active (1343.8922ms)
+✔ Mission-scope kill-switch denies its mission only — other missions still issue (1184.655ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10551.5887
+
+> @aristotle/meta-authority-registry@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\meta-authority-registry
+> node --import tsx --test src/index.test.ts
+
+✔ /artifacts returns the four bootstrap seeds with the expected delegation classes (1095.1141ms)
+✔ /artifacts/:id returns a specific seed; 404 for unknown id (1014.3967ms)
+✔ POST /artifacts creates a new delegated MAA and returns 201 (1463.9113ms)
+✔ /resolve returns allowed=true for delegated (subject, domain) pairs (1636.7262ms)
+✔ /resolve returns allowed=false when subject lacks the requested domain (1348.8869ms)
+✔ /resolve returns allowed=false when the issuer is not a known subject (1033.2821ms)
+✔ /v1/mesh/envelope returns 400 on missing required fields (1180.0125ms)
+✔ /v1/mesh/envelope returns 201 + envelope on a valid body (1182.7335ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10409.4856
+
+> @aristotle/policy-compiler@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\policy-compiler
+> node --import tsx --test src/index.test.ts
+
+✔ /health ok (1289.5608ms)
+✔ /compile on empty source returns valid=false with a diagnostic, no substrate, trimmed graph (1369.58ms)
+✔ /compile on valid single-ward APL produces ward_count=1 with manifest hashes and admissibility rules (1372.5748ms)
+✔ /compile on valid two-ward APL produces ward_count=2 and two manifest hashes (1178.8459ms)
+✔ /compile on malformed APL returns valid=false with errors and no substrate block (1177.4652ms)
+✔ /diff between two identical policies reports total_changes=0 (1171.2257ms)
+✔ /diff reports an added ward as added + weakening (1009.194ms)
+✔ /diff returns 400 with per-side errors when one side is malformed (1012.0153ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10167.6826
+
+> @aristotle/witness-service@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\witness-service
+> node --import tsx --test src/index.test.ts
+
+✔ /verify with defaults (2 witnesses, quorum=2) is accepted (1091.4586ms)
+✔ /verify refuses when quorumRequired exceeds requestedWitnesses count (883.8851ms)
+✔ /verify honors WITNESS_QUORUM env override when body omits quorumRequired (862.6494ms)
+✔ /verify body.quorumRequired overrides WITNESS_QUORUM env-default (853.416ms)
+✔ /receipts/:id returns the freshly issued receipt (1221.0347ms)
+✔ /receipts/:id returns 404 for an unknown receipt id (831.3741ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6284.863
+
+> @aristotle/adapter-sdk@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\adapter-sdk
+> node --import tsx --test src/index.test.ts
+
+✔ governThroughAdapter: ALLOW + production_validated true emits and returns ok (4.61ms)
+✔ governThroughAdapter: ALLOW + demo transport + allowDemonstrationTransport: true succeeds (0.8529ms)
+✔ governThroughAdapter: REFUSE -> GATE_REFUSED, no emit (0.5786ms)
+✔ governThroughAdapter: HTTP 403 -> GATE_HTTP_403, no emit (0.3537ms)
+✔ governThroughAdapter: network error -> GATE_UNREACHABLE (0.3217ms)
+✔ governThroughAdapter: ALLOW + demo transport + !allowDemonstrationTransport -> DEMONSTRATION_ONLY_BLOCKED (0.2549ms)
+✔ governThroughAdapter: ALLOW + transport returns ok:false -> TRANSPORT_REFUSED (0.227ms)
+✔ governThroughAdapter: ALLOW without a warrant -> MISSING_WARRANT (defensive) (0.1823ms)
+✔ governThroughAdapter: buildAuthorization extends the base authz with adapter-specific fields (1.0324ms)
+✔ DemonstrationTransport: production_validated is always false (0.2572ms)
+✔ DemonstrationTransport: emit appends to emitted[] and increments seq (0.278ms)
+✔ governThroughHandler: ALLOW invokes handler with input + context, returns ok+output (0.4021ms)
+✔ governThroughHandler: REFUSE returns GATE_REFUSED, handler is NOT invoked (0.2016ms)
+✔ governThroughHandler: gate unreachable returns GATE_UNREACHABLE, handler is NOT invoked (0.2574ms)
+✔ governThroughHandler: gate HTTP 503 returns GATE_HTTP_503, handler is NOT invoked (0.2697ms)
+✔ governThroughHandler: ALLOW without a warrant returns MISSING_WARRANT (defensive) (0.2151ms)
+✔ governThroughHandler: handler throws after ALLOW -> TRANSPORT_REFUSED with throw message (0.2394ms)
+✔ governThroughHandler: synchronous handler return value is wrapped without await (0.1399ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 463.2837
+
+> @aristotle/chaos-harness@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\chaos-harness
+> node --import tsx --test src/index.test.ts
+
+✔ revocation_lag: witness-reachable half refuses; isolated half still allows (113.0244ms)
+✔ malicious_envelope: forged envelope is rejected; subsequent evaluate refuses with UNKNOWN_ENVELOPE (63.7052ms)
+✔ hallucinated_command: every out-of-envelope action refused (50 attempts) (37.8296ms)
+✔ fluidity_ttl_expiry: ALLOW before TTL, EXPIRE after TTL (196.4848ms)
+✔ quota_exhaustion: first N allowed; overshoot returns DISCONNECTED_QUOTA_EXCEEDED (34.0772ms)
+✔ replay_attempt: every replay yields a fresh warrant; warrant_ids are all distinct (37.8685ms)
+✔ clock_skew: fresh action allowed; action past local TTL boundary returns EXPIRE (193.2886ms)
+✔ witness_flap: envelope revocation reaches edge after witness recovers (199.8046ms)
+✔ gossip_storm: 50 rapid re-emissions of the same revocation; cache stays at 1; post-storm refuses ENVELOPE_REVOKED (129.3838ms)
+✔ envelope_version_downgrade: v1 replay rejected; v2 tighter rules enforced (118.0738ms)
+✔ runAllChaosScenarios: every scenario in the deck passes (10 scenarios) (1114.1115ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2750.4918
+
+> @aristotle/gel-archive@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\gel-archive
+> node --import tsx --test src/index.test.ts
+
+✔ computeRetentionCutoff: maxRecords keeps N newest (70.1202ms)
+✔ computeRetentionCutoff: maxAgeMs keeps records younger than threshold (31.9088ms)
+✔ computeRetentionCutoff: maxRecords + maxAgeMs combine — more restrictive wins (34.2708ms)
+✔ archiveGelChain: splits chain at cutoff; both files verify independently (49.5007ms)
+✔ archiveGelChain: subsequent rounds append to the archive (multi-round retention) (73.3156ms)
+✔ archiveGelChain: empty active chain is a no-op (1.5498ms)
+✔ archiveGelChain: cutoff=0 is a no-op (active chain unchanged) (19.5254ms)
+✔ archiveGelChain: throws when neither cutoff nor threshold provided (16.6658ms)
+✔ retentionRollover: maxRecords threshold drives archive in one call (55.8363ms)
+✔ restoreArchive: archive + active reassembles into a GENESIS-rooted chain that verifies (60.4722ms)
+✔ restoreArchive: archive tip / active first-previous mismatch fails fast (38.9685ms)
+✔ restoreArchive: empty archive returns just the active chain (28.4379ms)
+✔ verifyGelRecordsStartingFrom: GENESIS == standard verifyGelRecords (19.2696ms)
+✔ verifyGelRecordsStartingFrom: wrong starting hash fails at record 0 (17.1583ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1235.1418
+
+> @aristotle/gel-timestamp@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\gel-timestamp
+> node --import tsx --test src/index.test.ts
+
+✔ LocalTimestampAuthority: anchor() returns a TimestampAnchor that verifies (14.4948ms)
+✔ LocalTimestampAuthority: each anchor() persists one JSONL row (11.1537ms)
+✔ LocalTimestampAuthority: loadLedger reconstructs the full anchor history (11.9962ms)
+✔ LocalTimestampAuthority: ephemeral keypair when no signer is provided (4.8428ms)
+✔ verifyTimestampAnchor: record_hash mismatch -> ok=false with reason (10.7488ms)
+✔ verifyTimestampAnchor: wrong TSA public key -> ok=false with key-id mismatch reason (5.2178ms)
+✔ verifyTimestampAnchor: tampered signature -> ok=false (7.9256ms)
+✔ verifyTimestampAnchor: tampered timestamp -> ok=false (signature no longer matches material) (5.0289ms)
+✔ verifyTimestampAnchor: unsupported anchor kind -> ok=false (1.1375ms)
+✔ canonicalAnchorMessage: format is pinned to aristotle.gel-timestamp.v1:<rh>:<ts> (0.3259ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 786.5054
+
+> @aristotle/kms-keyring@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\kms-keyring
+> node --import tsx --test src/index.test.ts
+
+✔ InMemoryKmsKeyring: addKey + getKey round-trip; produces a working signer (14.2787ms)
+✔ InMemoryKmsKeyring: addKey twice with the same name throws (1.3986ms)
+✔ InMemoryKmsKeyring: getKey for unknown name throws (0.2785ms)
+✔ InMemoryKmsKeyring: removeKey then getKey throws (1.0747ms)
+✔ InMemoryKmsKeyring: two adds produce two distinct keyIds (5.9505ms)
+✔ Integration: InMemoryKmsKeyring signs a Warrant that verifyWarrant accepts (31.565ms)
+✔ AwsKmsKeyringStub: getKey returns a handle; signer().sign() throws a documented error (1.0229ms)
+✔ AwsKmsKeyringStub: addKey without externalKeyRef throws (0.345ms)
+✔ AwsKmsKeyringStub: addKey + removeKey lifecycle works (0.7971ms)
+✔ VaultKeyringStub: getKey returns a handle; signer().sign() throws documented error (2.0954ms)
+✔ VaultKeyringStub: custom mountPath threads through the key_id (0.3696ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 851.8465
+
+> @aristotle/nonce-store@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\nonce-store
+> node --import tsx --test src/index.test.ts
+
+✔ InMemoryNonceStore: has() is false for unseen nonces (1.5634ms)
+✔ InMemoryNonceStore: add() then has() returns true; size() reflects count (0.2266ms)
+✔ InMemoryNonceStore: add() is idempotent (0.1719ms)
+✔ InMemoryNonceStore: addAndCheck() returns false on first add, true on replay (0.236ms)
+✔ InMemoryNonceStore: TTL eviction drops expired nonces from has() (0.3132ms)
+✔ InMemoryNonceStore: compact() returns the eviction count (0.2234ms)
+✔ FilesystemNonceStore: empty file → empty store; add() then re-open hydrates (8.4296ms)
+✔ FilesystemNonceStore: persistence file is append-only JSONL (6.8713ms)
+✔ FilesystemNonceStore: addAndCheck() persists on first call, detects replay on second (4.9922ms)
+✔ FilesystemNonceStore: hydrate tolerates a truncated trailing line (crash simulation) (11.211ms)
+✔ FilesystemNonceStore: TTL filters expired records on hydrate (6.647ms)
+✔ FilesystemNonceStore: compact() rewrites the file with only surviving records (13.1344ms)
+✔ FilesystemNonceStore: add() after close() throws (1.951ms)
+✔ NonceSeenSet compatibility: both stores satisfy the read-only seen-set shape (1.0997ms)
+✔ Integration: FilesystemNonceStore enforces WARRANT_REPLAYED across a restart (44.1133ms)
+✔ Integration: InMemoryNonceStore enforces WARRANT_REPLAYED inside a single process (2.0938ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 905.8365
+
+> @aristotle/observability-otel@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\observability-otel
+> node --import tsx --test src/index.test.ts
+
+✔ mapAristotleStatusToOtel: ok=true -> OK code, no message (1.7676ms)
+✔ mapAristotleStatusToOtel: ok=false -> ERROR code, message preserved (0.2682ms)
+✔ mapAristotleStatusToOtel: ok=false with no message -> ERROR + undefined message (0.218ms)
+✔ adapter: startSpan forwards initial attributes to the OTel tracer (1.3228ms)
+✔ adapter: startSpan with no attributes does NOT pass an empty options object (0.334ms)
+✔ adapter: setAttribute after startSpan forwards to the OTel span (0.2798ms)
+✔ adapter: setStatus({ ok: true }) -> OTel SpanStatusCode.OK (0.272ms)
+✔ adapter: setStatus({ ok: false, message }) -> OTel SpanStatusCode.ERROR + message (0.2ms)
+✔ adapter: end() forwards to the OTel span (0.2753ms)
+✔ e2e: evaluateExecutionControl + OTel adapter emits the documented gate span (33.4972ms)
+✔ e2e: trace_context.trace_id is forwarded as aristotle.trace_id attribute (1.7398ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 855.5067
+
+> @aristotle/policy-pipeline@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\policy-pipeline
+> node --import tsx --test src/index.test.ts src/oci.test.ts
+
+✔ buildPolicyBundle: emits a PolicyBundle with bundle_hash + provenance + manifests (29.7754ms)
+✔ buildPolicyBundle: reproducibility — same source + same built_at -> identical bundle_hash (1.8266ms)
+✔ buildPolicyBundle: rejects builds without provenance.built_at (0.792ms)
+✔ buildPolicyBundle: throws on APL compile error (0.5202ms)
+✔ buildPolicyBundle with signer: returns a SignedPolicyBundle that verifies (6.0576ms)
+✔ verifyPolicyBundle: tampered source breaks reproducibility check (1.7799ms)
+✔ verifyPolicyBundle: tampered manifest breaks bundle_hash check (3.1639ms)
+✔ verifyPolicyBundle: wrong keyId returns signature_ok=false (2.0827ms)
+✔ diffPolicyBundles: v1 -> v2 tighter reports tightening changes (no weakening) (2.2253ms)
+✔ diffPolicyBundles: removing a ward marks state:removed (2.9583ms)
+✔ buildPolicyBundleWithLocalKeyring: convenience helper produces a verifiable signed bundle (1.7342ms)
+✔ buildPolicyBundle: provenance carries source_ref and notes through to the signed material (1.384ms)
+✔ buildPolicyBundle: pipeline_version embedded; rebuilds under same version yield same hash (1.087ms)
+✔ toOciBundle: produces a valid OCI image manifest with the four expected layers (49.7795ms)
+✔ fromOciBundle: round-trips toOciBundle preserving signature and bundle_hash (2.9522ms)
+✔ fromOciBundle: detects blob tampering via digest mismatch (4.8384ms)
+✔ fromOciBundle: rejects wrong manifest mediaType / artifactType (2.2798ms)
+✔ fromOciBundle: rejects bundle when a layer's blob is missing (2.6608ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1182.2858
+
+> @aristotle/scenario-engine@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\scenario-engine
+> node --import tsx --test src/index.test.ts
+
+✔ GPS_SPOOF_MID_MISSION: spoof step refused with SUBJECT_MISMATCH; subsequent legit eval allowed (46.1832ms)
+✔ FLASH_REVOCATION: evaluate after revoke is ENVELOPE_REVOKED (59.355ms)
+✔ PARTITION_RECONCILE: partitioned ALLOWs reconcile cleanly with no conflicts (24.0718ms)
+✔ trace metadata: scenario_id, started_at, finished_at all populated (24.8408ms)
+✔ evaluate against missing envelope returns UNKNOWN_ENVELOPE (0.8967ms)
+✔ unknown edge in evaluate marks step !ok with error (0.3463ms)
+✔ transient_partition: link is severed for durationMs then healed automatically (75.8406ms)
+✔ assert_decision: passes when previous evaluate matches expected decision (21.6645ms)
+✔ assert_decision: fails (ok=false) when previous evaluate does NOT match expected (33.2147ms)
+✔ assert_decision: checks reason_code when supplied (0.6364ms)
+✔ assert_decision: ok=false when there is no prior evaluate to assert against (0.4357ms)
+✔ set_link_profile: declarative — records profile in trace without affecting determinism (31.2655ms)
+✔ simulate_packet_loss: N partition/heal cycles are scripted into the trace (150.8889ms)
+✔ simulate_packet_loss: ok=false when edge is unknown (0.8664ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1214.3917
+
+> @aristotle/tenant-onboarding@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\tenant-onboarding
+> node --import tsx --test src/index.test.ts
+
+✔ bootstrapTenant: produces a MAE/Ward/Envelope, all tagged with tenant_id (6.377ms)
+✔ bootstrapTenant: MAE signing_keys contains the supplied keyId — closes cross-tenant forge gap (5.2691ms)
+✔ bootstrapTenant: appoints governor when accountable_party != sovereign_root (2.1345ms)
+✔ bootstrapTenant: no governor minted when accountable_party === sovereign_root (1.1758ms)
+✔ bootstrapTenant: warns under HmacKeyring (demonstration only) (1.1527ms)
+✔ two tenants bootstrapped into the same store are isolated by scopeSnapshot (2.5989ms)
+✔ bootstrapTenantWithLocalKeyring: spins up a fresh tenant in one call (0.8632ms)
+✔ bootstrapTenant: prohibited action classes default to a safe sentinel set (0.771ms)
+✔ bootstrapTenant: federation disabled by default (0.9539ms)
+✔ bootstrapTenant: federation enabled honors trusted_mae_ids and exportable_evidence (0.8869ms)
+✔ rotateTenantKey: adds new key to signing_keys and re-signs the MAE (3.6854ms)
+✔ rotateTenantKey: rejects when newKeyId is already in signing_keys (1.3278ms)
+✔ pruneRetiredTenantKey: removes the retired key and re-signs under active (1.8587ms)
+✔ pruneRetiredTenantKey: refuses to prune the active key (0.8143ms)
+✔ suspendTenant: latches suspended_at on Wards and revocation_state on Envelopes (0.9915ms)
+✔ revokeTenant: latches revoked_at on Wards and revocation_state=revoked on Envelopes (0.7726ms)
+✔ exportTenantSnapshot + importTenantSnapshot: tenant migrates between stores (0.9182ms)
+✔ importTenantSnapshot: refuses to overwrite without overwrite:true (0.5991ms)
+✔ revokeTenant: only affects the named tenant (other tenants untouched) (1.7589ms)
+✔ tenant summaries reflect post-import state across stores (0.6271ms)
+✔ tenantAuditReport: posture=healthy with default bootstrap (0.9316ms)
+✔ tenantAuditReport: suspendTenant flips posture to degraded (0.5864ms)
+✔ tenantAuditReport: revokeTenant flips posture to compromised (0.5659ms)
+✔ tenantAuditReport: many signing keys triggers MANY_SIGNING_KEYS warn (1.2414ms)
+✔ tenantAuditReport: unknown tenant throws (1.6114ms)
+✔ federateTenants: mints a FederationAgreement when both sides opt in and trust each other (2.3162ms)
+✔ federateTenants: refuses when local tenant has federation_allowed=false (1.2389ms)
+✔ federateTenants: refuses when foreign tenant doesn't list local MAE as trusted (1.4983ms)
+✔ federateTenants: refuses when ward ids don't match their declared tenants (1.103ms)
+ℹ tests 29
+ℹ suites 0
+ℹ pass 29
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 742.5625
+
+> @aristotle/time-machine@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\time-machine
+> node --import tsx --test src/index.test.ts src/cli.test.ts
+
+✔ parseArgs: minimal happy path (1.7112ms)
+✔ parseArgs: full option set (0.2687ms)
+✔ parseArgs: rejects --max-flipped that is not a non-negative integer (0.6769ms)
+✔ parseArgs: rejects missing --plan (0.2298ms)
+✔ parseArgs: rejects unknown argument (0.2551ms)
+✔ runCli: writes serialized sweep to --out; exits 1 when flipped > max-flipped (59.7444ms)
+✔ runCli: exits 0 when flipped <= max-flipped (7.485ms)
+✔ runCli: throws on malformed plan (records missing) (7.5515ms)
+✔ runCli: throws on counterfactual missing name (4.7743ms)
+✔ original replay reproduces historical ALLOW decision exactly (36.5972ms)
+✔ counterfactual that removes action from envelope flips ALLOW to REFUSE (0.8715ms)
+✔ counterfactual reports policy_version mismatch as ESCALATE (0.7132ms)
+✔ original_reproduces_historical false when ward/envelope inputs don't match record (3.4264ms)
+✔ multiple counterfactuals: decisions_flipped counts only those that differ from original (1.303ms)
+✔ runCounterfactualSweep: ALLOW_to_REFUSE transition count across a small batch (3.832ms)
+✔ runCounterfactualSweep: unresolved actions counted but not evaluated (0.7435ms)
+✔ serializeSweep + loadSweep: round-trip preserves content and format tag (1.1329ms)
+✔ loadSweep: rejects artifacts without the expected format tag (1.2724ms)
+✔ summarizeSweep: produces a single-line CI-friendly string (1.3174ms)
+✔ compareSweeps: rows sorted by flipped descending; total_resolved_records is the max (2.5477ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1056.6789
+
+> @aristotle/warrant-verifier@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\warrant-verifier
+> node --import tsx --test src/index.test.ts
+
+✔ verifyWarrantPublic: ALLOWs a fresh warrant with the issuer's key in trustedKeyIds (43.4084ms)
+✔ verifyWarrantPublic: REFUSEs when the warrant's signing key is not in trustedKeyIds (4.5979ms)
+✔ verifyWarrantPublic: REFUSEs when canonical_action_hash doesn't match the warrant (2.1382ms)
+✔ verifyWarrantPublic: REFUSEs an expired warrant (now > expires_at) (3.0409ms)
+✔ verifyWarrantPublic: replay-protection — second verify of the same nonce returns WARRANT_REPLAYED (2.6517ms)
+✔ createVerifierHandler: POST /verify ALLOWs and returns 200 with the verification body (2.1851ms)
+✔ createVerifierHandler: refused warrant returns 422 with reason in body (6.2977ms)
+✔ createVerifierHandler: non-POST returns 405 (0.7827ms)
+✔ createVerifierHandler: malformed JSON returns 400 / MalformedJson (0.6108ms)
+✔ createVerifierHandler: unsupported format returns 400 / UnsupportedFormat (1.1287ms)
+✔ verifyWarrantPublic: signature tamper -> SIGNATURE_MISMATCH (3.5986ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 978.5183
+
+> @aristotle/bacnet-adapter@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\bacnet-adapter
+> node --import tsx --test src/index.test.ts
+
+✔ DemonstrationBacnetTransport emits hash-bound receipt for analog setpoint (2.6938ms)
+✔ DemonstrationBacnetTransport emits for binary output (3.5116ms)
+✔ transport REFUSES object ids outside authz.permitted_object_ids (0.456ms)
+✔ transport REFUSES priority above the authz cap (lower number = higher priority) (0.3389ms)
+✔ transport REFUSES priority outside the 1..16 range (0.4091ms)
+✔ transport REFUSES write_property with multiple writes (use write_property_multiple) (0.3409ms)
+✔ write_property_multiple: every object id must be in the allowlist (0.4725ms)
+✔ BacnetShimTransport delegates to the provided sender (0.6286ms)
+✔ BacnetShimTransport: sender error -> TRANSPORT_REJECTED (0.4494ms)
+✔ governBacnetOperation: ALLOW path emits with action_type=ot.bacnet.write_property (2.093ms)
+✔ governBacnetOperation: REFUSE skips the transport (0.6836ms)
+✔ governBacnetOperation: demo-only block without opt-in (0.4287ms)
+✔ governBacnetOperation: permitted_object_ids derived from the operation's writes (1.5524ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 699.6855
+
+> @aristotle/claude-agents@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\claude-agents
+> node --import tsx --test src/index.test.ts
+
+✔ hook returns permissionDecision:allow on ALLOW and surfaces the warrant id in the reason (5.5543ms)
+✔ hook returns permissionDecision:deny on REFUSE and includes reason codes (0.5977ms)
+✔ hook returns permissionDecision:ask on ESCALATE so the SDK can route to a human (0.4147ms)
+✔ default action_type is tool.<toolname-lowercased>; the gate sees the canonical action with the tool input as params (1.3475ms)
+✔ custom actionTypeFor routes specific tools into a vertical namespace (2.5087ms)
+✔ custom buildAction takes full control over the canonical action shape (2.6909ms)
+✔ passthroughTools allows specified tools without calling the gate (0.683ms)
+✔ onDecision telemetry fires with the gate verdict + elapsed time (1.2781ms)
+✔ gate-unreachable fails closed with permissionDecision:deny by default (1.0809ms)
+✔ onError:ask routes gate failures to the user instead of failing closed (1.7536ms)
+✔ hook is a no-op for non-PreToolUse events (defensive guard) (0.4813ms)
+✔ hooksConfig is a ready-made PreToolUse registration (0.3673ms)
+✔ constructor refuses missing required options (0.8858ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 709.873
+
+> @aristotle/dnp3-adapter@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\dnp3-adapter
+> node --import tsx --test src/index.test.ts
+
+✔ DemonstrationDnp3Transport emits hash-bound receipt for breaker trip (3.2318ms)
+✔ transport REFUSES point indexes outside authz (0.2853ms)
+✔ Dnp3ShimTransport delegates to the provided sender (1.8339ms)
+✔ Dnp3ShimTransport: sender error -> TRANSPORT_REJECTED (0.439ms)
+✔ governDnp3Control: ALLOW path emits with action_type=grid.dnp3.binary_output_select_then_operate (1.7526ms)
+✔ governDnp3Control: REFUSE skips the transport (0.4846ms)
+✔ governDnp3Control: demo-only block without opt-in (0.4476ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 744.601
+
+> @aristotle/k8s-admission@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\k8s-admission
+> node --import tsx --test src/index.test.ts
+
+✔ ALLOW path returns allowed:true and includes warrant warning (5.9058ms)
+✔ default subject derives from userInfo.username (0.7863ms)
+✔ REFUSE returns allowed:false with code 403 and reason carried (0.6866ms)
+✔ ESCALATE blocks admission by default (code 409) (0.4818ms)
+✔ ESCALATE with escalateBlocksAdmission:false returns code 202 (36.8215ms)
+✔ Gate unreachable fail-closes with code 503 (0.9658ms)
+✔ privileged container surfaces in params.privileged (36.4663ms)
+✔ Deployment template container images are extracted recursively (0.7173ms)
+✔ createAdmissionHandler parses JSON and returns a JSON response string (0.8665ms)
+✔ createAdmissionHandler returns MALFORMED_REQUEST on bad JSON (0.6733ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 964.4589
+
+> @aristotle/langchain@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\langchain
+> node --import tsx --test src/index.test.ts
+
+✔ ALLOW runs the underlying tool's invoke with the original input + config (10.3282ms)
+✔ REFUSE throws ToolGovernanceError with the gate's reason codes and the underlying tool never runs (2.8612ms)
+✔ ESCALATE throws ToolEscalationError by default; underlying tool never runs (0.9141ms)
+✔ onEscalate:'return' returns a marker string instead of throwing on ESCALATE (0.6552ms)
+✔ default action_type is tool.<lowercased>; custom actionTypeFor routes into a vertical (0.7649ms)
+✔ buildAction takes full control over the canonical action shape (0.6859ms)
+✔ passthroughTools skips the gate call entirely and runs the original tool (0.3605ms)
+✔ onDecision telemetry fires with the verdict + elapsed time (0.6963ms)
+✔ gate-unreachable defaults to fail-closed deny (ToolGovernanceError) (0.8928ms)
+✔ onError:'escalate' raises ToolEscalationError when the gate is unreachable (0.7309ms)
+✔ governTools maps over an array preserving every tool's shape (0.841ms)
+✔ the original tool is not mutated; governTool returns a new object (0.3443ms)
+✔ string input is normalized into params:{input: '...'} (3.3743ms)
+✔ constructor refuses missing required options (0.6741ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 782.2699
+
+> @aristotle/mastra@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\mastra
+> node --import tsx --test src/index.test.ts
+
+✔ ALLOW invokes wrapped execute and returns its output (6.2785ms)
+✔ REFUSE returns AristotleToolOutcome by default, execute never runs (1.1164ms)
+✔ REFUSE throws AristotleGateError when onRefuse:'throw' (2.7385ms)
+✔ ESCALATE returns AristotleToolOutcome by default (0.6573ms)
+✔ Gate unreachable throws by default (0.7823ms)
+✔ Gate unreachable returns outcome when onError:'return-outcome' (0.7863ms)
+✔ passthroughTools returns the original tool unchanged (identity) (0.3051ms)
+✔ actionTypeFor routes specific tools into a vertical namespace (0.6364ms)
+✔ onDecision telemetry fires with verdict + elapsedMs (1.4704ms)
+✔ governMastraTools wraps every tool in the record (1.9151ms)
+✔ Tool without execute is returned unchanged (0.4508ms)
+✔ Constructor refuses missing required options (0.6995ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 883.7718
+
+> @aristotle/mavlink-px4@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\mavlink-px4
+> node --import tsx --test src/index.test.ts
+
+✔ encodeCommandLong produces a MAVLink v2 frame starting with 0xfd (1.9896ms)
+✔ encodeCommandLong encodes MAV_CMD_NAV_TAKEOFF (22) at the expected offset (0.2947ms)
+✔ encodeCommandLong with ARM uses MAV_CMD_COMPONENT_ARM_DISARM (400) at the right offset (0.2756ms)
+✔ DemonstrationFlightControlTransport emits with hash-bound receipt (4.8771ms)
+✔ DemonstrationFlightControlTransport REFUSEs commands outside authz.permitted_commands (0.7054ms)
+✔ MavlinkUdpTransport sends a real UDP datagram to a listener (82.752ms)
+✔ MavlinkUdpTransport reports production_validated when explicitly opted in (0.372ms)
+✔ governFlightCommand: ALLOW path emits via transport and returns hash-bound receipt (3.2813ms)
+✔ governFlightCommand: REFUSE path does NOT call the transport (0.7232ms)
+✔ governFlightCommand: refuses non-production-validated transport by default (2.3308ms)
+✔ governFlightCommand: action_type defaults to aviation.flight.<lowercased command> (0.7388ms)
+✔ governFlightCommand: actionTypeFor overrides the default action_type (2.094ms)
+✔ governFlightCommand: gate-unreachable returns GATE_UNREACHABLE refusal and never emits (4.2446ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 951.2497
+
+> @aristotle/mcp-server@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\mcp-server
+> node --import tsx --test src/index.test.ts
+
+✔ listTools: returns name + description + inputSchema for every wrapped tool (1.5946ms)
+✔ callTool: ALLOW invokes handler and returns content + _aristotle ALLOW metadata (1.645ms)
+✔ callTool: governance context is passed to the handler (0.3182ms)
+✔ callTool: REFUSE returns isError + content describing the refusal + _aristotle REFUSE metadata (1.1475ms)
+✔ callTool: gate unreachable -> isError + GATE_UNREACHABLE reason (0.3783ms)
+✔ callTool: gate HTTP error surfaces as fail-closed (0.421ms)
+✔ callTool: ALLOW without Warrant surfaces as MISSING_WARRANT (defensive) (0.3003ms)
+✔ callTool: handler exception after ALLOW surfaces as isError + HANDLER_THREW (0.3252ms)
+✔ callTool: unknown tool name returns isError (0.3937ms)
+✔ actionTypeFor: override is used to build the CanonicalAction action_type (1.2228ms)
+✔ default action_type is mcp.<toolName> (0.501ms)
+✔ buildParams: override transforms args before they reach the gate (0.4169ms)
+✔ formatResult: tool override controls how the handler result becomes content (0.6148ms)
+✔ REFUSE: handler is NEVER invoked (0.5784ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 533.7556
+
+> @aristotle/modbus-adapter@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\modbus-adapter
+> node --import tsx --test src/index.test.ts
+
+✔ DemonstrationModbusTransport emits hash-bound receipt for register write (2.8693ms)
+✔ DemonstrationModbusTransport emits for coil write (1.3874ms)
+✔ transport REFUSES register addresses outside authz (0.2283ms)
+✔ transport REFUSES coil addresses outside authz (0.1808ms)
+✔ transport REFUSES values over per-address cap (0.2139ms)
+✔ transport REFUSES malformed register writes (out-of-range value) (0.201ms)
+✔ transport REFUSES register write with empty values[] (0.222ms)
+✔ write_multiple_registers: every address must be in the allowlist (0.2356ms)
+✔ ModbusShimTransport delegates to the provided sender (2.3997ms)
+✔ ModbusShimTransport: sender error -> TRANSPORT_REJECTED (0.837ms)
+✔ governModbusOperation: ALLOW path emits with action_type=ot.modbus.write_single_register (1.4584ms)
+✔ governModbusOperation: REFUSE skips the transport (0.5625ms)
+✔ governModbusOperation: demo-only block without opt-in (0.4914ms)
+✔ governModbusOperation: derives permitted_register_addresses from the operation (0.8603ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 522.2918
+
+> @aristotle/opcua-adapter@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\opcua-adapter
+> node --import tsx --test src/index.test.ts
+
+✔ DemonstrationOpcUaTransport emits hash-bound receipt for a write (2.0475ms)
+✔ transport REFUSES nodes outside authz.permitted_node_ids (0.2237ms)
+✔ OpcUaShimTransport delegates to the provided writer function (1.4339ms)
+✔ OpcUaShimTransport: writer rejection surfaces as TRANSPORT_REJECTED (0.3075ms)
+✔ governOpcUaOperation: ALLOW path emits via transport with action_type=opcua.write (1.3555ms)
+✔ governOpcUaOperation: REFUSE skips the transport (0.483ms)
+✔ governOpcUaOperation: refuses non-production-validated transport without opt-in (0.3739ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 483.9826
+
+> @aristotle/openai-agents@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\openai-agents
+> node --import tsx --test src/index.test.ts
+
+✔ ALLOW returns behavior:'allow' with warrant + GEL record id in outputInfo (4.5298ms)
+✔ REFUSE returns behavior:'rejectContent' with reason codes; outputInfo carries gelRecordId (0.6055ms)
+✔ ESCALATE returns behavior:'rejectContent' by default carrying reason codes (0.3696ms)
+✔ onEscalate:'throwException' raises the runner instead of letting the agent see the rejection (0.3191ms)
+✔ custom actionTypeFor routes specific tools into a vertical namespace (0.4363ms)
+✔ custom buildAction takes full control over the canonical action shape (0.4561ms)
+✔ passthroughTools allows specified tools without calling the gate (0.2232ms)
+✔ onDecision telemetry fires with the gate verdict + elapsed time (0.4335ms)
+✔ gate-unreachable defaults to rejectContent (fail-closed message the agent can incorporate) (0.5055ms)
+✔ onError:'throwException' raises the runner on gate failure (0.5415ms)
+✔ non-JSON tool arguments are normalized into params:{input: '...'} (0.4352ms)
+✔ the resulting guardrail has the right name, type, and run-function shape (2.0101ms)
+✔ constructor refuses missing required options (1.3712ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 519.3386
+
+> @aristotle/reviewer@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\reviewer
+> node --import tsx --test src/index.test.ts
+
+✔ CLI: --version prints the package version on stdout, exit 0 (119.5802ms)
+✔ CLI: help subcommand prints usage on stdout, exit 0 (106.3114ms)
+✔ CLI: no args prints usage on stdout, exit 1 (103.2923ms)
+✔ CLI: unknown subcommand exits 2 with usage on stderr (101.1424ms)
+✔ CLI verify: a known-good bundle returns exit 0 with ok: true in stdout (183.986ms)
+✔ CLI verify: a tampered bundle returns non-zero exit (149.4972ms)
+✔ CLI verify: missing file argument exits 1 with stderr hint (109.4003ms)
+✔ CLI verify: nonexistent file exits 1 (110.7221ms)
+✔ CLI verify-warrant: trusted key + matching hash returns ok: true, exit 0 (155.7588ms)
+✔ CLI verify-warrant: untrusted key returns ok: false, exit 1 (132.1284ms)
+✔ CLI verify-warrant: action hash mismatch returns ok: false, exit 1 (124.3345ms)
+✔ CLI verify-warrant: missing required args exits 1 (112.9291ms)
+✔ CLI verify-replay: a well-formed replay artifact returns ok: true, exit 0 (118.243ms)
+✔ CLI verify-replay: a tampered report_hash returns ok: false, exit 1 (118.595ms)
+✔ CLI verify-replay: invalid artifact format exits 1 (135.6392ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2772.6168
+
+> @aristotle/ros2-bridge@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\ros2-bridge
+> node --import tsx --test src/index.test.ts
+
+✔ DemonstrationRosTransport emits rosbridge 'publish' op with hash-bound receipt (1.8812ms)
+✔ DemonstrationRosTransport emits 'call_service' op when kind is service (1.341ms)
+✔ transport REFUSEs targets outside authz.permitted_targets (0.2139ms)
+✔ RosbridgeWebsocketTransport sends a JSON op via the injected socket (0.9061ms)
+✔ RosbridgeWebsocketTransport refuses when socket isn't open (1.1094ms)
+✔ governRosMessage: ALLOW path emits via transport (2.6089ms)
+✔ governRosMessage: REFUSE skips the transport entirely (0.6369ms)
+✔ governRosMessage: action_type defaults to ros.<kind>.<target> with dots (1.0215ms)
+✔ governRosMessage: refuses non-production-validated transport without opt-in (0.5741ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 490.9353
+
+> @aristotle/sdk-anthropic@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\sdk-anthropic
+> node --import tsx --test src/index.test.ts
+
+✔ governAnthropicTool: preserves name + description + input_schema (2.0084ms)
+✔ governAnthropicTool: preserves pass-through fields (e.g. cache_control) (0.6623ms)
+✔ governAnthropicTool: rejects bad input shape (0.5688ms)
+✔ governAnthropicTools: wraps every entry of the input map (0.2828ms)
+✔ executeTool: ALLOW invokes handler, returns string content + isError: false + ALLOW metadata (2.0161ms)
+✔ executeTool: governance context is passed to the handler (0.356ms)
+✔ executeTool: non-string handler result is JSON-stringified (3.116ms)
+✔ executeTool: tool_use_id echoes back when provided (1.0171ms)
+✔ executeToolUseBlock: dispatches from a tool_use content block (0.6778ms)
+✔ executeTool: REFUSE returns isError + GATE_REFUSED metadata, handler NOT invoked (0.8292ms)
+✔ executeTool: gate unreachable returns isError + GATE_UNREACHABLE, handler NOT invoked (0.5593ms)
+✔ executeTool: gate HTTP error treated as fail-closed (GATE_UNREACHABLE) (0.7474ms)
+✔ executeTool: ALLOW without Warrant returns MISSING_WARRANT, handler NOT invoked (0.441ms)
+✔ executeTool: handler exception after ALLOW returns isError + HANDLER_THREW (0.8362ms)
+✔ executeTool: unknown tool name returns isError + UNKNOWN_TOOL (0.4958ms)
+✔ action_type default is anthropic.<toolName> (0.7354ms)
+✔ actionTypeFor: per-tool override is used (0.5337ms)
+✔ buildParams: transforms params before they reach the gate (0.4119ms)
+✔ onDecision: telemetry hook fires with action + decision + elapsedMs (0.359ms)
+✔ constructor: missing required opts throws (0.3633ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 583.2724
+
+> @aristotle/vercel-ai@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\vercel-ai
+> node --import tsx --test src/index.test.ts
+
+✔ ALLOW invokes inner execute and returns its output unchanged (5.9536ms)
+✔ REFUSE returns a structured AristotleToolOutcome by default; inner execute never runs (0.7215ms)
+✔ REFUSE throws AristotleGateError when onRefuse:'throw' (1.186ms)
+✔ ESCALATE returns AristotleToolOutcome by default; can throw when onEscalate:'throw' (0.915ms)
+✔ gate-unreachable throws by default; returns outcome with onError:'return-error' (0.7747ms)
+✔ passthroughTools returns the original tool unchanged (gate not called) (0.2394ms)
+✔ actionTypeFor routes specific tools into a vertical namespace (0.3682ms)
+✔ buildAction takes full control over the canonical action shape (0.5027ms)
+✔ onDecision telemetry fires with the gate verdict and elapsedMs (0.5533ms)
+✔ non-object input (string, number) normalizes into params:{input: value} (0.556ms)
+✔ governTools wraps every tool in the record using the same options (0.6639ms)
+✔ a tool with no execute (e.g. provider-defined) is returned unchanged (0.2049ms)
+✔ constructor refuses missing required options (0.3244ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 516.0975
+
+> @aristotle/simulation-engine@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\services\simulation-engine
+> node --import tsx --test src/index.test.ts
+
+✔ /health returns ok=true and an integer tick counter (909.413ms)
+✔ /telemetry lists exactly the 3 mesh nodes; mesh.gamma defaults to degraded (868.2639ms)
+✔ /degrade replaces the degraded-nodes list (1036.0415ms)
+✔ /v1/chaos/scenarios lists all 10 documented chaos-harness scenarios (992.8435ms)
+✔ /v1/chaos/run/replay_attempt returns ok=true + scorecard + duration_ms (1045.6235ms)
+✔ /v1/chaos/run/unknown_scenario returns 404 unknown_scenario (1010.7929ms)
+✔ /counterfactual on a degraded primary relay reports projectedOutcome=reroute, mode=degraded (1173.9283ms)
+✔ /counterfactual with injectKillSwitch=true reports projectedOutcome=halt + sovereign-halt recovery path (1029.6775ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8506.1141
+
+> @aristotle/gel-timestamp-rfc3161@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\gel-timestamp-rfc3161
+> node --import tsx --test src/index.test.ts
+
+✔ ASN.1: encodeInteger(0) -> 02 01 00 (2.6919ms)
+✔ ASN.1: encodeInteger(127) -> 02 01 7F (high bit clear, no padding) (0.274ms)
+✔ ASN.1: encodeInteger(128) -> 02 02 00 80 (high bit set, leading zero padding) (0.2201ms)
+✔ ASN.1: encodeNull -> 05 00 (0.2688ms)
+✔ ASN.1: encodeObjectIdentifier for SHA-256 -> well-known DER bytes (0.3858ms)
+✔ ASN.1: encodeSequence wraps children with tag 30 + correct length (0.2946ms)
+✔ ASN.1: encodeSequence with long-form length (> 127 bytes content) (1.0402ms)
+✔ ASN.1: encodeOctetString wraps bytes with tag 04 + length (0.2308ms)
+✔ ASN.1: decodeTLV reads tag + length + valueOffset (0.5643ms)
+✔ ASN.1: decodeChildren walks a SEQUENCE (0.9162ms)
+✔ buildTimeStampReq: produces a parseable SEQUENCE with version=1 and SHA-256 messageImprint (1.525ms)
+✔ buildTimeStampReq: caller-supplied nonce round-trips (1.0304ms)
+✔ buildTimeStampReq: with reqPolicyOid adds an OID field (0.6181ms)
+✔ decodeTimeStampResp: granted (0) + token -> extracts TST bytes (0.6327ms)
+✔ decodeTimeStampResp: rejection (2) -> no token (0.2024ms)
+✔ decodeTimeStampResp: malformed root -> throws (0.6328ms)
+✔ Rfc3161TimestampAuthority: anchor() POSTs DER bytes with correct content-type (46.7191ms)
+✔ Rfc3161TimestampAuthority: TSA rejects -> throws with statusName in message (4.1793ms)
+✔ Rfc3161TimestampAuthority: HTTP non-2xx -> throws with status info (0.8827ms)
+✔ Rfc3161TimestampAuthority: granted (0) status with token -> anchor signature is the TST (2.0121ms)
+✔ Rfc3161TimestampAuthority: tsaKeyId override is surfaced in the anchor (0.97ms)
+✔ inspectRfc3161Anchor: returns ok + TST bytes for a valid anchor (1.1115ms)
+✔ inspectRfc3161Anchor: record_hash mismatch -> ok=false with reason (0.254ms)
+✔ inspectRfc3161Anchor: wrong kind -> ok=false with reason (0.174ms)
+✔ inspectRfc3161Anchor: malformed TST (not a SEQUENCE) -> ok=false (0.2097ms)
+✔ inspectRfc3161Anchor: empty signature -> ok=false (0.1563ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 714.7904
+
+> @aristotle/sigstore-rekor@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\sigstore-rekor
+> node --import tsx --test src/index.test.ts
+
+✔ RekorTimestampAuthority: defaults rekorUrl to the public Sigstore instance (16.1102ms)
+✔ RekorTimestampAuthority: trailing slash on rekorUrl is normalized away (1.3315ms)
+✔ RekorTimestampAuthority: tsaKeyId override is surfaced in the anchor (19.9086ms)
+✔ anchor: POSTs to /api/v1/log/entries with hashedrekord body (8.2207ms)
+✔ anchor: granted response is parsed into anchor envelope (uuid + logIndex + SET) (2.4012ms)
+✔ anchor: Rekor HTTP error throws with status info (7.5531ms)
+✔ anchor: empty entry map throws (3.3055ms)
+✔ anchor: missing logIndex or integratedTime throws (3.6772ms)
+✔ inspectRekorAnchor: returns ok + parsed envelope for a valid anchor (2.7986ms)
+✔ inspectRekorAnchor: wrong kind -> ok=false with reason (1.3426ms)
+✔ inspectRekorAnchor: record_hash mismatch -> ok=false (7.7472ms)
+✔ inspectRekorAnchor: signature is not valid base64 envelope -> ok=false (0.4805ms)
+✔ inspectRekorAnchor: envelope missing required fields -> ok=false (1.1827ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1235.1034
+
+> @aristotle/mcp-server-stdio@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\mcp-server-stdio
+> node --import tsx --test src/index.test.ts
+
+✔ runStdioMcpServer: throws a clear, operator-facing error when @modelcontextprotocol/sdk is not installed (2.36ms)
+✔ runStdioMcpServer: the default loader path resolves to the real SDK when present (no loader injection) (1.2001ms)
+✔ runStdioMcpServer: missing server arg throws synchronously-rejected error (0.3261ms)
+✔ GovernedMcpServer.listTools() returns the shape the stdio wrapper consumes (2.8752ms)
+✔ GovernedMcpServer.callTool() returns { content, isError?, _aristotle? } - the shape the stdio wrapper hands back to the SDK (2.3592ms)
+✔ GovernedMcpServer.callTool() unknown tool returns isError: true (stdio wrapper propagates as MCP error) (0.3749ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 812.7352
+
+> @aristotle/gel-timestamp-rfc3161-verify@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\gel-timestamp-rfc3161-verify
+> node --import tsx --test src/index.test.ts
+
+✔ verifyRfc3161Anchor: wrong anchor kind -> ok=false with inspectRfc3161Anchor reason (2.579ms)
+✔ verifyRfc3161Anchor: record_hash mismatch -> ok=false (0.3724ms)
+✔ verifyRfc3161Anchor: malformed TST (not a ContentInfo) -> ok=false with parse error (0.8564ms)
+✔ chain validation: no trustedCAs provided -> ok=false (0.3677ms)
+✔ chain validation: invalid trustedCA PEM -> ok=false with parse reason (0.5207ms)
+✔ re-export: RFC3161_ANCHOR_KIND is 'rfc3161' (3.0033ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 850.99
+
+> @aristotle/sigstore-rekor-verify@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\shared\sigstore-rekor-verify
+> node --import tsx --test src/index.test.ts
+
+✔ verifyRekorAnchor: wrong kind -> ok=false with inspect reason (14.3034ms)
+✔ verifyRekorAnchor: record_hash mismatch -> ok=false (1.1929ms)
+✔ verifyRekorAnchor: malformed envelope -> ok=false (0.7517ms)
+✔ verifyRekorAnchor: well-formed anchor signed by the supplied key -> ok=true + setVerified (15.0232ms)
+✔ verifyRekorAnchor: SET signed by a different key -> ok=false setVerified=false (1.7795ms)
+✔ verifyRekorAnchor: tampered envelope after signing -> SET no longer matches (1.3744ms)
+✔ verifyRekorAnchor: missing signed_entry_timestamp -> ok=false (1.1733ms)
+✔ verifyRekorAnchor: bad PEM -> ok=false with parse reason (7.2274ms)
+✔ verifyRekorAnchor: inclusion proof — leaf at index 0 in a 2-leaf tree verifies (5.2508ms)
+✔ verifyRekorAnchor: inclusion proof — leaf at index 1 in a 2-leaf tree verifies (2.5866ms)
+✔ verifyRekorAnchor: inclusion proof with wrong root -> ok=false inclusionVerified=false (7.5177ms)
+✔ verifyRekorAnchor: inclusion proof with out-of-range treeIndex -> ok=false (2.9996ms)
+✔ canonicalizeSetPayload: keys sorted lexicographically, no whitespace (0.5068ms)
+✔ canonicalizeSetPayload: stable across argument order (0.6394ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1104.3289
+
+> @aristotle/tests-cross-adapter@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\tests\cross-adapter
+> node --import tsx --test src/refusal-before-emission.test.ts src/conformance.test.ts
+
+✔ conformance: DNP3 DemonstrationTransport satisfies AristotleAdapterTransport contract (10.2088ms)
+✔ conformance: Modbus DemonstrationTransport satisfies AristotleAdapterTransport contract (1.5355ms)
+✔ conformance: BACnet DemonstrationTransport satisfies AristotleAdapterTransport contract (1.038ms)
+✔ conformance: OPC-UA DemonstrationTransport satisfies AristotleAdapterTransport contract (0.7695ms)
+✔ conformance: ROS2 DemonstrationTransport satisfies AristotleAdapterTransport contract (0.7671ms)
+✔ conformance: MAVLink/PX4 DemonstrationTransport satisfies AristotleAdapterTransport contract (0.9525ms)
+✔ conformance: all six first-party Transport classes are covered by this file (0.2327ms)
+✔ DNP3 adapter: REFUSE never reaches transport.emit() (7.0071ms)
+✔ Modbus adapter: REFUSE never reaches transport.emit() (1.1575ms)
+✔ BACnet adapter: REFUSE never reaches transport.emit() (0.7784ms)
+✔ OPC-UA adapter: REFUSE never reaches transport.emit() (0.6196ms)
+✔ ROS2 adapter: REFUSE never reaches transport.emit() (0.7176ms)
+✔ MAVLink/PX4 adapter: REFUSE never reaches transport.emit() (0.5488ms)
+✔ K8s admission adapter: REFUSE produces allowed=false with no wire emission (1.202ms)
+✔ Substrate guarantee: refusal-before-emission holds across all 7 adapters simultaneously (0.777ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1119.6316
+
+> @aristotle/tests-px4-sitl@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\tests\px4-sitl
+> node --import tsx --test src/integration.test.ts
+
+﹣ PX4 SITL integration: governFlightCommand drives MavlinkUdpTransport against 127.0.0.1:14540 (skips unless ARISTOTLE_PX4_SITL_OPT_IN=1) (1.4528ms) # Set ARISTOTLE_PX4_SITL_OPT_IN=1 to run against a live SITL (see docker/sitl/run.sh)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 622.8362

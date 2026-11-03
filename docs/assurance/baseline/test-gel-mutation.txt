@@ -1,0 +1,21 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:gel-mutation C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> tsx shared/execution-control-runtime/src/gel.mutation.test.ts
+
+✔ M1: mutating any material field on any record breaks verifyGelRecords (sweep) (146.9488ms)
+✔ M2: mutating previous_hash on any non-genesis record breaks the chain (15.2879ms)
+✔ M2: mutating record_hash on any record breaks the chain (13.33ms)
+✔ M3: swapping any two adjacent records breaks the chain (8.5336ms)
+✔ M3: reversing the chain breaks immediately at record 0 (genesis link) (6.6ms)
+✔ M4: inserting a fabricated record between two existing records breaks the chain (6.2471ms)
+✔ M5: stripping the signature on a signed record breaks verify (8.1362ms)
+✔ M6: signature forged by a DIFFERENT keypair under same record_hash fails (5.6082ms)
+✔ verifyGelRecords is deterministic across repeated calls on the same chain (12.5523ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 250.5199

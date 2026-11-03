@@ -1,0 +1,18 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:ward-marshal C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> tsx shared/execution-control-runtime/src/ward-marshal.test.ts
+
+✔ Ward Marshal census is deterministic across observation ordering (33.6724ms)
+✔ approved registered agents are classified as governed (6.8416ms)
+✔ undeclared consequential agents are classified as rogue with high or critical risk (3.8594ms)
+✔ interdiction is a governed action that receives a Warrant only after Commit Gate ALLOW (24.2042ms)
+✔ interdiction fails closed when the envelope does not allow that containment action (9.6168ms)
+✔ interdiction escalates when runtime authority registers are missing (10.0509ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 117.0025

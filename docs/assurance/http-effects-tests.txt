@@ -1,0 +1,41 @@
+✔ checkBudget enforces call and cost ceilings within the window (2.4961ms)
+✔ checkBudget ignores spend outside the rolling window (0.3434ms)
+✔ budgetPolicyFrom parses snake/camel and rejects empty/invalid blobs (1.5989ms)
+✔ BudgetGovernor records spend and persists across instances (file-backed) (10.3398ms)
+✔ evaluateExecutionControl refuses BUDGET_EXCEEDED once the envelope budget is spent (46.8824ms)
+✔ no budget governor ⇒ budget is not enforced (opt-in) (4.6596ms)
+✔ evaluateApproval: reject wins, then M distinct approvers, then TTL (1.7825ms)
+✔ dualControlPolicyFrom parses and rejects invalid blobs (1.4195ms)
+✔ ApprovalStore enforces separation of duties and one-vote-per-approver (1.4192ms)
+✔ ApprovalStore is idempotent on request and durable across instances (10.9446ms)
+✔ a dual-control action escalates and opens a pending request; approval then admits it (61.2393ms)
+✔ a rejection keeps a dual-control action escalated (10.7215ms)
+✔ without an approval store, dual control fails closed instead of silently bypassing plural authority (6.0169ms)
+✔ consumption and signed pre-dispatch events persist together across connections (95.0756ms)
+✔ lost response persists unknown and blocks newly authorized blind redispatch (54.6972ms)
+✔ received HTTP success still needs business-effect evidence (48.971ms)
+✔ response-body loss and HTTP errors do not prove no effect (66.7566ms)
+✔ refusal and invalid destination never reach dispatch (34.8799ms)
+✔ failed event signing rolls back consumption and blocks transport (47.122ms)
+✔ concurrent proxy attempts share durable operation ownership (40.876ms)
+✔ reconciliation rejects forged, stale, mismatched and conflicting observations (54.1155ms)
+✔ no-effect reconciliation never frees the consumed Warrant (38.9087ms)
+✔ process exit after durable consumption cannot clear an in-flight attempt (809.8537ms)
+✔ HTTP redirects are not followed and broker prefix lookalikes receive no secret (28.9041ms)
+✔ proxy rejects an HTTP method that differs from the admitted action class (24.9613ms)
+✔ server proxy enforces configured budget, dual control, and degradation (233.6122ms)
+✔ a redirect cannot send a request or brokered credential to a second destination (43.7364ms)
+✔ invalid verification time cannot bypass a Warrant's expiry (26.4919ms)
+✔ execution API ignores caller-supplied backdating (59.4696ms)
+✔ finalization failure preserves a durable non-redispatchable in-flight attempt (41.6928ms)
+✔ a substituted public key cannot borrow a trusted Warrant key id (22.792ms)
+✔ corrupt budget and approval files cannot silently reset authority (26.1364ms)
+✔ negative and malformed costs cannot bypass an enforced budget (29.5611ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2937.8501

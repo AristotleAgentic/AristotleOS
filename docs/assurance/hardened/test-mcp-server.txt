@@ -1,0 +1,30 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:mcp-server C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> corepack pnpm@10.32.1 --filter @aristotle/mcp-server test
+
+
+> @aristotle/mcp-server@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted\packages\mcp-server
+> node --import tsx --test src/index.test.ts
+
+✔ listTools: returns name + description + inputSchema for every wrapped tool (2.3135ms)
+✔ callTool: ALLOW invokes handler and returns content + _aristotle ALLOW metadata (1.7271ms)
+✔ callTool: governance context is passed to the handler (0.2966ms)
+✔ callTool: REFUSE returns isError + content describing the refusal + _aristotle REFUSE metadata (1.1217ms)
+✔ callTool: gate unreachable -> isError + GATE_UNREACHABLE reason (0.3748ms)
+✔ callTool: gate HTTP error surfaces as fail-closed (1.9992ms)
+✔ callTool: ALLOW without Warrant surfaces as MISSING_WARRANT (defensive) (0.4762ms)
+✔ callTool: handler exception after ALLOW surfaces as isError + HANDLER_THREW (0.3705ms)
+✔ callTool: unknown tool name returns isError (0.2846ms)
+✔ actionTypeFor: override is used to build the CanonicalAction action_type (0.6773ms)
+✔ default action_type is mcp.<toolName> (0.5126ms)
+✔ buildParams: override transforms args before they reach the gate (0.8255ms)
+✔ formatResult: tool override controls how the handler result becomes content (0.6987ms)
+✔ REFUSE: handler is NEVER invoked (0.2972ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 552.2883

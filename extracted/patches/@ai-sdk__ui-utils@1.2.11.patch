@@ -1,0 +1,40 @@
+diff --git a/dist/index.js b/dist/index.js
+index f07b8b773278f296fd00123b5e8aa3fd61f4182b..4a33fa9498584951c7e80aff37f0fdaeb4053361 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -1624,11 +1624,14 @@ var import_provider_utils4 = require("@ai-sdk/provider-utils");
+ 
+ // src/zod-schema.ts
+ var import_zod_to_json_schema = __toESM(require("zod-to-json-schema"));
++var aristotleZod = require("zod");
+ function zodSchema(zodSchema2, options) {
+   var _a;
+   const useReferences = (_a = options == null ? void 0 : options.useReferences) != null ? _a : false;
+   return jsonSchema(
+-    (0, import_zod_to_json_schema.default)(zodSchema2, {
++    zodSchema2._zod && typeof aristotleZod.toJSONSchema === "function"
++      ? aristotleZod.toJSONSchema(zodSchema2, { target: "draft-7", reused: useReferences ? "ref" : "inline" })
++      : (0, import_zod_to_json_schema.default)(zodSchema2, {
+       $refStrategy: useReferences ? "root" : "none",
+       target: "jsonSchema7"
+       // note: openai mode breaks various gemini conversions
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 1ac6e38284f63c9d8b6f2df68ee53c9c3445ee05..4a8d2b21c31f80ff63cef159733117d48ce08d66 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -1568,11 +1568,14 @@ import { validatorSymbol } from "@ai-sdk/provider-utils";
+ 
+ // src/zod-schema.ts
+ import zodToJsonSchema from "zod-to-json-schema";
++import * as aristotleZod from "zod";
+ function zodSchema(zodSchema2, options) {
+   var _a;
+   const useReferences = (_a = options == null ? void 0 : options.useReferences) != null ? _a : false;
+   return jsonSchema(
+-    zodToJsonSchema(zodSchema2, {
++    zodSchema2._zod && typeof aristotleZod.toJSONSchema === "function"
++      ? aristotleZod.toJSONSchema(zodSchema2, { target: "draft-7", reused: useReferences ? "ref" : "inline" })
++      : zodToJsonSchema(zodSchema2, {
+       $refStrategy: useReferences ? "root" : "none",
+       target: "jsonSchema7"
+       // note: openai mode breaks various gemini conversions

@@ -1,0 +1,16 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:attestation C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> tsx shared/execution-control-runtime/src/attestation.test.ts
+
+✔ verifyTelemetryAttestation accepts a fresh, pinned-device signature and rejects others (46.0245ms)
+✔ attested telemetry overrides a FORGED altitude, so the gate enforces ground truth (14.5217ms)
+✔ missing / untrusted / stale attestation is refused TELEMETRY_UNATTESTED (4.4979ms)
+✔ attested action records provenance in telemetry (2.1342ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 94.5365

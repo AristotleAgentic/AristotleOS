@@ -1,0 +1,16 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:gate-replay-property C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/execution-control-runtime/src/gate.replay-property.test.ts
+
+✔ I1: every ALLOW warrant becomes WARRANT_REPLAYED once its nonce is in seenNonces (1000 trials) (355.9886ms)
+✔ I2: WARRANT_REPLAYED precedes WARRANT_EXPIRED, WARRANT_NOT_YET_VALID, WARRANT_LIFETIME_EXCEEDED (2.0139ms)
+✔ I3: empty seenNonces lets every otherwise-valid warrant through (500 trials) (151.4968ms)
+✔ I4: nonce uniqueness — 4000 issued warrants carry 4000 distinct nonces (410.9792ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 948.4166

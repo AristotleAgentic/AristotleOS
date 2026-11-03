@@ -1,0 +1,60 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running breadth-first search Model-Checking with fp 54 and seed -5485173893510358588 with 1 worker on 4 cores with 3591MB heap and 64MB offheap memory [pid: 1512] (Windows 11 10.0 amd64, Eclipse Adoptium 21.0.12.1 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file C:\Users\Pepper\Downloads\aristotle-hardening-drafts\formal-baseline\MeshReconciliation.tla
+Parsing file C:\Users\Pepper\AppData\Local\Temp\Naturals.tla
+Parsing file C:\Users\Pepper\AppData\Local\Temp\Sequences.tla
+Parsing file C:\Users\Pepper\AppData\Local\Temp\FiniteSets.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module MeshReconciliation
+Starting... (2026-10-06 00:18:35)
+Implied-temporal checking--satisfiability problem has 2 branches.
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-10-06 00:18:44.
+Error: Invariant Inv_ReconcileDetectsConflict is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ edgeRevocations = [e1 |-> {}, e2 |-> {}]
+/\ edgeLastContact = [e1 |-> 0, e2 |-> 0]
+/\ edgeWarrantsSinceContact = [e1 |-> 0, e2 |-> 0]
+/\ edgeWarrants = [e1 |-> <<>>, e2 |-> <<>>]
+/\ rootClock = 0
+/\ rootRevocations = {}
+/\ edgeReachable = [e1 |-> TRUE, e2 |-> TRUE]
+/\ edgePartitioned = [e1 |-> FALSE, e2 |-> FALSE]
+
+State 2: <PartitionEdge line 116, col 5 to line 120, col 64 of module MeshReconciliation>
+/\ edgeRevocations = [e1 |-> {}, e2 |-> {}]
+/\ edgeLastContact = [e1 |-> 0, e2 |-> 0]
+/\ edgeWarrantsSinceContact = [e1 |-> 0, e2 |-> 0]
+/\ edgeWarrants = [e1 |-> <<>>, e2 |-> <<>>]
+/\ rootClock = 0
+/\ rootRevocations = {}
+/\ edgeReachable = [e1 |-> FALSE, e2 |-> TRUE]
+/\ edgePartitioned = [e1 |-> TRUE, e2 |-> FALSE]
+
+State 3: <RootRevoke line 102, col 5 to line 112, col 79 of module MeshReconciliation>
+/\ edgeRevocations = [e1 |-> {}, e2 |-> {[id |-> 0, atTime |-> 0]}]
+/\ edgeLastContact = [e1 |-> 0, e2 |-> 0]
+/\ edgeWarrantsSinceContact = [e1 |-> 0, e2 |-> 0]
+/\ edgeWarrants = [e1 |-> <<>>, e2 |-> <<>>]
+/\ rootClock = 0
+/\ rootRevocations = {[id |-> 0, atTime |-> 0]}
+/\ edgeReachable = [e1 |-> FALSE, e2 |-> TRUE]
+/\ edgePartitioned = [e1 |-> TRUE, e2 |-> FALSE]
+
+State 4: <EdgeIssueWarrant line 136, col 5 to line 145, col 53 of module MeshReconciliation>
+/\ edgeRevocations = [e1 |-> {}, e2 |-> {[id |-> 0, atTime |-> 0]}]
+/\ edgeLastContact = [e1 |-> 0, e2 |-> 0]
+/\ edgeWarrantsSinceContact = [e1 |-> 1, e2 |-> 0]
+/\ edgeWarrants = [e1 |-> <<[issuedAt |-> 0, knownRevsAtIssue |-> {}]>>, e2 |-> <<>>]
+/\ rootClock = 0
+/\ rootRevocations = {[id |-> 0, atTime |-> 0]}
+/\ edgeReachable = [e1 |-> FALSE, e2 |-> TRUE]
+/\ edgePartitioned = [e1 |-> TRUE, e2 |-> FALSE]
+
+109 states generated, 67 distinct states found, 49 states left on queue.
+The depth of the complete state graph search is 4.
+The average outdegree of the complete state graph is 4 (minimum is 1, the maximum 6 and the 95th percentile is 6).
+Finished in 10s at (2026-10-06 00:18:45)

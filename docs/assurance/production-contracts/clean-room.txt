@@ -1,0 +1,4 @@
+Clean-room scan — 1061 files, 10 allowlisted disclaimer docs
+
+OK — no vendor markers in source/docs/manifests.
+  advisory: 62 PERMIT/DEFER occurrence(s) (legacy trial-engine; new execution-control work uses ALLOW/ESCALATE).

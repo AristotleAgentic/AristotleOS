@@ -29,6 +29,8 @@
     "pilot:smoke:minikube": "node scripts/k8s-smoke-install.mjs --runtime minikube",
     "aristotle": "tsx apps/aristotle-cli/src/index.ts",
     "demo": "tsx apps/aristotle-cli/src/index.ts demo",
+    "demo:uav-swarm-proof": "node scripts/verify-uav-swarm-proof.mjs",
+    "verify:uav-swarm-proof": "node scripts/verify-uav-swarm-proof.mjs",
     "aristotle:demo": "npm run dev -w @aristotle/console-ui -- --host 127.0.0.1 --port 4173",
     "execution-control:dev": "tsx apps/aristotle-cli/src/index.ts execution-control dev",
     "execution-control:serve": "tsx apps/aristotle-cli/src/index.ts execution-control serve --ward examples/execution_control/ward.montana_drone_test_range.yaml --envelope examples/execution_control/authority_envelope.survey_planner.yaml --ledger ./.tmp/execution-control-runtime.gel.jsonl",
@@ -56,10 +58,11 @@
     "stack:verify": "npm run stack:smoke && npm run validate:core && npm run validate:chain",
     "lint": "echo 'lint not yet configured'",
     "typecheck": "tsc --noEmit -p shared/governance-core/tsconfig.json && tsc --noEmit -p shared/trial-engine/tsconfig.json && tsc --noEmit -p shared/execution-control-runtime/tsconfig.json && tsc --noEmit -p adapters/http-gateway/tsconfig.json && tsc --noEmit -p apps/aristotle-cli/tsconfig.json && tsc --noEmit -p apps/console-ui/tsconfig.json && tsc --noEmit -p packages/os-sdk/tsconfig.json",
-    "test": "npm run typecheck && npm run test:governance && npm run test:execution-control && npm run test:gate-property && npm run test:warrant-time && npm run test:ward-marshal && npm run test:ward-marshal-adapters && npm run test:marshal-behavior && npm run test:marshal-collectors && npm run test:credential-minter && npm run test:attestation && npm run test:crypto-posture && npm run test:edge-containment && npm run test:budget && npm run test:dual-control && npm run test:telecom && npm run test:automotive && npm run test:grid && npm run test:rail && npm run test:pipeline && npm run test:mining && npm run test:port && npm run test:water && npm run test:aviation && npm run test:robotics && npm run test:swarm && npm run test:logistics && npm run test:healthcare && npm run test:title && npm run test:space && npm run test:cert-auth && npm run test:classification && npm run test:fail-mode && npm run test:degradation && npm run test:sandbox && npm run test:shadow && npm run test:builder && npm run test:policy-dsl && npm run test:reconcile && npm run test:conflict-inbox && npm run test:trace && npm run test:cli && npm run test:api && npm run test:chain && npm run test:adapters && npm run test:signers && npm run test:sdk && npm run test:ui-boundary && npm run test:audit && npm run test:demo && npm run test:egress && npm run test:constraints-security && npm run test:legacy-routes",
+    "test": "npm run typecheck && npm run test:governance && npm run test:execution-control && npm run test:proxy-effects && npm run test:gate-property && npm run test:warrant-time && npm run test:ward-marshal && npm run test:ward-marshal-adapters && npm run test:marshal-behavior && npm run test:marshal-collectors && npm run test:credential-minter && npm run test:attestation && npm run test:crypto-posture && npm run test:edge-containment && npm run test:budget && npm run test:dual-control && npm run test:telecom && npm run test:automotive && npm run test:grid && npm run test:rail && npm run test:pipeline && npm run test:mining && npm run test:port && npm run test:water && npm run test:aviation && npm run test:robotics && npm run test:swarm && npm run test:logistics && npm run test:healthcare && npm run test:title && npm run test:space && npm run test:cert-auth && npm run test:classification && npm run test:fail-mode && npm run test:degradation && npm run test:sandbox && npm run test:shadow && npm run test:builder && npm run test:policy-dsl && npm run test:reconcile && npm run test:conflict-inbox && npm run test:trace && npm run test:cli && npm run test:api && npm run test:chain && npm run test:adapters && npm run test:signers && npm run test:sdk && npm run test:ui-boundary && npm run test:audit && npm run test:demo && npm run test:egress && npm run test:constraints-security && npm run test:legacy-routes",
     "test:legacy-routes": "node --import tsx --test tests/_harness.test.mjs services/governance-kernel/src/index.test.ts services/agent-os/src/index.test.ts services/agent-os/src/tasks.test.ts services/agent-os/src/tasks-lifecycle.test.ts services/agent-os/src/tasks-claim.test.ts services/agent-os/src/agents-workspaces.test.ts services/authority-router/src/index.test.ts services/evidence-ledger/src/index.test.ts services/evidence-ledger/src/gel-chain.test.ts adapters/http-gateway/src/index.test.ts adapters/http-gateway/src/trial-api.test.ts services/witness-service/src/index.test.ts services/meta-authority-registry/src/index.test.ts services/execution-gate/src/index.test.ts services/policy-compiler/src/index.test.ts services/simulation-engine/src/index.test.ts",
     "test:governance": "tsx shared/trial-engine/src/index.test.ts",
     "test:execution-control": "tsx shared/execution-control-runtime/src/index.test.ts",
+    "test:proxy-effects": "node --import tsx --test shared/execution-control-runtime/src/effects.test.ts",
     "test:gate-property": "tsx shared/execution-control-runtime/src/gate.property.test.ts",
     "test:gate-replay-property": "tsx shared/execution-control-runtime/src/gate.replay-property.test.ts",
     "test:trace-in-memory": "tsx shared/execution-control-runtime/src/trace.in-memory.test.ts",
@@ -154,15 +157,18 @@
     "test:swarm": "tsx shared/execution-control-runtime/src/swarm.test.ts",
     "test:healthcare": "tsx shared/execution-control-runtime/src/healthcare.test.ts",
     "test:title": "tsx shared/execution-control-runtime/src/title.test.ts",
-    "test:space": "tsx shared/execution-control-runtime/src/space.test.ts"
+    "test:space": "tsx shared/execution-control-runtime/src/space.test.ts",
+    "test:dependency-security": "node --test scripts/dependency-security.test.mjs",
+    "test:production-preflight": "node --import tsx --test adapters/http-gateway/src/preflight.test.ts",
+    "test:single-drone": "node --import tsx --test tests/cross-adapter/src/single-drone.test.ts"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.1",
     "concurrently": "^9.0.1",
     "tsx": "^4.19.2",
-    "typescript": "^5.6.3",
-    "@types/node": "^22.10.1",
-    "@types/express": "^5.0.0",
-    "@types/cors": "^2.8.17"
+    "typescript": "^5.6.3"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -171,7 +177,27 @@
     "overrides": {
       "langsmith@<0.6.0": "^0.7.6",
       "path-to-regexp@<0.1.13": "0.1.13",
-      "qs@>=6.11.1 <=6.15.1": "^6.15.2"
+      "js-yaml@>=3.0.0 <3.15.2": "3.15.2",
+      "nanoid@>=3.0.0 <3.3.18": "3.3.18",
+      "proxy-addr@>=2.0.0 <2.0.8": "2.0.8",
+      "@ai-sdk/provider-utils@>=4.0.0 <4.0.33": "4.0.33",
+      "@mastra/core@1.36.0>@ai-sdk/provider-utils-v5": "npm:@ai-sdk/provider-utils@3.0.28",
+      "@mastra/core@1.36.0>@ai-sdk/provider-utils-v6": "npm:@ai-sdk/provider-utils@4.0.33",
+      "uuid@10.0.0": "11.1.1",
+      "qs@>=6.7.0 <6.16.1": "6.16.1",
+      "hono@>=4.0.0 <4.13.11": "4.13.11",
+      "fast-uri@>=3.0.0 <3.1.9": "3.1.9",
+      "ip-address@>=10.0.0 <10.7.4": "10.7.4",
+      "@hono/node-server@>=1.0.0 <2.1.3": "2.1.3",
+      "body-parser@>=1.0.0 <1.20.9": "1.20.9",
+      "body-parser@>=2.0.0 <2.4.0": "2.4.0",
+      "@modelcontextprotocol/sdk@>=1.0.0 <1.32.0": "1.32.0",
+      "zod@<4.6.6": "4.6.6"
+    },
+    "patchedDependencies": {
+      "@ai-sdk/provider-utils@2.2.8": "patches/@ai-sdk__provider-utils@2.2.8.patch",
+      "sprintf-js@1.0.3": "patches/sprintf-js@1.0.3.patch",
+      "@ai-sdk/ui-utils@1.2.11": "patches/@ai-sdk__ui-utils@1.2.11.patch"
     }
   }
 }

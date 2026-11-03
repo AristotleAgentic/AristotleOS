@@ -1,0 +1,16 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:builder C:\Users\Pepper\Downloads\AristotleOS-hardened\extracted
+> tsx shared/execution-control-runtime/src/builder.test.ts
+
+✔ compileGovernanceManifest validates, hashes, and is content-addressed (15.5611ms)
+✔ compileGovernanceManifest surfaces cross-artifact incoherence (0.7762ms)
+✔ diff flags weakening vs tightening changes (0.608ms)
+✔ explainPolicy reports the gate decision for sample actions (4.7406ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 41.4376

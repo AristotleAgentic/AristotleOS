@@ -1,0 +1,48 @@
+{
+  "tool": "TLC v1.7.4 / TLC2 2.19",
+  "jar_sha256": "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88",
+  "spec_sha256": "0d0f609484e73a9075a5d9cc4aa474762d2f658bc1c5f206b28f5025c4e5e62e",
+  "started_at": "2026-10-06T06:31:50.764Z",
+  "results": [
+    {
+      "name": "two-edge",
+      "config_sha256": "cf801259d65da59fca9c6d5e00fd5d7c3ce15b0b63d00eeb08701486a834b1f9",
+      "spec_sha256": "0d0f609484e73a9075a5d9cc4aa474762d2f658bc1c5f206b28f5025c4e5e62e",
+      "exit_code": 0,
+      "expected_counterexample": false,
+      "status": "PASS",
+      "log_sha256": "94dafa26c9fde9f9c4e7adefc13800b5fdf343597c9c6b855c9ac7b45fbb91a5",
+      "log": "run-1APalY\\two-edge\\tlc.txt"
+    },
+    {
+      "name": "quota",
+      "config_sha256": "a070ac954cb137b7ba22ce2f9df7bb501390e249005f1dea568901b68d67316e",
+      "spec_sha256": "0d0f609484e73a9075a5d9cc4aa474762d2f658bc1c5f206b28f5025c4e5e62e",
+      "exit_code": 0,
+      "expected_counterexample": false,
+      "status": "PASS",
+      "log_sha256": "33b35d6562931cec146849fec99fa6e6a2fd5fc51a4a0d69dd2875bfd797a779",
+      "log": "run-1APalY\\quota\\tlc.txt"
+    },
+    {
+      "name": "negative-quota",
+      "config_sha256": "a070ac954cb137b7ba22ce2f9df7bb501390e249005f1dea568901b68d67316e",
+      "spec_sha256": "a2833182d781d0c00aecaf6ba8c5e21f2810643897e56142e3de4a1e8fae752b",
+      "exit_code": 12,
+      "expected_counterexample": true,
+      "status": "PASS",
+      "log_sha256": "abe5b2fb2e16027442305cc27fd88b980064787aa6edc63f15c249b26e31db0e",
+      "log": "run-1APalY\\negative-quota\\tlc.txt"
+    },
+    {
+      "name": "negative-revocation",
+      "config_sha256": "a070ac954cb137b7ba22ce2f9df7bb501390e249005f1dea568901b68d67316e",
+      "spec_sha256": "c5d2fe80576c63ee527535ca74cf25db97f8365b2b293eaa18920f531920d4ce",
+      "exit_code": 12,
+      "expected_counterexample": true,
+      "status": "PASS",
+      "log_sha256": "9aff8b4161bd7d8bd34bc905459a68031025250ba77d8c119bb8d193efbd49f1",
+      "log": "run-1APalY\\negative-revocation\\tlc.txt"
+    }
+  ]
+}

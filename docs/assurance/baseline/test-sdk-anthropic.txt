@@ -1,0 +1,36 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:sdk-anthropic C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> corepack pnpm@10.32.1 --filter @aristotle/sdk-anthropic test
+
+
+> @aristotle/sdk-anthropic@0.1.0 test C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted\packages\sdk-anthropic
+> node --import tsx --test src/index.test.ts
+
+✔ governAnthropicTool: preserves name + description + input_schema (4.9745ms)
+✔ governAnthropicTool: preserves pass-through fields (e.g. cache_control) (1.152ms)
+✔ governAnthropicTool: rejects bad input shape (0.9389ms)
+✔ governAnthropicTools: wraps every entry of the input map (0.4044ms)
+✔ executeTool: ALLOW invokes handler, returns string content + isError: false + ALLOW metadata (3.129ms)
+✔ executeTool: governance context is passed to the handler (0.505ms)
+✔ executeTool: non-string handler result is JSON-stringified (0.444ms)
+✔ executeTool: tool_use_id echoes back when provided (0.4322ms)
+✔ executeToolUseBlock: dispatches from a tool_use content block (0.6037ms)
+✔ executeTool: REFUSE returns isError + GATE_REFUSED metadata, handler NOT invoked (0.8617ms)
+✔ executeTool: gate unreachable returns isError + GATE_UNREACHABLE, handler NOT invoked (0.5297ms)
+✔ executeTool: gate HTTP error treated as fail-closed (GATE_UNREACHABLE) (0.5521ms)
+✔ executeTool: ALLOW without Warrant returns MISSING_WARRANT, handler NOT invoked (0.3638ms)
+✔ executeTool: handler exception after ALLOW returns isError + HANDLER_THREW (0.5669ms)
+✔ executeTool: unknown tool name returns isError + UNKNOWN_TOOL (0.3913ms)
+✔ action_type default is anthropic.<toolName> (2.7488ms)
+✔ actionTypeFor: per-tool override is used (0.74ms)
+✔ buildParams: transforms params before they reach the gate (0.4836ms)
+✔ onDecision: telemetry hook fires with action + decision + elapsedMs (0.5655ms)
+✔ constructor: missing required opts throws (0.9749ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 780.9388

@@ -66,6 +66,17 @@ export interface AdapterAuthorization {
   action_hash: string;
 }
 
+/** Trusted, receiver-side execution boundary. Production implementations must
+ * verify pinned Warrant signatures and atomically reserve durable ownership.
+ * A send result alone cannot establish the external effect. */
+export interface AdapterEffectBoundary {
+  begin(action: CanonicalAction, decision: EvaluateResponse): {
+    authorization: AdapterAuthorization;
+    attemptId?: string;
+    finishUnknown(): void;
+  };
+}
+
 /**
  * Generic transport contract. Op is the adapter-specific operation
  * (Modbus write, MAVLink command, BACnet property write, etc.).
@@ -194,6 +205,9 @@ export type AdapterRefusalCode =
   | "GATE_UNREACHABLE"
   | "GATE_REFUSED"      // gate returned decision !== ALLOW
   | "MISSING_WARRANT"   // gate said ALLOW but didn't return a Warrant
+  | "EFFECT_BOUNDARY_REQUIRED"
+  | "EFFECT_BOUNDARY_REFUSED"
+  | "EFFECT_ACCOUNTING_FAILED"
   | "DEMONSTRATION_ONLY_BLOCKED"
   | "TRANSPORT_REFUSED";
 
@@ -231,6 +245,7 @@ export interface GovernAdapterInput<
    * sign-off on a demo transport don't accidentally let it through.
    */
   allowDemonstrationTransport?: boolean;
+  effectBoundary?: AdapterEffectBoundary;
 }
 
 export interface GovernAdapterResult {
@@ -238,6 +253,8 @@ export interface GovernAdapterResult {
   decision?: EvaluateResponse;
   outcome?: AdapterEmitOutcome<unknown>;
   refusal?: { code: AdapterRefusalCode; detail: string };
+  effect_attempt_id?: string;
+  effect_state?: "IN_FLIGHT" | "EFFECT_UNKNOWN";
 }
 
 /**
@@ -263,12 +280,14 @@ export async function governThroughAdapter<Op, Authz extends AdapterAuthorizatio
   op: Op,
   input: GovernAdapterInput<Op, Authz>
 ): Promise<GovernAdapterResult> {
+  input = { ...input };
+  op = structuredClone(op);
   // (1) Build action.
-  const action = input.buildAction(op);
+  const action = structuredClone(input.buildAction(structuredClone(op)));
   // (2) Evaluate.
   let decision: EvaluateResponse;
   try {
-    decision = await input.client.evaluate(action);
+    decision = await input.client.evaluate(structuredClone(action));
   } catch (err) {
     if (err instanceof AristotleApiError) {
       const code = `GATE_HTTP_${err.status}` as AdapterRefusalCode;
@@ -307,7 +326,7 @@ export async function governThroughAdapter<Op, Authz extends AdapterAuthorizatio
     action_hash: decision.canonical_action_hash
   };
   const authz: Authz = input.buildAuthorization
-    ? input.buildAuthorization(decision, op)
+    ? input.buildAuthorization(structuredClone(decision), structuredClone(op))
     : baseAuthz as Authz;
   // (6) Demonstration-transport guard.
   if (!input.transport.production_validated && !input.allowDemonstrationTransport) {
@@ -320,20 +339,37 @@ export async function governThroughAdapter<Op, Authz extends AdapterAuthorizatio
       }
     };
   }
-  // (7) Emit.
-  const outcome = await input.transport.emit(op, authz);
+  if (input.transport.production_validated && !input.effectBoundary) {
+    return { ok: false, decision, refusal: { code: "EFFECT_BOUNDARY_REQUIRED", detail: "Production emission requires a verified durable effect boundary" } };
+  }
+  let reservation: ReturnType<AdapterEffectBoundary["begin"]> | undefined;
+  try {
+    reservation = input.effectBoundary?.begin(action, decision);
+    // Extension callbacks cannot replace the durable boundary's binding.
+    if (reservation) Object.assign(authz, reservation.authorization);
+  } catch (error) {
+    return { ok: false, decision, refusal: { code: "EFFECT_BOUNDARY_REFUSED", detail: String(error) } };
+  }
+  let outcome: AdapterEmitOutcome<unknown>;
+  try { outcome = await input.transport.emit(op, authz); }
+  catch (error) { outcome = { ok: false, refusal: { code: "TRANSPORT_THROW", detail: String(error) } }; }
+  try { reservation?.finishUnknown(); }
+  catch (error) {
+    return { ok: false, decision, outcome, effect_attempt_id: reservation?.attemptId, effect_state: "IN_FLIGHT", refusal: { code: "EFFECT_ACCOUNTING_FAILED", detail: `Dispatch may have occurred; do not retry: ${String(error)}` } };
+  }
   if (!outcome.ok) {
     return {
       ok: false,
       decision,
       outcome,
+      ...(reservation ? { effect_attempt_id: reservation.attemptId, effect_state: "EFFECT_UNKNOWN" as const } : {}),
       refusal: {
         code: "TRANSPORT_REFUSED",
         detail: `${outcome.refusal.code}: ${outcome.refusal.detail}`
       }
     };
   }
-  return { ok: true, decision, outcome };
+  return { ok: true, decision, outcome, ...(reservation ? { effect_attempt_id: reservation.attemptId, effect_state: "EFFECT_UNKNOWN" as const } : {}) };
 }
 
 // ---------------------------------------------------------------------------

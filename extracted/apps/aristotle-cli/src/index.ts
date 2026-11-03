@@ -72,6 +72,7 @@ import {
   mcpCollector,
   processCollector,
   loadGelChain,
+  verifyEffectEvidence,
   CredentialRevocationAdapter,
   EndpointQuarantineAdapter,
   KubernetesScaleDownAdapter,
@@ -585,6 +586,7 @@ Commands:
   execution-control audit verify  Verify the execution-control GEL hash chain
   execution-control evidence export  Export an offline Evidence Bundle
   execution-control evidence verify  Verify an offline Evidence Bundle
+  execution-control effects verify   Verify effect records against an independent trust profile
   telecom templates                 List carrier Ward templates, policies, and sample actions
   telecom adapters                  List typed TMF / NETCONF / gNMI / O-RAN adapter surfaces
   telecom evidence export           Export a telecom NOC Evidence Bundle
@@ -1186,6 +1188,17 @@ ledger_verification=${result.ledger_verification?.ok ? "ok" : "failed"}
       if (json) printJson(out, verification, true);
       else out(`evidence_verification=${verification.ok ? "ok" : `failed:${verification.failures.join(";")}`}\nbundle_hash=${verification.bundle_hash ?? "none"}\nledger_records=${verification.ledger.count}\n`);
       return verification.ok ? 0 : 1;
+    }
+
+    if (command === "execution-control" && subcommand === "effects" && rest[0] === "verify") {
+      const recordsPath = path.resolve(cwd, requiredOption(rest, "--records"));
+      const trustPath = path.resolve(cwd, requiredOption(rest, "--trust"));
+      const records = JSON.parse(readFileSync(recordsPath, "utf8"));
+      const trust = JSON.parse(readFileSync(trustPath, "utf8"));
+      const result = verifyEffectEvidence(records, { ...trust, trustedLedgerKeys: trust.trustedLedgerKeys ?? {}, trustedObservers: trust.trustedObservers ?? {} });
+      if (json) printJson(out, result, true);
+      else out(`effect_verification=${result.status}\nreason_codes=${result.reasons.join(",")}\n`);
+      return result.status === "PASS" ? 0 : result.status === "FAIL" ? 1 : 2;
     }
 
     if (command === "telecom") {

@@ -1,0 +1,20 @@
+
+> aristotle-autonomous-governance-os@0.1.33 test:classification C:\Users\Pepper\Downloads\AristotleOS-hardening-20261006\extracted
+> tsx shared/execution-control-runtime/src/classification.test.ts
+
+✔ dominates: level ordering and caveat superset (1.8241ms)
+✔ checkClassification reports the reason (0.82ms)
+✔ enforceClassification: unlabeled action passes; any failing clearance blocks (0.4099ms)
+✔ the gate REFUSEs an over-classified action (no read up) (29.1701ms)
+✔ the gate ALLOWs when the Ward + Envelope clearances dominate the action label (1.4031ms)
+✔ the gate REFUSEs on a missing compartment even at the same level (1.0616ms)
+✔ unlabeled artifacts are unaffected (backward compatible) (0.9419ms)
+✔ crossDomainTransferAllowed enforces no-write-down and compartment retention (0.7427ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 59.5972

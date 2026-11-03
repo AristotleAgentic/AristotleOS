@@ -10,7 +10,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { governThroughAdapter } from "@aristotle/adapter-sdk";
+import { governThroughAdapter, type AdapterEffectBoundary } from "@aristotle/adapter-sdk";
 import { AristotleClient, type CanonicalAction, type EvaluateResponse } from "@aristotle/os-sdk";
 
 export type Dnp3ControlKind =
@@ -162,23 +162,29 @@ export interface GovernDnp3Options {
   outstationId: string;
   actionTypeFor?: (req: Dnp3ControlRequest) => string;
   allowDemonstrationTransport?: boolean;
+  effectBoundary?: AdapterEffectBoundary;
+  operationId?: string;
 }
 
 export async function governDnp3Control(
   req: Dnp3ControlRequest,
   transport: Dnp3ControlTransport,
   options: GovernDnp3Options
-): Promise<{ ok: boolean; decision?: EvaluateResponse; outcome?: Dnp3SubmissionOutcome; refusal?: { code: string; detail: string } }> {
+): Promise<{ ok: boolean; decision?: EvaluateResponse; outcome?: Dnp3SubmissionOutcome; refusal?: { code: string; detail: string }; effect_attempt_id?: string; effect_state?: "IN_FLIGHT" | "EFFECT_UNKNOWN" }> {
+  options = { ...options };
   const result = await governThroughAdapter<Dnp3ControlRequest, Dnp3Authorization>(req, {
     client: options.client,
     transport,
     allowDemonstrationTransport: options.allowDemonstrationTransport,
+    effectBoundary: options.effectBoundary,
     buildAction: (operation): CanonicalAction => ({
       action_id: `dnp3-${Date.now().toString(16)}`,
       ward_id: options.wardId,
       subject: options.subject,
+      target: options.outstationId,
       action_type: options.actionTypeFor ? options.actionTypeFor(operation) : `grid.dnp3.${operation.kind}`,
       params: {
+        ...(options.operationId ? { operation_id: options.operationId } : {}),
         outstation_id: options.outstationId,
         kind: operation.kind,
         point_index: operation.point_index,
@@ -206,7 +212,9 @@ export async function governDnp3Control(
     ok: result.ok,
     decision: result.decision,
     outcome: result.outcome as Dnp3SubmissionOutcome | undefined,
-    refusal: result.refusal
+    refusal: result.refusal,
+    effect_attempt_id: result.effect_attempt_id,
+    effect_state: result.effect_state
   };
 }
 
