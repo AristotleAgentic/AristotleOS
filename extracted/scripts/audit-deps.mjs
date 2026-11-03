@@ -1,14 +1,14 @@
 // Blocking dependency-audit gate for the AristotleOS workspace.
 //
 // Supply-chain finding (A4): the CI dependency audit was informational
-// (continue-on-error). This makes it a *gate*: any production-dependency advisory
+// (continue-on-error). This makes it a *gate*: any production or build advisory
 // at or above the fail threshold (default high+critical) fails the build, unless
 // it is explicitly triaged in .audit-allowlist.json with a reason and an expiry.
 // Expired allowlist entries are themselves treated as failures, so a temporary
 // exception cannot silently become permanent.
 //
 // Usage:
-//   node scripts/audit-deps.mjs                 # run `pnpm audit --prod --json`
+//   node scripts/audit-deps.mjs                 # audit production AND build dependencies
 //   node scripts/audit-deps.mjs --input a.json  # evaluate a saved audit report
 //   node scripts/audit-deps.mjs --fail-on critical
 //
@@ -141,7 +141,7 @@ function loadAuditJson(root, inputPath) {
   }
   // pnpm audit exits non-zero when advisories exist; capture stdout regardless.
   try {
-    const raw = execSync("corepack pnpm audit --prod --json", { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    const raw = execSync("corepack pnpm audit --json", { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
     return JSON.parse(raw);
   } catch (error) {
     const stdout = error?.stdout?.toString?.() ?? "";
@@ -205,7 +205,7 @@ function main() {
     console.error("\n✗ dependency audit failed. Fix the dependency, or triage it in .audit-allowlist.json with a reason and expiry.");
     process.exit(1);
   }
-  console.log("\n✓ no blocking production advisories.");
+  console.log("\n✓ no blocking advisories across production and build dependencies.");
 }
 
 // Run only when invoked directly (not when imported by the test).

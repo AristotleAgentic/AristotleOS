@@ -1,0 +1,21 @@
+name: Daily dependency security audit
+on:
+  schedule:
+    - cron: '17 13 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: extracted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: corepack enable
+      - run: corepack pnpm install --frozen-lockfile --ignore-scripts
+      - run: corepack pnpm audit:ci
