@@ -98,7 +98,7 @@ services:
       - key: EVIDENCE_LEDGER_GEL_PATH
         value: /data/evidence-ledger.gel.jsonl
       - key: EVIDENCE_LEDGER_SIGNING_SECRET
-        sync: false
+        generateValue: true
     disk:
       name: evidence-ledger-data
       mountPath: /data
