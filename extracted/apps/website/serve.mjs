@@ -927,7 +927,7 @@ const server = createServer(async (req, res) => {
 
   if (method === "GET" && path === "/github") {
     send(res, 302, "", {
-      location: "https://github.com/AristotleAgentic/AristotleOS/tree/ward-warrant-execution-control/extracted",
+      location: "https://github.com/AristotleAgentic/AristotleOS/tree/harden/production-contracts/extracted",
       "cache-control": "no-store"
     });
     return;

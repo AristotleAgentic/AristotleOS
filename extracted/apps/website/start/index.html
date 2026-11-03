@@ -56,7 +56,7 @@
           <a href="/quickstart/">Quickstart</a>
           <a href="/review/">Reviewer Packet</a>
           <a href="/research/">Research</a>
-          <a href="https://github.com/AristotleAgentic/AristotleOS/tree/ward-warrant-execution-control/extracted" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/AristotleAgentic/AristotleOS/tree/harden/production-contracts/extracted" target="_blank" rel="noopener">GitHub</a>
         </div>
       </nav>
     </div>
@@ -69,7 +69,7 @@
         <p class="lede">AristotleOS is the warrant layer for governed autonomous action. It checks authority before execution, issues signed single-use Warrants for allowed actions, refuses unauthorized actions before emission, and writes replayable evidence.</p>
         <div class="cta-row">
           <a href="/quickstart/" class="button primary">Run the quickstart</a>
-          <a href="https://aristotle-console.onrender.com/public" target="_blank" rel="noopener" class="button">Try live console</a>
+          <a href="https://aristotle-console.onrender.com/public" target="_blank" rel="noopener" class="button">Try public demo</a>
           <a href="/review/" class="button">Review the claims</a>
         </div>
       </div>
@@ -106,7 +106,7 @@
       <div class="wrap grid">
         <h2>The path.</h2>
         <div class="step-list">
-          <div class="step"><b>01</b><div><h3>Try the live console</h3><p>See the runtime governance interface without cloning the repo.</p></div></div>
+          <div class="step"><b>01</b><div><h3>Try the public demo</h3><p>See the runtime governance interface without cloning the repo.</p></div></div>
           <div class="step"><b>02</b><div><h3>Run the reviewer flow</h3><p>Verify 18 checks locally: Commit Gate, Warrant verifier, swarm partition, and replay artifact.</p></div></div>
           <div class="step"><b>03</b><div><h3>Read the research</h3><p>Move from the short technical entry point into the G-Plane, evidence, authority-routing, and governance-kernel papers.</p></div></div>
           <div class="step"><b>04</b><div><h3>Open an issue</h3><p>Use the reviewer templates to report findings or propose framework adapters and governance templates.</p></div></div>
@@ -116,7 +116,7 @@
     <section>
       <div class="wrap grid">
         <h2>Three-command review.</h2>
-        <pre><span class="prompt">$</span> git clone -b ward-warrant-execution-control https://github.com/AristotleAgentic/AristotleOS
+        <pre><span class="prompt">$</span> git clone -b harden/production-contracts https://github.com/AristotleAgentic/AristotleOS
 <span class="prompt">$</span> cd AristotleOS/extracted
 <span class="prompt">$</span> corepack pnpm@10.32.1 install
 <span class="prompt">$</span> pnpm reviewer:verify

@@ -606,7 +606,7 @@
           <a href="#downloads">Access</a>
           <a href="#proof">Proof</a>
           <a href="#reviewers">Review</a>
-          <a href="https://github.com/AristotleAgentic/AristotleOS/tree/ward-warrant-execution-control/extracted" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/AristotleAgentic/AristotleOS/tree/harden/production-contracts/extracted" target="_blank" rel="noopener">GitHub</a>
           <a href="/">Institute</a>
         </div>
       </nav>
@@ -641,7 +641,7 @@
     </section>
 
     <div class="signal-row">
-      <div class="signal"><b>Live Command Center</b><span>Operator surface for Warrants, evidence, replay, and vertical simulations.</span></div>
+      <div class="signal"><b>Public demo Command Center</b><span>Operator surface for Warrants, evidence, replay, and vertical simulations.</span></div>
       <div class="signal"><b>Human authority stays explicit</b><span>Delegation is scoped through Wards and Authority Envelopes.</span></div>
       <div class="signal"><b>Warrants are the control object</b><span>Single-use, content-bound, signed authority for one exact action.</span></div>
       <div class="signal"><b>Governance survives disconnection</b><span>Bounded authority can move with the edge and reconcile later.</span></div>
@@ -658,12 +658,23 @@
       </div>
     </section>
 
+    <section id="release-status">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Review the hardened release candidate.</h2>
+          <p class="section-lede">The current source includes dependency remediations, durable dispatch ownership and reconciliation, single-drone interlocks, and stricter production startup checks. The recorded software verification includes 95 broad checks and 12 final-source checks. These results do not establish flight clearance, exactly-once physical effects, or system-wide production readiness.</p>
+          <p class="section-lede">The public Command Center is a read-only demonstration with sample metrics and telemetry. It does not report the state of a connected aircraft.</p>
+          <a href="https://github.com/AristotleAgentic/AristotleOS/blob/harden/production-contracts/docs/assurance/PRODUCTION_CONTRACTS_REPORT.md" target="_blank" rel="noopener" class="button secondary">Read verification and remaining limits</a>
+        </div>
+      </div>
+    </section>
+
     <section id="command-center">
       <div class="wrap">
         <div class="section-head">
           <h2>The Command Center is where the thesis becomes operable.</h2>
           <p class="section-lede">
-            The live Command Center gives reviewers and operators a direct way to inspect authority, refusals, Warrants, evidence, replay, and vertical simulations before treating the system as pilot-ready.
+            The public demo Command Center gives reviewers and operators a direct way to inspect authority, refusals, Warrants, evidence, replay, and vertical simulations before treating the system as pilot-ready.
           </p>
         </div>
         <div class="cards">
@@ -684,7 +695,7 @@
           </div>
         </div>
         <div class="cta-row">
-          <a href="https://aristotle-console.onrender.com/public" target="_blank" rel="noopener" class="button primary">Open live Command Center</a>
+          <a href="https://aristotle-console.onrender.com/public" target="_blank" rel="noopener" class="button primary">Open public demo Command Center</a>
           <a href="#reviewers" class="button secondary">Review AristotleOS</a>
           <a href="#cta" class="button secondary">Request pilot fit</a>
         </div>
@@ -744,7 +755,7 @@
             The fastest check runs the actual governed-action boundary: allow, signature verification, refusal, escalation, evidence bundle, and GEL chain.
           </p>
         </div>
-        <pre><span class="prompt">$</span> git clone -b ward-warrant-execution-control https://github.com/AristotleAgentic/AristotleOS
+        <pre><span class="prompt">$</span> git clone -b harden/production-contracts https://github.com/AristotleAgentic/AristotleOS
 <span class="prompt">$</span> cd AristotleOS/extracted
 <span class="prompt">$</span> corepack pnpm@10.32.1 install
 <span class="prompt">$</span> npm run demo
@@ -957,7 +968,7 @@
         </div>
         <div class="cta-row">
           <a href="/review/" class="button primary">Reviewer packet</a>
-          <a href="https://github.com/AristotleAgentic/AristotleOS/blob/ward-warrant-execution-control/extracted/docs/COMPARISON.md" target="_blank" rel="noopener" class="button secondary">Comparison notes</a>
+          <a href="https://github.com/AristotleAgentic/AristotleOS/blob/harden/production-contracts/extracted/docs/COMPARISON.md" target="_blank" rel="noopener" class="button secondary">Comparison notes</a>
           <a href="https://aristotle-console.onrender.com/public" target="_blank" rel="noopener" class="button secondary">Live console</a>
         </div>
       </div>
@@ -975,7 +986,7 @@
           <div class="card">
             <div class="kicker">OPEN CORE</div>
             <h3>Free</h3>
-            <p>MPL-2.0 core source, public docs, reviewer packet, quickstart, and live Command Center inspection. Built for reviewers, researchers, and early technical evaluators.</p>
+            <p>MPL-2.0 core source, public docs, reviewer packet, quickstart, and public demo Command Center inspection. Built for reviewers, researchers, and early technical evaluators.</p>
           </div>
           <div class="card">
             <div class="kicker">PILOT SPRINT</div>
@@ -1005,8 +1016,8 @@
         </div>
         <div class="cta-row">
           <a href="#cta" class="button primary">Request commercial access</a>
-          <a href="https://aristotle-console.onrender.com/public" target="_blank" rel="noopener" class="button secondary">Open live Command Center</a>
-          <a href="https://github.com/AristotleAgentic/AristotleOS/tree/ward-warrant-execution-control/extracted" target="_blank" rel="noopener" class="button secondary">Open source core</a>
+          <a href="https://aristotle-console.onrender.com/public" target="_blank" rel="noopener" class="button secondary">Open public demo Command Center</a>
+          <a href="https://github.com/AristotleAgentic/AristotleOS/tree/harden/production-contracts/extracted" target="_blank" rel="noopener" class="button secondary">Open source core</a>
         </div>
       </div>
     </section>
@@ -1031,7 +1042,7 @@
             <tr>
               <td><strong>Open-source core</strong></td>
               <td>Source code, docs, examples, packages, and the public warrant/evidence model.</td>
-              <td><a href="https://github.com/AristotleAgentic/AristotleOS/tree/ward-warrant-execution-control/extracted" target="_blank" rel="noopener">GitHub repo</a></td>
+              <td><a href="https://github.com/AristotleAgentic/AristotleOS/tree/harden/production-contracts/extracted" target="_blank" rel="noopener">GitHub repo</a></td>
             </tr>
             <tr>
               <td><strong>Quickstart</strong></td>
@@ -1054,7 +1065,7 @@
               <td><a href="/ui-prototype/">Open prototype</a></td>
             </tr>
             <tr>
-              <td><strong>Live Command Center</strong></td>
+              <td><strong>Public demo Command Center</strong></td>
               <td>Public operator surface for Warrants, commits, Wards, replay, evidence, and vertical simulations.</td>
               <td><a href="https://aristotle-console.onrender.com/public" target="_blank" rel="noopener">Open console</a></td>
             </tr>
@@ -1081,7 +1092,7 @@
         </p>
         <div class="cta-row">
           <a href="#commercial" class="button primary">View commercial access</a>
-          <a href="https://aristotle-console.onrender.com/public" target="_blank" rel="noopener" class="button secondary">Open live Command Center</a>
+          <a href="https://aristotle-console.onrender.com/public" target="_blank" rel="noopener" class="button secondary">Open public demo Command Center</a>
           <a href="#downloads" class="button secondary">Access center</a>
         </div>
         <form class="inquiry-form" action="/api/inquiries" method="post">

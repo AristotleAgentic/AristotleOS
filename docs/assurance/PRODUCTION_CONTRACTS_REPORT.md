@@ -6,7 +6,10 @@ single-drone interlocks, and stricter production configuration checks. It does
 effects, or flight clearance. No aircraft was contacted, armed, or flown.
 
 Source commit: `2604ed08506c41166fc9be1550f70b883f0fd746` on
-`harden/production-contracts`. Changes are local; nothing was pushed or deployed.
+`harden/production-contracts`. The source and this evidence were pushed to GitHub
+at `b949cfb`. That push did not deploy the runtime; deployment status must be
+verified independently in Render. The verification below describes the recorded
+source snapshot, not subsequent website or deployment-configuration edits.
 The original checkout and its user changes remain separate.
 
 ## Changes
