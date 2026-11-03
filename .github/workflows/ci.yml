@@ -53,8 +53,15 @@ jobs:
       - name: Dependency backport exploit regressions
         run: node --test scripts/dependency-security.test.mjs
 
+      - name: Framework and MCP dependency compatibility
+        run: |
+          corepack pnpm test:framework-adapters
+          corepack pnpm test:mcp-server
+          corepack pnpm test:mcp-server-stdio
+
       - name: Production gateway and physical adapter boundaries
         run: |
+          corepack pnpm -r --filter @aristotle/mavlink-px4... --workspace-concurrency=1 build
           corepack pnpm --filter @aristotle/adapter-sdk build
           corepack pnpm --filter @aristotle/adapter-sdk test
           corepack pnpm test:protocol-adapters
@@ -102,6 +109,9 @@ jobs:
 
       - name: Install dependencies
         run: corepack pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build CLI workspace prerequisites
+        run: corepack pnpm -r --filter @aristotle/shared-types --filter @aristotle/shared-schemas --filter @aristotle/governance-core --filter @aristotle/trial-engine --filter @aristotle/execution-control-runtime --filter @aristotle/mesh-runtime --filter @aristotle/os-sdk --workspace-concurrency=1 build
 
       - name: Validate @aristotle/os-cli is publish-ready
         # Packs the CLI, asserts tarball contents, installs it into a throwaway
